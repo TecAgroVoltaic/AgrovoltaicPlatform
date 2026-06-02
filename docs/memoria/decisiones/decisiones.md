@@ -16,5 +16,17 @@ categoria: decision
 | **Duplicados** | Exactos (mismo MD5) se eliminan; fragmentos `(N)` requieren decisión del usuario | [[duplicados]] |
 | **Schema destino** | Superset de todas las variables; timestamp TIMESTAMPTZ al inicio; metadata de archivo/schema origen | [[schemas-multiples]] |
 
-Herramientas recomendadas: `pvlib-python`, `pvanalytics`, `NASA POWER API`, `pandas`.
-Destino: **Supabase (PostgreSQL)**.
+## Decisiones de implementación (2026-06-02)
+
+| Decisión | Detalle | Vínculo |
+|---|---|---|
+| **Cero columnas quemadas** | Única fuente = `normalize.CONCEPT_MAP` (leyenda mínima slug→canónico). Schema canónico, tags, resampleo y DDL SQL se DERIVAN | [[implementacion]], [[schemas-multiples]] |
+| **`slugify` normaliza variantes** | Acentos/unidades/mayúsculas colapsan solas → no se enumeran las ~70 variantes crudas | [[typos-headers]] |
+| **DDL SQL generado** | `ddl.py` infiere tipos desde el schema canónico; `sql/001_schema.sql` es artefacto | [[implementacion]] |
+| **Sin índice `timestamp::date`** | Postgres lo rechaza (no IMMUTABLE); la PK en timestamp ya da btree | [[implementacion]] |
+| **Conexión Postgres directa** | psycopg + Session pooler (`postgres.<ref>`), NO el API REST. UPSERT masivo | [[implementacion]] |
+| **CLI interactivo, un entrypoint** | `python3 main.py` → menú numerado, sin flags; dry-run exporta CSV (abrible) | [[implementacion]] |
+| **Filas ragged se saltan** | `read_raw_csv` tolerante; separación fina (Paso 2) queda pendiente | [[filas-mezcladas]] |
+
+Herramientas usadas: `pandas`, `psycopg`, `python-dotenv`, `pyarrow`; `pvlib`/
+`pvanalytics` reservadas para la calibración (pendiente). Destino: **Supabase (PostgreSQL)**.

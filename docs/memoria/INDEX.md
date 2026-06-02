@@ -3,11 +3,12 @@
 Sistema de memoria jerárquico. Un tema por archivo, agrupados por carpeta. Empieza aquí
 para ubicar qué buscas; cada línea apunta al archivo de detalle.
 
-**Última actualización:** 2026-06-01
+**Última actualización:** 2026-06-02
 
 ## proyecto/ — qué es y en qué fase está
 - [objetivo.md](proyecto/objetivo.md) — estandarizar CSV crudos y cargarlos a Supabase como pipeline automatizado y permanente
-- [estado.md](proyecto/estado.md) — EDA hecho, pipeline diseñado, código de limpieza aún no iniciado
+- [estado.md](proyecto/estado.md) — pipeline implementado y corrido OK (36.630 filas en Supabase); falta calibración y Paso 2
+- [implementacion.md](proyecto/implementacion.md) — paquete `src/agrovoltaic`: diseño (cero columnas quemadas), estructura, idempotencia, bugs corregidos
 
 ## datos/ — el dataset y sus fuentes
 - [fuentes-fisicas.md](datos/fuentes-fisicas.md) — 3 fuentes: inversor, piranómetros, DS18B20

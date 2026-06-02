@@ -1,0 +1,15 @@
+# Secretos / entorno
+.env
+/env
+.venv
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Artefactos del pipeline
+/output/
+*.parquet

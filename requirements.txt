@@ -1,0 +1,20 @@
+# Core ETL
+pandas>=2.2
+numpy>=1.26
+python-dotenv>=1.0
+pyarrow>=15.0   # motor parquet (dry-run --out)
+
+# Supabase / Postgres (carga directa, bulk upsert)
+psycopg[binary]>=3.1
+
+# Datos solares (calibracion + QC) — Fase calibracion
+pvlib>=0.11
+pvanalytics>=0.2
+
+# EDA (solo notebooks)
+jupyter>=1.0
+matplotlib>=3.8
+seaborn>=0.13
+
+# Tests
+pytest>=8.0
