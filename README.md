@@ -86,7 +86,6 @@ y un chequeo pasa/falla de la limpieza (temp 85 y negativos deben ser 0).
 - **Nivel fila:** `timestamp` es PRIMARY KEY con `ON CONFLICT DO UPDATE` → reprocesar
   nunca duplica.
 - **CSV nuevo:** soltarlo en `dataset/Monitoreo-AgroVoltaic-SC-NEW/` y correr la opción 6.
-- **Automatizar:** cron / GitHub Action que corra el pipeline.
 
 ## Pendiente (bloqueado por info del sitio)
 
