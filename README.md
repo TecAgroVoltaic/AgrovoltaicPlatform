@@ -7,23 +7,6 @@ carpeta del dataset y se vuelve a correr.
 
 > Contexto del problema, decisiones y estado: ver `CLAUDE.md` y `docs/memoria/INDEX.md`.
 
-## Diseño: nada de columnas quemadas
-
-Una sola fuente de verdad irreducible y todo lo demas derivado:
-
-| Artefacto | Se genera desde |
-|---|---|
-| `normalize.CONCEPT_MAP` | **leyenda minima** slug→canonico (1 entrada por concepto) |
-| `slugify()` | normaliza acentos/unidades/mayusculas → colapsa variantes solo |
-| `CANONICAL_COLUMNS` | valores unicos de `CONCEPT_MAP` |
-| tags / agrupaciones | `infer_tags()` desde el nombre de columna |
-| metodo de resampleo | `agg_method()` desde los tags |
-| **DDL SQL** (`sql/schema.sql`) | `ddl.py` infiere tipos desde `CANONICAL_COLUMNS` |
-
-Columna nueva en un CSV futuro: si es otra ortografia del mismo concepto, se
-reconoce sola; si es un concepto nuevo, se agrega **1 linea** a `CONCEPT_MAP` y
-entra automaticamente al schema, a la tabla SQL y al resampleo.
-
 ## Estructura
 
 ```
@@ -41,7 +24,6 @@ src/agrovoltaic/
   cli.py         # menu interactivo (acciones del pipeline)
 sql/schema.sql       # GENERADO (no editar a mano)
 notebooks/eda.ipynb
-tests/
 ```
 
 ## Setup
@@ -96,21 +78,15 @@ jupyter notebook notebooks/eda.ipynb   # o abrirlo en VSCode
 `Restart Kernel` + `Run All`. Lee directo de Supabase (o `output/dry_run.csv` si no hay
 `DATABASE_URL`) y en cada sección imprime un veredicto **OK / REVISAR** con su
 interpretación: cobertura temporal, % NULL, distribuciones, correlación irradiancia↔potencia,
-y un test pasa/falla de la limpieza (temp 85 y negativos deben ser 0).
+y un chequeo pasa/falla de la limpieza (temp 85 y negativos deben ser 0).
 
 ## Idempotencia / escalabilidad
 
 - **Nivel archivo:** `_ingest_log` guarda el md5; `run` salta lo que no cambio.
 - **Nivel fila:** `timestamp` es PRIMARY KEY con `ON CONFLICT DO UPDATE` → reprocesar
   nunca duplica.
-- **CSV nuevo:** soltarlo en `dataset/Monitoreo-AgroVoltaic-SC-NEW/` y correr `run`.
-- **Automatizar:** cron / GitHub Action ejecutando `python -m agrovoltaic run`.
-
-## Tests
-
-```bash
-PYTHONPATH=src python -m pytest -q
-```
+- **CSV nuevo:** soltarlo en `dataset/Monitoreo-AgroVoltaic-SC-NEW/` y correr la opción 6.
+- **Automatizar:** cron / GitHub Action que corra el pipeline.
 
 ## Pendiente (bloqueado por info del sitio)
 
