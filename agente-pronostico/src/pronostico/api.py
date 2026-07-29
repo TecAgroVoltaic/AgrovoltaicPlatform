@@ -1,0 +1,91 @@
+"""
+API HTTP del forecaster: UNICO puente entre un cliente externo (VisioneFlow u
+otro) y `run_forecast`. Transporte puro: valida el request en el borde, delega
+en la tool existente y responde su dict tal cual (ya es JSON-serializable).
+
+Seguridad: si FORECAST_API_KEY esta definida en el entorno, POST /forecast
+exige el header `x-api-key` con ese valor exacto (401 si falta o no coincide).
+GET /health queda abierto para monitoreo. Un fallo interno (p. ej. DB caida)
+responde el 500 generico de FastAPI: el detalle queda en el log del servidor,
+nunca en la respuesta.
+"""
+from __future__ import annotations
+
+import os
+import secrets
+
+from fastapi import Depends, FastAPI, Header, HTTPException, status
+from pydantic import BaseModel, Field
+
+from pronostico.domain import Variable
+from pronostico.tools.forecast_tool import FORECAST_TOOL_SCHEMA, run_forecast
+
+# Limites del horizonte: se leen del CONTRATO publicado (input_schema de la
+# tool) para tener una sola fuente de verdad — si la tool cambia sus limites,
+# la API los hereda sin tocar este archivo.
+_HORIZONTE = FORECAST_TOOL_SCHEMA["input_schema"]["properties"]["horizon_seconds"]
+_MIN_HORIZONTE_SEG = _HORIZONTE["minimum"]
+_MAX_HORIZONTE_SEG = _HORIZONTE["maximum"]
+
+# Nombre de la variable de entorno con la clave (si no esta, la API es abierta).
+ENV_API_KEY = "FORECAST_API_KEY"
+
+app = FastAPI(
+    title="Pronostico ambiental (irradiancia + humedad de suelo)",
+    description="Envuelve run_forecast (despacho por variable) como HTTP.",
+    version="1.1.0",
+)
+
+
+class ForecastRequest(BaseModel):
+    """Cuerpo de POST /forecast — espejo del input_schema de la tool."""
+
+    variable: str = Field(
+        default=Variable.IRRADIANCIA.value,
+        description="Variable a pronosticar: 'irradiancia' o 'humedad_suelo'.",
+    )
+    horizon_seconds: int = Field(
+        ge=_MIN_HORIZONTE_SEG,
+        le=_MAX_HORIZONTE_SEG,
+        description="Horizonte del pronostico en segundos.",
+    )
+    horizonte_texto: str | None = Field(
+        default=None,
+        description="Frase original del horizonte ('dos horas'); valida la "
+                    "conversion de forma determinista (parse_horizon manda).",
+    )
+
+
+def _verificar_api_key(x_api_key: str | None = Header(default=None)) -> None:
+    """Exige la API key SOLO si esta configurada. Comparacion en tiempo
+    constante (compare_digest) para no filtrar la clave por timing."""
+    esperada = os.environ.get(ENV_API_KEY)
+    if not esperada:
+        return
+    if not secrets.compare_digest(esperada, x_api_key or ""):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="API key invalida"
+        )
+
+
+@app.get("/health")
+def health() -> dict:
+    """Ping para monitoreo/orquestadores. No toca datos ni exige clave."""
+    return {"status": "ok"}
+
+
+@app.post("/forecast", dependencies=[Depends(_verificar_api_key)])
+def forecast(cuerpo: ForecastRequest) -> dict:
+    """Ejecuta el pronostico fisico y devuelve el dict de run_forecast.
+
+    `def` (no async): run_forecast es sincrono y pesado (pandas/pvlib), asi
+    FastAPI lo corre en su threadpool sin bloquear el event loop.
+    """
+    try:
+        return run_forecast(
+            cuerpo.variable, cuerpo.horizon_seconds, cuerpo.horizonte_texto
+        )
+    except ValueError as exc:  # variable u horizonte invalidos -> culpa del cliente
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        ) from exc

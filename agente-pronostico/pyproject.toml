@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pronostico"
+version = "0.1.0"
+description = "Agente LLM de pronóstico de irradiancia (MVP) — San Carlos / AgroDash"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "pvlib",
+    "psycopg[binary]",
+    "pandas",
+    "numpy",
+    "matplotlib",
+    "pyarrow",
+    "anthropic",
+    "python-dotenv",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "httpx"]
+service = ["fastapi", "uvicorn[standard]"]
+
+[project.scripts]
+pronostico = "pronostico.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
