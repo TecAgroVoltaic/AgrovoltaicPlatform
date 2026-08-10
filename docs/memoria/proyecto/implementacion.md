@@ -36,8 +36,13 @@ Implementado y corrido OK el 2026-06-02 (285 CSV → 36.630 filas en `monitoreo_
 > frontal+bifacial con pvlib) + vista `v_sc_performance` (`pr_pv1`, `pr_pv2`). Modelo bifacial de
 > dos planos (φ=0,80). Verificado: **PR energético PV1=0,622 / PV2=0,626** (convergen → bifacial
 > validado). Ver [[geometria-sistema]]. Objetos viejos dropeados.
-> **Pendiente de decisión:** RLS (deshabilitado en todas las tablas públicas del proyecto);
-> **del equipo:** factor de bifacialidad real (datasheet) y geometría de filas para afinar POA trasera.
+>
+> **Seguridad (2026-08-10): RLS habilitado (lockdown)** en las 9 tablas públicas (migración
+> `agrovoltaic_enable_rls_lockdown`) — sin políticas: solo roles de servicio (postgres/service_role,
+> BYPASSRLS) acceden; la API REST pública queda bloqueada. Verificado que NO rompe el forecaster
+> (rol `postgres`, owner + BYPASSRLS; `predicciones` siguió creciendo). RLS también en el DDL
+> generado (`ddl.rls_ddl`). Avisos SECURITY DEFINER + RLS-disabled: resueltos.
+> **Pendiente del equipo:** factor de bifacialidad real (datasheet) y geometría de filas (POA trasera).
 
 ## Entrada / ejecución
 - Punto de entrada único: `python3 main.py` (agrega `src/` al path, no requiere instalar).
