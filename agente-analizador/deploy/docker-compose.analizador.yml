@@ -1,0 +1,29 @@
+# Sidecar del analizador PV (microservicio FastAPI con las tools de análisis).
+#
+# Proyecto compose INDEPENDIENTE (name: analizador), fuera del repo Agent-Runtime,
+# para no morir con el `git reset --hard` del deploy del Backend. Usa red del host
+# y nginx le llega por host.docker.internal:8010. Puerto 8010 (el 8000 lo usa el
+# forecaster).
+#
+# Uso (en la EC2, desde /home/ec2-user/analizador):
+#   docker compose -f docker-compose.analizador.yml up -d --build
+#
+# Requiere: ./agente-analizador (código, vía rsync) y ./analizador.env (NO se versiona).
+name: analizador
+
+services:
+  analizador:
+    build:
+      context: ${ANALIZADOR_BUILD_CONTEXT:-./agente-analizador}
+      dockerfile: Dockerfile
+    image: analizador-pv:latest
+    network_mode: host
+    command: ["uvicorn", "analizador.api:app", "--host", "0.0.0.0", "--port", "8010"]
+    env_file:
+      - analizador.env
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8010/health', timeout=3).status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

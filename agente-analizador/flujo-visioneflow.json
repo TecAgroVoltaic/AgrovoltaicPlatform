@@ -1,0 +1,278 @@
+{
+  "name": "Analizador PV — San Carlos",
+  "description": "aiAgent (Haiku) que orquesta las tools de analisis del sidecar del analizador en la EC2.",
+  "version": "1.0",
+  "nodes": [
+    {
+      "id": "trigger-1",
+      "type": "trigger",
+      "label": "Pregunta del usuario",
+      "config": {
+        "triggerType": "manual"
+      },
+      "position": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "agent-1",
+      "type": "aiAgent",
+      "label": "Analizador PV",
+      "config": {
+        "provider": "anthropic",
+        "model": "claude-haiku-4-5",
+        "systemPrompt": "Sos un asistente que responde preguntas sobre los datos del sistema fotovoltaico\nagrovoltaico de San Carlos, Costa Rica. Tu trabajo es ENTENDER la pregunta, llamar\na las herramientas de analisis y REDACTAR la respuesta en espanol. No sos una\ncalculadora.\n\nEl sistema tiene DOS arreglos, ambos bifaciales y de 1420 Wp:\n- PV1 = arreglo inclinado (20 grados).\n- PV2 = arreglo vertical (90 grados).\n\nReglas (obligatorias):\n\n1. NUNCA calcules ni inventes numeros. Para cualquier dato (energia, rendimiento,\n   irradiancia, temperatura, cobertura, definiciones) llama SIEMPRE a una\n   herramienta. Los numeros salen de las herramientas (consultan la base ya\n   limpia), jamas de tu intuicion.\n\n2. Para preguntas compuestas, COMPONE: llama varias herramientas y combina sus\n   resultados. Por ejemplo \"cual arreglo rinde mejor\" -> usa el Performance Ratio\n   (que ya trae ambos arreglos) y comparalos; \"cuanta energia y con cuanto sol\" ->\n   energia + irradiancia.\n\n3. Los datos son HISTORICOS (del 2024-11-10 al 2026-06-01), NO en\n   vivo. Las fechas son hora local de Costa Rica. Si no se especifica un periodo,\n   consulta todo el historico (omiti desde/hasta).\n\n4. Mira el contexto que devuelven las herramientas (la nota y la cobertura 'n'): si\n   una metrica se apoya en pocos datos, ACLARALO. El PR del arreglo vertical incluye\n   ganancia bifacial modelada (factor asumido). San Carlos es muy nuboso.\n\n5. Responde claro y DIRECTO, en espanol, SIN mostrar tu razonamiento interno ni el\n   SQL ni los nombres de las herramientas. Da los numeros con su unidad. Si te\n   preguntan algo que estos datos no cubren (p. ej. pronostico futuro, u otro sitio),\n   explicalo con cortesia: solo analizas el historico PV de San Carlos.\n",
+        "temperature": 0.2,
+        "maxTokens": 2048,
+        "maxIterations": 12,
+        "memoryWindowSize": 10
+      },
+      "position": {
+        "x": 320,
+        "y": 0
+      }
+    },
+    {
+      "id": "output-1",
+      "type": "output",
+      "label": "Respuesta",
+      "config": {
+        "outputFormat": "text"
+      },
+      "position": {
+        "x": 640,
+        "y": 0
+      }
+    },
+    {
+      "id": "tool-energia_por_arreglo",
+      "type": "httpRequestTool",
+      "label": "energia_por_arreglo",
+      "config": {
+        "toolName": "energia_por_arreglo",
+        "description": "Energia electrica generada (Wh) en un periodo: por arreglo (PV1 inclinado, PV2 vertical) y total AC del inversor. Omiti desde/hasta para todo el historico.",
+        "method": "POST",
+        "url": "https://api.flow.visione-edge.com/analizador/tool/energia_por_arreglo",
+        "authType": "apiKey",
+        "apiKeyHeader": "x-api-key",
+        "apiKeyValue": "PEGAR_ANALIZADOR_API_KEY",
+        "toolSchema": {
+          "properties": {
+            "desde": {
+              "type": "string",
+              "description": "Inicio ISO ('2026-01-01'), hora local CR. Omitir = desde el inicio."
+            },
+            "hasta": {
+              "type": "string",
+              "description": "Fin ISO EXCLUSIVO. Omitir = hasta el final del historico."
+            }
+          },
+          "required": []
+        },
+        "timeout": 30000
+      },
+      "position": {
+        "x": 320,
+        "y": 240
+      }
+    },
+    {
+      "id": "tool-performance_ratio",
+      "type": "httpRequestTool",
+      "label": "performance_ratio",
+      "config": {
+        "toolName": "performance_ratio",
+        "description": "Performance Ratio (adimensional, ~0-1) por arreglo en un periodo: PV1 inclinado y PV2 vertical, ponderado por energia. Incluye la cobertura (n). Omiti desde/hasta para todo el historico.",
+        "method": "POST",
+        "url": "https://api.flow.visione-edge.com/analizador/tool/performance_ratio",
+        "authType": "apiKey",
+        "apiKeyHeader": "x-api-key",
+        "apiKeyValue": "PEGAR_ANALIZADOR_API_KEY",
+        "toolSchema": {
+          "properties": {
+            "desde": {
+              "type": "string",
+              "description": "Inicio ISO, hora local CR. Omitir = todo."
+            },
+            "hasta": {
+              "type": "string",
+              "description": "Fin ISO EXCLUSIVO. Omitir = todo."
+            }
+          },
+          "required": []
+        },
+        "timeout": 30000
+      },
+      "position": {
+        "x": 320,
+        "y": 400
+      }
+    },
+    {
+      "id": "tool-irradiancia_resumen",
+      "type": "httpRequestTool",
+      "label": "irradiancia_resumen",
+      "config": {
+        "toolName": "irradiancia_resumen",
+        "description": "Resumen de irradiancia solar en un periodo: GHI media/maxima (W/m2), indice de cielo despejado kt* (0-1, cuanto sol real vs cielo despejado) e insolacion total (Wh/m2). Solo datos validos con control de calidad. Omiti desde/hasta para todo el historico valido.",
+        "method": "POST",
+        "url": "https://api.flow.visione-edge.com/analizador/tool/irradiancia_resumen",
+        "authType": "apiKey",
+        "apiKeyHeader": "x-api-key",
+        "apiKeyValue": "PEGAR_ANALIZADOR_API_KEY",
+        "toolSchema": {
+          "properties": {
+            "desde": {
+              "type": "string",
+              "description": "Inicio ISO, hora local CR. Omitir = todo."
+            },
+            "hasta": {
+              "type": "string",
+              "description": "Fin ISO EXCLUSIVO. Omitir = todo."
+            }
+          },
+          "required": []
+        },
+        "timeout": 30000
+      },
+      "position": {
+        "x": 320,
+        "y": 560
+      }
+    },
+    {
+      "id": "tool-temperatura_por_arreglo",
+      "type": "httpRequestTool",
+      "label": "temperatura_por_arreglo",
+      "config": {
+        "toolName": "temperatura_por_arreglo",
+        "description": "Temperatura (C) de cada arreglo en un periodo: PV1 inclinado y PV2 vertical (media y maxima). Util para el efecto de temperatura en el rendimiento. Omiti desde/hasta para todo el historico.",
+        "method": "POST",
+        "url": "https://api.flow.visione-edge.com/analizador/tool/temperatura_por_arreglo",
+        "authType": "apiKey",
+        "apiKeyHeader": "x-api-key",
+        "apiKeyValue": "PEGAR_ANALIZADOR_API_KEY",
+        "toolSchema": {
+          "properties": {
+            "desde": {
+              "type": "string",
+              "description": "Inicio ISO, hora local CR. Omitir = todo."
+            },
+            "hasta": {
+              "type": "string",
+              "description": "Fin ISO EXCLUSIVO. Omitir = todo."
+            }
+          },
+          "required": []
+        },
+        "timeout": 30000
+      },
+      "position": {
+        "x": 320,
+        "y": 720
+      }
+    },
+    {
+      "id": "tool-cobertura_datos",
+      "type": "httpRequestTool",
+      "label": "cobertura_datos",
+      "config": {
+        "toolName": "cobertura_datos",
+        "description": "Cobertura de datos: rango de fechas disponible y cuantas filas hay (electrico 5 min y radiacion 15 s) en el periodo. Sirve para saber si hay suficientes datos. Omiti desde/hasta para contar todo el historico.",
+        "method": "POST",
+        "url": "https://api.flow.visione-edge.com/analizador/tool/cobertura_datos",
+        "authType": "apiKey",
+        "apiKeyHeader": "x-api-key",
+        "apiKeyValue": "PEGAR_ANALIZADOR_API_KEY",
+        "toolSchema": {
+          "properties": {
+            "desde": {
+              "type": "string",
+              "description": "Inicio ISO, hora local CR. Omitir = todo."
+            },
+            "hasta": {
+              "type": "string",
+              "description": "Fin ISO EXCLUSIVO. Omitir = todo."
+            }
+          },
+          "required": []
+        },
+        "timeout": 30000
+      },
+      "position": {
+        "x": 320,
+        "y": 880
+      }
+    },
+    {
+      "id": "tool-catalogo_variables",
+      "type": "httpRequestTool",
+      "label": "catalogo_variables",
+      "config": {
+        "toolName": "catalogo_variables",
+        "description": "Diccionario de las variables medidas (nombre, descripcion, a que tabla pertenece: electrico o radiacion). Usalo si preguntan que significa una columna/variable o que se mide.",
+        "method": "POST",
+        "url": "https://api.flow.visione-edge.com/analizador/tool/catalogo_variables",
+        "authType": "apiKey",
+        "apiKeyHeader": "x-api-key",
+        "apiKeyValue": "PEGAR_ANALIZADOR_API_KEY",
+        "toolSchema": {
+          "properties": {},
+          "required": []
+        },
+        "timeout": 30000
+      },
+      "position": {
+        "x": 320,
+        "y": 1040
+      }
+    }
+  ],
+  "connections": [
+    {
+      "source": "trigger-1",
+      "target": "agent-1"
+    },
+    {
+      "source": "agent-1",
+      "target": "output-1"
+    },
+    {
+      "source": "tool-energia_por_arreglo",
+      "target": "agent-1",
+      "sourceHandle": "output",
+      "targetHandle": "tool"
+    },
+    {
+      "source": "tool-performance_ratio",
+      "target": "agent-1",
+      "sourceHandle": "output",
+      "targetHandle": "tool"
+    },
+    {
+      "source": "tool-irradiancia_resumen",
+      "target": "agent-1",
+      "sourceHandle": "output",
+      "targetHandle": "tool"
+    },
+    {
+      "source": "tool-temperatura_por_arreglo",
+      "target": "agent-1",
+      "sourceHandle": "output",
+      "targetHandle": "tool"
+    },
+    {
+      "source": "tool-cobertura_datos",
+      "target": "agent-1",
+      "sourceHandle": "output",
+      "targetHandle": "tool"
+    },
+    {
+      "source": "tool-catalogo_variables",
+      "target": "agent-1",
+      "sourceHandle": "output",
+      "targetHandle": "tool"
+    }
+  ]
+}

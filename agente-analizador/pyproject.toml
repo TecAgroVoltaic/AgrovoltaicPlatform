@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "analizador"
+version = "0.1.0"
+description = "Agente LLM de análisis Q&A sobre los datos PV de San Carlos (Supabase)"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "psycopg[binary]",
+    "anthropic",
+    "python-dotenv",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+service = ["fastapi", "uvicorn[standard]"]
+
+[project.scripts]
+analizador = "analizador.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
