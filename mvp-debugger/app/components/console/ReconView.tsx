@@ -4,15 +4,6 @@
 // cargar más) para cruzar a mano. Todo real, vía /api/analizador/*.
 import { useEffect, useState } from "react";
 import { jget, type Resp } from "@/app/lib/client";
-import { Ask } from "@/app/components/Ask";
-import type { Traza } from "@/app/components/TraceViewer";
-
-const EJEMPLOS = [
-  "¿Cuál arreglo generó más energía en todo el histórico y cuál fue su Performance Ratio?",
-  "¿Cuánta energía generó cada arreglo?",
-  "¿Qué temperatura promedio tuvo cada arreglo?",
-  "¿Qué datos hay disponibles y desde cuándo?",
-];
 
 const COLS: [string, string, number][] = [
   ["timestamp", "timestamp", -1],
@@ -27,7 +18,7 @@ const nf = (v: any, d: number) =>
   v == null ? "—" : d < 0 ? String(v).slice(0, 16).replace("T", " ")
     : Number(v).toLocaleString("es-CR", { minimumFractionDigits: d, maximumFractionDigits: d });
 
-export function ReconView({ onResult }: { onResult?: (t: Traza) => void }) {
+export function ReconView() {
   const [filas, setFilas] = useState<any[]>([]);
   const [cob, setCob] = useState<any[]>([]);
   const [q, setQ] = useState("");
@@ -55,10 +46,8 @@ export function ReconView({ onResult }: { onResult?: (t: Traza) => void }) {
     <section>
       <div className="phead">
         <h1>Reconciliación · modelo contra base de datos</h1>
-        <p>Preguntá lo que quieras: cada número de la respuesta sale de una tool SQL sobre la base — mirá la traza para ver el cálculo exacto (no inventa).</p>
+        <p>Preguntale al asistente (abajo a la derecha): cada número de su respuesta sale de una tool SQL sobre la base — la traza muestra el cálculo exacto (no inventa). Acá abajo están los datos crudos para cruzar a mano.</p>
       </div>
-
-      <Ask endpoint="/api/analizador/preguntar" ejemplos={EJEMPLOS} onResult={onResult} />
 
       <div className="card" style={{ marginTop: 22 }}>
         <div className="livehead">

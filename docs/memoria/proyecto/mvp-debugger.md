@@ -58,6 +58,24 @@ Gráficas en SVG propio (`lib/charts.ts`) con **hover de valor exacto** (`ChartT
 Las rutas viejas `/analizador` y `/pronostico` siguen existiendo (herramientas extra: runner de tools,
 explorador de datos completo) pero ya no están enlazadas.
 
+## Chat (widget flotante, 2026-08-10)
+El Ask inline de las vistas se reemplazó por un **chatbot flotante** (bubble abajo-derecha,
+expandible; `app/components/chat/ChatWidget.tsx`). Un solo widget, **hilos separados por
+agente** (analizador vs pronóstico, persistidos en localStorage, no se mezclan); habla con el
+agente de la sección activa y le manda el **contexto de la vista**. Backend: `POST /chat` en
+ambos agentes (`chat()` en `agent/agent.py`):
+- **Multi-turno con historial de TEXTO limpio** (sin bloques tool_use/tool_result → no se
+  malforma, no arrastra JSON pesado → barato); cap ~8 turnos.
+- **web_search** nativa de Anthropic (verificado: Haiku 4.5 la soporta) con **barrera DB-first**
+  en el system prompt: datos del sitio SIEMPRE de tools; web solo para conocimiento externo (cita).
+- Analizador: tool **`graficar`** → datos reales + marcador `_grafico` que el widget pinta inline
+  (el LLM recibe solo el resumen → no gasta tokens en los arreglos).
+- **Caché** (cache_control en system+tools) cableada y correcta, pero NO engancha hoy: el prefijo
+  (~2265 tok) está bajo el mínimo de Haiku 4.5 (probado: con prefijo grande sí cachea). Los ahorros
+  reales vienen del historial solo-texto + recorte de `_grafico` + cap + web por criterio.
+- UX: indicador con **frases genéricas rotando** mientras espera ("Consultando la base…",
+  "Buscando en la web…"); **traza plegable** por respuesta (tools + búsquedas web + costo).
+
 ## Artifact de diseño (referencia)
 `mvp-debugger/design/propuesta-ux.html` (publicado como artifact) — prototipo que definió el diseño
 (sidebar, pastel, sin emojis, hover, vista de costo). **Ya portado al Next real** (arriba); queda como

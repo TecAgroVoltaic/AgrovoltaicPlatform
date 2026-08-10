@@ -4,20 +4,11 @@
 // Deja claro que el agente no predice de forma continua.
 import { useEffect, useState } from "react";
 import { jget, type Resp } from "@/app/lib/client";
-import { Ask } from "@/app/components/Ask";
-import type { Traza } from "@/app/components/TraceViewer";
 import { lineChart, palette } from "@/app/lib/charts";
 
 const fmt = (n: any, d = 1) => n == null || !isFinite(n) ? "—" : Number(n).toLocaleString("es-CR", { minimumFractionDigits: d, maximumFractionDigits: d });
 
-const EJEMPLOS = [
-  "¿Cuánta irradiancia se espera en dos horas?",
-  "¿Qué irradiancia habrá en media hora?",
-  "Pronostica la humedad de suelo para dentro de una hora.",
-  "¿Cómo estará la radiación solar en 3 horas?",
-];
-
-export function PredView({ theme, onResult }: { theme: string; onResult?: (t: Traza) => void }) {
+export function PredView({ theme }: { theme: string }) {
   const [vari, setVari] = useState("irradiancia");
   const [dias, setDias] = useState(7);
   const [bt, setBt] = useState<any>(null);
@@ -123,11 +114,7 @@ export function PredView({ theme, onResult }: { theme: string; onResult?: (t: Tr
         </div>
       )}
 
-      <div className="card" style={{ marginTop: 16 }}>
-        <h3>Preguntar un pronóstico en vivo</h3>
-        <p className="hint">Esto sí llama al agente ahora: traduce el horizonte, ejecuta la tool <span className="mono">forecast</span> y redacta. La traza muestra el input y la salida cruda.</p>
-        <Ask endpoint="/api/pronostico/preguntar" ejemplos={EJEMPLOS} onResult={onResult} />
-      </div>
+      <div className="note">Para pedir un pronóstico en vivo, preguntale al asistente (abajo a la derecha): traduce el horizonte, ejecuta <span className="mono">forecast</span> y redacta — la traza muestra el input y la salida cruda.</div>
     </section>
   );
 }
