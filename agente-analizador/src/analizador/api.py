@@ -47,6 +47,20 @@ class Pregunta(BaseModel):
     pregunta: str
 
 
+class ChatMsg(BaseModel):
+    """Un turno del historial de chat (texto limpio)."""
+
+    rol: str  # "user" | "assistant"
+    texto: str
+
+
+class ChatBody(BaseModel):
+    """Cuerpo de POST /chat: historial + contexto de la vista."""
+
+    mensajes: list[ChatMsg]
+    contexto: str | None = None
+
+
 def _verificar_api_key(x_api_key: str | None = Header(default=None)) -> None:
     """Exige la API key SOLO si esta configurada. Comparacion en tiempo constante."""
     esperada = os.environ.get(ENV_API_KEY)
@@ -98,6 +112,18 @@ def preguntar(cuerpo: Pregunta) -> dict:
     traza = _agente().conversar(cuerpo.pregunta)
     try:
         uso.registrar(traza)  # best-effort: un fallo de disco no debe tumbar la respuesta
+    except Exception:
+        pass
+    return traza
+
+
+@app.post("/chat", dependencies=[Depends(_verificar_api_key)])
+def chat(cuerpo: ChatBody) -> dict:
+    """Turno de CHAT multi-turno (para el widget). Recibe el historial de texto y el
+    contexto de la vista; devuelve la respuesta + traza (tools/web) + costo."""
+    traza = _agente().chat([m.model_dump() for m in cuerpo.mensajes], cuerpo.contexto)
+    try:
+        uso.registrar(traza)
     except Exception:
         pass
     return traza

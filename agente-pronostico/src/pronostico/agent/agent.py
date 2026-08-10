@@ -15,8 +15,11 @@ import time
 import anthropic
 
 from pronostico import config, costos
-from pronostico.agent.prompts import SYSTEM_PROMPT
+from pronostico.agent.prompts import CHAT_SYSTEM, SYSTEM_PROMPT
 from pronostico.tools.forecast_tool import FORECAST_TOOL_SCHEMA, run_forecast
+
+# Web search del lado servidor (Anthropic la ejecuta). max_uses acota el gasto.
+WEB_SEARCH = {"type": "web_search_20250305", "name": "web_search", "max_uses": 3}
 
 
 class ForecastAgent:
@@ -112,3 +115,98 @@ class ForecastAgent:
     def ask(self, pregunta: str) -> str:
         """Responde una pregunta en lenguaje natural (solo el texto final)."""
         return self.conversar(pregunta)["respuesta"]
+
+    def chat(self, mensajes: list[dict], contexto: str | None = None) -> dict:
+        """Turno de CHAT multi-turno del forecaster. `mensajes` = historial de texto
+        limpio [{rol, texto}] (el ultimo es del usuario). Devuelve {respuesta, pasos,
+        usage, costo}. Mismo diseno que el analizador: historial solo-texto (barato y
+        sin malformar), system + tools cacheados, contexto de vista en el turno del
+        usuario, y web_search para conocimiento externo (nunca para pronosticar)."""
+        ms: list[dict] = []
+        for m in mensajes:
+            rol = "assistant" if str(m.get("rol")) in ("assistant", "agente") else "user"
+            texto = str(m.get("texto", "")).strip()
+            if texto:
+                ms.append({"role": rol, "content": texto})
+        if not ms or ms[-1]["role"] != "user":
+            return {"respuesta": "", "modelo": self.model, "pasos": [],
+                    "usage": {"input_tokens": 0, "output_tokens": 0, "requests": 0},
+                    "costo": costos.costo({"input_tokens": 0, "output_tokens": 0}, self.model),
+                    "ms_total": 0}
+        if contexto:
+            ms[-1]["content"] = f"[Contexto de la vista: {contexto}]\n\n{ms[-1]['content']}"
+        ms = ms[-16:]
+
+        system = [{"type": "text", "text": CHAT_SYSTEM, "cache_control": {"type": "ephemeral"}}]
+        forecast_tool = {**FORECAST_TOOL_SCHEMA, "cache_control": {"type": "ephemeral"}}
+        herramientas = [forecast_tool, WEB_SEARCH]
+
+        pasos: list[dict] = []
+        usage = {"input_tokens": 0, "output_tokens": 0, "requests": 0,
+                 "cache_read": 0, "cache_write": 0, "web_searches": 0}
+        t0 = time.perf_counter()
+        respuesta = ""
+        while True:
+            resp = self.client.messages.create(
+                model=self.model, max_tokens=config.MAX_TOKENS,
+                system=system, tools=herramientas, messages=ms,
+            )
+            usage["requests"] += 1
+            u = resp.usage
+            if u:
+                usage["input_tokens"] += u.input_tokens or 0
+                usage["output_tokens"] += u.output_tokens or 0
+                usage["cache_read"] += getattr(u, "cache_read_input_tokens", 0) or 0
+                usage["cache_write"] += getattr(u, "cache_creation_input_tokens", 0) or 0
+                stu = getattr(u, "server_tool_use", None)
+                if stu:
+                    usage["web_searches"] += getattr(stu, "web_search_requests", 0) or 0
+
+            texto = "".join(b.text for b in resp.content if b.type == "text").strip()
+            solicita = [{"id": b.id, "nombre": b.name, "input": b.input}
+                        for b in resp.content if b.type == "tool_use"]
+            webs = [getattr(b, "input", {}).get("query") for b in resp.content
+                    if b.type == "server_tool_use"]
+            if texto or solicita or webs:
+                pasos.append({"tipo": "modelo", "texto": texto, "solicita": solicita,
+                              "stop_reason": resp.stop_reason})
+            for w in webs:
+                if w:
+                    pasos.append({"tipo": "web", "query": w})
+
+            if resp.stop_reason == "refusal":
+                respuesta = "No puedo responder a eso."
+                break
+            if resp.stop_reason in ("end_turn", "max_tokens"):
+                respuesta = texto
+                break
+            if resp.stop_reason == "pause_turn":
+                ms.append({"role": "assistant", "content": resp.content})
+                continue
+
+            ms.append({"role": "assistant", "content": resp.content})
+            resultados = []
+            for b in resp.content:
+                if b.type != "tool_use":
+                    continue
+                ts = time.perf_counter()
+                try:
+                    out = run_forecast(**b.input)
+                    pasos.append({"tipo": "tool", "nombre": b.name, "input": b.input,
+                                  "salida": out, "error": False,
+                                  "ms": int((time.perf_counter() - ts) * 1000)})
+                    resultados.append({"type": "tool_result", "tool_use_id": b.id,
+                                       "content": json.dumps(out, ensure_ascii=False)})
+                except Exception as e:
+                    pasos.append({"tipo": "tool", "nombre": b.name, "input": b.input,
+                                  "salida": str(e), "error": True,
+                                  "ms": int((time.perf_counter() - ts) * 1000)})
+                    resultados.append({"type": "tool_result", "tool_use_id": b.id,
+                                       "content": f"Error: {e}", "is_error": True})
+            ms.append({"role": "user", "content": resultados})
+
+        return {
+            "respuesta": respuesta, "modelo": self.model, "pasos": pasos, "usage": usage,
+            "costo": costos.costo(usage, self.model),
+            "ms_total": int((time.perf_counter() - t0) * 1000),
+        }

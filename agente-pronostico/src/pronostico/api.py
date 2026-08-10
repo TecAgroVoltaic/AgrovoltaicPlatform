@@ -73,6 +73,20 @@ class Pregunta(BaseModel):
     pregunta: str
 
 
+class ChatMsg(BaseModel):
+    """Un turno del historial de chat (texto limpio)."""
+
+    rol: str  # "user" | "assistant"
+    texto: str
+
+
+class ChatBody(BaseModel):
+    """Cuerpo de POST /chat: historial + contexto de la vista."""
+
+    mensajes: list[ChatMsg]
+    contexto: str | None = None
+
+
 class AnomaliasRequest(BaseModel):
     """Cuerpo de POST /anomalias."""
 
@@ -127,6 +141,18 @@ def preguntar(cuerpo: Pregunta) -> dict:
     traza = _agente().conversar(cuerpo.pregunta)
     try:
         uso_mod.registrar(traza)  # best-effort: un fallo de disco no debe tumbar la respuesta
+    except Exception:
+        pass
+    return traza
+
+
+@app.post("/chat", dependencies=[Depends(_verificar_api_key)])
+def chat(cuerpo: ChatBody) -> dict:
+    """Turno de CHAT multi-turno del forecaster (para el widget): historial + contexto
+    de la vista -> respuesta + traza (forecast/web) + costo."""
+    traza = _agente().chat([m.model_dump() for m in cuerpo.mensajes], cuerpo.contexto)
+    try:
+        uso_mod.registrar(traza)
     except Exception:
         pass
     return traza
