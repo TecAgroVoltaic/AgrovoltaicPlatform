@@ -17,6 +17,16 @@ El intervalo no es constante y varía drásticamente entre épocas:
 
 **Evidencia en NEW (2026-06-01):** dic-2024 ~18.500 filas/día vs archivos nuevos ~155 filas/día.
 
-Decisión: resamplear todo a **5 min** (mean para tasas, last para acumulados).
+Decisión previa (SUPERADA): resamplear **todo** a 5 min.
 
-Relacionado: [[decisiones]], [[gaps-temporales]].
+> **Respuesta oficial de Leo (2026-08-10, [[respuestas-leo-cardinale]] · P8):** los tiempos de
+> muestreo están definidos en la metodología del equipo:
+> - **Variables eléctricas (producción) → 5 min.**
+> - **Radiación → 15 s** (originalmente 10 s; se subió a 15 s porque **ThingSpeak** no permite
+>   muestreos <15 s). Va en una **base de datos / tabla aparte** para aprovecharla cuando haga falta.
+> - Muestreos **<10 s** = etapas de prueba → conservar o promediar a 15 s (como deberían estar los
+>   más recientes).
+>
+> ⚠️ Resamplear la radiación a 5 min **destruiría** la granularidad de 15 s que Leo quiere preservar.
+
+Relacionado: [[decisiones]], [[respuestas-leo-cardinale]], [[gaps-temporales]].

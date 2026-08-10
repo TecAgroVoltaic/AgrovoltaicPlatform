@@ -14,6 +14,6 @@ categoria: inconsistencia
 nuevos usan el schema más limpio (27 cols, con SP722), pero el histórico mantiene toda la
 heterogeneidad.
 
-Mapeo completo de los 13 schemas por período: `../../EDA-Monitoreo-AgroVoltaic.md` §2 y §8.
+Mapeo completo de los 13 schemas por período: `../../referencia/EDA-Monitoreo-AgroVoltaic.md` §2 y §8.
 
 Relacionado: [[typos-headers]], [[filas-mezcladas]], [[decisiones]].

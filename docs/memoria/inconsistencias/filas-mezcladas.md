@@ -16,4 +16,12 @@ valores de irradiancia caen en columnas como "Voltaje PV1".
 
 > Desde mar-2026 el problema desaparece (todas las filas con nº de columnas consistente).
 
-Relacionado: [[schemas-multiples]], [[fuentes-fisicas]].
+**Cómo corregirlo:** el equipo especificó el remapeo (los 3 valores del piranómetro → columnas
+L/M/N y su timestamp → columna O; el resto en blanco) y dejó un par original/corregido como
+ground-truth → [[correccion-filas-mezcladas]].
+
+> **Respuesta oficial de Leo (2026-08-10, [[respuestas-leo-cardinale]] · P6/P7):** es un error que
+> **Joshua ya trabajó**; algunos datos se recuperaron y otros quedaron con huecos — y **eso es lo
+> recomendable**: recuperar lo que se pueda con la regla de remapeo y aceptar los huecos donde no.
+
+Relacionado: [[schemas-multiples]], [[fuentes-fisicas]], [[correccion-filas-mezcladas]], [[respuestas-leo-cardinale]].
