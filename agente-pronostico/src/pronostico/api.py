@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field
 
 from pronostico import anomalias as anomalias_mod
 from pronostico import audit
+from pronostico import backtest as backtest_mod
 from pronostico import data as data_mod
 from pronostico import uso as uso_mod
 from pronostico.domain import Variable
@@ -143,6 +144,20 @@ def serie(variable: str = Query(Variable.IRRADIANCIA.value),
     """Panorama de una serie del store (resumen + puntos remuestreados para graficar)."""
     try:
         return data_mod.peek_serie(variable, bucket, ultimos_dias)
+    except (ValueError, KeyError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        ) from exc
+
+
+@app.get("/backtest", dependencies=[Depends(_verificar_api_key)])
+def backtest(variable: str = Query(Variable.IRRADIANCIA.value),
+             dias: int = Query(7), bucket: str = Query("h")) -> dict:
+    """Backtest HONESTO del metodo (reconstruccion sobre el historico) vs. lo medido.
+
+    NO son predicciones en vivo (esas viven en `predicciones`); es evaluacion del metodo."""
+    try:
+        return backtest_mod.backtest(variable, dias, bucket)
     except (ValueError, KeyError) as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)

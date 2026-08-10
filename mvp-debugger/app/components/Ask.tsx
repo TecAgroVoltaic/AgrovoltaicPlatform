@@ -8,9 +8,11 @@ import { TraceViewer, type Traza } from "@/app/components/TraceViewer";
 export function Ask({
   endpoint,
   ejemplos,
+  onResult,
 }: {
   endpoint: string; // p.ej. "/api/analizador/preguntar"
   ejemplos: string[];
+  onResult?: (traza: Traza) => void; // notifica cada traza (para acumular costo)
 }) {
   const [q, setQ] = useState("");
   const [cargando, setCargando] = useState(false);
@@ -30,6 +32,7 @@ export function Ask({
       return;
     }
     setTraza(r.data);
+    onResult?.(r.data);
   }
 
   return (

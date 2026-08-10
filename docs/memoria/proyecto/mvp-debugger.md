@@ -24,6 +24,10 @@ mismo lazo pero registra cada paso; `preguntar()`/`ask()` quedan como azúcar (D
   de relaciones (anti-inyección; booleano→proporción; texto rechazado 400). Módulo `datos.py` (SRP).
 - **`GET /uso`** (ambos) — consumo acumulado del agente (extraíble): n consultas, tokens, USD, por modelo.
 - **Pronóstico `GET /serie`** — peek del store (resumen + puntos para graficar).
+- **Pronóstico `GET /backtest`** — backtest HONESTO (`backtest.py`, SRP): reaplica el método del
+  forecaster (persistencia de kt* / del valor) sobre el histórico real y lo compara con lo medido;
+  devuelve puntos + métricas (MAE, sesgo, error rel, skill vs. ingenuo). NO son predicciones en vivo
+  (esas viven en la tabla `predicciones`); es evaluación del método.
 
 ## Tokens + costo (2026-08-10)
 - **Nivel consulta:** la traza trae `costo = {usd_input, usd_output, usd_total, modelo, tarifa}`.
@@ -41,14 +45,22 @@ Las keys viven solo del lado servidor (`app/lib/config.ts`); el browser nunca la
 `mvp-debugger/dev.sh` (levanta analizador:8010 + pronóstico:8000 + next:3000; toma la ANTHROPIC key de
 `agente-pronostico/.env`). Verificado end-to-end (trazas reales de ambos, costo exacto, `/uso` crece).
 
-## Páginas
-`/` panorama (salud) · `/analizador` (Q&A con traza, KPIs, runner manual de tools, explorador de datos,
-consumo/costo) · `/pronostico` (Q&A con traza, series del store, anomalías, consumo/costo).
+## UI actual — consola única con barra lateral (2026-08-10)
+El `/` del Next es una **consola** (`app/components/console/`) con **barra lateral** (sin emojis,
+paleta pastel) que conmuta 4 vistas conectadas a `/api/*`, todo con datos vivos:
+- **Reconciliación** — Ask/traza del analizador (los números salen de tools SQL = verdad de la DB) +
+  tabla de datos crudos en vivo (buscable + "cargar más") + cobertura.
+- **Predicción vs Real** — **backtest** honesto vía `/backtest` (con banner que aclara que el agente
+  NO predice en continuo) + métricas + traza de un forecast en vivo.
+- **Rendimiento** — KPIs reales (tools) + series vía `/datos/serie` (potencia/GHI/kt*/PR) + dispersión.
+- **Costo y uso** — acumulado real (`/uso`) + gasto de la sesión (gráfico acumulado, split, proyección).
+Gráficas en SVG propio (`lib/charts.ts`) con **hover de valor exacto** (`ChartTooltip`), tema claro/oscuro.
+Las rutas viejas `/analizador` y `/pronostico` siguen existiendo (herramientas extra: runner de tools,
+explorador de datos completo) pero ya no están enlazadas.
 
-## Artifact de diseño (propuesta de UX)
-`mvp-debugger/design/propuesta-ux.html` (publicado como artifact). Consola tipo instrumento con datos
-reales de la Supabase PV y 3 vistas conmutables: **Reconciliación (modelo↔DB)**, **Predicción vs Real**
-(persistencia de kt* vs. lo medido, con MAE/sesgo/skill) y **Rendimiento**. **En iteración de UX**
-(navegación de vistas + hover con valor exacto); pendiente portarlo al Next real conectado a `/api/*`.
+## Artifact de diseño (referencia)
+`mvp-debugger/design/propuesta-ux.html` (publicado como artifact) — prototipo que definió el diseño
+(sidebar, pastel, sin emojis, hover, vista de costo). **Ya portado al Next real** (arriba); queda como
+referencia visual con datos snapshot.
 
 Relacionado: [[agente-analizador]], [[agente-pronostico]], [[capa-agentes]], [[evaluacion-datos]].

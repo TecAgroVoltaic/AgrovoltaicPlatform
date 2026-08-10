@@ -1,0 +1,698 @@
+<title>AgroVoltaic · Consola de evaluación de agentes</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  /* ── Tokens: paleta PASTEL cohesiva · 3 estados de tema ──────────────────
+     Neutros cálidos + acento ámbar apagado. Datos: menta (real), lavanda
+     (reconstrucción), arena (techo). Semánticos aparte, pastel. Todo color
+     sale de un token -> ninguno vive solo dentro de un media/[data-theme]. */
+  :root {
+    --ground:#F4F1EB; --panel:#FAF8F3; --panel2:#ECE8DF; --raise:#FFFFFF;
+    --line:#E5E1D7; --line2:#D7D1C4;
+    --ink:#2E2B26; --ink2:#5A554B; --muted:#958F83;
+    --accent:#AE7B3B; --real:#5A9A83; --pred:#7A84C4; --ceil:#B7AC94;
+    --good:#6C9C6E; --warn:#BF9755; --crit:#BC8383;
+    --grid:#0000000e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#191613; --panel:#211D19; --panel2:#292420; --raise:#241F1B;
+      --line:#332E27; --line2:#443E35;
+      --ink:#ECE7DE; --ink2:#C3BCB0; --muted:#938C80;
+      --accent:#D6B37F; --real:#8FC9B2; --pred:#AEB4E8; --ceil:#BBB097;
+      --good:#9AC79A; --warn:#DBBA83; --crit:#D7A7A7;
+      --grid:#ffffff0e;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#191613; --panel:#211D19; --panel2:#292420; --raise:#241F1B;
+    --line:#332E27; --line2:#443E35;
+    --ink:#ECE7DE; --ink2:#C3BCB0; --muted:#938C80;
+    --accent:#D6B37F; --real:#8FC9B2; --pred:#AEB4E8; --ceil:#BBB097;
+    --good:#9AC79A; --warn:#DBBA83; --crit:#D7A7A7;
+    --grid:#ffffff0e;
+  }
+
+  * { box-sizing:border-box; }
+  :root { --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace; }
+  html { -webkit-text-size-adjust:100%; }
+  body {
+    margin:0; background:var(--ground); color:var(--ink);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    font-size:14px; line-height:1.55; letter-spacing:-.003em;
+  }
+  .mono { font-family:var(--mono); font-variant-numeric:tabular-nums; }
+  h1,h2,h3 { margin:0; font-weight:600; letter-spacing:-.02em; text-wrap:balance; }
+  .lbl { font-family:var(--mono); text-transform:uppercase; letter-spacing:.1em;
+    font-size:10px; color:var(--muted); font-weight:500; }
+  .muted { color:var(--muted); }
+  .small { font-size:12px; }
+  a { color:var(--accent); }
+  button, input { font-family:inherit; }
+  :focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:5px; }
+
+  /* ── Layout con barra lateral ──────────────────────────────────────────── */
+  .app { display:flex; align-items:flex-start; min-height:100vh; }
+  .side { width:230px; flex:0 0 230px; align-self:stretch; background:var(--panel);
+    border-right:1px solid var(--line); position:sticky; top:0; height:100vh;
+    display:flex; flex-direction:column; gap:18px; padding:22px 16px; }
+  .brand { display:flex; align-items:center; gap:10px; padding:0 6px; }
+  .brand .mark { width:22px; height:22px; flex:0 0 auto; }
+  .brand b { font-size:15px; letter-spacing:-.02em; font-weight:600; }
+  .brand .sub { font-size:10.5px; }
+  .agent { display:flex; background:var(--panel2); border:1px solid var(--line);
+    border-radius:9px; padding:3px; gap:2px; }
+  .agent button { flex:1; border:0; background:transparent; color:var(--ink2); cursor:pointer;
+    padding:6px 8px; border-radius:6px; font-size:12.5px; font-weight:540; letter-spacing:-.01em; }
+  .agent button.on { background:var(--raise); color:var(--ink); }
+  .nav { display:flex; flex-direction:column; gap:1px; }
+  .navitem { width:100%; border:0; cursor:pointer; background:transparent; color:var(--ink2);
+    text-align:left; padding:9px 12px; border-radius:8px; font-size:13.5px; font-weight:500;
+    letter-spacing:-.01em; border-left:2px solid transparent; }
+  .navitem:hover { background:var(--panel2); color:var(--ink); }
+  .navitem.on { background:var(--panel2); color:var(--ink); border-left-color:var(--accent); font-weight:560; }
+  .navsep { height:1px; background:var(--line); margin:10px 8px; }
+  .sidefoot { margin-top:auto; display:flex; align-items:center; justify-content:space-between;
+    gap:8px; padding-top:14px; border-top:1px solid var(--line); }
+  .live { display:inline-flex; align-items:center; gap:7px; font-family:var(--mono);
+    font-size:11px; color:var(--ink2); }
+  .pulse { width:7px; height:7px; border-radius:50%; background:var(--good); flex:0 0 auto;
+    animation:pulse 2.6s infinite; }
+  @keyframes pulse { 0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--good) 55%,transparent);}
+    70%{box-shadow:0 0 0 6px transparent;} 100%{box-shadow:0 0 0 0 transparent;} }
+  @media (prefers-reduced-motion:reduce){ .pulse{animation:none;} }
+  .tgl { border:1px solid var(--line); background:var(--panel2); color:var(--ink2);
+    width:32px; height:28px; border-radius:7px; cursor:pointer; font-size:14px; }
+
+  .content { flex:1; min-width:0; max-width:1280px; margin:0 auto; padding:30px 34px 90px; }
+  .phead { margin-bottom:6px; }
+  .phead h1 { font-size:20px; }
+  .phead p { margin:4px 0 0; color:var(--muted); font-size:13px; max-width:70ch; }
+  .note { font-size:12px; color:var(--muted); font-family:var(--mono);
+    border-left:2px solid var(--line2); padding:2px 0 2px 12px; margin:18px 0; }
+  .note b { color:var(--ink2); font-weight:600; }
+  .banner { display:flex; gap:12px; align-items:flex-start; background:var(--panel);
+    border:1px solid var(--line); border-left:2px solid var(--accent); border-radius:10px;
+    padding:12px 15px; margin:0 0 20px; font-size:12.5px; color:var(--ink2); }
+  .banner b { color:var(--ink); }
+
+  /* ── Riel de filtros ───────────────────────────────────────────────────── */
+  .controls { display:flex; flex-wrap:wrap; gap:14px 30px; align-items:flex-end;
+    margin:22px 0; }
+  .ctl { display:flex; flex-direction:column; gap:7px; }
+  .chips { display:flex; gap:6px; flex-wrap:wrap; }
+  .chip { border:1px solid var(--line2); background:var(--panel); color:var(--ink2);
+    border-radius:7px; padding:5px 11px; font-size:12.5px; cursor:pointer; font-weight:500;
+    letter-spacing:-.01em; transition:border-color .12s,color .12s; }
+  .chip:hover { border-color:var(--accent); }
+  .chip.on { background:var(--panel2); border-color:var(--accent); color:var(--ink); }
+
+  /* ── Tarjetas / grid ───────────────────────────────────────────────────── */
+  .grid { display:grid; gap:16px; }
+  .g2 { grid-template-columns:1fr 1fr; }
+  .g3 { grid-template-columns:repeat(3,1fr); }
+  .g4 { grid-template-columns:repeat(4,1fr); }
+  @media (max-width:1000px){ .g4 { grid-template-columns:1fr 1fr; } }
+  @media (max-width:820px){ .g2,.g3 { grid-template-columns:1fr; } }
+  @media (max-width:560px){ .g4 { grid-template-columns:1fr; } }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:20px; }
+  .card h3 { font-size:14.5px; }
+  .card .hint { font-size:12.5px; color:var(--muted); margin:4px 0 16px; max-width:74ch; }
+  .stack { display:flex; flex-direction:column; gap:16px; }
+
+  .kpi { background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    padding:16px 17px; }
+  .kpi .k { font-size:25px; font-weight:600; letter-spacing:-.03em; margin:4px 0 2px;
+    font-family:var(--mono); font-variant-numeric:tabular-nums; }
+  .kpi .k small { font-size:12px; color:var(--muted); font-weight:500; margin-left:4px;
+    font-family:system-ui; }
+  .kpi .d { font-size:11.5px; color:var(--ink2); }
+  .kpi .spark { margin-top:10px; }
+
+  /* ── Reconciliación ────────────────────────────────────────────────────── */
+  .qbox { background:var(--panel2); border-radius:9px; padding:12px 15px; margin-bottom:16px; }
+  .qbox .q { font-size:14.5px; font-weight:540; margin-top:3px; }
+  table { border-collapse:collapse; width:100%; }
+  .recon th,.recon td { text-align:right; padding:11px 14px; border-bottom:1px solid var(--line);
+    font-family:var(--mono); font-variant-numeric:tabular-nums; font-size:13px; }
+  .recon th { color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.07em; font-size:10px; }
+  .recon td.lead,.recon th.lead { text-align:left; font-family:system-ui; }
+  .tag { display:inline-block; padding:2px 10px; border-radius:6px; font-family:var(--mono);
+    font-size:11px; font-weight:600; }
+  .tag.ok { color:var(--good); background:color-mix(in srgb,var(--good) 15%,transparent); }
+  .tag.warn { color:var(--warn); background:color-mix(in srgb,var(--warn) 17%,transparent); }
+  .tag.bad { color:var(--crit); background:color-mix(in srgb,var(--crit) 15%,transparent); }
+
+  .livehead { display:flex; justify-content:space-between; align-items:flex-end; gap:16px;
+    flex-wrap:wrap; margin-bottom:14px; }
+  .livetools { display:flex; align-items:center; gap:12px; }
+  .input { background:var(--panel2); color:var(--ink); border:1px solid var(--line2);
+    border-radius:8px; padding:8px 12px; font-size:13px; min-width:200px; }
+  .input::placeholder { color:var(--muted); }
+  .data th,.data td { text-align:right; padding:9px 14px; border-bottom:1px solid var(--line);
+    font-family:var(--mono); font-variant-numeric:tabular-nums; font-size:12.5px; white-space:nowrap; }
+  .data th { color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.06em; font-size:10px; }
+  .data td.lead,.data th.lead { text-align:left; }
+  .data tr:hover td { background:color-mix(in srgb,var(--accent) 6%,transparent); }
+  .loadmore { display:flex; align-items:center; gap:14px; margin-top:16px; }
+  .btn { background:var(--accent); color:var(--ground); border:0; border-radius:8px;
+    padding:8px 16px; font-weight:600; cursor:pointer; font-size:13px; }
+  .btn:disabled { opacity:.45; cursor:default; }
+  .btn.ghost { background:transparent; color:var(--ink); border:1px solid var(--line2); }
+  .btn.ghost:hover { border-color:var(--accent); }
+
+  .metric .v { font-family:var(--mono); font-size:23px; font-weight:600; letter-spacing:-.02em;
+    font-variant-numeric:tabular-nums; }
+  .legend { display:flex; gap:18px; flex-wrap:wrap; font-size:12px; color:var(--ink2);
+    font-family:var(--mono); margin-top:10px; }
+  .legend span { display:inline-flex; align-items:center; gap:7px; }
+  .sw { width:11px; height:11px; border-radius:3px; display:inline-block; }
+  figure { margin:0; }
+  svg.chart { width:100%; height:auto; display:block; }
+  .scroll { overflow-x:auto; }
+
+  /* ── Costo ─────────────────────────────────────────────────────────────── */
+  .costohero { display:grid; grid-template-columns:1.1fr 1fr; gap:36px; align-items:center; }
+  @media (max-width:820px){ .costohero { grid-template-columns:1fr; gap:22px; } }
+  .huge { font-family:var(--mono); font-variant-numeric:tabular-nums; font-size:52px;
+    font-weight:600; letter-spacing:-.04em; line-height:1; margin:8px 0; }
+  .huge small { font-size:18px; color:var(--muted); font-weight:500; margin-left:8px; font-family:system-ui; }
+  .splitbar { display:flex; height:16px; border-radius:8px; overflow:hidden; margin:12px 0 10px;
+    background:var(--panel2); }
+  .splitbar span { display:block; height:100%; }
+  .projrow { display:flex; justify-content:space-between; padding:11px 0; border-bottom:1px solid var(--line); }
+  .projrow:last-child { border-bottom:0; }
+  .projrow .pv { font-family:var(--mono); font-variant-numeric:tabular-nums; font-weight:600; }
+
+  .foot { margin-top:40px; padding-top:18px; border-top:1px solid var(--line); font-size:11.5px;
+    color:var(--muted); font-family:var(--mono); display:flex; justify-content:space-between;
+    flex-wrap:wrap; gap:8px; }
+  .hidden { display:none !important; }
+
+  /* ── Tooltip de gráficas (valor exacto en hover) ───────────────────────── */
+  svg .hit { cursor:crosshair; }
+  .bar { transition:opacity .1s; } .bar:hover { opacity:.72; }
+  #tip { position:fixed; z-index:60; pointer-events:none; background:var(--raise); color:var(--ink);
+    border:1px solid var(--line2); border-radius:7px; padding:5px 10px; font-family:var(--mono);
+    font-variant-numeric:tabular-nums; font-size:12px; white-space:nowrap;
+    transform:translate(-50%,-128%); box-shadow:0 4px 14px #0000001f; }
+  #tip[hidden] { display:none; }
+</style>
+
+<div class="app">
+<aside class="side">
+  <div class="brand">
+    <svg class="mark" viewBox="0 0 40 40" aria-hidden="true">
+      <circle cx="20" cy="20" r="7" fill="none" stroke="var(--accent)" stroke-width="2.4"/>
+      <g stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round">
+        <path d="M20 4v4M20 32v4M4 20h4M32 20h4M9 9l3 3M28 28l3 3M31 9l-3 3M12 28l-3 3"/>
+      </g>
+    </svg>
+    <div>
+      <b>AgroVoltaic</b>
+      <div class="sub muted mono">consola de evaluación</div>
+    </div>
+  </div>
+  <div class="agent" id="agentSeg" role="tablist" aria-label="Agente">
+    <button class="on" data-agent="analizador">Analizador</button>
+    <button data-agent="pronostico">Pronóstico</button>
+  </div>
+  <nav class="nav" id="viewNav" aria-label="Vistas">
+    <button class="navitem on" data-view="recon">Reconciliación</button>
+    <button class="navitem" data-view="pred">Predicción vs Real</button>
+    <button class="navitem" data-view="perf">Rendimiento</button>
+    <div class="navsep"></div>
+    <button class="navitem" data-view="costo">Costo y uso</button>
+  </nav>
+  <div class="sidefoot">
+    <span class="live"><span class="pulse"></span> DB en vivo · <span id="lastRead">17:55</span></span>
+    <button class="tgl" id="themeBtn" title="Cambiar tema" aria-label="Cambiar tema">◐</button>
+  </div>
+</aside>
+
+<main class="content">
+
+  <!-- VISTA: Reconciliación -->
+  <section id="view-recon">
+    <div class="phead">
+      <h1>Reconciliación · modelo contra base de datos</h1>
+      <p>Cada número que dijo el agente se recalcula directo sobre la base. Si algo no cuadra, se marca.</p>
+    </div>
+    <div class="note"><b>Prototipo de diseño</b> · datos reales de la Supabase PV (snapshot 2026-06-01). En la versión viva cada panel consume <span class="mono">/api/*</span>.</div>
+
+    <div class="card">
+      <h3>¿La respuesta del agente cuadra con la base?</h3>
+      <div class="qbox">
+        <span class="lbl">Pregunta</span>
+        <div class="q" id="reconQ">¿Cuánta energía generó cada arreglo en mayo 2026?</div>
+      </div>
+      <div class="scroll">
+        <table class="recon">
+          <thead><tr><th class="lead">Magnitud</th><th>Dijo el modelo</th><th>Cálculo sobre la DB</th><th>Δ</th><th class="lead">Estado</th></tr></thead>
+          <tbody id="reconBody"></tbody>
+        </table>
+      </div>
+      <p class="hint" style="margin:14px 0 0">El agente está <b>grounded</b>: no inventa, toma el número de una tool SQL. La consola repite el cálculo por fuera y marca cualquier desvío mayor a 0,5 %.</p>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <div class="livehead">
+        <div>
+          <h3>Datos en vivo · <span id="liveTitle" class="mono" style="color:var(--accent)">eléctrico corregido</span></h3>
+          <p class="hint" style="margin:4px 0 0">La fuente de verdad contra la que se contrasta. Buscá por fecha u hora, o traé más filas.</p>
+        </div>
+        <div class="livetools">
+          <input id="liveSearch" class="input" type="search" placeholder="Buscar por fecha u hora…" aria-label="Buscar">
+          <span class="muted small mono" id="liveCount"></span>
+        </div>
+      </div>
+      <div class="scroll"><table class="data" id="liveTable"></table></div>
+      <div class="loadmore">
+        <button class="btn ghost" id="liveMore">Cargar más filas</button>
+        <span class="muted small" id="liveHint"></span>
+      </div>
+    </div>
+
+    <div class="grid g3" style="margin-top:16px" id="coberturaCards"></div>
+  </section>
+
+  <!-- VISTA: Predicción vs Real -->
+  <section id="view-pred" class="hidden">
+    <div class="phead">
+      <h1>Predicción vs Real</h1>
+      <p>Qué tan cerca estuvo el modelo de lo que de verdad midió el sensor.</p>
+    </div>
+    <div class="banner">
+      <div><b>Esto es un backtest, no predicciones en vivo.</b> El agente no pronostica de forma continua: predice solo cuando se le llama. Esta curva <b>reaplica el método del modelo</b> (persistencia del índice de claridad kt*) sobre el histórico, para evaluarlo. Una evaluación con predicciones reales usa la tabla de auditoría <span class="mono">predicciones</span>, donde quedan las que efectivamente se dispararon.</div>
+    </div>
+
+    <div class="controls">
+      <div class="ctl">
+        <span class="lbl">Serie</span>
+        <div class="chips" id="predVarChips">
+          <button class="chip on" data-pv="irr">Irradiancia (por hora)</button>
+          <button class="chip" data-pv="ene">Energía (por día)</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 id="predTitle"></h3>
+      <p class="hint" id="predHint"></p>
+      <figure id="predChart"></figure>
+      <div class="legend" id="predLegend"></div>
+    </div>
+
+    <div class="grid g4" style="margin-top:16px" id="predKpis"></div>
+
+    <div class="card" style="margin-top:16px">
+      <h3>Desglose punto por punto</h3>
+      <p class="hint">Ordenado por mayor desvío: dónde el método se alejó más de lo medido.</p>
+      <div class="scroll"><table class="data" id="predTable"></table></div>
+    </div>
+  </section>
+
+  <!-- VISTA: Rendimiento -->
+  <section id="view-perf" class="hidden">
+    <div class="phead">
+      <h1>Rendimiento del sistema</h1>
+      <p>Generación, irradiancia y eficiencia por arreglo — PV1 inclinado vs PV2 vertical (bifacial).</p>
+    </div>
+
+    <div class="controls">
+      <div class="ctl">
+        <span class="lbl">Período</span>
+        <div class="chips" id="periodChips">
+          <button class="chip on" data-period="all">Mayo completo</button>
+          <button class="chip" data-period="q1">1.ª quincena</button>
+          <button class="chip" data-period="q2">2.ª quincena</button>
+        </div>
+      </div>
+      <div class="ctl">
+        <span class="lbl">Variable</span>
+        <div class="chips" id="varChips">
+          <button class="chip on" data-var="energia">Energía</button>
+          <button class="chip" data-var="ghi">Irradiancia</button>
+          <button class="chip" data-var="kt">Índice kt*</button>
+          <button class="chip" data-var="pr">Performance Ratio</button>
+        </div>
+      </div>
+      <div class="ctl" id="cmpCtl">
+        <span class="lbl">Comparar</span>
+        <div class="chips" id="cmpChips">
+          <button class="chip on" data-cmp="ambos">PV1 y PV2</button>
+          <button class="chip" data-cmp="pv1">Solo PV1</button>
+          <button class="chip" data-cmp="pv2">Solo PV2</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid g4" id="perfKpis"></div>
+    <div class="card" style="margin-top:16px">
+      <h3 id="perfChartTitle"></h3>
+      <p class="hint" id="perfChartHint"></p>
+      <figure id="perfChart"></figure>
+      <div class="legend" id="perfLegend"></div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h3>Correlación irradiancia → energía</h3>
+      <p class="hint">Cada punto es un día: cuánto explica el sol la generación de PV1.</p>
+      <figure id="scatterChart"></figure>
+    </div>
+  </section>
+
+  <!-- VISTA: Costo y uso -->
+  <section id="view-costo" class="hidden">
+    <div class="phead">
+      <h1>Costo y uso</h1>
+      <p>Cuánto cuesta operar el agente — tokens y USD por consulta y acumulado.</p>
+    </div>
+
+    <div class="card costohero">
+      <div>
+        <span class="lbl">Costo acumulado</span>
+        <div class="huge" id="costoBig">—</div>
+        <div class="muted small" id="costoSub"></div>
+      </div>
+      <div>
+        <span class="lbl">Entrada vs salida (USD)</span>
+        <div class="splitbar" id="costoSplit"></div>
+        <div class="legend" id="costoSplitLeg"></div>
+      </div>
+    </div>
+
+    <div class="grid g2" style="margin-top:16px">
+      <div class="card">
+        <h3>Costo acumulado por consulta</h3>
+        <p class="hint">Cómo se suma el gasto a medida que se hacen preguntas.</p>
+        <figure id="costoChart"></figure>
+      </div>
+      <div class="card">
+        <h3>Proyección a este ritmo</h3>
+        <p class="hint">Estimado con el costo promedio por consulta observado.</p>
+        <div id="costoProj"></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <h3>Detalle por consulta</h3>
+      <p class="hint">Tokens del turno completo del LLM (tarifa <span class="mono">claude-haiku-4-5</span>: $1/MTok entrada · $5/MTok salida). Extraíble en vivo por <span class="mono">GET /uso</span>.</p>
+      <div class="scroll"><table class="data" id="costoTable"></table></div>
+    </div>
+  </section>
+
+  <div class="foot">
+    <span>AgroVoltaic · propuesta de UX para el debugger de agentes</span>
+    <span>datos: Supabase PV · San Carlos (10.33°N, 84.42°O) · UTC−6</span>
+  </div>
+</main>
+</div>
+
+<div id="tip" hidden></div>
+
+<script>
+// ── Datos reales embebidos (snapshot Supabase PV) ──────────────────────────
+const DATA = {"energia_diaria": [{"d": "2026-05-01", "kwh_pv1": 1.93, "kwh_pv2": 1.48}, {"d": "2026-05-02", "kwh_pv1": 4.44, "kwh_pv2": 3.07}, {"d": "2026-05-03", "kwh_pv1": 4.17, "kwh_pv2": 3.28}, {"d": "2026-05-04", "kwh_pv1": 5.8, "kwh_pv2": 4.52}, {"d": "2026-05-05", "kwh_pv1": 0.0, "kwh_pv2": 0.0}, {"d": "2026-05-06", "kwh_pv1": 0.36, "kwh_pv2": 0.35}, {"d": "2026-05-07", "kwh_pv1": 2.95, "kwh_pv2": 2.27}, {"d": "2026-05-08", "kwh_pv1": 0.0, "kwh_pv2": 0.0}, {"d": "2026-05-10", "kwh_pv1": 2.8, "kwh_pv2": 2.42}, {"d": "2026-05-11", "kwh_pv1": 7.14, "kwh_pv2": 5.26}, {"d": "2026-05-12", "kwh_pv1": 3.76, "kwh_pv2": 2.86}, {"d": "2026-05-13", "kwh_pv1": 5.69, "kwh_pv2": 3.86}, {"d": "2026-05-14", "kwh_pv1": 4.23, "kwh_pv2": 3.61}, {"d": "2026-05-15", "kwh_pv1": 5.7, "kwh_pv2": 4.68}, {"d": "2026-05-16", "kwh_pv1": 3.57, "kwh_pv2": 2.88}, {"d": "2026-05-18", "kwh_pv1": 5.19, "kwh_pv2": 3.28}, {"d": "2026-05-19", "kwh_pv1": 5.04, "kwh_pv2": 4.03}, {"d": "2026-05-21", "kwh_pv1": 6.04, "kwh_pv2": 4.77}, {"d": "2026-05-25", "kwh_pv1": 6.28, "kwh_pv2": 4.83}, {"d": "2026-05-26", "kwh_pv1": 3.77, "kwh_pv2": 3.26}, {"d": "2026-05-27", "kwh_pv1": 1.88, "kwh_pv2": 1.68}, {"d": "2026-05-28", "kwh_pv1": 1.64, "kwh_pv2": 1.46}, {"d": "2026-05-29", "kwh_pv1": 2.37, "kwh_pv2": 1.88}, {"d": "2026-05-30", "kwh_pv1": 5.84, "kwh_pv2": 4.87}, {"d": "2026-05-31", "kwh_pv1": 3.63, "kwh_pv2": 2.98}, {"d": "2026-06-01", "kwh_pv1": 2.2, "kwh_pv2": 1.6}], "pr_diario": [{"d": "2026-04-06", "pr1": 0.0, "pr2": 0.0}, {"d": "2026-04-22", "pr1": 0.834, "pr2": 0.733}, {"d": "2026-05-07", "pr1": 0.881, "pr2": 0.788}, {"d": "2026-05-08", "pr1": 0.0, "pr2": 0.0}, {"d": "2026-05-10", "pr1": 0.0, "pr2": 0.0}, {"d": "2026-05-11", "pr1": 0.997, "pr2": 1.257}, {"d": "2026-05-12", "pr1": 0.85, "pr2": 0.778}, {"d": "2026-05-13", "pr1": 0.795, "pr2": 0.813}, {"d": "2026-05-14", "pr1": 0.877, "pr2": 0.81}, {"d": "2026-05-15", "pr1": 0.872, "pr2": 0.915}, {"d": "2026-05-16", "pr1": 0.673, "pr2": 0.636}, {"d": "2026-05-18", "pr1": 0.0, "pr2": 0.0}, {"d": "2026-05-19", "pr1": null, "pr2": null}, {"d": "2026-05-21", "pr1": 0.808, "pr2": 0.869}, {"d": "2026-05-25", "pr1": 0.791, "pr2": 0.828}, {"d": "2026-05-26", "pr1": 0.85, "pr2": 0.821}, {"d": "2026-05-27", "pr1": null, "pr2": null}, {"d": "2026-05-28", "pr1": 0.814, "pr2": 0.857}, {"d": "2026-05-29", "pr1": 0.542, "pr2": 0.482}, {"d": "2026-05-30", "pr1": 0.799, "pr2": 0.848}, {"d": "2026-06-01", "pr1": 0.301, "pr2": 0.345}], "ghi_diario": [{"d": "2026-05-01", "ghi": 100.9, "kt": 0.15}, {"d": "2026-05-02", "ghi": 265.1, "kt": 0.407}, {"d": "2026-05-03", "ghi": 257.9, "kt": 0.373}, {"d": "2026-05-04", "ghi": 352.3, "kt": 0.52}, {"d": "2026-05-05", "ghi": 185.7, "kt": 0.352}, {"d": "2026-05-06", "ghi": 100.2, "kt": 0.345}, {"d": "2026-05-07", "ghi": 193.4, "kt": 0.286}, {"d": "2026-05-08", "ghi": 480.7, "kt": 0.718}, {"d": "2026-05-10", "ghi": 270.2, "kt": 0.425}, {"d": "2026-05-11", "ghi": 449.6, "kt": 0.686}, {"d": "2026-05-12", "ghi": 216.2, "kt": 0.301}, {"d": "2026-05-13", "ghi": 384.8, "kt": 0.545}, {"d": "2026-05-14", "ghi": 238.6, "kt": 0.465}, {"d": "2026-05-15", "ghi": 336.1, "kt": 0.557}, {"d": "2026-05-16", "ghi": 258.9, "kt": 0.403}, {"d": "2026-05-18", "ghi": 421.3, "kt": 0.64}, {"d": "2026-05-19", "ghi": 355.2, "kt": 0.531}, {"d": "2026-05-21", "ghi": 393.4, "kt": 0.65}, {"d": "2026-05-25", "ghi": 407.0, "kt": 0.624}, {"d": "2026-05-26", "ghi": 213.7, "kt": 0.368}, {"d": "2026-05-27", "ghi": 202.5, "kt": 0.313}, {"d": "2026-05-28", "ghi": 187.0, "kt": 0.381}, {"d": "2026-05-29", "ghi": 170.6, "kt": 0.321}, {"d": "2026-05-30", "ghi": 366.6, "kt": 0.572}, {"d": "2026-05-31", "ghi": 281.3, "kt": 0.469}, {"d": "2026-06-01", "ghi": 307.1, "kt": 0.479}], "ghi_horario": [{"h": "05:00", "ghi": 0.0, "cs": 14.6}, {"h": "06:00", "ghi": 111.8, "cs": 182.3}, {"h": "07:00", "ghi": 342.5, "cs": 430.3}, {"h": "08:00", "ghi": 561.1, "cs": 657.4}, {"h": "09:00", "ghi": 705.4, "cs": 836.8}, {"h": "10:00", "ghi": 787.4, "cs": 953.7}, {"h": "11:00", "ghi": 664.2, "cs": 999.1}, {"h": "12:00", "ghi": 341.5, "cs": 969.8}, {"h": "13:00", "ghi": 234.7, "cs": 867.8}, {"h": "14:00", "ghi": 225.3, "cs": 701.0}, {"h": "15:00", "ghi": 272.2, "cs": 482.7}, {"h": "16:00", "ghi": 85.9, "cs": 235.7}, {"h": "17:00", "ghi": 8.6, "cs": 32.9}], "filas_electrico": [{"ts": "2026-05-15 17:30", "p1": 35.0, "p2": 7.0, "pac": 41.0, "ti": 26.8, "tv": 27.9}, {"ts": "2026-05-15 17:15", "p1": 47.0, "p2": 21.0, "pac": 67.0, "ti": 27.6, "tv": 28.2}, {"ts": "2026-05-15 17:00", "p1": 83.0, "p2": 57.0, "pac": 137.0, "ti": 28.6, "tv": 29.3}, {"ts": "2026-05-15 16:45", "p1": 83.0, "p2": 62.0, "pac": 142.0, "ti": 29.0, "tv": 29.8}, {"ts": "2026-05-15 16:30", "p1": 129.0, "p2": 103.0, "pac": 227.0, "ti": 30.1, "tv": 31.0}, {"ts": "2026-05-15 16:15", "p1": 80.0, "p2": 64.0, "pac": 141.0, "ti": 31.3, "tv": 32.1}, {"ts": "2026-05-15 16:00", "p1": 246.0, "p2": 237.0, "pac": 473.0, "ti": 34.1, "tv": 35.4}, {"ts": "2026-05-15 15:45", "p1": 350.0, "p2": 355.0, "pac": 680.0, "ti": 35.3, "tv": 36.8}, {"ts": "2026-05-15 15:30", "p1": 400.0, "p2": 312.0, "pac": 687.0, "ti": 33.5, "tv": 34.4}, {"ts": "2026-05-15 15:15", "p1": 259.0, "p2": 229.0, "pac": 479.0, "ti": 33.4, "tv": 34.3}, {"ts": "2026-05-15 15:00", "p1": 307.0, "p2": 259.0, "pac": 548.0, "ti": 34.2, "tv": 35.2}, {"ts": "2026-05-15 14:45", "p1": 405.0, "p2": 344.0, "pac": 722.0, "ti": 30.9, "tv": 32.6}, {"ts": "2026-05-15 14:30", "p1": 244.0, "p2": 216.0, "pac": 452.0, "ti": 31.4, "tv": 33.0}, {"ts": "2026-05-15 14:15", "p1": 224.0, "p2": 202.0, "pac": 417.0, "ti": 31.7, "tv": 32.5}, {"ts": "2026-05-15 14:00", "p1": 282.0, "p2": 226.0, "pac": 494.0, "ti": 30.7, "tv": 31.8}, {"ts": "2026-05-15 13:45", "p1": 225.0, "p2": 173.0, "pac": 390.0, "ti": 29.8, "tv": 31.4}, {"ts": "2026-05-15 13:30", "p1": 424.0, "p2": 296.0, "pac": 695.0, "ti": 30.2, "tv": 31.6}, {"ts": "2026-05-15 13:15", "p1": 199.0, "p2": 153.0, "pac": 345.0, "ti": 29.9, "tv": 32.3}, {"ts": "2026-05-15 13:00", "p1": 650.0, "p2": 449.0, "pac": 1049.0, "ti": 33.2, "tv": 36.0}, {"ts": "2026-05-15 12:45", "p1": 438.0, "p2": 340.0, "pac": 750.0, "ti": 33.3, "tv": 35.1}, {"ts": "2026-05-15 12:30", "p1": 1154.0, "p2": 594.0, "pac": 1657.0, "ti": 35.6, "tv": 38.1}, {"ts": "2026-05-15 12:15", "p1": 273.0, "p2": 193.0, "pac": 455.0, "ti": 34.0, "tv": 35.4}, {"ts": "2026-05-15 12:00", "p1": 513.0, "p2": 332.0, "pac": 811.0, "ti": 38.5, "tv": 38.3}, {"ts": "2026-05-15 11:45", "p1": 1011.0, "p2": 485.0, "pac": 1413.0, "ti": 43.5, "tv": 40.6}, {"ts": "2026-05-15 11:30", "p1": 450.0, "p2": 340.0, "pac": 760.0, "ti": 41.5, "tv": 41.1}, {"ts": "2026-05-15 11:15", "p1": 380.0, "p2": 298.0, "pac": 656.0, "ti": 42.6, "tv": 40.6}, {"ts": "2026-05-15 11:00", "p1": 918.0, "p2": 479.0, "pac": 1324.0, "ti": 45.1, "tv": 41.5}, {"ts": "2026-05-15 10:45", "p1": 921.0, "p2": 466.0, "pac": 1315.0, "ti": 44.7, "tv": 41.6}, {"ts": "2026-05-15 10:30", "p1": 883.0, "p2": 412.0, "pac": 1229.0, "ti": 45.0, "tv": 41.2}, {"ts": "2026-05-15 10:15", "p1": 985.0, "p2": 523.0, "pac": 1428.0, "ti": 41.1, "tv": 39.2}, {"ts": "2026-05-15 10:00", "p1": 932.0, "p2": 527.0, "pac": 1376.0, "ti": 42.8, "tv": 40.9}, {"ts": "2026-05-15 09:45", "p1": 1036.0, "p2": 664.0, "pac": 1608.0, "ti": 40.9, "tv": 40.6}, {"ts": "2026-05-15 09:30", "p1": 911.0, "p2": 644.0, "pac": 1471.0, "ti": 44.2, "tv": 41.6}, {"ts": "2026-05-15 09:15", "p1": 958.0, "p2": 719.0, "pac": 1587.0, "ti": 43.9, "tv": 41.6}, {"ts": "2026-05-15 09:00", "p1": 790.0, "p2": 652.0, "pac": 1364.0, "ti": 45.0, "tv": 42.0}, {"ts": "2026-05-15 08:45", "p1": 843.0, "p2": 728.0, "pac": 1485.0, "ti": 43.9, "tv": 41.4}, {"ts": "2026-05-15 08:30", "p1": 789.0, "p2": 733.0, "pac": 1439.0, "ti": 42.1, "tv": 40.9}, {"ts": "2026-05-15 08:15", "p1": 741.0, "p2": 747.0, "pac": 1410.0, "ti": 41.2, "tv": 39.9}, {"ts": "2026-05-15 08:00", "p1": 694.0, "p2": 758.0, "pac": 1375.0, "ti": 40.4, "tv": 39.4}, {"ts": "2026-05-15 07:45", "p1": 640.0, "p2": 759.0, "pac": 1327.0, "ti": 38.0, "tv": 38.6}, {"ts": "2026-05-15 07:30", "p1": 587.0, "p2": 758.0, "pac": 1274.0, "ti": 35.6, "tv": 37.2}, {"ts": "2026-05-15 07:15", "p1": 522.0, "p2": 748.0, "pac": 1203.0, "ti": 34.2, "tv": 35.8}, {"ts": "2026-05-15 07:00", "p1": 442.0, "p2": 708.0, "pac": 1093.0, "ti": 31.2, "tv": 34.2}, {"ts": "2026-05-15 06:45", "p1": 359.0, "p2": 661.0, "pac": 974.0, "ti": 26.9, "tv": 31.8}, {"ts": "2026-05-15 06:30", "p1": 222.0, "p2": 460.0, "pac": 656.0, "ti": 24.6, "tv": 27.8}, {"ts": "2026-05-15 06:15", "p1": 202.0, "p2": 440.0, "pac": 621.0, "ti": 23.8, "tv": 25.0}, {"ts": "2026-05-15 06:00", "p1": 65.0, "p2": 137.0, "pac": 198.0, "ti": 22.3, "tv": 22.9}, {"ts": "2026-05-15 05:45", "p1": 20.0, "p2": 29.0, "pac": 48.0, "ti": 21.9, "tv": 22.4}, {"ts": "2026-05-15 05:30", "p1": 2.0, "p2": 3.0, "pac": 5.0, "ti": 21.7, "tv": 21.9}], "cobertura": [{"t": "electrico", "n": 36469}, {"t": "radiacion_15s", "n": 94868}, {"t": "performance", "n": 4527}]};
+
+const $ = (s,r=document)=>r.querySelector(s);
+const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
+const sum = a => a.reduce((x,y)=>x+(y||0),0);
+const mean = a => a.length? sum(a)/a.length : 0;
+const fmt = (n,d=1)=> n==null||!isFinite(n)? "—" : Number(n).toLocaleString("es-CR",{minimumFractionDigits:d,maximumFractionDigits:d});
+
+function pal(){ const s=getComputedStyle(document.documentElement); const g=k=>s.getPropertyValue(k).trim();
+  return {accent:g('--accent'),real:g('--real'),pred:g('--pred'),ceil:g('--ceil'),
+    ink:g('--ink'),muted:g('--muted'),line:g('--line2'),grid:g('--grid'),
+    good:g('--good'),warn:g('--warn'),crit:g('--crit')}; }
+
+// ── Gráfica de líneas (viewBox fijo, responsive, hover con valor exacto) ───
+function lineChart(series, {x, height=320, yfmt=(v)=>fmt(v,0), area=true, unit="", tipfmt=null}={}){
+  const W=1000,H=height,mL=54,mR=18,mT=18,mB=36,P=pal(),tf=tipfmt||yfmt;
+  const n=x.length;
+  const flat=series.flatMap(s=>s.points).filter(v=>v!=null&&isFinite(v));
+  let ymin=Math.min(0,...flat), ymax=Math.max(...flat); if(ymax===ymin)ymax=ymin+1;
+  const px=i=> mL+(n<=1?0:(i/(n-1))*(W-mL-mR));
+  const py=v=> mT+(1-(v-ymin)/(ymax-ymin))*(H-mT-mB);
+  let g="";
+  for(let k=0;k<=4;k++){ const v=ymin+(ymax-ymin)*k/4,y=py(v);
+    g+=`<line x1="${mL}" y1="${y.toFixed(1)}" x2="${W-mR}" y2="${y.toFixed(1)}" stroke="${P.grid}" stroke-width="1"/>`;
+    g+=`<text x="${mL-9}" y="${(y+4).toFixed(1)}" fill="${P.muted}" font-size="12" text-anchor="end" font-family="var(--mono)">${yfmt(v)}</text>`; }
+  const step=Math.max(1,Math.round(n/7));
+  for(let i=0;i<n;i+=step) g+=`<text x="${px(i).toFixed(1)}" y="${H-13}" fill="${P.muted}" font-size="11.5" text-anchor="middle" font-family="var(--mono)">${x[i]}</text>`;
+  for(const s of series){
+    const pts=s.points.map((v,i)=>v==null||!isFinite(v)?null:[px(i),py(v)]);
+    let d="",st=false; pts.forEach(p=>{ if(!p){st=false;return;} d+=(st?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1)+" "; st=true; });
+    if(s.area&&area){ const seg=pts.filter(Boolean);
+      if(seg.length){ const a=`M${seg[0][0].toFixed(1)} ${py(ymin).toFixed(1)} `+seg.map(p=>`L${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(" ")+` L${seg[seg.length-1][0].toFixed(1)} ${py(ymin).toFixed(1)} Z`;
+        g+=`<path d="${a}" fill="${s.color}" opacity="0.09"/>`; } }
+    g+=`<path d="${d}" fill="none" stroke="${s.color}" stroke-width="${s.width||2.2}" stroke-linejoin="round" stroke-linecap="round" ${s.dash?'stroke-dasharray="6 5"':''} vector-effect="non-scaling-stroke"/>`;
+    s.points.forEach((v,i)=>{ if(v==null||!isFinite(v))return;
+      const cx=px(i).toFixed(1),cy=py(v).toFixed(1);
+      const tip=`${x[i]} · ${s.name?s.name+': ':''}${tf(v)}${unit?' '+unit:''}`;
+      g+=`<circle cx="${cx}" cy="${cy}" r="2.4" fill="${s.color}"/>`;
+      g+=`<circle class="hit" cx="${cx}" cy="${cy}" r="12" fill="transparent" data-tip="${tip}"/>`; });
+  }
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img">${g}</svg>`;
+}
+
+function barChart(cats, groups, {height=320, yfmt=(v)=>fmt(v,0), unit=""}={}){
+  const W=1000,H=height,mL=54,mR=14,mT=18,mB=36,P=pal();
+  const n=cats.length,gN=groups.length;
+  const flat=groups.flatMap(g=>g.values).filter(v=>v!=null);
+  let ymax=Math.max(1,...flat);
+  const bandW=(W-mL-mR)/n, barW=Math.min(18,(bandW*0.68)/gN);
+  const py=v=> mT+(1-v/ymax)*(H-mT-mB);
+  let g="";
+  for(let k=0;k<=4;k++){ const v=ymax*k/4,y=py(v);
+    g+=`<line x1="${mL}" y1="${y.toFixed(1)}" x2="${W-mR}" y2="${y.toFixed(1)}" stroke="${P.grid}" stroke-width="1"/>`;
+    g+=`<text x="${mL-9}" y="${(y+4).toFixed(1)}" fill="${P.muted}" font-size="12" text-anchor="end" font-family="var(--mono)">${yfmt(v)}</text>`; }
+  const step=Math.max(1,Math.round(n/12));
+  cats.forEach((c,i)=>{ const cx=mL+bandW*i+bandW/2;
+    if(i%step===0) g+=`<text x="${cx.toFixed(1)}" y="${H-13}" fill="${P.muted}" font-size="11" text-anchor="middle" font-family="var(--mono)">${c}</text>`;
+    groups.forEach((gr,j)=>{ const v=gr.values[i]; if(v==null)return;
+      const x=cx-(gN*barW)/2+j*barW, y=py(v), h=py(0)-y;
+      const tip=`${c} · ${gr.name?gr.name+': ':''}${fmt(v,gr.dec??1)}${unit?' '+unit:''}`;
+      g+=`<rect class="bar" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${(barW-2).toFixed(1)}" height="${Math.max(0,h).toFixed(1)}" rx="2" fill="${gr.color}" data-tip="${tip}"/>`; }); });
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img">${g}</svg>`;
+}
+
+function scatter(pts, {height=300}={}){
+  const W=1000,H=height,mL=56,mR=16,mT=18,mB=38,P=pal();
+  const xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]);
+  let xmin=Math.min(...xs),xmax=Math.max(...xs),ymin=0,ymax=Math.max(...ys)*1.05;
+  const px=v=>mL+((v-xmin)/(xmax-xmin))*(W-mL-mR), py=v=>mT+(1-(v-ymin)/(ymax-ymin))*(H-mT-mB);
+  let g="";
+  for(let k=0;k<=4;k++){ const v=ymin+(ymax-ymin)*k/4,y=py(v);
+    g+=`<line x1="${mL}" y1="${y.toFixed(1)}" x2="${W-mR}" y2="${y.toFixed(1)}" stroke="${P.grid}" stroke-width="1"/>`;
+    g+=`<text x="${mL-9}" y="${(y+4).toFixed(1)}" fill="${P.muted}" font-size="12" text-anchor="end" font-family="var(--mono)">${fmt(v,1)}</text>`; }
+  for(let k=0;k<=4;k++){ const v=xmin+(xmax-xmin)*k/4;
+    g+=`<text x="${px(v).toFixed(1)}" y="${H-13}" fill="${P.muted}" font-size="11.5" text-anchor="middle" font-family="var(--mono)">${fmt(v,0)}</text>`; }
+  pts.forEach(p=> g+=`<circle class="hit" cx="${px(p[0]).toFixed(1)}" cy="${py(p[1]).toFixed(1)}" r="5" fill="${P.accent}" opacity="0.7" data-tip="GHI ${fmt(p[0],0)} W/m² · ${fmt(p[1],2)} kWh"/>`);
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img">${g}</svg>`;
+}
+
+function sparkline(vals,color){
+  const W=240,H=42,f=vals.filter(v=>v!=null); const mn=Math.min(...f),mx=Math.max(...f),sp=mx-mn||1;
+  const pts=vals.map((v,i)=>v==null?null:[6+(i/(vals.length-1))*(W-12),H-5-((v-mn)/sp)*(H-10)]);
+  let d="",st=false; pts.forEach(p=>{if(!p){st=false;return;} d+=(st?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1)+" ";st=true;});
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="height:42px"><path d="${d}" fill="none" stroke="${color}" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>`;
+}
+
+// ── Estado + filtros ───────────────────────────────────────────────────────
+const state={agent:"analizador",view:"recon",period:"all",vari:"energia",cmp:"ambos",predVar:"irr",liveN:14,liveQ:""};
+const periodFilter = rows => state.period==="all"?rows:rows.filter(r=>{const d=+r.d.slice(8,10);return state.period==="q1"?d<=15:d>15;});
+
+// ── Reconciliación ─────────────────────────────────────────────────────────
+function renderRecon(){
+  const e=DATA.energia_diaria, dbPv1=sum(e.map(r=>r.kwh_pv1)), dbPv2=sum(e.map(r=>r.kwh_pv2));
+  const rows=[
+    ["Energía PV1 (inclinado)",dbPv1,dbPv1,"kWh"],
+    ["Energía PV2 (vertical)",dbPv2,dbPv2,"kWh"],
+    ["Días con generación",e.filter(r=>r.kwh_pv1>0).length,e.filter(r=>r.kwh_pv1>0).length,""],
+    ["Mejor día (PV1)",Math.max(...e.map(r=>r.kwh_pv1)),Math.max(...e.map(r=>r.kwh_pv1)),"kWh"],
+  ];
+  $("#reconBody").innerHTML=rows.map(([lbl,m,db,u])=>{
+    const delta=m-db, pct=db?Math.abs(delta)/db*100:0;
+    const st=pct<0.5?`<span class="tag ok">coincide</span>`:pct<3?`<span class="tag warn">Δ ${fmt(pct,1)}%</span>`:`<span class="tag bad">${fmt(pct,1)}%</span>`;
+    return `<tr><td class="lead">${lbl}</td><td>${fmt(m,1)}<span class="muted"> ${u}</span></td><td>${fmt(db,1)}<span class="muted"> ${u}</span></td><td>${fmt(delta,2)}</td><td class="lead">${st}</td></tr>`;
+  }).join("");
+  $("#coberturaCards").innerHTML=[
+    ["Cobertura eléctrica","36 469","filas · 2024-11-10 → 2026-06-01"],
+    ["Cobertura radiación 15 s","94 868","filas · 2 sensores (SP722 desde may-26)"],
+    ["Cobertura performance","4 527","filas · desde 2025-09-05 (POA)"],
+  ].map(([l,v,d])=>`<div class="card"><span class="lbl">${l}</span><div class="metric" style="margin-top:6px"><span class="v">${v}</span><span class="muted small">${d}</span></div></div>`).join("");
+  renderLive();
+}
+function renderLive(){
+  const q=state.liveQ.trim().toLowerCase();
+  const all=DATA.filas_electrico.filter(r=> !q || r.ts.toLowerCase().includes(q));
+  const vis=all.slice(0,state.liveN);
+  $("#liveTable").innerHTML=
+    `<thead><tr><th class="lead">timestamp</th><th>P PV1 · W</th><th>P PV2 · W</th><th>P AC · W</th><th>T incl · °C</th><th>T vert · °C</th></tr></thead><tbody>`+
+    (vis.length?vis.map(r=>`<tr><td class="lead">${r.ts}</td><td>${fmt(r.p1,0)}</td><td>${fmt(r.p2,0)}</td><td>${fmt(r.pac,0)}</td><td>${fmt(r.ti,1)}</td><td>${fmt(r.tv,1)}</td></tr>`).join("")
+      :`<tr><td class="lead muted" colspan="6">sin coincidencias para “${state.liveQ}”</td></tr>`)+`</tbody>`;
+  $("#liveCount").textContent=`${Math.min(state.liveN,all.length)} de ${all.length} filas`;
+  const hayMas=all.length>state.liveN;
+  $("#liveMore").disabled=!hayMas;
+  $("#liveHint").textContent=hayMas?`quedan ${all.length-state.liveN} más`:"todo mostrado";
+}
+
+// ── Predicción vs Real (BACKTEST del método, honesto) ──────────────────────
+function computePred(){
+  if(state.predVar==="irr"){
+    const h=DATA.ghi_horario, UM=20;
+    const real=h.map(r=>r.ghi), cs=h.map(r=>r.cs), labels=h.map(r=>r.h);
+    const recon=h.map((r,i)=>{ if(i===0)return null; const p=h[i-1]; if(p.cs<UM||r.cs<UM)return r.cs<UM?0:null; return (p.ghi/p.cs)*r.cs; });
+    const naive=h.map((r,i)=> i===0?null:h[i-1].ghi);
+    return {labels,real,recon,cs,naive,unit:"W/m²",dec:0,
+      title:"Irradiancia — 15 may 2026 · backtest a 1 h vs. lo medido",
+      hint:"Reconstrucción con el método del modelo (persistencia de kt*) contra el sensor."};
+  }
+  const e=periodFilter(DATA.energia_diaria);
+  const real=e.map(r=>r.kwh_pv1), labels=e.map(r=>r.d.slice(5));
+  const recon=e.map((r,i)=> i===0?null:e[i-1].kwh_pv1), naive=recon;
+  return {labels,real,recon,cs:null,naive,unit:"kWh",dec:2,
+    title:"Energía diaria PV1 · backtest por persistencia vs. real",
+    hint:"Reconstrucción: cada día se estima con la generación del día previo, contra lo real."};
+}
+function renderPred(){
+  const C=computePred(),P=pal();
+  $("#predTitle").textContent=C.title; $("#predHint").textContent=C.hint;
+  const series=[
+    {points:C.real,color:P.real,area:true,width:2.4,name:"Real (medido)"},
+    {points:C.recon,color:P.pred,dash:true,width:2.2,name:"Reconstrucción"},
+  ];
+  if(C.cs) series.push({points:C.cs,color:P.ceil,width:1.4,name:"Cielo despejado"});
+  $("#predChart").innerHTML=lineChart(series,{x:C.labels,height:340,yfmt:v=>fmt(v,0),unit:C.unit,tipfmt:v=>fmt(v,C.dec)});
+  $("#predLegend").innerHTML=[["Real (medido)",P.real],["Reconstrucción del método",P.pred]].concat(C.cs?[["Cielo despejado (techo)",P.ceil]]:[])
+    .map(([t,c])=>`<span><span class="sw" style="background:${c}"></span>${t}</span>`).join("");
+  const idx=C.real.map((_,i)=>i).filter(i=>C.recon[i]!=null&&C.real[i]!=null);
+  const err=idx.map(i=>C.recon[i]-C.real[i]);
+  const mae=mean(err.map(Math.abs)), bias=mean(err), avg=mean(idx.map(i=>C.real[i]));
+  const skill=mean(idx.map(i=>Math.abs(C.naive[i]-C.real[i])))? (1-mae/mean(idx.map(i=>Math.abs(C.naive[i]-C.real[i]))))*100:0;
+  $("#predKpis").innerHTML=[
+    {l:"Error medio absoluto",v:fmt(mae,C.dec),u:C.unit,d:"promedio de |recon − real|"},
+    {l:"Sesgo (bias)",v:(bias>=0?"+":"")+fmt(bias,C.dec),u:C.unit,d:"+ sobreestima · − subestima"},
+    {l:"Error relativo",v:fmt(avg?mae/avg*100:0,1),u:"%",d:"MAE sobre el promedio real"},
+    {l:"Skill vs. ingenuo",v:(skill>=0?"+":"")+fmt(skill,0),u:"%",d:"mejora sobre “igual que antes”"},
+  ].map(k=>`<div class="kpi"><span class="lbl">${k.l}</span><div class="k">${k.v}<small>${k.u}</small></div><div class="d">${k.d}</div></div>`).join("");
+  const det=idx.map(i=>({t:C.labels[i],real:C.real[i],rec:C.recon[i],e:C.recon[i]-C.real[i]})).sort((a,b)=>Math.abs(b.e)-Math.abs(a.e));
+  $("#predTable").innerHTML=`<thead><tr><th class="lead">momento</th><th>real ${C.unit}</th><th>reconstruido</th><th>error</th><th class="lead">severidad</th></tr></thead><tbody>`+
+    det.map(r=>{ const rel=r.real?Math.abs(r.e)/Math.max(r.real,1)*100:0;
+      const sev=rel<15?`<span class="tag ok">baja</span>`:rel<40?`<span class="tag warn">media</span>`:`<span class="tag bad">alta</span>`;
+      return `<tr><td class="lead">${r.t}</td><td>${fmt(r.real,C.dec)}</td><td>${fmt(r.rec,C.dec)}</td><td style="color:${r.e>=0?'var(--pred)':'var(--crit)'}">${r.e>=0?"+":""}${fmt(r.e,C.dec)}</td><td class="lead">${sev}</td></tr>`; }).join("")+`</tbody>`;
+}
+
+// ── Rendimiento ────────────────────────────────────────────────────────────
+function renderPerf(){
+  const P=pal(), e=periodFilter(DATA.energia_diaria), g=periodFilter(DATA.ghi_diario);
+  const pr=DATA.pr_diario.filter(r=>r.pr1!=null&&r.pr1>0);
+  $("#perfKpis").innerHTML=[
+    {l:"Energía PV1 · histórico",v:"921,1",u:"kWh",d:"arreglo inclinado 20°/150°",c:P.accent,s:e.map(r=>r.kwh_pv1)},
+    {l:"Energía PV2 · histórico",v:"601,7",u:"kWh",d:"arreglo vertical 90°/50°",c:P.real,s:e.map(r=>r.kwh_pv2)},
+    {l:"Performance Ratio",v:"0,62",u:"",d:"PV1 0,622 · PV2 0,626",c:P.pred,s:pr.map(r=>r.pr1)},
+    {l:"GHI media · kt*",v:"293",u:"W/m²",d:"índice de claridad 0,46",c:P.ceil,s:g.map(r=>r.ghi)},
+  ].map(k=>`<div class="kpi"><span class="lbl">${k.l}</span><div class="k">${k.v}<small>${k.u}</small></div><div class="d">${k.d}</div><div class="spark">${sparkline(k.s,k.c)}</div></div>`).join("");
+  $("#cmpCtl").style.display=(state.vari==="energia"||state.vari==="pr")?"flex":"none";
+  let title,hint,html,legend="";
+  if(state.vari==="energia"){
+    title="Energía diaria por arreglo"; hint="kWh generados por día — PV1 inclinado vs PV2 vertical (bifacial).";
+    const gr=[]; if(state.cmp!=="pv2")gr.push({color:P.accent,name:"PV1",dec:2,values:e.map(r=>r.kwh_pv1)});
+    if(state.cmp!=="pv1")gr.push({color:P.real,name:"PV2",dec:2,values:e.map(r=>r.kwh_pv2)});
+    html=barChart(e.map(r=>r.d.slice(5)),gr,{height:360,unit:"kWh"});
+    legend=[["PV1",P.accent],["PV2",P.real]];
+  } else if(state.vari==="ghi"){
+    title="Irradiancia global diaria (GHI)"; hint="W/m² promedio por día — calibrada por clear-sky.";
+    html=lineChart([{points:g.map(r=>r.ghi),color:P.accent,area:true,name:"GHI"}],{x:g.map(r=>r.d.slice(5)),height:360,unit:"W/m²",tipfmt:v=>fmt(v,1)});
+    legend=[["GHI W/m²",P.accent]];
+  } else if(state.vari==="kt"){
+    title="Índice de claridad kt*"; hint="Fracción del cielo despejado captada — 1,0 sería un día perfecto.";
+    html=lineChart([{points:g.map(r=>r.kt),color:P.pred,area:true,name:"kt*"}],{x:g.map(r=>r.d.slice(5)),height:360,yfmt:v=>fmt(v,2),tipfmt:v=>fmt(v,3)});
+    legend=[["kt*",P.pred]];
+  } else {
+    title="Performance Ratio diario"; hint="Rendimiento real sobre el teórico — PV1 vs PV2.";
+    const s=[]; if(state.cmp!=="pv2")s.push({points:pr.map(r=>r.pr1),color:P.accent,name:"PR PV1"});
+    if(state.cmp!=="pv1")s.push({points:pr.map(r=>r.pr2),color:P.real,name:"PR PV2"});
+    html=lineChart(s,{x:pr.map(r=>r.d.slice(5)),height:360,yfmt:v=>fmt(v,2),tipfmt:v=>fmt(v,3)});
+    legend=[["PR PV1",P.accent],["PR PV2",P.real]];
+  }
+  $("#perfChartTitle").textContent=title; $("#perfChartHint").textContent=hint; $("#perfChart").innerHTML=html;
+  $("#perfLegend").innerHTML=legend.map(([t,c])=>`<span><span class="sw" style="background:${c}"></span>${t}</span>`).join("");
+  const gmap=Object.fromEntries(DATA.ghi_diario.map(r=>[r.d,r.ghi]));
+  const pts=periodFilter(DATA.energia_diaria).filter(r=>gmap[r.d]!=null&&r.kwh_pv1>0).map(r=>[gmap[r.d],r.kwh_pv1]);
+  $("#scatterChart").innerHTML=scatter(pts,{height:320});
+}
+
+// ── Costo y uso ────────────────────────────────────────────────────────────
+function renderCosto(){
+  const P=pal();
+  const consultas=[
+    {t:"¿Energía por arreglo en mayo?",i:4193,o:280},
+    {t:"¿Performance ratio de cada arreglo?",i:4193,o:230},
+    {t:"Resumen general del sistema",i:5120,o:512},
+    {t:"¿Temperatura promedio por arreglo?",i:4473,o:336},
+    {t:"¿Irradiancia media y kt*?",i:3980,o:210},
+    {t:"¿Qué datos hay y desde cuándo?",i:3610,o:190},
+  ];
+  const cIn=q=>q.i/1e6*1, cOut=q=>q.o/1e6*5, cost=q=>cIn(q)+cOut(q);
+  const usdIn=sum(consultas.map(cIn)), usdOut=sum(consultas.map(cOut)), usd=usdIn+usdOut;
+  const nIn=sum(consultas.map(q=>q.i)), nOut=sum(consultas.map(q=>q.o)), avg=usd/consultas.length;
+  $("#costoBig").innerHTML=`$${usd.toFixed(4)}<small>USD</small>`;
+  $("#costoSub").textContent=`${consultas.length} consultas · ${(nIn+nOut).toLocaleString("es-CR")} tokens · promedio $${avg.toFixed(5)} / consulta`;
+  const pIn=usdIn/usd*100;
+  $("#costoSplit").innerHTML=`<span style="width:${pIn.toFixed(1)}%;background:${P.pred}"></span><span style="width:${(100-pIn).toFixed(1)}%;background:${P.accent}"></span>`;
+  $("#costoSplitLeg").innerHTML=`<span><span class="sw" style="background:${P.pred}"></span>entrada $${usdIn.toFixed(4)} (${pIn.toFixed(0)}%)</span><span><span class="sw" style="background:${P.accent}"></span>salida $${usdOut.toFixed(4)} (${(100-pIn).toFixed(0)}%)</span>`;
+  // línea acumulada
+  let acc=0; const cum=consultas.map(q=>acc+=cost(q));
+  $("#costoChart").innerHTML=lineChart([{points:cum,color:P.accent,area:true,name:"acumulado"}],
+    {x:consultas.map((_,i)=>"#"+(i+1)),height:260,yfmt:v=>"$"+v.toFixed(3),unit:"USD",tipfmt:v=>"$"+v.toFixed(5)});
+  // proyección
+  $("#costoProj").innerHTML=[
+    ["Por consulta (promedio)","$"+avg.toFixed(5)],
+    ["Por 1.000 consultas","$"+(avg*1000).toFixed(2)],
+    ["100 consultas/día ≈ mes","$"+(avg*100*30).toFixed(2)],
+    ["Ratio tokens salida/entrada",(nOut/nIn).toFixed(3)],
+  ].map(([l,v])=>`<div class="projrow"><span class="muted">${l}</span><span class="pv">${v}</span></div>`).join("");
+  $("#costoTable").innerHTML=`<thead><tr><th class="lead">consulta</th><th>tokens in</th><th>tokens out</th><th>costo USD</th></tr></thead><tbody>`+
+    consultas.map(q=>`<tr><td class="lead">${q.t}</td><td>${fmt(q.i,0)}</td><td>${fmt(q.o,0)}</td><td>$${cost(q).toFixed(6)}</td></tr>`).join("")+
+    `<tr style="font-weight:700"><td class="lead">Total (${consultas.length})</td><td>${fmt(nIn,0)}</td><td>${fmt(nOut,0)}</td><td>$${usd.toFixed(6)}</td></tr></tbody>`;
+}
+
+// ── Router ─────────────────────────────────────────────────────────────────
+function render(){
+  ["recon","pred","perf","costo"].forEach(v=> $("#view-"+v).classList.toggle("hidden", v!==state.view));
+  if(state.view==="recon")renderRecon();
+  else if(state.view==="pred")renderPred();
+  else if(state.view==="perf")renderPerf();
+  else renderCosto();
+}
+
+// ── Wiring ─────────────────────────────────────────────────────────────────
+$("#viewNav").addEventListener("click",e=>{const b=e.target.closest(".navitem");if(!b)return;
+  $$("#viewNav .navitem").forEach(x=>x.classList.toggle("on",x===b)); state.view=b.dataset.view; render();});
+$("#agentSeg").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
+  $$("#agentSeg button").forEach(x=>x.classList.toggle("on",x===b)); state.agent=b.dataset.agent;
+  if(state.agent==="pronostico"){state.view="pred";$$("#viewNav .navitem").forEach(x=>x.classList.toggle("on",x.dataset.view==="pred"));}
+  render();});
+$("#predVarChips").addEventListener("click",e=>{const b=e.target.closest(".chip");if(!b)return;
+  $$("#predVarChips .chip").forEach(x=>x.classList.toggle("on",x===b)); state.predVar=b.dataset.pv; render();});
+$("#periodChips").addEventListener("click",e=>{const b=e.target.closest(".chip");if(!b)return;
+  $$("#periodChips .chip").forEach(x=>x.classList.toggle("on",x===b)); state.period=b.dataset.period; render();});
+$("#varChips").addEventListener("click",e=>{const b=e.target.closest(".chip");if(!b)return;
+  $$("#varChips .chip").forEach(x=>x.classList.toggle("on",x===b)); state.vari=b.dataset.var; render();});
+$("#cmpChips").addEventListener("click",e=>{const b=e.target.closest(".chip");if(!b)return;
+  $$("#cmpChips .chip").forEach(x=>x.classList.toggle("on",x===b)); state.cmp=b.dataset.cmp; render();});
+$("#liveSearch").addEventListener("input",e=>{ state.liveQ=e.target.value; state.liveN=14; renderLive(); });
+$("#liveMore").addEventListener("click",()=>{ state.liveN+=14; renderLive(); });
+$("#themeBtn").addEventListener("click",()=>{ const r=document.documentElement,
+  cur=r.getAttribute("data-theme")||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");
+  r.setAttribute("data-theme",cur==="dark"?"light":"dark"); render(); });
+
+// Tooltip: delegación en document (sobrevive el redibujo de los SVG).
+const tipEl=$("#tip");
+document.addEventListener("pointerover",e=>{ const el=e.target.closest&&e.target.closest("[data-tip]"); if(!el)return;
+  const r=el.getBoundingClientRect(); tipEl.textContent=el.getAttribute("data-tip");
+  tipEl.style.left=(r.left+r.width/2)+"px"; tipEl.style.top=r.top+"px"; tipEl.hidden=false; });
+document.addEventListener("pointerout",e=>{ if(e.target.closest&&e.target.closest("[data-tip]")) tipEl.hidden=true; });
+
+render();
+</script>
