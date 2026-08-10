@@ -289,6 +289,23 @@ def ingest_log_ddl() -> str:
     )
 
 
+# Tablas del pipeline sobre las que se blinda el acceso (RLS lockdown).
+_RLS_TABLES = [
+    config.TABLE_ELECTRICO, config.TABLE_RADIACION, config.TABLE_CLEARSKY,
+    config.TABLE_POA, config.TABLE_DICCIONARIO, config.TABLE_INGEST_LOG,
+]
+
+
+def rls_ddl() -> str:
+    """Habilita RLS (lockdown) en las tablas del pipeline. Idempotente.
+
+    Sin politicas: solo los roles de servicio (postgres/service_role, BYPASSRLS) acceden;
+    anon/authenticated (API REST publica) quedan bloqueados. La carga por psycopg
+    (rol postgres, owner) NO se ve afectada.
+    """
+    return "\n".join(f"ALTER TABLE {t} ENABLE ROW LEVEL SECURITY;" for t in _RLS_TABLES)
+
+
 # --- Ensamblado --------------------------------------------------------------
 def full_schema_sql() -> str:
     """Schema completo, idempotente y evolutivo. Apto para Supabase SQL Editor o psql."""
@@ -308,6 +325,8 @@ def full_schema_sql() -> str:
         ingest_log_ddl(),
         "-- === Diccionario de variables (Leo P1) ===",
         diccionario_ddl(),
+        "-- === Seguridad: RLS lockdown (solo roles de servicio; API publica bloqueada) ===",
+        rls_ddl(),
         "-- === Capa de correccion: vistas (el crudo NO se toca) ===",
         electrico_view_ddl(),
         radiacion_view_ddl(),

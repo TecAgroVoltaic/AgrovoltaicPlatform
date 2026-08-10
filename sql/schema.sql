@@ -140,6 +140,15 @@ INSERT INTO diccionario_variables (variable, descripcion, tabla) VALUES
     ('albedo_sp722', 'Albedo del piranometro SP722', 'radiacion')
 ON CONFLICT (variable) DO UPDATE SET descripcion = EXCLUDED.descripcion, tabla = EXCLUDED.tabla;
 
+-- === Seguridad: RLS lockdown (solo roles de servicio; API publica bloqueada) ===
+
+ALTER TABLE monitoreo_sc_electrico ENABLE ROW LEVEL SECURITY;
+ALTER TABLE radiacion_sc_15s ENABLE ROW LEVEL SECURITY;
+ALTER TABLE radiacion_sc_clearsky ENABLE ROW LEVEL SECURITY;
+ALTER TABLE radiacion_sc_poa ENABLE ROW LEVEL SECURITY;
+ALTER TABLE diccionario_variables ENABLE ROW LEVEL SECURITY;
+ALTER TABLE _ingest_log ENABLE ROW LEVEL SECURITY;
+
 -- === Capa de correccion: vistas (el crudo NO se toca) ===
 
 CREATE OR REPLACE VIEW v_sc_electrico_corregido WITH (security_invoker = on) AS
