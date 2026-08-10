@@ -1,10 +1,16 @@
 ---
 name: remodelado-propuesto
-description: Opción B (split por subsistema) implementada como VISTAS en Supabase (v_inversor, v_irradiancia, v_temperatura); catálogo de procedencia A VERIFICAR; EDA estructurado pendiente
+description: HISTÓRICO — Opción B (vistas v_inversor/v_irradiancia/v_temperatura sobre monitoreo_agrovoltaic) SUPERADA y dropeada el 2026-08-10 por el modelo crudo+vistas (v0.2); split por subsistema ahora es nativo
 categoria: datos
 ---
 
-# Re-modelado de la tabla Supabase — Opción B vía vistas
+> **⚠️ SUPERADO (2026-08-10).** La tabla `monitoreo_agrovoltaic` y sus 3 vistas
+> (`v_inversor`/`v_irradiancia`/`v_temperatura`) se **DROPEARON**. El split por subsistema ahora
+> es **nativo** del modelo nuevo: tablas crudas separadas `monitoreo_sc_electrico` /
+> `radiacion_sc_15s` + vistas de corrección/calibración/PR. Ver [[implementacion]] y
+> [[respuestas-leo-cardinale]]. Este archivo queda como historia del enfoque anterior.
+
+# Re-modelado de la tabla Supabase — Opción B vía vistas (HISTÓRICO)
 
 **Problema (Aníbal + usuario):** en la Supabase de San Carlos (`monitoreo_agrovoltaic`, una tabla
 ancha por timestamp) los datos **no decían de qué sensor provienen** — a diferencia de Cartago

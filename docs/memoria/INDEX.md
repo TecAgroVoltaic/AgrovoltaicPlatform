@@ -8,9 +8,11 @@ doc rev LCV, ver [respuestas-leo-cardinale](decisiones/respuestas-leo-cardinale.
 rectora nueva: **guardar el crudo en la DB y corregir en una capa de análisis** (superó 85→NULL,
 offset→0, resampleo-todo-a-5-min). Muestreo: eléctricas 5 min / radiación 15 s aparte. Temp válida
 10–80 °C. Bloqueantes de geometría RESUELTOS: 1420 Wp/arreglo, PV1=inclinado/PV2=vertical,
-tilt/azimut, sin constante de calibración → clear-sky. **Implica rediseñar el esquema Supabase +
-re-correr el ETL.** Prev: agente de pronóstico multi-variable VIVO en la EC2, fuente SC congelada
-23-jul → "solo histórico".)*
+tilt/azimut, sin constante de calibración → clear-sky. **Esquema Supabase rediseñado + ETL
+re-corrido + capas de calibración y Performance Ratio, TODO EN VIVO** en `jijklguopafevyucogro`
+(modelo crudo+vistas; radiación ya en W/m²; PR por arreglo ≈0,62 con bifacialidad; modelo viejo
+dropeado). Detalle en [implementacion](proyecto/implementacion.md). Prev: agente de pronóstico
+multi-variable VIVO en la EC2, fuente SC congelada 23-jul → "solo histórico".)*
 
 ## proyecto/ — qué es y en qué fase está
 - [objetivo.md](proyecto/objetivo.md) — estandarizar CSV crudos y cargarlos a Supabase como pipeline automatizado y permanente
@@ -30,7 +32,7 @@ re-correr el ETL.** Prev: agente de pronóstico multi-variable VIVO en la EC2, f
 - [dataset-actual.md](datos/dataset-actual.md) — carpeta NEW (285 CSVs), rango, NEW vs OLD
 - [agrodash-esquema.md](datos/agrodash-esquema.md) — esquema real de AgroDash (caja→sensor→reading, 34 tablas) y su calidad
 - [agrovoltaic2025-db.md](datos/agrovoltaic2025-db.md) — DB de Joshua: re-volcado crudo + 1 tabla unificada SIN limpiar; veredicto: no adoptar
-- [remodelado-propuesto.md](datos/remodelado-propuesto.md) — Opción B: vistas por subsistema creadas en Supabase (v_inversor/v_irradiancia/v_temperatura); catálogo a verificar
+- [remodelado-propuesto.md](datos/remodelado-propuesto.md) — **HISTÓRICO/SUPERADO**: las vistas viejas (v_inversor/…) y `monitoreo_agrovoltaic` se dropearon; el split ahora es nativo del modelo crudo
 - [diccionario-variables.md](datos/diccionario-variables.md) — variables fuente San Carlos (jun 2026): 3 tablas (PV/inversor+SP722, Fliwer, nodos ESP32)
 - [correccion-filas-mezcladas.md](datos/correccion-filas-mezcladas.md) — spec del equipo para remapear filas de piranómetro (L/M/N/O) + par ground-truth original/corregido
 - [geometria-sistema.md](datos/geometria-sistema.md) — specs físicas confirmadas por Leo: 1420 Wp/arreglo (4×355 Wp), PV1=inclinado (20°/150°), PV2=vertical (90°/50°), bifaciales; insumo de calibración/PR

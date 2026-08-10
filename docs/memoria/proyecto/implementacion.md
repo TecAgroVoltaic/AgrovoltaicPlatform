@@ -21,8 +21,23 @@ Implementado y corrido OK el 2026-06-02 (285 CSV → 36.630 filas en `monitoreo_
 > eléctricas / 94.868 de radiación** (0 fallos; los 36.614/95.521 enviados se dedupean por PK
 > timestamp). Crudo verificado en DB (temp=85 en 12.174 filas, pico 26,5 MW, offset −38.845 en
 > 3.198); vistas OK (temp=85→0, potencia máx 1.603 W, irrad<0→0). Vistas con `security_invoker=on`.
-> La tabla vieja `monitoreo_agrovoltaic` quedó vacía → **se puede borrar**. DDL en `sql/schema.sql`.
-> **Pendiente de decisión:** RLS (deshabilitado en todas las tablas públicas del proyecto).
+> La tabla vieja `monitoreo_agrovoltaic` (tenía 36.485 filas del modelo viejo, superadas) y sus 3
+> vistas (`v_inversor`/`v_irradiancia`/`v_temperatura`) se **DROPEARON** (migración
+> `agrovoltaic_drop_modelo_viejo`, 2026-08-10) → esquema `public` limpio. DDL en `sql/schema.sql`.
+>
+> **v0.3 (2026-08-10) — capa de calibración de radiación EN VIVO.** Hallazgo: el período válido
+> ya está en W/m² (k≈0,98, ver [[irradiancia-sin-calibrar]]). Aplicado (migración
+> `agrovoltaic_v2_radiacion_calibrada_clearsky`): tabla `radiacion_sc_clearsky` (94.868 cs_ghi
+> calculados con pvlib) + vista `v_sc_radiacion_calibrada` (`irradiancia_*_wm2`, `cs_ghi_wm2`,
+> `kt_star`, `qc_ok`). Verificado: kt* p95=1,01, 99,4% qc_ok, máx físico 1.340 W/m². Escala=1,0.
+>
+> **v0.4 (2026-08-10) — Performance Ratio por arreglo EN VIVO** (migración
+> `agrovoltaic_performance_ratio_bifacial`). Tabla `radiacion_sc_poa` (56.450 timestamps, POA
+> frontal+bifacial con pvlib) + vista `v_sc_performance` (`pr_pv1`, `pr_pv2`). Modelo bifacial de
+> dos planos (φ=0,80). Verificado: **PR energético PV1=0,622 / PV2=0,626** (convergen → bifacial
+> validado). Ver [[geometria-sistema]]. Objetos viejos dropeados.
+> **Pendiente de decisión:** RLS (deshabilitado en todas las tablas públicas del proyecto);
+> **del equipo:** factor de bifacialidad real (datasheet) y geometría de filas para afinar POA trasera.
 
 ## Entrada / ejecución
 - Punto de entrada único: `python3 main.py` (agrega `src/` al path, no requiere instalar).
@@ -43,11 +58,16 @@ Implementado y corrido OK el 2026-06-02 (285 CSV → 36.630 filas en `monitoreo_
   parsear timestamp. (El `classify_rows` viejo se removió: el split ahora es por columnas.)
 - `transform.py` — **v0.2:** `split_streams()` separa eléctrico/radiación por columnas;
   resamplea eléctrico a 5 min y radiación a 15 s. **SIN limpieza** (el crudo se conserva).
-- `ddl.py` — **genera 2 tablas + 2 vistas de corrección + diccionario** desde tags/config.
-  `correction_expr()` deriva el SQL de cada corrección (cero columnas quemadas).
+- `ddl.py` — **genera tablas + vistas de corrección/calibración + diccionario** desde tags/config.
+  `correction_expr()` deriva el SQL de cada corrección; `radiacion_calibrada_view_ddl()` la de W/m²+kt*+QC.
+- `clearsky.py` — **v0.3:** GHI de cielo despejado con pvlib (Ineichen), reinterpretando el
+  timestamp como hora local CR. `calibracion.py` — puebla `radiacion_sc_clearsky` (incremental).
+- `performance.py` — **v0.4:** POA por arreglo (transposición Erbs+isotrópica) con modelo
+  **bifacial de dos planos** (frontal + φ·trasera, albedo medido); puebla `radiacion_sc_poa`.
 - `load.py` — UPSERT por `timestamp` en cada tabla (`upsert_electrico`/`upsert_radiacion`).
   `state.py` — md5 en `_ingest_log`.
-- `pipeline.py` — orquesta extract→transform→load. `cli.py` — menú. `config.py` — paths/conexión/constantes.
+- `pipeline.py` — orquesta extract→transform→load + refresh de clear-sky. `cli.py` — menú.
+  `config.py` — paths/conexión/constantes + sitio (lat/lon/alt/tz) y umbrales de calibración.
 
 ## Principio de diseño: cero columnas quemadas
 Única fuente irreducible = `normalize.CONCEPT_MAP`. Todo lo demás se deriva:

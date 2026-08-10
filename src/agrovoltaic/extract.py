@@ -1,8 +1,8 @@
-"""Extraccion: leer un CSV crudo, normalizar columnas, clasificar filas.
+"""Extraccion: leer un CSV crudo, normalizar columnas, tipar.
 
 Resuelve dos inconsistencias estructurales:
   1. 13 schemas distintos  -> normalize_columns() via mapa de alias (schemas.py)
-  2. Filas de fuentes mezcladas -> classify_rows() marca inversor|sensor
+  2. Filas de fuentes mezcladas -> el split por columnas lo hace transform.split_streams()
 """
 
 from __future__ import annotations
@@ -12,13 +12,9 @@ from pathlib import Path
 
 import pandas as pd
 
-from .schemas import CANONICAL_COLUMNS, canonical_name, cols_with_tag
+from .schemas import CANONICAL_COLUMNS, canonical_name
 
 logger = logging.getLogger(__name__)
-
-# Columnas cuya fuente fisica es el inversor. Una fila SENSOR (piranometro/DS18B20)
-# no tiene ninguna -> eso la clasifica. Derivado del tag, no quemado.
-_INVERSOR_COLS = cols_with_tag("inversor")
 
 
 def read_raw_csv(path: Path) -> pd.DataFrame:
@@ -85,8 +81,8 @@ def to_numeric(df: pd.DataFrame) -> pd.DataFrame:
 def parse_timestamp(df: pd.DataFrame) -> pd.DataFrame:
     """Parsea timestamp a datetime. Filas sin timestamp valido se descartan.
 
-    NOTA: timezone SIN CONFIRMAR (bloqueante). Aqui se deja naive; la decision
-    de UTC-4/UTC-6 se aplica en transform cuando el equipo de campo confirme.
+    NOTA: sitio en Costa Rica (UTC-6, resuelto 2026-06-16). El timestamp se deja
+    naive tal como viene en el CSV; el manejo de zona explicito se hace aguas abajo.
     """
     out = df.copy()
     out["timestamp"] = pd.to_datetime(out["timestamp"], errors="coerce")
@@ -96,27 +92,12 @@ def parse_timestamp(df: pd.DataFrame) -> pd.DataFrame:
     return out.dropna(subset=["timestamp"])
 
 
-def classify_rows(df: pd.DataFrame) -> pd.DataFrame:
-    """Agrega columna tipo_fila: 'inversor' | 'sensor'.
-
-    Inversor = tiene >=1 valor en columnas exclusivas del inversor.
-    Sensor   = solo irradiancia/temperaturas (pocas columnas).
-    """
-    out = df.copy()
-    has_inv = out[_INVERSOR_COLS].notna().any(axis=1)
-    out["tipo_fila"] = pd.Series(
-        ["inversor" if v else "sensor" for v in has_inv], index=out.index
-    )
-    return out
-
-
 def extract_file(path: Path) -> pd.DataFrame:
     """Pipeline de extraccion completo para un archivo: crudo -> df canonico tipado."""
     df = read_raw_csv(path)
     df = normalize_columns(df)
     df = to_numeric(df)
     df = parse_timestamp(df)
-    df = classify_rows(df)
     df["fuente_archivo"] = path.name
     logger.info("Extraido %s: %d filas", path.name, len(df))
     return df

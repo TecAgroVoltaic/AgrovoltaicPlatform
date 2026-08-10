@@ -1,100 +1,93 @@
-"""Transformacion: limpieza de valores + normalizacion temporal (resampleo).
+"""Transformacion: split por fuente + normalizacion temporal (resampleo). SIN limpieza.
 
-Implementa las decisiones tomadas (docs/memoria/decisiones/decisiones.md):
-  - Temp 85.0 / fuera de rango -> NULL
-  - Irradiancia offset -38.845 -> 0, negativos -> 0
-  - Inversor: potencia negativa -> 0, freq/vac fuera de rango -> NULL
-  - Resampleo a 5 min: mean para tasas, last para acumulados
+Regla rectora validada con Leo Cardinale (2026-08-10): **el dato crudo se conserva
+tal cual en la base**; toda correccion (temp 85, offset −38.845, fuera de rango,
+calibracion) vive en la CAPA DE ANALISIS (vistas SQL `v_*_corregido`, ver ddl.py),
+generando variables corregidas nuevas. Aqui NO se anula ni se recorta ningun valor.
 
-NO incluye calibracion de irradiancia (Paso 5b) ni features PR/CSI (Paso 8):
-estan bloqueados hasta tener lat/lon, kWp y modelo de piranometro.
+Este modulo:
+  1. split_streams(): separa cada archivo en dos flujos por fuente fisica —
+     ELECTRICO (inversor + DS18B20) y RADIACION (piranometro + SP722).
+  2. resampleo por flujo a su cadencia oficial: electrico 5 min, radiacion 15 s
+     (mean para tasas, last para acumuladores). Solo re-agrupa en el tiempo; los
+     valores agregados son promedios/ultimos del CRUDO, no valores limpiados.
+
+Ver docs/memoria/decisiones/respuestas-leo-cardinale.md (P2/P5/P8/P9).
 """
 
 from __future__ import annotations
 
 import logging
 
-import numpy as np
 import pandas as pd
 
 from . import config
-from .schemas import agg_method, cols_with_tag
+from .schemas import agg_method, cols_electrico, cols_radiacion
 
 logger = logging.getLogger(__name__)
 
 
-def _clip_range(s: pd.Series, lo: float, hi: float) -> pd.Series:
-    """Valores fuera de [lo, hi] -> NaN."""
-    return s.mask((s < lo) | (s > hi))
+def split_streams(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Separa el df extraido en (electrico, radiacion) por columnas de cada fuente.
 
-
-def clean_temperatures(df: pd.DataFrame) -> pd.DataFrame:
-    """85.0 (sensor desconectado) y fuera de rango -> NULL. Aplica a tag 'temperatura'."""
-    out = df.copy()
-    lo, hi = config.TEMP_VALID_RANGE
-    for col in cols_with_tag("temperatura"):
-        if col not in out.columns:
-            continue
-        bad = out[col] == config.TEMP_SENSOR_ERROR
-        out[col] = out[col].mask(bad)
-        out[col] = _clip_range(out[col], lo, hi)
-    return out
-
-
-def clean_irradiance(df: pd.DataFrame) -> pd.DataFrame:
-    """Offset nocturno -> 0, negativos -> 0. Aplica a tag 'irradiancia_flux'.
-
-    (Calibracion a W/m2 = pendiente hasta tener lat/lon y modelo de piranometro.)
+    Una fila entra al flujo electrico si tiene >=1 medida electrica; entra al de
+    radiacion si tiene >=1 medida de radiacion. Un archivo reciente (5 min) trae
+    ambas en la misma fila -> aporta a los dos flujos (el crudo no se duplica: cada
+    flujo toma solo sus columnas).
     """
-    out = df.copy()
-    for col in cols_with_tag("irradiancia_flux"):
-        if col not in out.columns:
-            continue
-        near_offset = np.isclose(out[col], config.OFFSET_NOCTURNO, atol=1e-3)
-        out.loc[near_offset, col] = 0.0
-        out.loc[out[col] < 0, col] = 0.0
-    return out
+    elec_cols = [c for c in cols_electrico() if c in df.columns]
+    rad_cols = [c for c in cols_radiacion() if c in df.columns]
+
+    if elec_cols:
+        elec = df.loc[df[elec_cols].notna().any(axis=1), ["timestamp", *elec_cols]]
+    else:
+        elec = df.iloc[0:0][["timestamp"]]
+
+    if rad_cols:
+        rad = df.loc[df[rad_cols].notna().any(axis=1), ["timestamp", *rad_cols]]
+    else:
+        rad = df.iloc[0:0][["timestamp"]]
+
+    return elec.copy(), rad.copy()
 
 
-def clean_inverter(df: pd.DataFrame) -> pd.DataFrame:
-    """Potencia negativa -> 0 (tag 'potencia'); freq y vac fuera de rango -> NULL."""
-    out = df.copy()
-    for col in cols_with_tag("potencia"):
-        if col in out.columns:
-            out.loc[out[col] < 0, col] = 0.0
-    if "frecuencia_hz" in out.columns:
-        out["frecuencia_hz"] = _clip_range(out["frecuencia_hz"], *config.FREQ_VALID_RANGE)
-    if "voltaje_vac" in out.columns:
-        out["voltaje_vac"] = _clip_range(out["voltaje_vac"], *config.VAC_VALID_RANGE)
-    return out
+def _resample(df: pd.DataFrame, interval: str) -> pd.DataFrame:
+    """Resamplea un flujo a `interval`. Metodo por columna via schemas.agg_method().
 
-
-def resample_5min(df: pd.DataFrame) -> pd.DataFrame:
-    """Resamplea a 5 min. El metodo por columna lo decide schemas.agg_method().
-
-    Agrega n_muestras (filas originales por ventana) e intervalo_original_seg.
+    Agrega n_muestras (filas crudas por ventana) e intervalo_original_seg (mediana
+    del paso original, util para saber la cadencia nativa de cada tramo). Descarta
+    ventanas vacias -> no fabrica filas al bajar a 15 s data mas gruesa.
     """
+    measures = [c for c in df.columns if c != "timestamp"]
+    if df.empty or not measures:
+        return pd.DataFrame(columns=["timestamp", *measures, "n_muestras", "intervalo_original_seg"])
+
     out = df.set_index("timestamp").sort_index()
-
     intervalo = out.index.to_series().diff().dt.total_seconds().median()
 
-    # Agregacion derivada dinamicamente de las columnas presentes.
     agg = {col: agg_method(col) for col in out.columns}
-
-    res = out.resample(config.RESAMPLE_INTERVAL).agg(agg)
-    res["n_muestras"] = out.resample(config.RESAMPLE_INTERVAL).size()
+    res = out.resample(interval).agg(agg)
+    res["n_muestras"] = out.resample(interval).size()
     res["intervalo_original_seg"] = round(intervalo) if pd.notna(intervalo) else None
 
-    # Ventanas vacias (sin filas reales) se descartan
     res = res[res["n_muestras"] > 0].reset_index()
     return res
 
 
-def transform_file(df: pd.DataFrame) -> pd.DataFrame:
-    """Pipeline de transformacion para el df de un archivo ya extraido."""
-    df = clean_temperatures(df)
-    df = clean_irradiance(df)
-    df = clean_inverter(df)
-    df = resample_5min(df)
-    logger.info("Transformado -> %d filas a 5 min", len(df))
-    return df
+def transform_file(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Extraido -> (electrico 5 min, radiacion 15 s), ambos CRUDO. Sella fuente_archivo."""
+    fuente = df["fuente_archivo"].iloc[0] if "fuente_archivo" in df.columns and len(df) else None
+
+    elec_raw, rad_raw = split_streams(df)
+    elec = _resample(elec_raw, config.RESAMPLE_ELECTRICO)
+    rad = _resample(rad_raw, config.RESAMPLE_RADIACION)
+
+    for frame in (elec, rad):
+        if not frame.empty:
+            frame["fuente_archivo"] = fuente
+
+    logger.info(
+        "Transformado -> electrico %d filas (5 min), radiacion %d filas (15 s)",
+        len(elec), len(rad),
+    )
+    return elec, rad

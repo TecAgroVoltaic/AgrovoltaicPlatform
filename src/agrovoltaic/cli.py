@@ -33,20 +33,25 @@ def cmd_audit() -> None:
 
 def cmd_dry_run() -> None:
     from . import config, pipeline
-    df = pipeline.dry_run()
-    print(f"Filas resultantes: {len(df):,}")
-    if df.empty:
-        return
-    print(f"Rango: {df['timestamp'].min()} -> {df['timestamp'].max()}")
-    nulls = df.isna().mean().mul(100).round(1)
-    print("% NULL por columna:")
-    print(nulls.to_string())
+    elec, rad = pipeline.dry_run()
+    for label, df in (("ELECTRICO (5 min)", elec), ("RADIACION (15 s)", rad)):
+        print(f"\n=== {label} ===")
+        print(f"Filas resultantes: {len(df):,}")
+        if df.empty:
+            continue
+        print(f"Rango: {df['timestamp'].min()} -> {df['timestamp'].max()}")
+        nulls = df.isna().mean().mul(100).round(1)
+        print("% NULL por columna:")
+        print(nulls.to_string())
 
-    resp = input("\nGuardar resultado a CSV? (s/n): ").strip().lower()
+    resp = input("\nGuardar resultados a CSV? (s/n): ").strip().lower()
     if resp in ("s", "si", "y", "yes"):
         config.OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-        df.to_csv(config.DRY_RUN_CSV, index=False)
-        print(f"Guardado en: {config.DRY_RUN_CSV}")
+        if not elec.empty:
+            elec.to_csv(config.OUTPUT_DIR / "dry_run_electrico.csv", index=False)
+        if not rad.empty:
+            rad.to_csv(config.OUTPUT_DIR / "dry_run_radiacion.csv", index=False)
+        print(f"Guardados en: {config.OUTPUT_DIR}")
 
 
 def cmd_print_schema() -> None:
@@ -72,6 +77,18 @@ def cmd_init_db() -> None:
     print("Tablas creadas/actualizadas en Supabase.")
 
 
+def cmd_refresh_clearsky() -> None:
+    import psycopg
+
+    from . import calibracion, config, performance
+    with psycopg.connect(config.require_database_url()) as conn:
+        n = calibracion.refresh_clearsky(conn, full=False)
+        conn.commit()
+        m = performance.refresh_poa(conn, full=False)
+        conn.commit()
+    print(f"Clear-sky: {n} timestamps. POA por arreglo: {m} timestamps.")
+
+
 def cmd_run_incremental() -> None:
     _run(full=False)
 
@@ -84,7 +101,8 @@ def _run(full: bool) -> None:
     from . import pipeline
     result = pipeline.run(full=full)
     print(f"OK procesados={len(result.processed)} saltados={len(result.skipped)} "
-          f"fallidos={len(result.failed)} filas={result.total_rows}")
+          f"fallidos={len(result.failed)} | electrico={result.rows_electrico} "
+          f"radiacion={result.rows_radiacion} filas")
     for name, err in result.failed.items():
         print(f"  FALLO {name}: {err}", file=sys.stderr)
 
@@ -96,6 +114,7 @@ _MENU = [
     ("Crear/actualizar tablas (generar sql/schema.sql)", cmd_generate_schema),
     ("Subir tablas a Supabase (aplicar el DDL)", cmd_init_db),
     ("Ver DDL en pantalla (solo muestra, no guarda)", cmd_print_schema),
+    ("Calcular clear-sky + POA (calibracion/QC + Performance Ratio)", cmd_refresh_clearsky),
     ("Cargar datos a Supabase (incremental)", cmd_run_incremental),
     ("Cargar datos a Supabase (reprocesar TODO — vacía y recarga)", cmd_run_full),
 ]

@@ -30,12 +30,44 @@ El diccionario decía "PV1 = arreglo 1 / PV2 = arreglo 2" pero **no** cuál era 
 inclinado. Ahora fijo: **PV1 = Inclinado, PV2 = Vertical**. Cualquier comparación entre arreglos
 (p. ej. producción vertical vs. inclinado) usa este mapeo o queda invertida.
 
+## Ubicación del sitio (para clear-sky)
+
+| Parámetro | Valor | Nota |
+|---|---|---|
+| Latitud | **10.33** | nivel ciudad (San Carlos / Ciudad Quesada, Alajuela) |
+| Longitud | **−84.42** | |
+| Altitud | **600 m** | afina la turbidez Linke (refinamiento opcional) |
+| Timezone | **America/Costa_Rica** | UTC−6 fijo, sin horario de verano |
+
+Fuente: `agente-pronostico/src/pronostico/config.py` (overrideable por `SITE_LAT`/`SITE_LON`/`SITE_ALT`/`SITE_TZ`).
+
 ## Uso en calibración
 
-Con lat/lon del sitio (Izack la tiene, [[bloqueantes]]) + estos tilt/azimut, el **modelo
-clear-sky (pvlib)** es viable como camino de calibración de irradiancia — necesario porque **no
-existe constante de calibración guardada** ("celda calibrada" = nombre comercial, [[respuestas-leo-cardinale]]).
-Ver [[irradiancia-sin-calibrar]].
+Con la lat/lon de arriba + estos tilt/azimut, el **modelo clear-sky (pvlib)** es el camino de
+calibración de irradiancia — necesario porque **no existe constante de calibración guardada**
+("celda calibrada" = nombre comercial, [[respuestas-leo-cardinale]]). El agente de pronóstico ya
+usa este modelo (Ineichen + Linke climatológica, `agente-pronostico/src/pronostico/physics.py`);
+la calibración reutiliza ese enfoque. Ver [[irradiancia-sin-calibrar]].
+
+## Performance Ratio + bifacialidad (2026-08-10)
+
+Primer cálculo de PR por arreglo (transposición GHI→POA por plano con pvlib, PR = (P_dc/1420 Wp)/(POA/1000)):
+
+| Arreglo | PR frontal | PR bifacial (φ=0,80) | Ganancia trasera |
+|---|---|---|---|
+| PV1 inclinado | 0,72 | **0,62** | ~16 % |
+| PV2 vertical  | 1,13 | **0,62** | ~94 % |
+
+**Hallazgo:** con POA solo-frontal el vertical da **PR>1** (imposible) porque es **bifacial** y
+capta ~94 % extra por la cara trasera (reflejo del suelo + sol por detrás). Al modelar la
+bifacialidad (dos planos: frontal + φ·trasera, albedo medido), **ambos arreglos convergen a
+PR ≈ 0,62** — validación física: mismos paneles/inversor/sitio → mismo PR intrínseco. La
+convergencia ocurre en **φ ≈ 0,80**, lo que **estima empíricamente el factor de bifacialidad**
+(a confirmar con datasheet). *Pendiente del equipo: factor de bifacialidad real y, para afinar la
+POA trasera, geometría de filas (GCR/altura/pitch).*
+
+Capa implementada: tabla `radiacion_sc_poa` (POA frontal + bifacial por arreglo, pvlib) + vista
+`v_sc_performance` (`pr_pv1`, `pr_pv2`). Módulo `performance.py`. Ver [[implementacion]].
 
 Relacionado: [[respuestas-leo-cardinale]], [[bloqueantes]], [[irradiancia-sin-calibrar]],
-[[diccionario-variables]], [[metodologia]].
+[[diccionario-variables]], [[metodologia]], [[implementacion]].

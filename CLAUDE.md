@@ -13,21 +13,22 @@ El objetivo es limpiar y estandarizar todo para insertarlo en **Supabase** media
 ```
 docs/memoria/
   INDEX.md              ← mapa maestro (empieza aca)
-  proyecto/             ← objetivo, estado
-  datos/                ← fuentes fisicas, dataset actual
+  proyecto/             ← objetivo, estado, implementacion, regiones, capa de agentes
+  datos/                ← fuentes fisicas, dataset actual, esquemas (AgroDash, etc.)
   inconsistencias/      ← un archivo por problema, con evidencia contada en NEW
   decisiones/           ← que decidimos y por que
-  pendientes/           ← lo que bloquea (lat/lon, kWp, timezone, sensor)
-  contexto-externo/     ← AgroDash (sistema aparte)
+  pendientes/           ← lo que bloquea (lat/lon, kWp, modelo de sensor)
+  contexto-externo/     ← AgroDash (DB de la region Cartago)
 ```
 
 ## Estado actual
 
 - EDA exhaustivo completo: identifico los 13 schemas, los problemas de calidad y las brechas temporales
-- Pipeline de limpieza priorizado (TODO) con 12 pasos en 6 fases — diseñado, NO implementado
-- 17 preguntas pendientes para el equipo de campo (lat/lon, modelo de sensores, kWp, timezone)
+- **Pipeline ETL implementado y corrido OK** (`src/agrovoltaic/`): 285 CSV → **36.630 filas** en la tabla `monitoreo_agrovoltaic` de Supabase. Idempotente e incremental. Detalle en `docs/memoria/proyecto/implementacion.md`
+- **2026-08-10 — Leo Cardinale validó el tratamiento (doc rev LCV).** Regla rectora nueva: **guardar el crudo en la DB y corregir en una capa de análisis** (superó 85→NULL, offset→0, resampleo-todo-a-5-min). Bloqueantes de geometría RESUELTOS. Implica **rediseñar el esquema Supabase + re-correr el ETL**. Fuente de verdad: `docs/memoria/decisiones/respuestas-leo-cardinale.md`
+- **Pendiente:** separacion fina de filas mezcladas (Paso 2) y **calibracion de irradiancia** (ya desbloqueada: clear-sky con lat/lon + tilt/azimut; ver `docs/memoria/datos/geometria-sistema.md`)
+- Siguiente fase en diseño: **capa de agentes** (Comparador + Analizador) sobre dos regiones — ver `docs/memoria/proyecto/capa-agentes.md`
 - **Verificacion 2026-06-01:** la carpeta `NEW` (285 CSVs) reproduce TODAS las inconsistencias del EDA. Es `OLD + 8 archivos nuevos` (2026-05-25 a 2026-06-01), sin limpiar
-- **No se ha escrito codigo de limpieza todavia** — fase de entendimiento y planificacion
 
 ## Estructura del proyecto
 
@@ -38,13 +39,13 @@ AgroVoltaic/
     Monitoreo-AgroVoltaic-SC-NEW/   ← CARPETA ACTIVA: 285 CSVs crudos (2024-11-10 a 2026-06-01)
     Monitoreo-AgroVoltaic-SC-OLD/   ← snapshot anterior (277 CSVs), referencia
     *.zip                           ← descargas originales
+  src/agrovoltaic/          ← pipeline ETL (ver README.md y memoria/proyecto/implementacion.md)
   docs/
-    memoria/                        ← SISTEMA DE MEMORIA (empezar por INDEX.md)
-    EDA-Monitoreo-AgroVoltaic.md    ← analisis exploratorio completo
-    TODO-Pipeline-Limpieza.md       ← pipeline de 12 pasos con mapeos de schemas
-    DUDAS-Pendientes.md / .pdf      ← 17 preguntas que bloquean decisiones
-    ObjetivosProyecto.md            ← plan de trabajo de la pasantia (contexto academico)
-    referencia_api_agrodash.pdf     ← contexto de AgroDash (SISTEMA APARTE, no combinar)
+    memoria/        ← SISTEMA DE MEMORIA (empezar por INDEX.md)
+    referencia/     ← docs largos: EDA, TODO-Pipeline (ya implementado), columnas-supabase, ObjetivosProyecto, agrodash-control-schema.sql
+    conceptos/      ← material pedagogico: glosario + diagramas HTML (+ img/)
+    equipo/         ← interaccion con el equipo: DUDAS-Pendientes (.md/.pdf), Preguntas-Profesor.pdf, Minuta_Reunion
+    _archivo/       ← desactualizado/historico: referencia_api_agrodash.pdf, Need.md
 ```
 
 ## Problemas clave de los datos (verificados en NEW, 2026-06-01)
@@ -61,25 +62,35 @@ Detalle por inconsistencia (con evidencia): `docs/memoria/inconsistencias/`.
 
 ## Decisiones tomadas
 
-- Resamplear todo a 5 minutos (el intervalo mas grueso) con mean para rates y last para acumulados
-- Temperaturas de 85.0 → NULL (no interpolar, marcar como error de sensor). Respaldado por AgroDash (su API solo acepta -10..60 C)
-- Irradiancia -38.845 → 0 (offset nocturno)
-- Calibracion de irradiancia pendiente hasta tener lat/lon y modelo del piranometro
+**Validadas con Leo Cardinale (2026-08-10, doc rev LCV) — regla rectora: crudo en la DB, corrección en capa de análisis:**
+- **Guardar el valor crudo**; cada corrección (temp 85, offset −38.845, fuera de rango) genera una **variable/columna corregida nueva**. NO transformar in-place. *(Superó: 85→NULL, offset→0.)*
+- **Muestreo:** variables eléctricas a **5 min**; **radiación a 15 s en tabla aparte** (era 10 s; ThingSpeak no permite <15 s). Muestreos <10 s = pruebas → conservar o promediar a 15 s. *(Superó: resamplear todo a 5 min.)*
+- **Temperatura válida: 10–80 °C** (reemplaza el −10..60 C de AgroDash), aplicado en posproceso.
+- **Filas mezcladas:** recuperar lo posible (como hizo Joshua), aceptar huecos.
+- **Nombres de columnas aprobados**; abreviar los largos + tabla de definiciones.
+- **Calibración de irradiancia:** no hay constante guardada ("celda calibrada" = nombre comercial) → **clear-sky (pvlib)** con lat/lon + tilt/azimut. Descartar irradiancia **pre-mediados-2025** (error corregido a mediados 2025); **SP722** desde mayo 2026.
+
+**Otras (previas, vigentes):**
 - No generar datos sinteticos para los gaps largos (126 y 71 dias) — usar NASA POWER como referencia paralela
 - Archivos duplicados exactos se eliminan; los fragmentos `(N)` requieren decision del usuario
 - La carga a Supabase debe ser un pipeline automatizado/idempotente, no un proceso temporal
 
+Detalle y justificacion: `docs/memoria/decisiones/decisiones.md` y `docs/memoria/decisiones/respuestas-leo-cardinale.md`.
+
 ## Informacion pendiente (bloqueante)
 
-Estas preguntas bloquean la calibracion de irradiancia y el calculo de Performance Ratio:
-1. **Lat/lon** del sitio
-2. **kWp instalados** (total y por string)
-3. **Timezone** de los timestamps — SIN CONFIRMAR. El `CLAUDE.md` asumia UTC-4 Bolivia; AgroDash usa UTC-6 Costa Rica pero es otro sistema, asi que no lo resuelve. Conflicto abierto para el equipo de campo
-4. **Modelo del piranometro pre-2025** (el reciente es SP722)
+**2026-08-10 — casi todo RESUELTO por Leo Cardinale** (ver `docs/memoria/datos/geometria-sistema.md`):
+- ✅ **kWp:** 1420 Wp por arreglo (4 × 355 Wp), 2840 Wp total, bifaciales
+- ✅ **Tilt/azimut y mapeo:** PV1 = Inclinado (20°/150°) · PV2 = Vertical (90°/50°); Norte=0°, horario+
+- ✅ **Constante de calibración:** no existe ("celda calibrada" = nombre comercial) → calibrar por clear-sky
+- ✅ **Lat/lon:** la tiene Izack · ✅ **Timezone:** Costa Rica UTC−6
 
-## AgroDash — sistema APARTE (no combinar)
+Único bloqueante restante (no bloquea San Carlos PV, solo el Comparador entre regiones):
+- **Mapeo caja→sitio fino en AgroDash** (que cajas son Cartago y cuales San Carlos)
 
-`docs/referencia_api_agrodash.pdf` documenta **AgroDash**, un dashboard YA en produccion (Rust+Axum+PostgreSQL) de **sensores agronomicos/de suelo** (humedad, ec, potencial, polinomial, calibrada, temperatura). Es un sistema hermano pero **completamente separado**: NO se fusiona con la data fotovoltaica. El PDF es solo contexto general de referencia, NO una guia a seguir. Ver `docs/memoria/contexto-externo/agrodash.md`.
+## AgroDash — region Cartago (no fusionar a nivel de datos)
+
+`docs/_archivo/referencia_api_agrodash.pdf` (**DESACTUALIZADO**) documenta **AgroDash**. Realidad vigente (ver `docs/memoria/contexto-externo/agrodash.md` y `docs/memoria/datos/agrodash-esquema.md`): AgroDash es la **base de datos de la region Cartago** (PostgreSQL, app Rust/Axum) de sensores de **suelo/ambiente** (humedad, EC, temperatura, irradiancia, PAR) — **NO** fotovoltaica. A nivel de **almacenamiento** sigue separada de la Supabase PV de San Carlos (no se fusionan tablas), pero el **Agente Comparador SI la lee** y la data ambiental de San Carlos ya vive ahi (cajas con sufijo `SC`). Usar el esquema real (`docs/referencia/agrodash-control-schema.sql`), no el PDF.
 
 ## Herramientas recomendadas
 

@@ -1,7 +1,7 @@
-"""Carga a Supabase: UPSERT idempotente a nivel de fila.
+"""Carga a Supabase: UPSERT idempotente a nivel de fila, por tabla.
 
-PRIMARY KEY = timestamp. ON CONFLICT DO UPDATE => re-correr nunca duplica.
-Carga masiva con executemany sobre conexion directa (no REST).
+PRIMARY KEY = timestamp en cada tabla. ON CONFLICT DO UPDATE => re-correr nunca
+duplica. Carga masiva con executemany sobre conexion directa (no REST).
 """
 
 from __future__ import annotations
@@ -13,47 +13,49 @@ import pandas as pd
 import psycopg
 
 from . import config
-from .schemas import CANONICAL_COLUMNS, GENERATED_COLUMNS
+from .schemas import electrico_table_columns, radiacion_table_columns
 
 logger = logging.getLogger(__name__)
 
 
 def truncate(conn: psycopg.Connection) -> None:
-    """Vacia la tabla principal y el log de ingesta (rebuild limpio del reprocesado full)."""
+    """Vacia las tablas de datos y el log de ingesta (rebuild limpio del full)."""
     with conn.cursor() as cur:
-        cur.execute(f"TRUNCATE TABLE {config.TABLE_MAIN}")
+        cur.execute(f"TRUNCATE TABLE {config.TABLE_ELECTRICO}")
+        cur.execute(f"TRUNCATE TABLE {config.TABLE_RADIACION}")
         cur.execute(f"TRUNCATE TABLE {config.TABLE_INGEST_LOG}")
-    logger.info("Tablas %s y %s truncadas", config.TABLE_MAIN, config.TABLE_INGEST_LOG)
+    logger.info("Tablas de datos y log de ingesta truncadas")
 
 
-# Columnas que se insertan = schema canonico + metadata generada. Derivado, no quemado.
-_INSERT_COLUMNS = CANONICAL_COLUMNS + list(GENERATED_COLUMNS)
-
-
-def _rows_for_insert(df: pd.DataFrame) -> list[tuple]:
-    """Convierte el df a lista de tuplas, NaN -> None (NULL en Postgres)."""
-    frame = df.reindex(columns=_INSERT_COLUMNS)
-    frame = frame.replace({np.nan: None})
+def _rows_for_insert(df: pd.DataFrame, columns: list[str]) -> list[tuple]:
+    """Convierte el df a lista de tuplas alineadas a `columns`, NaN -> None (NULL)."""
+    frame = df.reindex(columns=columns).replace({np.nan: None})
     return [tuple(r) for r in frame.itertuples(index=False, name=None)]
 
 
-def upsert(conn: psycopg.Connection, df: pd.DataFrame) -> int:
-    """Upsert del df a la tabla principal. Devuelve nº de filas enviadas."""
-    if df.empty:
+def upsert(conn: psycopg.Connection, df: pd.DataFrame, table: str, columns: list[str]) -> int:
+    """Upsert del df a `table` (PK timestamp). Devuelve nº de filas enviadas."""
+    if df is None or df.empty:
         return 0
 
-    cols = ", ".join(_INSERT_COLUMNS)
-    placeholders = ", ".join(["%s"] * len(_INSERT_COLUMNS))
-    updates = ", ".join(
-        f"{c} = EXCLUDED.{c}" for c in _INSERT_COLUMNS if c != "timestamp"
-    )
+    cols = ", ".join(columns)
+    placeholders = ", ".join(["%s"] * len(columns))
+    updates = ", ".join(f"{c} = EXCLUDED.{c}" for c in columns if c != "timestamp")
     sql = (
-        f"INSERT INTO {config.TABLE_MAIN} ({cols}) VALUES ({placeholders}) "
+        f"INSERT INTO {table} ({cols}) VALUES ({placeholders}) "
         f"ON CONFLICT (timestamp) DO UPDATE SET {updates}"
     )
 
-    rows = _rows_for_insert(df)
+    rows = _rows_for_insert(df, columns)
     with conn.cursor() as cur:
         cur.executemany(sql, rows)
-    logger.info("Upsert %d filas en %s", len(rows), config.TABLE_MAIN)
+    logger.info("Upsert %d filas en %s", len(rows), table)
     return len(rows)
+
+
+def upsert_electrico(conn: psycopg.Connection, df: pd.DataFrame) -> int:
+    return upsert(conn, df, config.TABLE_ELECTRICO, electrico_table_columns())
+
+
+def upsert_radiacion(conn: psycopg.Connection, df: pd.DataFrame) -> int:
+    return upsert(conn, df, config.TABLE_RADIACION, radiacion_table_columns())

@@ -11,8 +11,10 @@ Bloquea la **calibración de irradiancia** y el cálculo de **Performance Ratio*
 > **⚠️ 2026-08-10 — Leo Cardinale cerró casi todos los bloqueantes de geometría/calibración**
 > (doc rev LCV, [[respuestas-leo-cardinale]]). Detalle físico en [[geometria-sistema]].
 
-1. ~~Lat/lon~~ **RESUELTO (2026-07-03):** Izack tiene la lat/lon del sitio San Carlos
-   (falta registrar el valor acá cuando lo comparta). Desbloquea el ajuste clear-sky.
+1. ~~Lat/lon~~ **RESUELTO (2026-07-03; valor registrado 2026-08-10):** San Carlos
+   **lat `10.33`, lon `-84.42`, altitud `600 m`**, tz `America/Costa_Rica` (nivel ciudad,
+   overrideable por `SITE_LAT`/`SITE_LON`/`SITE_ALT`). Fuente: `agente-pronostico/src/pronostico/config.py`.
+   Desbloquea el ajuste clear-sky. Ver [[geometria-sistema]].
 2. ~~kWp instalados~~ **RESUELTO (2026-08-10):** **1420 Wp por arreglo** (4 × 355 Wp),
    **2840 Wp total**, bifaciales (factor de bifacialidad para análisis avanzado). Ver [[geometria-sistema]].
 3. ~~Tilt/azimut y mapeo PV1/PV2~~ **RESUELTO (2026-08-10):** **PV1 = Inclinado** (tilt 20°,
