@@ -68,14 +68,15 @@ trigger + aiAgent Haiku + 6 httpRequestTool + output). Runbook: `agente-analizad
   `envsubst`+`nginx -t`+`nginx -s reload`). **Probado público:** `/analizador/health` OK,
   `/tool/*` con `x-api-key` OK, sin key → 401.
 
-**Pendiente:**
-1. **Durabilidad de nginx (bloqueado para el asistente):** la location vive en el checkout de la EC2
-   y se **borra en el próximo deploy del Backend** (`deploy.yml` → `git reset --hard origin/master`).
-   Persistirla requiere commitear el bloque `/analizador/` a `Visione-Edge/Agent-Runtime` y pushear,
-   **PERO la EC2 tiene git read-only** (push denegado) y no hay clon local con escritura → **lo debe
-   hacer el usuario** (o quien tenga escritura). El sidecar SÍ sobrevive (compose aparte fuera del git).
-   Hasta entonces la ruta pública funciona pero **no sobrevive un deploy del Backend**.
-2. **Canvas:** importar `flujo-visioneflow.json` + pegar la `ANALIZADOR_API_KEY` en cada httpRequestTool
+**Durabilidad de nginx: RESUELTA (2026-08-10).** El bloque `/analizador/` se commiteó a
+`Visione-Edge/Agent-Runtime` master (commit `df218f6`, vía clon fresco: la EC2 y el `Backend/` local
+estaban read-only/atrasados) y el **deploy (`deploy.yml`) corrió OK** (CI+Deploy success, ~2,5 min,
+**sin downtime** — health 200 durante todo). Post-`git reset`+rebuild: endpoint OK, sidecar sobrevivió.
+→ La ruta pública ahora es **permanente**. (Nota: el repo backend se renombró; `Visione-Edge/Agent-Runtime`
+== el viejo `iZackk26/Agent-Backend-Executor`. Frontend: `Visione-Edge/OctopIA-Flow`.)
+
+**Pendiente (único):**
+- **Canvas:** importar `flujo-visioneflow.json` + pegar la `ANALIZADOR_API_KEY` en cada httpRequestTool
    (acción en la plataforma). La key está en `/home/ec2-user/analizador/analizador.env`.
 Ver [[integracion-visioneflow]].
 
