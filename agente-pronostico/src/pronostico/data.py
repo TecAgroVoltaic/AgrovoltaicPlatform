@@ -157,6 +157,40 @@ def get_recent_data(now, lookback_min: float,
     return serie[(serie.index >= desde) & (serie.index < now)]  # < now: sin fuga
 
 
+def peek_serie(variable: str = Variable.IRRADIANCIA.value,
+               bucket: str = "D", ultimos_dias: int | None = 60) -> dict:
+    """Panorama de una serie del store para el debugger (resumen + puntos a graficar).
+
+    Solo LECTURA del cache (no toca la DB si el parquet existe). `bucket` es un
+    alias de resample de pandas ('h', 'D', 'W'); `ultimos_dias` recorta la cola
+    (None = toda la serie). Devuelve estadisticas globales + serie remuestreada
+    (media por bucket) lista para una grafica."""
+    serie = cargar_serie(variable)
+    if ultimos_dias:
+        corte = serie.index.max() - pd.Timedelta(days=int(ultimos_dias))
+        vista = serie[serie.index >= corte]
+    else:
+        vista = serie
+    res = vista.resample(bucket).mean().dropna()
+    dt = serie.index.to_series().diff().dropna()
+    return {
+        "variable": variable,
+        "bucket": bucket,
+        "ultimos_dias": ultimos_dias,
+        "resumen": {
+            "filas": int(len(serie)),
+            "desde": serie.index.min().isoformat(),
+            "hasta": serie.index.max().isoformat(),
+            "cadencia_mediana_seg": (None if dt.empty
+                                     else int(dt.median().total_seconds())),
+            "valor_min": float(serie.min()),
+            "valor_max": float(serie.max()),
+            "valor_media": float(serie.mean()),
+        },
+        "puntos": [{"t": t.isoformat(), "v": float(v)} for t, v in res.items()],
+    }
+
+
 # ---------------------------------------------------------------------------
 def main() -> None:
     """CLI: fuerza la descarga de una variable, cachea e imprime diagnostico.

@@ -10,6 +10,15 @@ __pycache__/
 .pytest_cache/
 .ipynb_checkpoints/
 
+# Acumulado de uso/costo de los agentes (estado local, no se versiona)
+.uso/
+
 # Artefactos del pipeline
 /output/
+/data/
 *.parquet
+
+# Dumps de base de datos (grandes + datos de produccion ajenos, NO commitear)
+/sql/dump/
+*.dump
+*.dump.gz

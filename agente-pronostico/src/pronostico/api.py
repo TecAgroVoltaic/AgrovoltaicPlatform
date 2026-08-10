@@ -15,11 +15,13 @@ import os
 import secrets
 import time
 
-from fastapi import Depends, FastAPI, Header, HTTPException, status
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
 from pronostico import anomalias as anomalias_mod
 from pronostico import audit
+from pronostico import data as data_mod
+from pronostico import uso as uso_mod
 from pronostico.domain import Variable
 from pronostico.tools.forecast_tool import FORECAST_TOOL_SCHEMA, run_forecast
 
@@ -64,6 +66,12 @@ class ForecastRequest(BaseModel):
     )
 
 
+class Pregunta(BaseModel):
+    """Cuerpo de POST /preguntar."""
+
+    pregunta: str
+
+
 class AnomaliasRequest(BaseModel):
     """Cuerpo de POST /anomalias."""
 
@@ -92,6 +100,53 @@ def _verificar_api_key(x_api_key: str | None = Header(default=None)) -> None:
 def health() -> dict:
     """Ping para monitoreo/orquestadores. No toca datos ni exige clave."""
     return {"status": "ok"}
+
+
+# Agente perezoso: solo se construye al primer /preguntar (anthropic.Anthropic()
+# exige ANTHROPIC_API_KEY al crear el cliente; el resto de endpoints no dependen
+# de esa clave).
+_AGENTE = None
+
+
+def _agente():
+    global _AGENTE
+    if _AGENTE is None:
+        from pronostico.agent.agent import ForecastAgent
+        _AGENTE = ForecastAgent()
+    return _AGENTE
+
+
+@app.post("/preguntar", dependencies=[Depends(_verificar_api_key)])
+def preguntar(cuerpo: Pregunta) -> dict:
+    """Corre el lazo LLM completo y devuelve la TRAZA (pasos + forecast + respuesta + costo).
+
+    Es la vista del debugger: se ve el horizonte que tradujo, el input a `forecast`,
+    su salida cruda (valor + banda + contexto), la redaccion final y el costo USD.
+    La acumulacion de uso/costo se hace ACA (no en conversar()) para mantener el lazo puro."""
+    traza = _agente().conversar(cuerpo.pregunta)
+    try:
+        uso_mod.registrar(traza)  # best-effort: un fallo de disco no debe tumbar la respuesta
+    except Exception:
+        pass
+    return traza
+
+
+@app.get("/uso", dependencies=[Depends(_verificar_api_key)])
+def consumo() -> dict:
+    """Consumo acumulado del agente (tokens + costo USD + nº consultas, por modelo)."""
+    return uso_mod.resumen()
+
+
+@app.get("/serie", dependencies=[Depends(_verificar_api_key)])
+def serie(variable: str = Query(Variable.IRRADIANCIA.value),
+          bucket: str = Query("D"), ultimos_dias: int | None = Query(60)) -> dict:
+    """Panorama de una serie del store (resumen + puntos remuestreados para graficar)."""
+    try:
+        return data_mod.peek_serie(variable, bucket, ultimos_dias)
+    except (ValueError, KeyError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        ) from exc
 
 
 @app.post("/forecast", dependencies=[Depends(_verificar_api_key)])
