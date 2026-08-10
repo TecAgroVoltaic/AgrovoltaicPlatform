@@ -57,23 +57,28 @@ def _columnas(rel: str) -> list[dict]:
 
 
 def tablas() -> dict:
-    """Panorama de cobertura: por cada relacion, conteo de filas y rango temporal."""
+    """Panorama de cobertura: por cada relacion, conteo de filas y rango temporal.
+
+    UNA sola consulta (UNION ALL) en vez de N -> un unico round-trip a la DB. Los
+    nombres salen de la allowlist (no del cliente), por eso son seguros de interpolar."""
+    partes = []
+    for clave, (rel, tcol) in RELACIONES.items():
+        col = tcol if tcol else "NULL"
+        partes.append(
+            f"SELECT '{clave}' AS clave, count(*) AS n, "
+            f"min({col})::text AS mn, max({col})::text AS mx FROM {rel}"
+        )
+    filas = {r["clave"]: r for r in db.query(" UNION ALL ".join(partes))}
     out = []
     for clave, (rel, tcol) in RELACIONES.items():
-        if tcol:
-            f = db.uno(
-                f"SELECT count(*) AS n, min({tcol})::text AS mn, max({tcol})::text AS mx "
-                f"FROM {rel}"
-            )
-        else:
-            f = db.uno(f"SELECT count(*) AS n FROM {rel}")
+        r = filas.get(clave, {})
         out.append({
             "clave": clave,
             "relacion": rel,
             "columna_tiempo": tcol,
-            "filas": f.get("n"),
-            "desde": f.get("mn"),
-            "hasta": f.get("mx"),
+            "filas": r.get("n"),
+            "desde": r.get("mn"),
+            "hasta": r.get("mx"),
         })
     return {"relaciones": out}
 
