@@ -1,0 +1,69 @@
+{
+  "name": "Pronóstico programado — San Carlos (write-back)",
+  "description": "Flujo DETERMINISTA (sin LLM): cada hora pronostica irradiancia y humedad de suelo llamando al sidecar /forecast; el sidecar audita cada pronóstico en la tabla `predicciones` (write-back server-side). Al desplegar, el scheduler (BullMQ) registra el schedule y lo dispara solo.",
+  "version": "1.0",
+  "nodes": [
+    {
+      "id": "schedule-1",
+      "type": "scheduleTrigger",
+      "label": "Cada hora",
+      "config": {
+        "enabled": true,
+        "scheduleTimezone": "America/Costa_Rica",
+        "scheduleRules": [
+          {
+            "mode": "interval",
+            "intervalUnit": "hours",
+            "intervalValue": 1,
+            "triggerAtMinute": 0
+          }
+        ]
+      },
+      "position": { "x": 0, "y": 0 }
+    },
+    {
+      "id": "http-irradiancia-1",
+      "type": "httpRequest",
+      "label": "Forecast irradiancia",
+      "config": {
+        "method": "POST",
+        "url": "https://api.flow.visione-edge.com/forecast/forecast",
+        "authType": "apiKey",
+        "apiKeyHeader": "x-api-key",
+        "apiKeyValue": "PEGAR_FORECAST_API_KEY",
+        "bodyType": "json",
+        "body": "{\"variable\":\"irradiancia\",\"horizon_seconds\":3600,\"origen\":\"visioneflow-schedule\"}",
+        "timeout": 30000
+      },
+      "position": { "x": 320, "y": 0 }
+    },
+    {
+      "id": "http-humedad-1",
+      "type": "httpRequest",
+      "label": "Forecast humedad_suelo",
+      "config": {
+        "method": "POST",
+        "url": "https://api.flow.visione-edge.com/forecast/forecast",
+        "authType": "apiKey",
+        "apiKeyHeader": "x-api-key",
+        "apiKeyValue": "PEGAR_FORECAST_API_KEY",
+        "bodyType": "json",
+        "body": "{\"variable\":\"humedad_suelo\",\"horizon_seconds\":3600,\"origen\":\"visioneflow-schedule\"}",
+        "timeout": 30000
+      },
+      "position": { "x": 640, "y": 0 }
+    },
+    {
+      "id": "output-1",
+      "type": "output",
+      "label": "Resultado",
+      "config": { "outputFormat": "json" },
+      "position": { "x": 960, "y": 0 }
+    }
+  ],
+  "connections": [
+    { "source": "schedule-1", "target": "http-irradiancia-1" },
+    { "source": "http-irradiancia-1", "target": "http-humedad-1" },
+    { "source": "http-humedad-1", "target": "output-1" }
+  ]
+}

@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>La luz del sol, medida y explicada</title>
+<style>
+  @page { margin: 1.8cm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    color: #1f2733; line-height: 1.6; font-size: 15px;
+    max-width: 820px; margin: 0 auto; padding: 24px;
+  }
+  h1 { color: #b45309; font-size: 27px; margin-bottom: 4px; }
+  .sub { color: #6b7280; font-size: 15px; margin-top: 0; margin-bottom: 22px; }
+  h2 { color: #1d4ed8; font-size: 20px; margin-top: 34px; border-bottom: 2px solid #e5e7eb; padding-bottom: 5px; }
+  h3 { color: #374151; font-size: 16px; margin-top: 22px; }
+  p { margin: 10px 0; }
+  .intro { background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 16px 18px; }
+  .analogia {
+    background: #eff6ff; border-left: 5px solid #3b82f6; border-radius: 6px;
+    padding: 12px 16px; margin: 14px 0;
+  }
+  .analogia b { color: #1d4ed8; }
+  .clave {
+    background: #f0fdf4; border-left: 5px solid #16a34a; border-radius: 6px;
+    padding: 12px 16px; margin: 14px 0;
+  }
+  figure { margin: 18px 0; page-break-inside: avoid; }
+  figure img { width: 100%; border: 1px solid #e5e7eb; border-radius: 8px; }
+  figcaption { font-size: 13px; color: #6b7280; font-style: italic; margin-top: 6px; text-align: center; }
+  .dato { font-weight: 600; color: #b45309; }
+  ul { margin: 8px 0; }
+  li { margin: 5px 0; }
+  .cierre { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px 18px; margin-top: 28px; }
+  footer { margin-top: 30px; color: #9ca3af; font-size: 12px; text-align: center; }
+</style>
+</head>
+<body>
+
+<h1>La luz del sol, medida y explicada</h1>
+<p class="sub">Qué significan las tres imágenes de la validación · proyecto de pronóstico de irradiancia · 2026-06-30</p>
+
+<div class="intro">
+Este documento explica, en palabras sencillas y <b>sin dar nada por supuesto</b>, qué muestran las
+tres imágenes que generamos y —lo más importante— <b>por qué las hicimos, para qué sirven y qué
+tienen que ver con la vida real</b>. Aunque algo parezca obvio, igual lo explicamos. No hace falta
+saber de programación ni de física para entenderlo.
+</div>
+
+<h2>0. Primero: ¿qué estamos midiendo?</h2>
+<p>
+La palabra rara del proyecto es <b>irradiancia</b>. Significa algo muy simple: <b>cuánta energía del
+sol está cayendo sobre un pedazo de suelo, en este momento</b>. Se mide en vatios por metro cuadrado,
+que se escribe <b>W/m²</b> (imagina cuántos "focos de luz" caen sobre una baldosa de un metro por un
+metro).
+</p>
+<div class="analogia">
+💡 <b>En la vida real:</b> al mediodía de un día despejado caen unos <span class="dato">1000 W/m²</span>
+—como diez focos potentes sobre esa baldosa—. De noche caen 0. Con nubes, algo intermedio. Cuanta más
+irradiancia, más electricidad hace un panel solar y más luz reciben los cultivos. Por eso, saber
+cuánta luz habrá <b>dentro de unas horas</b> ayudaría a planear la energía y el riego.
+</div>
+<p>
+El aparato que la mide se llama <b>piranómetro</b> (un sensor que "cuenta" la luz del sol). En el sitio
+de San Carlos hay uno guardando un dato cada <b>5 minutos</b>. Esos datos son la materia prima de todo.
+</p>
+
+<h2>1. El "techo" del día: el cielo despejado</h2>
+<p>
+Hay una parte del sol que es <b>100 % predecible</b>: su posición en el cielo. Sabemos con precisión de
+reloj a qué hora sale, cuánto sube y a qué hora se pone, cualquier día del año, en cualquier lugar del
+planeta. Es pura astronomía, no hay sorpresa.
+</p>
+<p>
+Con eso podemos calcular el <b>cielo despejado</b>: cuánta luz caería <b>si no hubiera ni una sola
+nube</b>. Es el <b>máximo posible</b> de cada día — el "techo".
+</p>
+<div class="analogia">
+💡 <b>Analogía:</b> es como el <b>horario del tren</b>. El tren (el sol) pasa siempre a la misma hora, y
+eso lo conocemos de antemano. Lo que no sabemos es si habrá un <b>atasco</b> (las nubes) que reduzca lo
+que llega. El horario lo tenemos; la sorpresa son las nubes.
+</div>
+
+<h2>2. Imagen 1 — La luz real contra su techo (10 días)</h2>
+<figure>
+  <img src="img/01_overlay_ventana.png" alt="Medida vs cielo despejado, 10 días">
+  <figcaption>Diez días seguidos (5 al 15 de mayo). Naranja: el techo (cielo despejado). Azul: lo que realmente llegó.</figcaption>
+</figure>
+<p>Aquí hay dos líneas:</p>
+<ul>
+  <li>La <b>línea naranja punteada</b> es el <b>techo</b> (cielo despejado): una loma suave que sube en
+      la mañana, llega a su punto alto al mediodía y baja a cero en la noche. Es el máximo posible.</li>
+  <li>La <b>línea azul</b> es <b>lo que de verdad llegó</b> al sensor. Cae cada vez que pasa una nube.</li>
+</ul>
+<p>Dos cosas que mirar, y por qué importan:</p>
+<ul>
+  <li><b>Las dos suben y bajan juntas, cada día.</b> Esto confirma que nuestro sistema "sabe la hora del
+      sol" correctamente. Si tuviéramos mal puesto el reloj o la zona horaria, la línea azul estaría
+      corrida varias horas respecto a la naranja. No lo está: encajan. <b>Prueba superada.</b></li>
+  <li><b>La azul es dentada, llena de picos y valles.</b> Cada bajón es una nube tapando el sol; cada
+      recuperación es el sol saliendo de la nube.</li>
+</ul>
+<div class="clave">
+✅ <b>Para qué sirve esta imagen:</b> antes de intentar adivinar el futuro, hay que estar seguros de que
+medimos bien el presente y de que el "reloj del sol" está bien puesto. Esta imagen es esa prueba de
+cimientos, y la pasó.
+</div>
+
+<h2>3. La idea clave: separar "el sol" de "las nubes"</h2>
+<p>
+Aquí está el truco más importante de todo el proyecto. El número crudo de luz <b>mezcla dos cosas muy
+distintas</b>: (a) la posición del sol, que es predecible, y (b) las nubes, que son un caos. Si intentas
+adivinar el número crudo, peleas contra las dos a la vez y pierdes.
+</p>
+<p>
+La solución es <b>dividir</b>. Calculamos una cantidad que llamamos <b>kt*</b> (se lee "ka-te
+estrella"), que es simplemente:
+</p>
+<p style="text-align:center; font-size:17px;"><b>kt* = luz que llegó ÷ techo del momento</b></p>
+<p>Es decir, <b>qué fracción del máximo posible llegó de verdad</b>:</p>
+<ul>
+  <li><b>kt* = 1</b> → llegó todo: cielo limpio.</li>
+  <li><b>kt* = 0,5</b> → llegó la mitad: medio nublado.</li>
+  <li><b>kt* = 0,1</b> → casi nada: muy nublado.</li>
+</ul>
+<div class="analogia">
+💡 <b>Analogía del regulador de luz (dimmer):</b> el foco tiene un brillo máximo conocido (el techo del
+sol, que sabemos por astronomía). <b>kt* es dónde está la perilla del dimmer</b> en cada momento.
+Predecir el clima se vuelve entonces <b>predecir dónde estará la perilla</b>, porque el brillo máximo
+del foco ya lo conocemos de antemano.
+</div>
+<div class="clave">
+✅ <b>Por qué es tan útil:</b> kt* le quita al problema la parte fácil (el sol, que es puro reloj) y deja
+solo la parte difícil e interesante (las nubes). Esa —y solo esa— es la que hay que pronosticar.
+</div>
+
+<h2>4. Imagen 2 — Ni el mejor día está limpio</h2>
+<figure>
+  <img src="img/02_dia_despejado.png" alt="El día más despejado">
+  <figcaption>El día más despejado de los diez (9 de mayo). Aun así, hay caídas bruscas por nubes.</figcaption>
+</figure>
+<p>
+Elegimos a propósito el día <b>más despejado</b> de la ventana. Y aun así, fíjate en las <b>caídas
+bruscas</b>: hay nubes pasando hasta en el mejor día. La línea azul (real) sigue de cerca a la naranja
+(techo) en la subida de la mañana y por momentos casi la toca.
+</p>
+<div class="analogia">
+💡 <b>Qué nos dice de la vida real:</b> San Carlos es una zona <b>lluviosa y nubosa</b>. No hay días de
+"desierto perfecto". Esto es importante y hasta es una <b>buena noticia para el proyecto</b>: hace que
+predecir sea <b>difícil</b>, y por lo tanto que valga la pena. Si siempre estuviera despejado, cualquiera
+acertaría diciendo "mañana igual que hoy"; el reto de verdad está en la variabilidad de las nubes.
+</div>
+
+<h2>5. Imagen 3 — La "personalidad" del clima del sitio</h2>
+<figure>
+  <img src="img/03_hist_ktstar.png" alt="Distribución de kt*">
+  <figcaption>Cuántas veces la "perilla del dimmer" (kt*) estuvo en cada posición, durante los diez días.</figcaption>
+</figure>
+<p>
+Este gráfico es un <b>conteo</b>: de todos los momentos de los diez días, cuántas veces la perilla (kt*)
+estuvo en cada posición. Cuanto más alta la barra, más veces ocurrió esa condición.
+</p>
+<ul>
+  <li>Hay una <b>montaña ancha a la izquierda</b> (kt* entre 0,1 y 0,7): son los <b>ratos nublados</b>, y
+      son muchos.</li>
+  <li>Hay un <b>pico alto cerca de 0,9–0,95</b>: son los <b>ratos despejados</b>, cuando la luz llega
+      casi hasta el techo.</li>
+  <li>La <b>línea punteada en 1,0</b> es el techo teórico. Casi todo cae por debajo, con una colita que
+      lo pasa un poquito: son destellos por "efecto borde de nube" (una nube al lado puede rebotar luz
+      extra y hacer que por un instante llegue <b>más</b> que a cielo abierto — es real y conocido).</li>
+</ul>
+<div class="analogia">
+💡 <b>En la vida real:</b> este dibujo es como el <b>carácter</b> del clima del lugar: más nublado que
+despejado. Un panel solar aquí producirá, en promedio, alrededor de la <b>mitad</b> de su máximo
+teórico. Conocer esta "personalidad" ayuda a poner expectativas realistas de energía y de riego.
+</div>
+
+<h2>6. El pronóstico, en acción (un día de ejemplo)</h2>
+<p>
+Con los cimientos comprobados, construimos el <b>primer pronosticador</b> y lo pusimos a prueba con un
+truco: <b>viajar al pasado</b>. Como ya tenemos meses de historia guardada, podemos "fingir" que
+estamos en un momento concreto, predecir hacia adelante, y comparar de inmediato con lo que de verdad
+pasó (que también está guardado). Así probamos sin esperar en tiempo real.
+</p>
+<figure>
+  <img src="img/04_hindcast_ejemplo.png" alt="Pronóstico de ejemplo a 1 hora">
+  <figcaption>Un día (21 de abril), prediciendo con 1 hora de anticipación. Negro: lo que realmente pasó. Verde: pronóstico "listo". Rojo: pronóstico "tonto".</figcaption>
+</figure>
+<p>Hay tres líneas:</p>
+<ul>
+  <li><b>Negro</b> = lo que <b>de verdad ocurrió</b> ese día.</li>
+  <li><b>Verde</b> = nuestro pronóstico <b>"listo"</b>, hecho 1 hora antes.</li>
+  <li><b>Rojo</b> = un pronóstico <b>"tonto"</b>, hecho 1 hora antes, que solo dice: "en una hora habrá
+      lo mismo que ahora".</li>
+</ul>
+<p>
+Lo importante: el <b>verde sigue de cerca al negro</b>, pero el <b>rojo va corrido ~1 hora a la
+derecha</b> — siempre "una hora atrasado", porque no hace más que copiar el pasado. En la mañana,
+cuando el sol sube, "lo mismo que hace una hora" se queda corto; en la tarde sigue prediciendo sol alto
+cuando el sol ya está bajando.
+</p>
+<div class="analogia">
+💡 <b>La diferencia clave:</b> el método tonto <b>ignora que el sol se mueve</b>. El listo <b>conoce el
+horario del sol</b> (el "techo" de cielo despejado), así que coloca la luz donde el sol realmente
+estará y solo arrastra hacia adelante la <b>nubosidad</b> (la perilla del dimmer, kt*). Es como saber
+que el atardecer es a las 6 y solo tener que adivinar las nubes.
+</div>
+
+<h2>7. ¿Vale la pena? El listo contra el tonto</h2>
+<p>
+Un día suelto no prueba nada. Así que corrimos el pronóstico en <b>1.118 momentos</b> repartidos por
+<b>3,7 meses</b> y medimos el error promedio, para varios "cuánto hacia adelante" (30 min, 1 h, 2 h y
+3 h).
+</p>
+<figure>
+  <img src="img/05_skill_vs_horizonte.png" alt="Error y ventaja según el horizonte">
+  <figcaption>Izquierda: el error típico según cuánto se predice hacia adelante. Derecha: cuánto mejor es el "listo" que el "tonto".</figcaption>
+</figure>
+<ul>
+  <li><b>Gráfico izquierdo (el error):</b> el <b>verde (listo)</b> sube despacio; el <b>rojo (tonto)</b>
+      se dispara. Cuanto más lejos predices, más se equivoca el tonto — porque el sol se movió más.</li>
+  <li><b>Gráfico derecho (la ventaja):</b> a 30 minutos el listo es un <b>13 % mejor</b>; a 3 horas es
+      un <b>48 % mejor</b>, casi <b>la mitad</b> del error del tonto. La ventaja <b>crece</b> con cuánto
+      te adelantas.</li>
+</ul>
+<div class="analogia">
+💡 <b>En la vida real:</b> para predicciones muy cortas (30 min) el sol casi no se mueve, así que los
+dos métodos se parecen. El gran valor del método listo aparece justo en los horizontes útiles —de 1 a
+3 horas—, que es cuando de verdad querrías planear el riego o la energía.
+</div>
+<div class="clave">
+⚠️ <b>Nota honesta (y clave para lo que sigue):</b> aunque el listo gana, todavía se equivoca bastante
+(alrededor de 130–190 en unidades de luz), porque San Carlos es <b>tan nuboso</b> que las nubes saltan
+de un minuto a otro y ningún método de "repetir el pasado reciente" puede atrapar eso. <b>Ese error que
+sobra es justo el hueco</b> que un modelo más listo —o el agente de IA con mejores herramientas—
+intentará cerrar en la siguiente fase. Esto no es la meta; es el <b>rival a batir</b>.
+</div>
+
+<h2>8. ¿Y para qué sirve todo esto?</h2>
+<p>
+El objetivo final del proyecto es un <b>asistente</b> al que le preguntas en lenguaje normal —"¿cómo
+estará el sol en 3 horas?"— y te responde en lenguaje normal. Todo lo anterior es el motor que hace
+posible esa respuesta:
+</p>
+<ul>
+  <li>El sistema <b>ya conoce el techo futuro</b> (astronomía, gratis, sin sorpresa).</li>
+  <li><b>Predice dónde estará la perilla</b> (kt*) usando lo que pasó en los últimos minutos.</li>
+  <li>Y <b>multiplica</b>: luz futura = perilla predicha × techo futuro.</li>
+</ul>
+<div class="clave">
+✅ <b>El papel de la inteligencia artificial:</b> la IA <b>no inventa números</b>. Entiende tu pregunta,
+traduce "en 3 horas" a lo que el motor necesita, llama al motor de cálculo (la física de arriba) y te
+explica la respuesta con su margen de incertidumbre. La inteligencia está en <b>el lenguaje y en
+explicar</b>, no en el cálculo — ese lo hace la física, que es más confiable para los números.
+</div>
+
+<div class="cierre">
+<b>En resumen:</b> convertimos una medición cruda de luz en algo que se puede predecir, <b>separando lo
+seguro (el sol) de lo incierto (las nubes)</b>. Las tres imágenes son la prueba de que esa base está
+bien puesta: medimos bien, el reloj del sol está correcto, y la "perilla" (kt*) se comporta de forma
+sana. Sobre ese cimiento ya podemos construir el que de verdad predice el futuro.
+</div>
+
+<footer>Proyecto AgroVoltaic · pronóstico de irradiancia · documento explicativo no técnico</footer>
+
+</body>
+</html>

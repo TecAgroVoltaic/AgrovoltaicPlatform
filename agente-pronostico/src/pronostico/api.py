@@ -13,10 +13,13 @@ from __future__ import annotations
 
 import os
 import secrets
+import time
 
 from fastapi import Depends, FastAPI, Header, HTTPException, status
 from pydantic import BaseModel, Field
 
+from pronostico import anomalias as anomalias_mod
+from pronostico import audit
 from pronostico.domain import Variable
 from pronostico.tools.forecast_tool import FORECAST_TOOL_SCHEMA, run_forecast
 
@@ -54,6 +57,23 @@ class ForecastRequest(BaseModel):
         description="Frase original del horizonte ('dos horas'); valida la "
                     "conversion de forma determinista (parse_horizon manda).",
     )
+    origen: str = Field(
+        default="api",
+        description="Quien pide el pronostico (para el audit): 'api', "
+                    "'webhook', 'visioneflow-schedule', etc.",
+    )
+
+
+class AnomaliasRequest(BaseModel):
+    """Cuerpo de POST /anomalias."""
+
+    variable: str = Field(
+        description="Variable a analizar: 'irradiancia' o 'humedad_suelo'.",
+    )
+    ventana_min: int = Field(
+        default=1440, ge=60, le=43200,
+        description="Ventana a analizar en MINUTOS (24h=1440, 7d=10080, 30d=43200).",
+    )
 
 
 def _verificar_api_key(x_api_key: str | None = Header(default=None)) -> None:
@@ -82,10 +102,30 @@ def forecast(cuerpo: ForecastRequest) -> dict:
     FastAPI lo corre en su threadpool sin bloquear el event loop.
     """
     try:
-        return run_forecast(
+        t0 = time.perf_counter()
+        res = run_forecast(
             cuerpo.variable, cuerpo.horizon_seconds, cuerpo.horizonte_texto
         )
+        latencia_ms = int((time.perf_counter() - t0) * 1000)
+        # write-back best-effort: audita cada pronostico en `predicciones`.
+        audit.registrar_prediccion(res, origen=cuerpo.origen, latencia_ms=latencia_ms)
+        return res
     except ValueError as exc:  # variable u horizonte invalidos -> culpa del cliente
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        ) from exc
+
+
+@app.post("/anomalias", dependencies=[Depends(_verificar_api_key)])
+def detectar_anomalias(cuerpo: AnomaliasRequest) -> dict:
+    """Detección DETERMINISTA de anomalías sobre la data reciente del store.
+
+    Devuelve hallazgos (estado, anomalías, estadísticas) para que el LLM los
+    narre; el LLM no calcula. `def` (no async): usa pandas/pvlib, threadpool.
+    """
+    try:
+        return anomalias_mod.detectar(cuerpo.variable, cuerpo.ventana_min)
+    except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
         ) from exc

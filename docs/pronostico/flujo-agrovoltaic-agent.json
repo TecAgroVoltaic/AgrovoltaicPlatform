@@ -1,0 +1,126 @@
+{
+  "name": "Agrovoltaic-Agent",
+  "description": "Un agente, dos sub-flujos (el motor es trigger-scoped): (A) webhook -> aiAgent -> output para preguntas ad-hoc; (B) schedule cada 1h -> httpRequest(irradiancia) -> httpRequest(humedad) -> output para write-back automatico a `predicciones`. El sidecar /forecast audita server-side cada llamada.",
+  "version": "1.0",
+  "nodes": [
+    {
+      "id": "webhookTrigger_1784866573388_medomjkwu",
+      "type": "webhookTrigger",
+      "label": "Webhook",
+      "config": {},
+      "position": { "x": -179.08, "y": 487.66 }
+    },
+    {
+      "id": "aiAgent_1784866578796_tk4fffoqj",
+      "type": "aiAgent",
+      "label": "AI Agent",
+      "config": {
+        "model": "claude-haiku-4-5",
+        "provider": "anthropic",
+        "systemPrompt": "Sos un asistente que pronostica la irradiancia solar (GHI, en W/m2) del sitio agrovoltaico de San Carlos, Costa Rica. Tu trabajo es ENTENDER la pregunta, llamar a la herramienta de pronostico y REDACTAR la respuesta en espanol. No sos una calculadora.\n\nReglas (obligatorias):\n\n1. NUNCA calcules ni inventes numeros. Para cualquier pronostico de irradiancia llama SIEMPRE a la herramienta `forecast`. Los numeros salen de la herramienta (anclaje fisico: cielo despejado + persistencia de kt*), jamas de tu intuicion.\n\n2. Traduci el horizonte a SEGUNDOS y pasalo en `horizon_seconds`: media hora=1800, una hora=3600, hora y media=5400, dos horas=7200, tres horas=10800. Maximo 6h (21600). Pasa tambien la frase original en `horizonte_texto`. Si el horizonte es ambiguo, PEDI aclaracion.\n\n3. Responde en espanol, claro y DIRECTO, sin mostrar tu razonamiento. Inclui SIEMPRE la banda (rango bajo-alto). Menciona la nubosidad (sitio muy nuboso) y avisa si el momento cae de noche (irradiancia ~0).\n\n4. Si te preguntan otra cosa, explica con cortesia que podes pronosticar la irradiancia de San Carlos hasta 6h. No inventes datos.\n\nContexto: el metodo es persistencia inteligente sobre kt*. El \"ahora\" del pronostico es el ultimo dato disponible, no la fecha real."
+      },
+      "position": { "x": 121.23, "y": 511.86 }
+    },
+    {
+      "id": "httpRequestTool_1784866586625_5vnxivni3",
+      "type": "httpRequestTool",
+      "label": "Forecast",
+      "config": {
+        "url": "https://api.flow.visione-edge.com/forecast/forecast",
+        "method": "POST",
+        "timeout": 30000,
+        "authType": "apiKey",
+        "apiKeyHeader": "x-api-key",
+        "apiKeyValue": "PEGAR_FORECAST_API_KEY",
+        "toolName": "forecast",
+        "description": "Pronostica la irradiancia solar (GHI, W/m2) del sitio a un horizonte dado. Devuelve valor esperado, banda (bajo-alto) y contexto (nubosidad, si es de noche).",
+        "toolSchema": {
+          "required": ["variable", "horizon_seconds"],
+          "properties": {
+            "variable": {
+              "enum": ["irradiancia"],
+              "type": "string",
+              "description": "Variable a pronosticar. Hoy 'irradiancia'."
+            },
+            "horizon_seconds": {
+              "type": "integer",
+              "description": "Horizonte en SEGUNDOS: media hora=1800, 1h=3600, 1h30=5400, 2h=7200, 3h=10800. Maximo 6h (21600)."
+            },
+            "horizonte_texto": {
+              "type": "string",
+              "description": "Frase original del horizonte ('dos horas','media hora') para validar la conversion."
+            }
+          }
+        }
+      },
+      "position": { "x": -31.27, "y": 778.51 }
+    },
+    {
+      "id": "output_1784867024596_8w4g9d2xb",
+      "type": "output",
+      "label": "Salida",
+      "config": {},
+      "position": { "x": 377.14, "y": 514.27 }
+    },
+    {
+      "id": "scheduleTrigger_1786373308452_euwnuprqi",
+      "type": "scheduleTrigger",
+      "label": "Cada hora",
+      "config": {
+        "enabled": true,
+        "scheduleTimezone": "America/Costa_Rica",
+        "scheduleRules": [
+          { "mode": "interval", "intervalUnit": "hours", "intervalValue": 1, "triggerAtMinute": 0 }
+        ]
+      },
+      "position": { "x": -355.45, "y": 1127.78 }
+    },
+    {
+      "id": "httpRequest_1786373337026_8jwpe3085",
+      "type": "httpRequest",
+      "label": "Forecast irradiancia",
+      "config": {
+        "method": "POST",
+        "url": "https://api.flow.visione-edge.com/forecast/forecast",
+        "authType": "apiKey",
+        "apiKeyHeader": "x-api-key",
+        "apiKeyValue": "PEGAR_FORECAST_API_KEY",
+        "bodyType": "json",
+        "body": "{\"variable\":\"irradiancia\",\"horizon_seconds\":3600,\"origen\":\"visioneflow-schedule\"}",
+        "timeout": 30000
+      },
+      "position": { "x": -94.91, "y": 1143.57 }
+    },
+    {
+      "id": "httpRequest_1786373382042_cs2fggpjn",
+      "type": "httpRequest",
+      "label": "Forecast humedad_suelo",
+      "config": {
+        "method": "POST",
+        "url": "https://api.flow.visione-edge.com/forecast/forecast",
+        "authType": "apiKey",
+        "apiKeyHeader": "x-api-key",
+        "apiKeyValue": "PEGAR_FORECAST_API_KEY",
+        "bodyType": "json",
+        "body": "{\"variable\":\"humedad_suelo\",\"horizon_seconds\":3600,\"origen\":\"visioneflow-schedule\"}",
+        "timeout": 30000
+      },
+      "position": { "x": 158.72, "y": 1144.56 }
+    },
+    {
+      "id": "output_1786373408866_jrp9gyp2u",
+      "type": "output",
+      "label": "Salida",
+      "config": {},
+      "position": { "x": 413.34, "y": 1154.43 }
+    }
+  ],
+  "connections": [
+    { "id": "e-wh-agent", "source": "webhookTrigger_1784866573388_medomjkwu", "target": "aiAgent_1784866578796_tk4fffoqj", "sourceHandle": "output", "targetHandle": "input" },
+    { "id": "e-tool-agent", "source": "httpRequestTool_1784866586625_5vnxivni3", "target": "aiAgent_1784866578796_tk4fffoqj", "sourceHandle": "output", "targetHandle": "tool" },
+    { "id": "e-agent-out", "source": "aiAgent_1784866578796_tk4fffoqj", "target": "output_1784867024596_8w4g9d2xb", "sourceHandle": "output", "targetHandle": "input" },
+    { "id": "e-sch-irr", "source": "scheduleTrigger_1786373308452_euwnuprqi", "target": "httpRequest_1786373337026_8jwpe3085", "sourceHandle": "output", "targetHandle": "input" },
+    { "id": "e-irr-hum", "source": "httpRequest_1786373337026_8jwpe3085", "target": "httpRequest_1786373382042_cs2fggpjn", "sourceHandle": "output", "targetHandle": "input" },
+    { "id": "e-hum-out", "source": "httpRequest_1786373382042_cs2fggpjn", "target": "output_1786373408866_jrp9gyp2u", "sourceHandle": "output", "targetHandle": "input" }
+  ]
+}

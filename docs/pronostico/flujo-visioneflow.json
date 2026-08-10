@@ -1,0 +1,107 @@
+{
+  "name": "Pronóstico de irradiancia — San Carlos",
+  "description": "aiAgent (Haiku) que orquesta la herramienta /forecast del sidecar en la EC2.",
+  "version": "1.0",
+  "nodes": [
+    {
+      "id": "trigger-1",
+      "type": "trigger",
+      "label": "Pregunta del usuario",
+      "config": {
+        "triggerType": "manual"
+      },
+      "position": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "agent-1",
+      "type": "aiAgent",
+      "label": "Agente de pronóstico",
+      "config": {
+        "provider": "anthropic",
+        "model": "claude-haiku-4-5",
+        "systemPrompt": "Sos un asistente que pronostica la irradiancia solar (GHI, en W/m2) del sitio\nagrovoltaico de San Carlos, Costa Rica. Tu trabajo es ENTENDER la pregunta,\nllamar a la herramienta de pronostico y REDACTAR la respuesta en espanol. No sos\nuna calculadora.\n\nReglas (obligatorias):\n\n1. NUNCA calcules ni inventes numeros. Para cualquier pronostico de irradiancia\n   llama SIEMPRE a la herramienta `forecast`. Los numeros salen de la herramienta\n   (que tiene anclaje fisico: descomposicion por cielo despejado + persistencia\n   de kt*), jamas de tu intuicion.\n\n2. Traduci el horizonte de la pregunta a SEGUNDOS y pasalo en `horizon_seconds`:\n   media hora = 1800, una hora = 3600, hora y media = 5400, dos horas = 7200,\n   tres horas = 10800. El maximo es 6 horas (21600). Ademas, pasa en\n   `horizonte_texto` la frase original del horizonte (p. ej. \"dos horas\", \"media\n   hora\") para que el sistema valide la conversion de forma determinista. Si el\n   horizonte es ambiguo o falta, PEDI una aclaracion breve en vez de suponer.\n\n3. Responde en espanol, claro y DIRECTO, SIN mostrar tu razonamiento interno ni\n   los pasos que seguiste. Inclui SIEMPRE la banda de incertidumbre (el rango\n   bajo-alto), no solo el valor central. Menciona la nubosidad (el sitio es muy\n   nuboso: la variabilidad intra-hora es alta) y avisa si el momento pronosticado\n   cae de noche (en ese caso la irradiancia es practicamente cero).\n\n4. Si te preguntan algo que no sea pronosticar irradiancia, explica con cortesia\n   que podes hacer (pronosticar la irradiancia de San Carlos hasta 6 horas hacia\n   adelante). No inventes datos ni respondas fuera de tu alcance.\n\nContexto del sistema: el metodo es persistencia inteligente sobre el indice de\ncielo despejado kt*. Los datos historicos llegan hasta fin de junio de 2026; el\n\"ahora\" del pronostico es el ultimo dato disponible, no la fecha real de hoy.\n",
+        "temperature": 0.3,
+        "maxTokens": 2048,
+        "maxIterations": 10,
+        "memoryWindowSize": 10
+      },
+      "position": {
+        "x": 320,
+        "y": 0
+      }
+    },
+    {
+      "id": "forecast-tool-1",
+      "type": "httpRequestTool",
+      "label": "forecast",
+      "config": {
+        "toolName": "forecast",
+        "description": "Pronostica la irradiancia solar (GHI, W/m2) del sitio a un horizonte dado. Devuelve valor esperado, banda de incertidumbre (bajo-alto) y contexto (nubosidad, si el momento cae de noche).",
+        "method": "POST",
+        "url": "https://api.flow.visione-edge.com/forecast/forecast",
+        "authType": "apiKey",
+        "apiKeyHeader": "x-api-key",
+        "apiKeyValue": "PEGAR_FORECAST_API_KEY",
+        "toolSchema": {
+          "properties": {
+            "variable": {
+              "type": "string",
+              "enum": [
+                "irradiancia"
+              ],
+              "description": "Variable a pronosticar. Hoy solo 'irradiancia'."
+            },
+            "horizon_seconds": {
+              "type": "integer",
+              "description": "Horizonte en SEGUNDOS: media hora=1800, 1h=3600, 1h30=5400, 2h=7200, 3h=10800. Máximo 6h (21600)."
+            },
+            "horizonte_texto": {
+              "type": "string",
+              "description": "La frase original del horizonte ('dos horas','media hora') para validar la conversión de forma determinista."
+            }
+          },
+          "required": [
+            "variable",
+            "horizon_seconds"
+          ]
+        },
+        "timeout": 30000
+      },
+      "position": {
+        "x": 320,
+        "y": 240
+      }
+    },
+    {
+      "id": "output-1",
+      "type": "output",
+      "label": "Respuesta",
+      "config": {
+        "outputFormat": "text"
+      },
+      "position": {
+        "x": 640,
+        "y": 0
+      }
+    }
+  ],
+  "connections": [
+    {
+      "source": "trigger-1",
+      "target": "agent-1"
+    },
+    {
+      "source": "forecast-tool-1",
+      "target": "agent-1",
+      "sourceHandle": "output",
+      "targetHandle": "tool"
+    },
+    {
+      "source": "agent-1",
+      "target": "output-1"
+    }
+  ]
+}

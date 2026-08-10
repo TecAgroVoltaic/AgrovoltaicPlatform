@@ -1,0 +1,14 @@
+{
+  "required": ["variable"],
+  "properties": {
+    "variable": {
+      "type": "string",
+      "enum": ["irradiancia", "humedad_suelo"],
+      "description": "Variable a analizar."
+    },
+    "ventana_min": {
+      "type": "integer",
+      "description": "Ventana en minutos a analizar (24h=1440, 7d=10080, 30d=43200). Por defecto 1440."
+    }
+  }
+}
