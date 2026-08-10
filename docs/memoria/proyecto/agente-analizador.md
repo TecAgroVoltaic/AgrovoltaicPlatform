@@ -69,9 +69,12 @@ trigger + aiAgent Haiku + 6 httpRequestTool + output). Runbook: `agente-analizad
   `/tool/*` con `x-api-key` OK, sin key → 401.
 
 **Pendiente:**
-1. **Durabilidad de nginx:** la location está en el checkout de la EC2, se **borra en el próximo deploy
-   del Backend** (`git reset --hard origin/master`). Para hacerla permanente hay que **commitear el
-   bloque a `Visione-Edge/Agent-Runtime`** (dispara su CI) — NO lo hice sin OK. El sidecar SÍ sobrevive.
+1. **Durabilidad de nginx (bloqueado para el asistente):** la location vive en el checkout de la EC2
+   y se **borra en el próximo deploy del Backend** (`deploy.yml` → `git reset --hard origin/master`).
+   Persistirla requiere commitear el bloque `/analizador/` a `Visione-Edge/Agent-Runtime` y pushear,
+   **PERO la EC2 tiene git read-only** (push denegado) y no hay clon local con escritura → **lo debe
+   hacer el usuario** (o quien tenga escritura). El sidecar SÍ sobrevive (compose aparte fuera del git).
+   Hasta entonces la ruta pública funciona pero **no sobrevive un deploy del Backend**.
 2. **Canvas:** importar `flujo-visioneflow.json` + pegar la `ANALIZADOR_API_KEY` en cada httpRequestTool
    (acción en la plataforma). La key está en `/home/ec2-user/analizador/analizador.env`.
 Ver [[integracion-visioneflow]].
