@@ -1,3 +1,0 @@
-vpv1,ipv1,pv1_watt,vpv2,ipv2,pv2_watt,pac_total,freq,vac1,iac1,energia_hoy,energia_total,temp_inversor,codigo_error,Energìa PV1,Energìa PV2,irradiancia,temp1,temp2,timestamp
-157,0.9,141.1,152.6,0.5,89.0,223.3,59.99,215.1,1.1,0.7,218.3,29.2,0,4,2,-5477.146186715008,22.187,22.187,2024-12-23 12:20:41
-152.3,0.8,133.3,151.3,0.5,82.5,208.5,60.02,216.5,0.9,0.7,218.3,29.2,0,4,2,-5826.751262462773,22.25,22.25,2024-12-23 12:21:44

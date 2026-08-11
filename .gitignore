@@ -22,3 +22,16 @@ __pycache__/
 /sql/dump/
 *.dump
 *.dump.gz
+
+# macOS junk
+.DS_Store
+
+# Tooling local (config de maquina, no se versiona)
+.claude/
+.mcp.json
+skills-lock.json
+
+# Datos crudos: NO se versionan en git (viven en el .zip / storage / la DB de Supabase)
+dataset/Monitoreo-AgroVoltaic-SC-NEW/
+dataset/*.zip
+dataset/*.db
