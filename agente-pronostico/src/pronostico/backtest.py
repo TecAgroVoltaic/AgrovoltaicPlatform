@@ -19,17 +19,42 @@ from pronostico.physics import clear_sky_ghi
 _BUCKETS = {"15min", "30min", "h", "D"}
 
 
+def _ts(x) -> pd.Timestamp:
+    """Fecha ISO -> Timestamp tz-aware en hora local del sitio (para comparar con el indice)."""
+    t = pd.Timestamp(x)
+    return t.tz_localize(config.TZ) if t.tz is None else t.tz_convert(config.TZ)
+
+
 def backtest(variable: str = Variable.IRRADIANCIA.value, dias: int = 7,
-             bucket: str = "h") -> dict:
-    """Reconstruye pred vs real sobre los ultimos `dias` del store, a cadencia `bucket`."""
+             bucket: str = "h", desde: str | None = None,
+             hasta: str | None = None) -> dict:
+    """Reconstruye pred vs real. Por defecto los ultimos `dias`; si se pasa `desde`
+    (y opcional `hasta`), evalua ESE rango historico. Cadencia `bucket`."""
     if bucket not in _BUCKETS:
         raise ValueError(f"bucket invalido: {bucket!r} ({', '.join(sorted(_BUCKETS))})")
 
     serie = data.cargar_serie(variable)                 # tz-aware (hora local CR)
-    corte = serie.index.max() - pd.Timedelta(days=int(dias))
-    s = serie[serie.index >= corte].resample(bucket).mean().dropna()
+    disp0, disp1 = serie.index.min(), serie.index.max()
+
+    if desde or hasta:                                  # rango historico explicito
+        lo = _ts(desde) if desde else disp0
+        if hasta:
+            hi = _ts(hasta)
+        elif desde:
+            hi = lo + pd.Timedelta(days=1)              # un solo dia -> [dia, dia+1)
+        else:
+            hi = disp1 + pd.Timedelta(seconds=1)
+        sel = serie[(serie.index >= lo) & (serie.index < hi)]
+    else:                                               # ultimos N dias
+        corte = disp1 - pd.Timedelta(days=int(dias))
+        sel = serie[serie.index >= corte]
+
+    s = sel.resample(bucket).mean().dropna()
     if len(s) < 3:
-        raise ValueError("serie insuficiente para backtest en ese rango")
+        raise ValueError(
+            f"no hay suficientes datos para evaluar ese rango. "
+            f"El store de {variable} va del {disp0.date()} al {disp1.date()}."
+        )
 
     if variable == Variable.IRRADIANCIA.value:
         cs = clear_sky_ghi(s.index, **data.SITE)        # techo fisico por bucket

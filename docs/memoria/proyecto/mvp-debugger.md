@@ -70,6 +70,12 @@ ambos agentes (`chat()` en `agent/agent.py`):
   en el system prompt: datos del sitio SIEMPRE de tools; web solo para conocimiento externo (cita).
 - Analizador: tool **`graficar`** → datos reales + marcador `_grafico` que el widget pinta inline
   (el LLM recibe solo el resumen → no gasta tokens en los arreglos).
+- Pronóstico: **DOS modalidades que el agente conoce de base** (system prompt) y rutea por intención:
+  **`forecast`** (futuro, desde el último dato) y **`backtest`** (histórico: reconstruye cómo se
+  habría predicho una fecha/período pasado y lo compara con lo real; `tools/backtest_tool.py` reusa
+  `backtest.py`, devuelve valor real + métricas + `_grafico` Real-vs-Reconstrucción). Ej.: "¿cuánta
+  irradiancia hizo el 21 de julio?" → backtest. Fecha sin datos → dice el rango disponible, no inventa.
+  Fix relacionado: el analizador ya no especula motivos cuando falta el dato — cita su rango (hasta 1-jun-2026).
 - **Caché** (cache_control en system+tools) cableada y correcta, pero NO engancha hoy: el prefijo
   (~2265 tok) está bajo el mínimo de Haiku 4.5 (probado: con prefijo grande sí cachea). Los ahorros
   reales vienen del historial solo-texto + recorte de `_grafico` + cap + web por criterio.

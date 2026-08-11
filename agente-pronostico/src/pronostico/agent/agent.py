@@ -16,10 +16,14 @@ import anthropic
 
 from pronostico import config, costos
 from pronostico.agent.prompts import CHAT_SYSTEM, SYSTEM_PROMPT
+from pronostico.tools.backtest_tool import SCHEMA as BACKTEST_SCHEMA, run as run_backtest
 from pronostico.tools.forecast_tool import FORECAST_TOOL_SCHEMA, run_forecast
 
 # Web search del lado servidor (Anthropic la ejecuta). max_uses acota el gasto.
 WEB_SEARCH = {"type": "web_search_20250305", "name": "web_search", "max_uses": 3}
+
+# Dos modalidades en el chat: forecast (futuro) y backtest (historico). Dispatch por nombre.
+_CHAT_TOOLS = {"forecast": run_forecast, "backtest": run_backtest}
 
 
 class ForecastAgent:
@@ -138,8 +142,9 @@ class ForecastAgent:
         ms = ms[-16:]
 
         system = [{"type": "text", "text": CHAT_SYSTEM, "cache_control": {"type": "ephemeral"}}]
-        forecast_tool = {**FORECAST_TOOL_SCHEMA, "cache_control": {"type": "ephemeral"}}
-        herramientas = [forecast_tool, WEB_SEARCH]
+        client_tools = [dict(FORECAST_TOOL_SCHEMA), dict(BACKTEST_SCHEMA)]
+        client_tools[-1] = {**client_tools[-1], "cache_control": {"type": "ephemeral"}}
+        herramientas = client_tools + [WEB_SEARCH]
 
         pasos: list[dict] = []
         usage = {"input_tokens": 0, "output_tokens": 0, "requests": 0,
@@ -189,14 +194,20 @@ class ForecastAgent:
             for b in resp.content:
                 if b.type != "tool_use":
                     continue
+                fn = _CHAT_TOOLS.get(b.name)
                 ts = time.perf_counter()
                 try:
-                    out = run_forecast(**b.input)
+                    if fn is None:
+                        raise ValueError(f"herramienta desconocida: {b.name}")
+                    out = fn(**b.input)
+                    # El grafico (backtest) va al widget, no al LLM (tokens).
+                    para_llm = ({k: v for k, v in out.items() if k != "_grafico"}
+                                if isinstance(out, dict) and "_grafico" in out else out)
                     pasos.append({"tipo": "tool", "nombre": b.name, "input": b.input,
                                   "salida": out, "error": False,
                                   "ms": int((time.perf_counter() - ts) * 1000)})
                     resultados.append({"type": "tool_result", "tool_use_id": b.id,
-                                       "content": json.dumps(out, ensure_ascii=False)})
+                                       "content": json.dumps(para_llm, ensure_ascii=False)})
                 except Exception as e:
                     pasos.append({"tipo": "tool", "nombre": b.name, "input": b.input,
                                   "salida": str(e), "error": True,

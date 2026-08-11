@@ -178,12 +178,14 @@ def serie(variable: str = Query(Variable.IRRADIANCIA.value),
 
 @app.get("/backtest", dependencies=[Depends(_verificar_api_key)])
 def backtest(variable: str = Query(Variable.IRRADIANCIA.value),
-             dias: int = Query(7), bucket: str = Query("h")) -> dict:
+             dias: int = Query(7), bucket: str = Query("h"),
+             desde: str | None = Query(None), hasta: str | None = Query(None)) -> dict:
     """Backtest HONESTO del metodo (reconstruccion sobre el historico) vs. lo medido.
 
-    NO son predicciones en vivo (esas viven en `predicciones`); es evaluacion del metodo."""
+    Por defecto los ultimos `dias`; con `desde`/`hasta` evalua ese rango. NO son
+    predicciones en vivo (esas viven en `predicciones`); es evaluacion del metodo."""
     try:
-        return backtest_mod.backtest(variable, dias, bucket)
+        return backtest_mod.backtest(variable, dias, bucket, desde, hasta)
     except (ValueError, KeyError) as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)

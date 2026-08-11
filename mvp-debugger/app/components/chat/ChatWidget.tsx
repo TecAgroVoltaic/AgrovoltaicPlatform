@@ -24,10 +24,12 @@ const EJEMPLOS: Record<string, string[]> = {
   pronostico: ["¿Cuánta irradiancia en dos horas?", "Pronosticá la humedad de suelo en 1 hora"],
 };
 
+const serieColor = (P: any, i: number) => [P.accent, P.real, P.pred, P.ceil][i % 4];
+
 function graficoHTML(g: any): string {
   const P = palette();
   const series = g.series.map((s: any, i: number) => ({
-    points: s.valores, color: i === 0 ? P.accent : P.real, name: s.nombre, area: g.series.length === 1,
+    points: s.valores, color: serieColor(P, i), name: s.nombre, area: g.series.length === 1,
   }));
   return lineChart(series, { x: g.x, height: 220, unit: g.unidad, yfmt: (v) => v.toLocaleString("es-CR", { maximumFractionDigits: 1 }) });
 }
@@ -158,12 +160,22 @@ function MsgExtras({ traza, abierto, onToggle }: { traza: Traza; abierto: boolea
   const u: any = traza.usage || {};
   return (
     <>
-      {graficos.map((g, i) => (
-        <div key={i} className="chat-graf">
-          <div className="chat-graf-t mono">{g.titulo}{g.unidad ? ` · ${g.unidad}` : ""}</div>
-          <figure dangerouslySetInnerHTML={{ __html: graficoHTML(g) }} />
-        </div>
-      ))}
+      {graficos.map((g, i) => {
+        const P = palette();
+        return (
+          <div key={i} className="chat-graf">
+            <div className="chat-graf-t mono">{g.titulo}{g.unidad ? ` · ${g.unidad}` : ""}</div>
+            <figure dangerouslySetInnerHTML={{ __html: graficoHTML(g) }} />
+            {g.series.length > 1 && (
+              <div className="legend">
+                {g.series.map((s: any, j: number) => (
+                  <span key={j}><span className="sw" style={{ background: serieColor(P, j) }} />{s.nombre}</span>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
       <div className="chat-meta">
         <button className="chat-trazabtn" onClick={onToggle}>{abierto ? "▾" : "▸"} traza</button>
         {herramientas.map((t, i) => <span key={i} className="chat-chip">{t}</span>)}
