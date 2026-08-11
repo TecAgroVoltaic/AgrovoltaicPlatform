@@ -13,9 +13,10 @@ from analizador.tools import (
     irradiancia,
     performance,
     temperatura,
+    tendencia,
 )
 
-_TOOLS = [energia, performance, irradiancia, temperatura, cobertura, catalogo, graficar]
+_TOOLS = [energia, performance, irradiancia, temperatura, cobertura, catalogo, graficar, tendencia]
 
 # Lo que se le pasa al modelo y el mapa nombre->funcion que ejecuta el lazo.
 SCHEMAS = [t.SCHEMA for t in _TOOLS]
