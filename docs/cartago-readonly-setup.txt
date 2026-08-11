@@ -1,0 +1,120 @@
+==========================================================================
+  SETUP EN CARTAGO (iot-mainserver) - acceso read-only para la EC2
+  Objetivo: la EC2 (100.125.236.125) lee la DB 'control' por Tailscale.
+  Sin tocar firewall ni listen_addresses. Cambios minimos y aditivos.
+==========================================================================
+
+DATOS FIJOS
+  DB viva ............ control
+  Schema ............. public
+  Postgres ........... 14   (config en /etc/postgresql/14/main/)
+  IP tailnet Cartago . 100.101.177.71   (ya escucha aca; listen_addresses = *)
+  IP tailnet EC2 ..... 100.125.236.125  (unico cliente autorizado)
+  Rol a crear ........ agrovoltaic_ro   (solo SELECT)
+
+Nota: el aviso "could not change directory to /home/embebidos" al usar
+sudo -u postgres es inofensivo, se puede ignorar.
+
+--------------------------------------------------------------------------
+PASO 1 - Crear el rol de solo lectura
+--------------------------------------------------------------------------
+1) Abrir psql como superusuario:
+
+    sudo -u postgres psql -d control
+
+2) Pegar esta linea:
+
+    CREATE ROLE agrovoltaic_ro WITH LOGIN;
+
+3) Escribir SOLO esta linea y Enter; pedira la clave dos veces.
+   (No pegar nada mas hasta terminar de escribir la clave, o las
+    siguientes lineas se toman como password.)
+
+    \password agrovoltaic_ro
+
+   -> poner una clave fuerte y guardarla en el gestor de secretos
+      (la usara la EC2; no dejarla en un .env en claro).
+
+4) Pegar el resto:
+
+    ALTER ROLE agrovoltaic_ro SET default_transaction_read_only = on;
+    GRANT CONNECT ON DATABASE control TO agrovoltaic_ro;
+    GRANT USAGE ON SCHEMA public TO agrovoltaic_ro;
+    GRANT SELECT ON ALL TABLES IN SCHEMA public TO agrovoltaic_ro;
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO agrovoltaic_ro;
+    SHOW password_encryption;
+
+   -> ANOTAR lo que devuelva password_encryption: scram-sha-256  o  md5
+      (se usa en el PASO 2)
+
+5) Salir:
+
+    \q
+
+--------------------------------------------------------------------------
+PASO 2 - Autorizar SOLO a la EC2 en pg_hba.conf
+--------------------------------------------------------------------------
+1) Ver las reglas actuales (para ubicar la primera linea 'host'):
+
+    sudo grep -nE '^(local|host|hostssl)' /etc/postgresql/14/main/pg_hba.conf
+
+2) Editar el archivo:
+
+    sudo nano /etc/postgresql/14/main/pg_hba.conf
+
+   Agregar ESTA linea como la PRIMERA regla 'host' (arriba de las demas;
+   pg_hba es first-match). Usar el metodo que dio el PASO 1:
+
+    host    control    agrovoltaic_ro    100.125.236.125/32    scram-sha-256
+
+   (si password_encryption dijo md5, cambiar scram-sha-256 por md5)
+
+   Guardar en nano: Ctrl+O, Enter, Ctrl+X.
+
+3) Recargar SIN reiniciar (no corta conexiones existentes):
+
+    sudo systemctl reload postgresql
+
+--------------------------------------------------------------------------
+PASO 3 - Probar  (esto se corre DESDE LA EC2, no en Cartago)
+--------------------------------------------------------------------------
+    # instalar cliente si falta (Amazon Linux):
+    sudo dnf install -y postgresql15
+
+    # debe FUNCIONAR (lectura):
+    psql "host=100.101.177.71 port=5432 dbname=control user=agrovoltaic_ro" -c "SELECT now();"
+
+    # debe FALLAR (read-only):
+    psql "host=100.101.177.71 port=5432 dbname=control user=agrovoltaic_ro" -c "CREATE TABLE _t(x int);"
+
+  Esperado:
+    - el SELECT responde la hora
+    - el CREATE TABLE da error:
+      "cannot execute CREATE TABLE in a read-only transaction"
+
+==========================================================================
+POR QUE ES SEGURO SIN FIREWALL NI TOCAR listen_addresses
+==========================================================================
+- La regla nueva de pg_hba autoriza SOLO al rol agrovoltaic_ro y SOLO desde
+  100.125.236.125/32 (la EC2). No abre nada al publico.
+- La ACL de Tailscale ya deja que unicamente la EC2 alcance el puerto 5432.
+- El rol es solo SELECT + default_transaction_read_only = on -> no escribe.
+- No se toca listen_addresses: no hay reinicio, no se arriesga la
+  replicacion control<->agrodash_dev ni los servicios del equipo de Cartago.
+- No se agrega firewall: la config del equipo queda intacta y nuestro
+  cambio NO aumenta la exposicion publica.
+
+--------------------------------------------------------------------------
+REVERTIR (si hiciera falta dejar todo como estaba)
+--------------------------------------------------------------------------
+1) En psql como postgres, DB control:
+
+    sudo -u postgres psql -d control
+    DROP OWNED BY agrovoltaic_ro;
+    DROP ROLE agrovoltaic_ro;
+    \q
+
+2) Borrar la linea agregada en pg_hba.conf y recargar:
+
+    sudo systemctl reload postgresql
+==========================================================================

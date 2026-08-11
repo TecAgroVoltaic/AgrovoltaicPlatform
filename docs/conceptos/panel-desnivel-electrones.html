@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>El desnivel del panel solar — por qué nace la corriente</title>
+<style>
+  :root{
+    --bg:#0b0f14; --panel:#121821; --line:#1f2937;
+    --txt:#e8eef5; --muted:#8a97a6;
+    --amber:#ffb02e; --blue:#4aa3ff; --green:#36d399; --red:#f87171;
+    --radius:16px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    background:radial-gradient(1200px 600px at 70% -10%, #16202c 0%, var(--bg) 60%);
+    color:var(--txt);
+    font-family:-apple-system,"Segoe UI",Roboto,Helvetica,sans-serif;
+    line-height:1.7; display:flex; justify-content:center;
+    padding:2.5rem 1rem 4rem;
+  }
+  main{max-width:820px;width:100%}
+
+  header{margin-bottom:1.8rem}
+  h1{font-size:clamp(1.5rem,4vw,2.1rem);font-weight:800;letter-spacing:-.02em;margin-bottom:.4rem}
+  .lede{color:var(--muted);font-size:1.02rem;max-width:60ch}
+
+  /* ---------- laboratorio comparativo ---------- */
+  .lab{
+    display:grid; grid-template-columns:1fr 1fr; gap:1rem;
+    margin:1.6rem 0 1rem;
+  }
+  @media(max-width:640px){.lab{grid-template-columns:1fr}}
+  .sim{
+    background:var(--panel); border:1px solid var(--line);
+    border-radius:var(--radius); overflow:hidden;
+    display:flex; flex-direction:column;
+  }
+  .sim h3{
+    font-size:.95rem; padding:.85rem 1.1rem .2rem; display:flex;
+    align-items:center; gap:.5rem;
+  }
+  .sim .tag{font-size:.72rem;font-weight:600;padding:.5rem 1.1rem 0;color:var(--muted)}
+  canvas{width:100%;display:block}
+  .verdict{
+    padding:.7rem 1.1rem 1rem; font-size:.86rem; display:flex;
+    align-items:center; gap:.5rem; color:var(--muted);
+  }
+  .verdict b{color:var(--txt)}
+  .dot{width:9px;height:9px;border-radius:50%;flex:none}
+  .dot.bad{background:var(--red);box-shadow:0 0 8px var(--red)}
+  .dot.good{background:var(--green);box-shadow:0 0 8px var(--green)}
+
+  .controls{display:flex;gap:.6rem;align-items:center;margin:.2rem 0 2rem}
+  button{
+    background:#1a2230;color:var(--txt);border:1px solid var(--line);
+    border-radius:10px;padding:.55rem 1rem;font-size:.85rem;cursor:pointer;
+    transition:.15s; font-weight:600;
+  }
+  button:hover{border-color:var(--blue);color:var(--blue)}
+  .hint{color:var(--muted);font-size:.8rem}
+
+  /* ---------- explicación ---------- */
+  section.steps{display:grid;gap:1rem}
+  .card{
+    background:var(--panel);border:1px solid var(--line);
+    border-radius:var(--radius);padding:1.3rem 1.5rem;
+    position:relative;
+  }
+  .card .n{
+    position:absolute;top:-12px;left:18px;width:30px;height:30px;
+    background:linear-gradient(135deg,var(--amber),#ff7a18);
+    color:#1a1205;font-weight:800;border-radius:9px;
+    display:grid;place-items:center;font-size:.95rem;
+    box-shadow:0 4px 14px rgba(255,122,24,.35);
+  }
+  .card h2{font-size:1.08rem;margin:.4rem 0 .5rem}
+  .card p{color:#cdd6e0}
+  .card p+p{margin-top:.6rem}
+  b{color:var(--blue);font-weight:600}
+  .river{color:var(--green);font-weight:600}
+
+  .key{
+    margin-top:1.6rem;
+    background:linear-gradient(135deg,rgba(255,176,46,.12),rgba(74,163,255,.10));
+    border:1px solid rgba(255,176,46,.25);
+    border-radius:var(--radius);padding:1.3rem 1.5rem;
+  }
+  .key h2{font-size:1.05rem;color:var(--amber);margin-bottom:.4rem}
+  footer{margin-top:2.2rem;color:var(--muted);font-size:.8rem;text-align:center}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>El desnivel del panel solar</h1>
+    <p class="lede">Mira los dos casos lado a lado. La misma cantidad de electrones; lo único que cambia es si existe un “desnivel” que los empuje. Eso decide si hay corriente o no.</p>
+  </header>
+
+  <div class="lab">
+    <div class="sim">
+      <h3><span class="dot bad"></span> Sin desnivel</h3>
+      <div class="tag">Electrones libres, sin voltaje</div>
+      <canvas id="chaos" width="380" height="200"></canvas>
+      <div class="verdict"><span class="dot bad"></span><span>Flujo neto ≈ <b>0</b> · se cancelan · no hay corriente</span></div>
+    </div>
+
+    <div class="sim">
+      <h3><span class="dot good"></span> Con desnivel</h3>
+      <div class="tag">La luz crea la diferencia de potencial</div>
+      <canvas id="order" width="380" height="200"></canvas>
+      <div class="verdict"><span class="dot good"></span><span>Todos en un sentido · <b>corriente continua (DC)</b></span></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button id="toggle">⏸ Pausar</button>
+    <span class="hint">A la izquierda el movimiento es aleatorio; a la derecha el desnivel ordena a todos.</span>
+  </div>
+
+  <section class="steps">
+    <div class="card">
+      <span class="n">1</span>
+      <h2>La luz arranca electrones</h2>
+      <p>Los fotones golpean el silicio del panel y le entregan energía a los electrones, suficiente para <b>soltarlos</b> de sus átomos. Ahora hay cargas libres que pueden moverse.</p>
+    </div>
+
+    <div class="card">
+      <span class="n">2</span>
+      <h2>El panel separa esas cargas → aparece el desnivel</h2>
+      <p>El panel está hecho de dos capas distintas (unión P-N). En la frontera se forma un <b>campo eléctrico interno</b> que empuja a los electrones siempre hacia el mismo lado. El resultado es una <b>diferencia de potencial</b> (voltaje): un lado “alto” y un lado “bajo”.</p>
+      <p>Piénsalo como un <span class="river">terreno inclinado</span>: la luz no mueve el agua, construye la pendiente.</p>
+    </div>
+
+    <div class="card">
+      <span class="n">3</span>
+      <h2>El desnivel obliga a todos a ir al mismo lugar</h2>
+      <p>Ningún electrón decide por su cuenta. Ese <b>cuesta abajo</b> los arrastra a <b>todos</b> en la misma dirección, del potencial alto al bajo, igual que la pendiente obliga al <span class="river">agua a bajar siempre por el mismo curso</span>.</p>
+      <p>Como ahora todos se mueven igual, sus movimientos <b>se suman</b> en vez de cancelarse: eso es lo que ves a la derecha en la simulación.</p>
+    </div>
+  </section>
+
+  <div class="key">
+    <h2>La idea en una frase</h2>
+    <p>Sin desnivel, los electrones se agitan al azar y su movimiento neto es cero. <b>El voltaje que crea la luz es el único “cuesta abajo”</b>, y por eso todos van al mismo lugar de forma ordenada y constante. Ese flujo en un único sentido es la <b>corriente continua (DC)</b> que produce el panel.</p>
+  </div>
+
+  <footer>Guarda esta imagen del río de un solo sentido — más adelante la vamos a romper (corriente alterna).</footer>
+</main>
+
+<script>
+(() => {
+  const COUNT = 34, R = 4.2;
+  const cssBlue = "#4aa3ff", cssGreen = "#36d399";
+
+  function setup(canvas){
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = canvas.clientWidth, h = canvas.height;
+    canvas.width = w * dpr; canvas.height = h * dpr;
+    const ctx = canvas.getContext("2d");
+    ctx.scale(dpr, dpr);
+    return { ctx, w, h };
+  }
+
+  function makeElectrons(w, h){
+    const arr = [];
+    for (let i = 0; i < COUNT; i++){
+      arr.push({
+        x: Math.random()*w, y: Math.random()*h,
+        vx: (Math.random()-.5)*1.6, vy: (Math.random()-.5)*1.6
+      });
+    }
+    return arr;
+  }
+
+  function drawElectron(ctx, x, y, color){
+    const g = ctx.createRadialGradient(x-R*0.4, y-R*0.4, 0.5, x, y, R*1.6);
+    g.addColorStop(0, "#eaf3ff");
+    g.addColorStop(0.45, color);
+    g.addColorStop(1, "rgba(74,163,255,0)");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(x, y, R*1.6, 0, Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(x, y, R, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  // ---- panel izquierdo: caos ----
+  const chaos = document.getElementById("chaos");
+  let C = setup(chaos);
+  let chaosE = makeElectrons(C.w, C.h);
+
+  function stepChaos(){
+    const { ctx, w, h } = C;
+    ctx.clearRect(0,0,w,h);
+    for (const e of chaosE){
+      // pequeño impulso aleatorio: movimiento browniano
+      e.vx += (Math.random()-.5)*0.5;
+      e.vy += (Math.random()-.5)*0.5;
+      e.vx *= 0.92; e.vy *= 0.92;            // fricción → velocidad media acotada
+      e.x += e.vx; e.y += e.vy;
+      if (e.x < R){e.x=R;e.vx*=-1} if (e.x > w-R){e.x=w-R;e.vx*=-1}
+      if (e.y < R){e.y=R;e.vy*=-1} if (e.y > h-R){e.y=h-R;e.vy*=-1}
+      drawElectron(ctx, e.x, e.y, cssBlue);
+    }
+  }
+
+  // ---- panel derecho: desnivel ----
+  const order = document.getElementById("order");
+  let O = setup(order);
+  let orderE = makeElectrons(O.w, O.h);
+
+  function drawSlope(){
+    const { ctx, w, h } = O;
+    // pendiente visual: franja inclinada de alto (izq) a bajo (der)
+    const g = ctx.createLinearGradient(0,0,w,h);
+    g.addColorStop(0, "rgba(54,211,153,0.16)");
+    g.addColorStop(1, "rgba(54,211,153,0.02)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0,0,w,h);
+    // flecha de sentido
+    ctx.strokeStyle = "rgba(54,211,153,0.55)";
+    ctx.fillStyle = "rgba(54,211,153,0.55)";
+    ctx.lineWidth = 2;
+    const ay = h-16;
+    ctx.beginPath(); ctx.moveTo(w*0.25, ay); ctx.lineTo(w*0.75, ay); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(w*0.75, ay); ctx.lineTo(w*0.75-9, ay-5); ctx.lineTo(w*0.75-9, ay+5);
+    ctx.closePath(); ctx.fill();
+  }
+
+  function stepOrder(){
+    const { ctx, w, h } = O;
+    ctx.clearRect(0,0,w,h);
+    drawSlope();
+    for (const e of orderE){
+      // jitter + empuje constante hacia la derecha (el "desnivel")
+      e.vx += (Math.random()-.5)*0.35 + 0.18;
+      e.vy += (Math.random()-.5)*0.35;
+      e.vx *= 0.9; e.vy *= 0.9;
+      e.x += e.vx; e.y += e.vy;
+      if (e.y < R){e.y=R;e.vy*=-1} if (e.y > h-R){e.y=h-R;e.vy*=-1}
+      if (e.x > w+R){ e.x = -R; e.y = Math.random()*h; } // reentra por la izquierda → flujo continuo
+      drawElectron(ctx, e.x, e.y, cssGreen);
+    }
+  }
+
+  let running = true, raf;
+  function loop(){
+    stepChaos();
+    stepOrder();
+    if (running) raf = requestAnimationFrame(loop);
+  }
+  loop();
+
+  const btn = document.getElementById("toggle");
+  btn.addEventListener("click", () => {
+    running = !running;
+    btn.textContent = running ? "⏸ Pausar" : "▶ Reanudar";
+    if (running) loop();
+  });
+
+  // redibujar tamaños al rotar/redimensionar
+  let to;
+  window.addEventListener("resize", () => {
+    clearTimeout(to);
+    to = setTimeout(() => {
+      C = setup(chaos); chaosE = makeElectrons(C.w, C.h);
+      O = setup(order); orderE = makeElectrons(O.w, O.h);
+    }, 150);
+  });
+})();
+</script>
+</body>
+</html>

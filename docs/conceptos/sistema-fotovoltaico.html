@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Anatomía de un sistema fotovoltaico</title>
+<style>
+  :root{
+    --bg:#0a0e14; --panel:#111722; --line:#1e2836;
+    --txt:#e9eff6; --muted:#8593a4;
+    --amber:#ffb02e; --blue:#4aa3ff; --green:#36d399; --violet:#a78bfa;
+    --r:16px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:radial-gradient(1400px 700px at 75% -15%,#15202d,var(--bg) 60%);
+    color:var(--txt);font-family:-apple-system,"Segoe UI",Roboto,sans-serif;
+    line-height:1.65;display:flex;justify-content:center;padding:2.2rem 1rem 4rem;
+  }
+  main{max-width:1080px;width:100%}
+  h1{font-size:clamp(1.5rem,3.6vw,2.1rem);font-weight:800;letter-spacing:-.02em}
+  .lede{color:var(--muted);max-width:70ch;margin:.4rem 0 1.4rem}
+
+  .stage{
+    background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+    padding:.6rem;position:relative;
+  }
+  svg{width:100%;height:auto;display:block;cursor:default;user-select:none}
+
+  /* leyenda DC/AC */
+  .legend{display:flex;gap:1.2rem;flex-wrap:wrap;margin:.7rem .4rem .2rem;font-size:.82rem;color:var(--muted)}
+  .legend span{display:inline-flex;align-items:center;gap:.4rem}
+  .sw{width:22px;height:4px;border-radius:2px}
+  .sw.dc{background:var(--blue)} .sw.ac{background:var(--amber)}
+
+  /* layout inferior: detalle + glosario */
+  .grid{display:grid;grid-template-columns:1.1fr 1fr;gap:1rem;margin-top:1.1rem}
+  @media(max-width:760px){.grid{grid-template-columns:1fr}}
+
+  #detail{
+    background:linear-gradient(135deg,rgba(74,163,255,.10),rgba(255,176,46,.06));
+    border:1px solid var(--line);border-radius:var(--r);padding:1.2rem 1.4rem;min-height:160px;
+  }
+  #detail .kicker{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  #detail h3{font-size:1.18rem;margin:.25rem 0 .5rem}
+  #detail p{color:#cfd8e2}
+  #detail .flow-tag{display:inline-block;font-size:.72rem;font-weight:700;padding:.15rem .55rem;border-radius:6px;margin-top:.7rem}
+  .flow-tag.dc{background:rgba(74,163,255,.18);color:var(--blue)}
+  .flow-tag.ac{background:rgba(255,176,46,.18);color:var(--amber)}
+
+  .glossary{display:grid;grid-template-columns:1fr 1fr;gap:.55rem;align-content:start}
+  @media(max-width:480px){.glossary{grid-template-columns:1fr}}
+  .g-item{
+    text-align:left;background:#141b27;border:1px solid var(--line);color:var(--txt);
+    border-radius:10px;padding:.55rem .7rem;cursor:pointer;font-size:.84rem;font-weight:600;
+    display:flex;align-items:center;gap:.5rem;transition:.15s;
+  }
+  .g-item:hover{border-color:var(--blue)}
+  .g-item.active{border-color:var(--amber);background:#1b2433}
+  .g-item .pip{width:9px;height:9px;border-radius:50%;flex:none;background:var(--muted)}
+  .g-item.active .pip{background:var(--amber)}
+
+  /* highlight en el SVG */
+  svg.focused [data-part]{opacity:.22;transition:opacity .2s}
+  svg.focused [data-part].on{opacity:1;filter:drop-shadow(0 0 6px rgba(255,176,46,.55))}
+  [data-part]{cursor:pointer}
+
+  .wire{fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+  .wire.dc{stroke:var(--blue)} .wire.ac{stroke:var(--amber)}
+  .flow{stroke-dasharray:7 9;animation:flow 1s linear infinite}
+  .flow.ac{animation-direction:reverse}
+  @keyframes flow{to{stroke-dashoffset:-16}}
+  .lbl{fill:var(--muted);font-size:13px;font-family:inherit}
+  .lbl.b{fill:var(--txt);font-weight:600}
+  .flowbadge{fill:#0a0e14;font-weight:800;font-size:13px}
+  footer{margin-top:1.6rem;color:var(--muted);font-size:.8rem;text-align:center}
+</style>
+</head>
+<body>
+<main>
+  <h1>Anatomía de un sistema fotovoltaico</h1>
+  <p class="lede">De la luz al enchufe. Cada bloque hace una sola cosa, y la energía los recorre en orden. Toca cualquier pieza —en el diagrama o en la lista— para ver qué hace y de qué lado está: <b style="color:var(--blue)">DC</b> (lo que produce el panel) o <b style="color:var(--amber)">AC</b> (lo que sale del inversor).</p>
+
+  <div class="stage">
+    <svg id="diagram" viewBox="0 0 1000 560" role="img" aria-label="Diagrama de un sistema fotovoltaico">
+      <!-- ====== SOL ====== -->
+      <g>
+        <circle cx="905" cy="42" r="20" fill="url(#sun)"/>
+        <g stroke="#ffb02e" stroke-width="2.5" stroke-linecap="round" opacity=".8">
+          <line x1="905" y1="6" x2="905" y2="16"/><line x1="905" y1="68" x2="905" y2="78"/>
+          <line x1="869" y1="42" x2="879" y2="42"/><line x1="931" y1="42" x2="941" y2="42"/>
+          <line x1="879" y1="16" x2="886" y2="23"/><line x1="924" y1="61" x2="931" y2="68"/>
+          <line x1="931" y1="16" x2="924" y2="23"/><line x1="886" y1="61" x2="879" y2="68"/>
+        </g>
+        <!-- fotones -->
+        <line class="flow" x1="878" y1="58" x2="800" y2="120" stroke="#ffb02e" stroke-width="2" opacity=".55"/>
+        <line class="flow" x1="855" y1="60" x2="780" y2="125" stroke="#ffb02e" stroke-width="2" opacity=".4"/>
+      </g>
+
+      <!-- ====== ESTRUCTURA DE MONTAJE ====== -->
+      <g data-part="mounting">
+        <rect x="600" y="70" width="372" height="300" rx="14" fill="rgba(255,231,160,.05)" stroke="rgba(255,231,160,.18)"/>
+      </g>
+
+      <!-- ====== ARRAY (generado por JS dentro de este grupo) ====== -->
+      <g id="array-layer"></g>
+
+      <!-- ====== TRONCAL DC + ENTRADA AL INVERSOR ====== -->
+      <path class="wire dc flow" data-part="dc" d="M500,372 V452 H912"/>
+
+      <!-- ====== INVERSOR ====== -->
+      <g data-part="inverter">
+        <polygon points="380,312 500,312 516,298 396,298" fill="#3a4658"/>
+        <polygon points="500,312 516,298 516,376 500,390" fill="#2a3445"/>
+        <rect x="380" y="312" width="120" height="78" rx="6" fill="url(#metal)" stroke="#536074"/>
+        <rect x="396" y="328" width="64" height="26" rx="4" fill="#0c1320" stroke="#1b2740"/>
+        <circle cx="478" cy="341" r="5" fill="#36d399"/>
+        <rect x="396" y="364" width="88" height="6" rx="3" fill="#536074"/>
+        <text class="lbl b" x="440" y="412" text-anchor="middle">Inversor</text>
+        <text class="lbl" x="440" y="428" text-anchor="middle">DC → AC</text>
+      </g>
+
+      <!-- ====== SALIDA AC (bus + ramas) ====== -->
+      <path class="wire ac flow" data-part="ac" d="M380,351 H210 M210,300 V452 M210,300 H162 M210,452 H184"/>
+
+      <!-- badges DC / AC -->
+      <g data-part="dc"><rect x="556" y="438" width="30" height="20" rx="5" fill="#4aa3ff"/><text class="flowbadge" x="571" y="453" text-anchor="middle">DC</text></g>
+      <g data-part="ac"><rect x="276" y="338" width="30" height="20" rx="5" fill="#ffb02e"/><text class="flowbadge" x="291" y="353" text-anchor="middle">AC</text></g>
+
+      <!-- ====== BATERÍA (DC) ====== -->
+      <path class="wire dc flow" data-part="battery" d="M162,156 H440 V298"/>
+      <g data-part="battery">
+        <rect x="74" y="120" width="92" height="72" rx="8" fill="url(#metal)" stroke="#536074"/>
+        <rect x="92" y="112" width="14" height="10" rx="2" fill="#536074"/>
+        <rect x="134" y="112" width="14" height="10" rx="2" fill="#536074"/>
+        <line x1="104" y1="132" x2="104" y2="180" stroke="#36d399" stroke-width="2.5"/>
+        <line x1="120" y1="132" x2="120" y2="180" stroke="#36d399" stroke-width="2.5" opacity=".7"/>
+        <line x1="136" y1="132" x2="136" y2="180" stroke="#36d399" stroke-width="2.5" opacity=".5"/>
+        <text class="flowbadge" x="146" y="118" fill="#36d399" font-size="14">+</text>
+        <text class="lbl b" x="120" y="208" text-anchor="middle">Batería</text>
+      </g>
+
+      <!-- ====== RED ELÉCTRICA (pylon) ====== -->
+      <g data-part="grid">
+        <g stroke="#7e8ba0" stroke-width="2.5" fill="none" stroke-linecap="round">
+          <line x1="104" y1="350" x2="120" y2="262"/>
+          <line x1="136" y1="350" x2="120" y2="262"/>
+          <line x1="96" y1="300" x2="144" y2="300"/>
+          <line x1="100" y1="326" x2="140" y2="326"/>
+          <line x1="110" y1="300" x2="130" y2="326"/>
+          <line x1="130" y1="300" x2="110" y2="326"/>
+          <line x1="96" y1="288" x2="144" y2="288"/>
+        </g>
+        <text class="lbl b" x="120" y="368" text-anchor="middle">Red eléctrica</text>
+      </g>
+
+      <!-- ====== CARGA AC (casa) ====== -->
+      <g data-part="load">
+        <polygon points="92,452 134,418 176,452" fill="#3a4658" stroke="#536074"/>
+        <rect x="102" y="452" width="64" height="56" rx="3" fill="url(#metal)" stroke="#536074"/>
+        <rect x="126" y="478" width="18" height="30" fill="#0c1320"/>
+        <rect x="110" y="462" width="14" height="14" fill="#ffb02e" opacity=".7"/>
+        <text class="lbl b" x="134" y="528" text-anchor="middle">Carga AC</text>
+      </g>
+
+      <!-- defs -->
+      <defs>
+        <radialGradient id="sun" cx="40%" cy="35%" r="70%">
+          <stop offset="0" stop-color="#fff4c4"/><stop offset="1" stop-color="#ffb02e"/>
+        </radialGradient>
+        <linearGradient id="metal" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#46536a"/><stop offset="1" stop-color="#2a3445"/>
+        </linearGradient>
+        <linearGradient id="cell" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#3a6db5"/><stop offset="1" stop-color="#163866"/>
+        </linearGradient>
+      </defs>
+    </svg>
+
+    <div class="legend">
+      <span><i class="sw dc"></i> DC · corriente continua (un solo sentido)</span>
+      <span><i class="sw ac"></i> AC · corriente alterna (sale del inversor)</span>
+      <span style="margin-left:auto">↳ toca cualquier bloque</span>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div id="detail">
+      <div class="kicker">Selecciona una pieza</div>
+      <h3>El recorrido de la energía</h3>
+      <p>La luz entra por el array y la energía baja en cascada: <b>célula → módulo → string → array → caja combinadora → inversor</b>, y de ahí se reparte a la <b>batería</b>, la <b>carga</b> y la <b>red</b>. Toca un bloque para ver su función.</p>
+    </div>
+    <div class="glossary" id="glossary"></div>
+  </div>
+
+  <footer>Lado izquierdo = consumo y almacenamiento · Lado derecho = generación. El inversor es la frontera donde la corriente deja de ser DC y pasa a AC.</footer>
+</main>
+
+<script>
+const NS = "http://www.w3.org/2000/svg";
+const make = (t, a={}) => { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); return e; };
+
+/* ---------- generar el array de paneles ---------- */
+const layer = document.getElementById("array-layer");
+const COLS = 5, ROWS = 3;
+const MW = 50, MH = 72, GX = 16, GY = 18, X0 = 622, Y0 = 86;
+const accents = ["#4aa3ff","#36d399","#ffb02e","#a78bfa","#f472b6"];
+
+for (let c = 0; c < COLS; c++){
+  const x = X0 + c*(MW+GX);
+  const cx = x + MW/2;
+  // marco del string (columna)
+  const sg = make("g", {"data-part":"string"});
+  sg.appendChild(make("rect",{x:x-5,y:Y0-5,width:MW+10,height:ROWS*MH+(ROWS-1)*GY+10,
+    rx:8,fill:accents[c]+"14",stroke:accents[c],"stroke-opacity":".5","stroke-width":"1.2"}));
+  layer.appendChild(sg);
+
+  // módulos de la columna
+  for (let r = 0; r < ROWS; r++){
+    const y = Y0 + r*(MH+GY);
+    const mg = make("g", {"data-part":"module"});
+    mg.appendChild(make("rect",{x,y,width:MW,height:MH,rx:4,fill:"url(#cell)",stroke:"#9bb4d6","stroke-width":"1.2"}));
+    // rejilla de celdas 2x3
+    mg.appendChild(make("line",{x1:x+MW/2,y1:y+2,x2:x+MW/2,y2:y+MH-2,stroke:"#102542","stroke-width":"1"}));
+    for (let j=1;j<3;j++) mg.appendChild(make("line",{x1:x+2,y1:y+j*MH/3,x2:x+MW-2,y2:y+j*MH/3,stroke:"#102542","stroke-width":"1"}));
+    layer.appendChild(mg);
+  }
+
+  // cable DC del string -> caja combinadora -> troncal
+  const colBottom = Y0 + ROWS*MH + (ROWS-1)*GY;
+  const w = make("path",{class:"wire dc flow","data-part":"dc",d:`M${cx},${colBottom} V452`});
+  layer.appendChild(w);
+  // caja combinadora
+  const cb = make("g",{"data-part":"combiner"});
+  cb.appendChild(make("rect",{x:cx-13,y:410,width:26,height:18,rx:3,fill:"url(#metal)",stroke:"#536074"}));
+  cb.appendChild(make("circle",{cx:cx,cy:419,r:2.5,fill:"#36d399"}));
+  layer.appendChild(cb);
+}
+// etiquetas
+const tA = make("text",{class:"lbl b",x:X0+(COLS*(MW+GX))/2-GX/2,y:70,"text-anchor":"middle"});
+tA.textContent = "Array fotovoltaico"; layer.appendChild(tA);
+const tC = make("text",{class:"lbl",x:780,y:444,"text-anchor":"middle"});
+tC.textContent = "Cajas combinadoras"; layer.appendChild(tC);
+
+/* ---------- definiciones ---------- */
+const DEFS = {
+  array:    {t:"Array fotovoltaico", flow:"dc", d:"El conjunto completo de todos los paneles trabajando juntos: varios <i>strings</i> montados sobre la estructura. Es toda la generación del sistema. A más superficie de array, más potencia instalada (kWp)."},
+  module:   {t:"Módulo solar (panel)", flow:"dc", d:"Un panel individual. Por dentro son muchas células de silicio en serie. Cada célula da ~0,5 V; un módulo típico entrega ~30–40 V en DC. Es el ladrillo del sistema."},
+  string:   {t:"String (cadena)", flow:"dc", d:"Varios módulos conectados en serie, uno tras otro. Conectar en serie <b>suma el voltaje</b> y mantiene la corriente, así se llega a cientos de voltios DC. En tu sistema AgroVoltaic hay <b>2 strings: PV1 y PV2</b>."},
+  combiner: {t:"Caja combinadora", flow:"dc", d:"Une los cables de varios strings en un solo par de salida y aloja las protecciones (fusibles, diodos). Ordena y asegura el cableado antes de que la energía entre al inversor."},
+  inverter: {t:"Inversor", flow:"ac", d:"El corazón del sistema. Convierte la <b style='color:#4aa3ff'>corriente continua (DC)</b> de los paneles en <b style='color:#ffb02e'>corriente alterna (AC)</b>, la que usan los aparatos y la red. Aquí es donde 'se rompe el río de un solo sentido'."},
+  battery:  {t:"Batería", flow:"dc", d:"Almacena energía en DC: guarda el excedente del día para usarlo de noche o cuando no hay sol. Es opcional y va del lado DC en los inversores híbridos."},
+  load:     {t:"Carga AC", flow:"ac", d:"Los aparatos que consumen la electricidad: bombas, luces, motores, la casa. Es el destino útil de toda la energía generada."},
+  grid:     {t:"Red eléctrica", flow:"ac", d:"La conexión a la red pública. Permite inyectar el excedente (vender) o tomar energía cuando el sol no alcanza (comprar). En sistemas aislados (off-grid) no existe."},
+  mounting: {t:"Estructura de montaje", flow:"dc", d:"Sostiene y orienta los módulos con el ángulo correcto hacia el sol. No genera energía, pero define cuánta luz reciben los paneles."},
+  dc:       {t:"Corriente continua (DC)", flow:"dc", d:"Los electrones fluyen siempre en un solo sentido, constante. Es lo que produce el panel por su física. Recorre todo el lado de generación: de los paneles hasta el inversor."},
+  ac:       {t:"Corriente alterna (AC)", flow:"ac", d:"El sentido del flujo se invierte muchas veces por segundo (50/60 Hz). Es lo que entrega el inversor hacia la casa y la red, y el estándar de la distribución eléctrica."},
+};
+const ORDER = ["array","module","string","combiner","inverter","battery","load","grid","dc","ac","mounting"];
+
+/* ---------- glosario ---------- */
+const glo = document.getElementById("glossary");
+ORDER.forEach(k=>{
+  const b = document.createElement("button");
+  b.className = "g-item"; b.dataset.part = k;
+  b.innerHTML = `<span class="pip"></span>${DEFS[k].t}`;
+  b.addEventListener("click", ()=>focus(k));
+  glo.appendChild(b);
+});
+
+/* ---------- interacción ---------- */
+const svg = document.getElementById("diagram");
+const detail = document.getElementById("detail");
+
+function focus(key){
+  const dfn = DEFS[key]; if(!dfn) return;
+  svg.classList.add("focused");
+  document.querySelectorAll("#diagram [data-part]").forEach(el=>el.classList.toggle("on", el.dataset.part===key));
+  document.querySelectorAll(".g-item").forEach(b=>b.classList.toggle("active", b.dataset.part===key));
+  detail.innerHTML =
+    `<div class="kicker">${dfn.flow==="dc"?"Lado DC · generación":"Lado AC · entrega"}</div>`+
+    `<h3>${dfn.t}</h3><p>${dfn.d}</p>`+
+    `<span class="flow-tag ${dfn.flow}">${dfn.flow==="dc"?"DC · un solo sentido":"AC · sentido alterno"}</span>`;
+}
+function clearFocus(){
+  svg.classList.remove("focused");
+  document.querySelectorAll(".g-item").forEach(b=>b.classList.remove("active"));
+  detail.innerHTML =
+    `<div class="kicker">Selecciona una pieza</div>`+
+    `<h3>El recorrido de la energía</h3>`+
+    `<p>La luz entra por el array y la energía baja en cascada: <b>célula → módulo → string → array → caja combinadora → inversor</b>, y de ahí se reparte a la <b>batería</b>, la <b>carga</b> y la <b>red</b>. Toca un bloque para ver su función.</p>`;
+}
+svg.addEventListener("click", e=>{
+  const g = e.target.closest("[data-part]");
+  g ? focus(g.dataset.part) : clearFocus();
+});
+</script>
+</body>
+</html>

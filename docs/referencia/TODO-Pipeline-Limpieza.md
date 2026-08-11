@@ -1,8 +1,15 @@
 # TODO - Pipeline de Limpieza y Estandarizacion de Datos AgroVoltaic
 
 **Fecha:** 2026-05-22  
-**Dependencia:** Resolver primero las preguntas en `DUDAS-Pendientes.md`  
+**Dependencia:** Resolver primero las preguntas en `../equipo/DUDAS-Pendientes.md`  
 **Referencia:** `EDA-Monitoreo-AgroVoltaic.md`
+
+> ⚠️ **DOCUMENTO HISTÓRICO (diseño original).** Este pipeline de 12 pasos **ya fue
+> implementado**: la fuente vigente es el código `src/agrovoltaic/` y su resumen en
+> [`../memoria/proyecto/implementacion.md`](../memoria/proyecto/implementacion.md). Se
+> conserva como referencia del diseño y del mapeo de schemas. Las fases bloqueadas
+> (calibración de irradiancia) siguen pendientes; ver
+> [`../memoria/pendientes/bloqueantes.md`](../memoria/pendientes/bloqueantes.md).
 
 ---
 
@@ -32,7 +39,7 @@
 
 - [ ] Eliminar `Monitoreo_2024-12-23(1).csv` (duplicado exacto de `Monitoreo_2024-12-23.csv`)
 - [ ] Eliminar `Monitoreo_2025-10-01(1).csv` (duplicado exacto de `Monitoreo_2025-10-01.csv`)
-- [ ] Decidir que hacer con los archivos `(N)` que NO son duplicados (ver `DUDAS-Pendientes.md` pregunta 2)
+- [ ] Decidir que hacer con los archivos `(N)` que NO son duplicados (ver `../equipo/DUDAS-Pendientes.md` pregunta 2)
 - [ ] Resultado: 275 archivos unicos (o menos si se descartan los fragmentos)
 
 ### Paso 2 — Separar filas por tipo de fuente dentro de cada CSV

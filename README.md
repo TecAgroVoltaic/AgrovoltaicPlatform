@@ -91,5 +91,5 @@ y un chequeo pasa/falla de la limpieza (temp 85 y negativos deben ser 0).
 
 Calibracion de irradiancia a W/m2 (pvlib), Performance Ratio y features derivados
 esperan: lat/lon, kWp por string, timezone y modelo del piranometro. Ver
-`docs/DUDAS-Pendientes.md`. La separacion fina de filas mezcladas (Paso 2) tambien
+`docs/equipo/DUDAS-Pendientes.md`. La separacion fina de filas mezcladas (Paso 2) tambien
 queda pendiente; hoy se conservan las filas que matchean el header del archivo.

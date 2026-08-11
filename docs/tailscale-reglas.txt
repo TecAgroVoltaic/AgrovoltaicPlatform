@@ -1,0 +1,97 @@
+==========================================================================
+  TAILSCALE - ACCESS CONTROLS (grants)  ·  AgroVoltaic
+  Hoja para completar las reglas en el builder "Add rule"
+  (mapeo de campos del formulario -> JSON grant)
+==========================================================================
+
+Cada "Add rule" del formulario genera UN grant. Mapeo de campos:
+
+    Source ............. src   (quien ABRE la conexion)
+    Destination ........ dst   (a quien se conecta)
+    Port and protocol .. ip    (ej. tcp:5432  |  *  = todos)
+    Note ............... solo para tu registro (rationale)
+    Via / Device posture / App / Capability ... (vacio para este caso)
+
+--------------------------------------------------------------------------
+  DECISION PENDIENTE (antes de completar la Regla 1)
+--------------------------------------------------------------------------
+  Puerto de datos en Cartago:
+     [ ] Postgres directo  ->  Port and protocol = tcp:5432   (RECOMENDADO)
+     [ ] API HTTP (Axum)   ->  Port and protocol = tcp:______
+
+  Poner el puerto real; NO dejar "All ports and protocols".
+
+
+==========================================================================
+  REGLA 1  -  EC2 -> Cartago   (UNICA via; SOLO LECTURA)
+==========================================================================
+  Source ............. tag:agrovoltaic-etl
+  Destination ........ tag:cartago-iot
+  Port and protocol .. tcp:5432        <-- quitar el chip "All ports..." y poner el puerto
+  Note ............... ETL AgroVoltaic: la EC2 lee la DB de Cartago (solo lectura).
+                       Cartago -> EC2 queda PROHIBIDO (no hay regla inversa).
+  Advanced (Via/posture) . (vacio)
+  App / Capability ....... (vacio)
+
+  JSON equivalente:
+    { "src": ["tag:agrovoltaic-etl"], "dst": ["tag:cartago-iot"], "ip": ["tcp:5432"] }
+
+
+==========================================================================
+  REGLA 2  -  Equipos personales entre si   (preservar acceso actual)
+==========================================================================
+  Source ............. autogroup:member
+  Destination ........ autogroup:member
+  Port and protocol .. *   (All ports and protocols  <-- aqui SI se deja)
+  Note ............... Acceso normal entre mis equipos (macbook, rig, iphone).
+                       Los nodos tagueados (Cartago, EC2) quedan fuera.
+
+  JSON equivalente:
+    { "src": ["autogroup:member"], "dst": ["autogroup:member"], "ip": ["*"] }
+
+
+==========================================================================
+  LO QUE EL BUILDER "Add rule" NO CUBRE
+  (se edita en el editor de texto de la policy, no en el formulario)
+==========================================================================
+
+  1) ELIMINAR la regla por defecto "todos -> todos":
+        { "src": ["*"], "dst": ["*"], "ip": ["*"] }        <-- BORRAR
+     (si no la borras, Cartago queda expuesto a TODOS y la Regla 2 sobra)
+
+  2) Declarar los duenos de los tags (seccion aparte "tagOwners"):
+        "tagOwners": {
+          "tag:cartago-iot":     ["autogroup:admin"],
+          "tag:agrovoltaic-etl": ["autogroup:admin"]
+        }
+
+
+==========================================================================
+  DESPUES de guardar la policy  (pasos fuera de Tailscale admin)
+==========================================================================
+
+  [ ] Cartago: taguear el nodo (re-auth; tambien apaga expiracion de key y DNS)
+        sudo tailscale up --advertise-tags=tag:cartago-iot --accept-dns=false
+
+  [ ] EC2: al crear/instalar Tailscale, meterlo con
+        sudo tailscale up --advertise-tags=tag:agrovoltaic-etl
+
+  [ ] Cartago: el servicio debe escuchar en la IP 100.x (no solo 127.0.0.1);
+      si hay ufw activo, permitir el puerto en la interfaz tailscale0.
+
+  [ ] Postgres: el "solo lectura" REAL = crear un rol con solo SELECT
+      (NO usar el superusuario 'postgres'). La ACL NO distingue SELECT de INSERT.
+
+  [ ] Secretos: auth key de Tailscale y credenciales de BD en gestor de
+      secretos, nunca en .env en claro.
+
+
+--------------------------------------------------------------------------
+  Referencia de nodos (tailnet izackk26@)
+--------------------------------------------------------------------------
+    iot-cartago-agrovoltaic   100.101.177.71   server LIVE Cartago (fuente)
+    izack-rig                 100.100.130.47   copia dump AgroDash (pruebas)
+    izacks-macbook-pro        100.122.165.37   Mac
+    iphone182                 100.109.11.81    (offline)
+    EC2 VisioneFlow           (pendiente)      52.1.28.77 / api.flow.visione-edge.com
+==========================================================================
