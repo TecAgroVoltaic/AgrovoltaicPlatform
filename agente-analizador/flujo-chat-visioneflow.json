@@ -1,0 +1,41 @@
+{
+  "name": "Analizador PV Agrovoltaic — San Carlos (chat)",
+  "description": "Un nodo HTTP llama al agente analizador (/chat): Q&A del histórico PV + gráficos + web search, resueltos en el sidecar Python. Pegá la ANALIZADOR_API_KEY en el nodo 'chat'.",
+  "version": "1.0",
+  "nodes": [
+    {
+      "id": "trigger",
+      "type": "trigger",
+      "label": "Pregunta",
+      "position": { "x": 80, "y": 200 },
+      "config": { "triggerType": "manual" }
+    },
+    {
+      "id": "chat",
+      "type": "httpRequest",
+      "label": "Agente analizador (/chat)",
+      "position": { "x": 440, "y": 200 },
+      "config": {
+        "method": "POST",
+        "url": "https://api.flow.visione-edge.com/analizador/chat",
+        "authType": "apiKey",
+        "apiKeyHeader": "x-api-key",
+        "apiKeyValue": "PEGAR_ANALIZADOR_API_KEY",
+        "bodyType": "json",
+        "body": "{\"mensajes\":[{\"rol\":\"user\",\"texto\":\"{{$input}}\"}],\"contexto\":\"VisioneFlow · Analizador\"}",
+        "timeout": 120000
+      }
+    },
+    {
+      "id": "salida",
+      "type": "output",
+      "label": "Respuesta",
+      "position": { "x": 820, "y": 200 },
+      "config": { "outputFormat": "text", "finalMessage": "{{chat.data.respuesta}}" }
+    }
+  ],
+  "connections": [
+    { "id": "e1", "source": "trigger", "target": "chat" },
+    { "id": "e2", "source": "chat", "target": "salida" }
+  ]
+}
