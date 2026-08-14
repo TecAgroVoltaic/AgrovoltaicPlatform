@@ -1,0 +1,15 @@
+[Unit]
+Description=ETL AgroDash->Supabase (ingesta del agente de pronostico)
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=ec2-user
+SupplementaryGroups=docker
+ExecStart=/usr/bin/docker exec forecast-forecast-1 python -m pronostico.etl
+# Una corrida colgada no puede bloquear al timer indefinidamente. El ETL normal
+# tarda segundos; 10 min cubre un backfill grande con margen de sobra.
+TimeoutStartSec=10min
+# Tag propio en el journal: `journalctl -t forecast-etl` sale limpio.
+SyslogIdentifier=forecast-etl
