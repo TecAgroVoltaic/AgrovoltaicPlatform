@@ -23,7 +23,7 @@ class _ConexionFalsa:
         self._ultima_corrida = ultima_corrida
 
     def execute(self, sql, params=None):
-        if "lecturas_ambientales_sc" in sql:
+        if "v_salud_ingesta" in sql:
             return iter(self._frescura)
         if "nivel = 'error'" in sql:
             return _Resultado(self._ultimo_error)

@@ -25,6 +25,7 @@ from pronostico import backtest as backtest_mod
 from pronostico import data as data_mod
 from pronostico import gasto as gasto_mod
 from pronostico import limites
+from pronostico import observabilidad
 from pronostico import salud as salud_mod
 from pronostico import uso as uso_mod
 from pronostico.domain import Variable
@@ -198,6 +199,24 @@ def salud_ingesta(umbral_horas: float | None = Query(default=None, gt=0)) -> dic
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=reporte
         )
     return reporte
+
+
+@app.get("/salud/panel",
+         dependencies=[Depends(_verificar_api_key), Depends(_frenar_datos)])
+def salud_panel() -> dict:
+    """Estado operativo para el panel: ingesta + errores recientes + gasto + última predicción.
+
+    A diferencia de /salud/ingesta (abierto, para monitoreo automático), este
+    exige la clave: incluye el gasto en USD. Responde 200 aunque el estado sea
+    `stale` — el panel necesita el detalle para MOSTRARLO, no un 503 vacío.
+    """
+    try:
+        return observabilidad.panel()
+    except Exception as exc:  # store caido
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"no se pudo consultar el store: {type(exc).__name__}",
+        ) from exc
 
 
 # Agente perezoso: solo se construye al primer /preguntar (anthropic.Anthropic()

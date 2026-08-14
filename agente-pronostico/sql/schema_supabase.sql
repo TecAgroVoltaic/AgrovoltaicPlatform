@@ -96,3 +96,34 @@ CREATE TABLE IF NOT EXISTS gasto_diario (
 );
 COMMENT ON TABLE gasto_diario IS
     'Gasto diario del LLM (1 fila por día UTC). Fuente de verdad del tope de presupuesto del agente.';
+
+-- ----------------------------------------------------------------------------
+-- 5. Vistas de observabilidad. Existen para que "¿esto está sano?" se pueda
+--    responder con UNA consulta, tanto desde el agente como desde psql o el
+--    dashboard de Supabase, sin reimplementar la lógica en cada cliente.
+--
+--    La EDAD se calcula acá; el UMBRAL de "stale" NO: eso es política y vive en
+--    la app (INGESTA_STALE_HORAS), para poder cambiarlo sin migrar la DB.
+-- ----------------------------------------------------------------------------
+CREATE OR REPLACE VIEW v_salud_ingesta AS
+SELECT variable,
+       max(ts)                                                       AS ultimo_dato,
+       count(*)                                                      AS filas,
+       round((EXTRACT(EPOCH FROM (now() - max(ts))) / 3600.0)::numeric, 2) AS edad_horas
+FROM lecturas_ambientales_sc
+GROUP BY variable;
+
+COMMENT ON VIEW v_salud_ingesta IS
+    'Frescura de la ingesta por variable: último dato, filas y edad en horas. El umbral de stale lo decide la app.';
+
+-- Últimos errores de cualquier componente (etl, forecaster, flujo). Es lo
+-- primero que hay que mirar cuando algo se ve raro.
+CREATE OR REPLACE VIEW v_agente_errores AS
+SELECT ts, componente, evento, detalle->>'error' AS error, detalle
+FROM agente_log
+WHERE nivel = 'error'
+ORDER BY ts DESC
+LIMIT 50;
+
+COMMENT ON VIEW v_agente_errores IS
+    'Últimos 50 errores registrados por el agente (ETL, forecaster, flujo).';
