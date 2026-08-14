@@ -1,0 +1,12 @@
+[Unit]
+Description=Refresca el sidecar /forecast (recrea el contenedor -> re-consulta la DB viva de Cartago)
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=ec2-user
+SupplementaryGroups=docker
+WorkingDirectory=/home/ec2-user/runtime/Agent-Runtime
+Environment=FORECAST_BUILD_CONTEXT=/home/ec2-user/forecast/agente-pronostico
+ExecStart=/usr/local/bin/docker-compose -f docker-compose.forecast.yml up -d --force-recreate
