@@ -55,6 +55,9 @@ ITERSIZE = 20000
 # Tamaño de lote de escritura: COPY+upsert+commit por bloque. Chico para no chocar
 # con el statement_timeout de Supabase ni retener locks/temp grandes.
 BATCH = 50000
+# Corte rapido si la fuente no responde (fuente caida). El timer corre cada 15
+# min: colgarse dos minutos por corrida no aporta nada.
+CONNECT_TIMEOUT_SEG = int(os.environ.get("SOURCE_CONNECT_TIMEOUT", "15"))
 
 _SQL_SOURCE = """
     SELECT r.id::text, b.name, s.id::text, s.type,
@@ -160,40 +163,65 @@ def _ingest(src: psycopg.Connection, store: psycopg.Connection,
     }
 
 
+def _ingestar_targets(src: psycopg.Connection, store: psycopg.Connection,
+                      full: bool) -> dict:
+    """Corre cada target. Un fallo de UN target no aborta los demas: se loguea
+    y se sigue (el corte total lo maneja run(), que cubre la conexion)."""
+    resumen: dict = {}
+    for tgt in TARGETS:
+        var = tgt["variable"]
+        try:
+            wm = None if full else _watermark(store, var)
+            if wm is None:
+                desde = datetime.fromisoformat(BACKFILL_SINCE)   # piso del backfill
+            else:
+                desde = (wm - OVERLAP).astimezone(CR).replace(tzinfo=None)
+            resumen[var] = _ingest(src, store, tgt, desde)
+            _log(store, "info", f"ingesta:{var}", resumen[var])
+            store.commit()
+        except Exception as exc:                             # noqa: BLE001
+            store.rollback()
+            _log(store, "error", f"fallo:{var}", {"error": str(exc)})
+            store.commit()
+            resumen[var] = {"error": str(exc)}
+    return resumen
+
+
 def run(full: bool = False) -> dict:
-    """Corre el ETL para todos los TARGETS. Devuelve el resumen por variable."""
+    """Corre el ETL para todos los TARGETS. Devuelve el resumen por variable.
+
+    El STORE se conecta PRIMERO y la fuente DENTRO del try: si la fuente esta
+    caida (Cartago apagado -> ConnectionTimeout), el fallo queda registrado en
+    `agente_log` en vez de morir en silencio. Antes la conexion a la fuente
+    ocurria fuera de todo try/except y el ETL fallo 9 dias sin dejar rastro.
+    """
     src_dsn = config.conninfo()                              # AgroDash (read-only)
     store_dsn = os.environ.get("STORE_URL") or getattr(config, "STORE_URL", None)
     if not store_dsn:
         raise SystemExit("STORE_URL no definida (Supabase de AgroVoltaic).")
 
     t0 = time.time()
-    resumen: dict = {}
-    with psycopg.connect(src_dsn) as src, \
-            psycopg.connect(store_dsn) as store:
-        src.execute("SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY")
-        src.commit()
+    with psycopg.connect(store_dsn) as store:
         # Cinturon extra: aunque los lotes son chicos, evita que un lote quede
         # colgado indefinidamente si la red se degrada.
         store.execute("SET statement_timeout = '120s'")
         store.commit()
 
-        for tgt in TARGETS:
-            var = tgt["variable"]
-            try:
-                wm = None if full else _watermark(store, var)
-                if wm is None:
-                    desde = datetime.fromisoformat(BACKFILL_SINCE)   # piso del backfill
-                else:
-                    desde = (wm - OVERLAP).astimezone(CR).replace(tzinfo=None)
-                resumen[var] = _ingest(src, store, tgt, desde)
-                _log(store, "info", f"ingesta:{var}", resumen[var])
-                store.commit()
-            except Exception as exc:                             # noqa: BLE001
-                store.rollback()
-                _log(store, "error", f"fallo:{var}", {"error": str(exc)})
-                store.commit()
-                resumen[var] = {"error": str(exc)}
+        try:
+            # connect_timeout explicito: si la fuente no responde, cortar rapido
+            # en vez de colgarse hasta el default del sistema (el timer corre
+            # cada 15 min; no tiene sentido esperar mas).
+            with psycopg.connect(src_dsn, connect_timeout=CONNECT_TIMEOUT_SEG) as src:
+                src.execute("SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY")
+                src.commit()
+                resumen = _ingestar_targets(src, store, full)
+        except Exception as exc:                             # noqa: BLE001
+            store.rollback()
+            _log(store, "error", "fallo:fuente", {
+                "error": str(exc), "tipo": type(exc).__name__,
+            })
+            store.commit()
+            raise                                            # el timer lo marca failed
 
         _log(store, "info", "corrida", {
             "seg": round(time.time() - t0, 1), "full": full,
