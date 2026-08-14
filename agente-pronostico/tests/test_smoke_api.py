@@ -126,3 +126,74 @@ def test_horizonte_fuera_de_rango_es_400_no_500():
 
     # Then: validado en el borde por el contrato de la tool
     assert r.status_code == 422
+
+
+class _AgenteFalso:
+    """Agente que no llama al LLM: devuelve una traza con la forma real."""
+
+    TRAZA = {
+        "respuesta": "La irradiancia esperada es 313 W/m2.",
+        "modelo": "claude-haiku-4-5",
+        "usage": {"requests": 1, "input_tokens": 120, "output_tokens": 40},
+        "costo": {"usd_total": 0.00032},
+        "pasos": [],
+    }
+
+    def conversar(self, pregunta):
+        return dict(self.TRAZA)
+
+    def chat(self, mensajes, contexto=None):
+        return dict(self.TRAZA)
+
+
+@pytest.fixture
+def agente_falso(monkeypatch):
+    """Reemplaza el agente y anula la persistencia de uso (toca disco/red)."""
+    monkeypatch.setattr(api, "_AGENTE", _AgenteFalso())
+    monkeypatch.setattr(api.uso_mod, "registrar", lambda traza: traza)
+    monkeypatch.setattr(api.gasto_mod, "registrar", lambda usd: True)
+
+
+def test_chat_devuelve_la_traza(agente_falso):
+    # Given: un turno de chat con historial
+    cuerpo = {"mensajes": [{"rol": "user", "texto": "¿cuánta irradiancia va a haber?"}],
+              "contexto": "Predicción vs Real"}
+
+    # When
+    r = CLIENTE.post("/chat", json=cuerpo)
+
+    # Then: el contrato que consume el widget de la consola
+    assert r.status_code == 200
+    assert r.json()["respuesta"]
+    assert r.json()["costo"]["usd_total"] > 0
+
+
+def test_preguntar_devuelve_la_traza(agente_falso):
+    # Given/When
+    r = CLIENTE.post("/preguntar", json={"pregunta": "¿y en dos horas?"})
+
+    # Then
+    assert r.status_code == 200 and r.json()["modelo"]
+
+
+def test_chat_respeta_el_rate_limit(agente_falso, monkeypatch):
+    # Given: un solo turno permitido por minuto
+    monkeypatch.setattr(limites, "LIMITADOR_LLM", limites.LimitadorRitmo(por_minuto=1))
+    cuerpo = {"mensajes": [{"rol": "user", "texto": "hola"}]}
+
+    # When
+    primero = CLIENTE.post("/chat", json=cuerpo).status_code
+    segundo = CLIENTE.post("/chat", json=cuerpo).status_code
+
+    # Then: el freno cubre /chat, no solo /preguntar
+    assert primero == 200 and segundo == 429
+
+
+def test_un_fallo_al_registrar_el_uso_no_tumba_la_respuesta(agente_falso, monkeypatch):
+    # Given: el store de uso falla (fue el caso real en el contenedor)
+    def explota(traza):
+        raise PermissionError("permission denied")
+    monkeypatch.setattr(api.uso_mod, "registrar", explota)
+
+    # When/Then: la consulta se responde igual; el fallo se loguea, no se propaga
+    assert CLIENTE.post("/preguntar", json={"pregunta": "hola"}).status_code == 200
