@@ -9,6 +9,7 @@ import {
   passwordConfigurada,
   passwordCorrecta,
 } from "@/app/lib/auth";
+import { esperaRestante, ipDe, registrarExito, registrarFallo } from "@/app/lib/limiteLogin";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,16 @@ export async function POST(req: Request) {
     );
   }
 
+  // Antes de gastar CPU en verificar: si esta IP ya agotó sus intentos, corta.
+  const ip = ipDe(req);
+  const espera = esperaRestante(ip);
+  if (espera > 0) {
+    return NextResponse.json(
+      { error: `demasiados intentos: probá de nuevo en ${Math.ceil(espera / 60)} min` },
+      { status: 429, headers: { "Retry-After": String(espera) } },
+    );
+  }
+
   let password = "";
   try {
     password = ((await req.json()) as { password?: string }).password || "";
@@ -28,9 +39,11 @@ export async function POST(req: Request) {
   }
 
   if (!(await passwordCorrecta(password))) {
+    registrarFallo(ip);
     return NextResponse.json({ error: "password incorrecta" }, { status: 401 });
   }
 
+  registrarExito(ip);
   const respuesta = NextResponse.json({ ok: true });
   respuesta.cookies.set({
     name: COOKIE_SESION,

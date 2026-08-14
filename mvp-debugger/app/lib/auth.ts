@@ -65,11 +65,38 @@ export async function sesionValida(valor: string | undefined): Promise<boolean> 
   return igualdadConstante(firma, await firmar(expiracion));
 }
 
+// Iteraciones de PBKDF2 al verificar la password. Es la defensa que NO depende
+// del proceso: encarece cada intento aunque el limitador por IP se recicle (en
+// serverless pasa). 1M iteraciones ~ 200 ms medidos: imperceptible para una
+// persona, carísimo para un bot.
+const ITERACIONES_PBKDF2 = 1_000_000;
+
+async function derivar(password: string): Promise<string> {
+  const material = await crypto.subtle.importKey(
+    "raw", CODIFICADOR.encode(password), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits(
+    {
+      name: "PBKDF2",
+      // La sal es fija y sale del secreto de firma: no se guardan hashes por
+      // usuario (hay una sola password), así que su rol acá es separar este
+      // despliegue de cualquier otro, no proteger una tabla de credenciales.
+      salt: CODIFICADOR.encode(`agrovoltaic:${secretoFirma()}`),
+      iterations: ITERACIONES_PBKDF2,
+      hash: "SHA-256",
+    },
+    material,
+    256,
+  );
+  return Array.from(new Uint8Array(bits))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 /** true si la password enviada en el login es la correcta. */
 export async function passwordCorrecta(enviada: string): Promise<boolean> {
   const esperada = passwordConfigurada();
   if (!esperada) return false;
-  // Se comparan los HMAC y no los strings: iguala la longitud y evita filtrar
-  // el largo de la password real.
-  return igualdadConstante(await firmar(enviada), await firmar(esperada));
+  // Se comparan las claves derivadas, no los strings: iguala la longitud (no
+  // filtra el largo real) y cada comparación cuesta el trabajo del PBKDF2.
+  return igualdadConstante(await derivar(enviada), await derivar(esperada));
 }
