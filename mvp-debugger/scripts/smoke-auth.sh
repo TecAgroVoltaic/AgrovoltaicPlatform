@@ -69,6 +69,16 @@ else
     fallos=$((fallos + 1))
 fi
 
+# Va AL FINAL a propósito: bloquea la IP por 15 min, así que cualquier prueba
+# posterior de login válido fallaría.
+echo ">> límite de intentos"
+for _ in $(seq 1 8); do
+    codigo -X POST "$BASE/api/login" -H 'content-type: application/json' \
+        -d '{"password":"fuerza-bruta"}' > /dev/null
+done
+verificar "9.º intento fallido se bloquea" "429" "$(codigo -X POST "$BASE/api/login" \
+    -H 'content-type: application/json' -d '{"password":"fuerza-bruta"}')"
+
 if [[ $fallos -gt 0 ]]; then
     echo ">> $fallos caso(s) fallaron"
     exit 1
