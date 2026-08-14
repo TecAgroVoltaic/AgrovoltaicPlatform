@@ -88,3 +88,15 @@ ambos agentes (`chat()` en `agent/agent.py`):
 referencia visual con datos snapshot.
 
 Relacionado: [[agente-analizador]], [[agente-pronostico]], [[capa-agentes]], [[evaluacion-datos]].
+
+## 2026-08-14 — auth, panel de salud y estados de error
+
+- **Gate de acceso** (`middleware.ts` + `app/lib/auth.ts`): cookie `<expiracion>.<hmac>`
+  firmada con **Web Crypto** (el middleware corre en runtime Edge, sin módulos de Node).
+  Cubre las páginas y `/api/*`, que es donde se gastan tokens. **Falla cerrada**: sin
+  `DEBUGGER_PASSWORD` en producción responde 503 en vez de abrirse.
+- **Vista "Salud del sistema"**: frescura de ingesta por variable, gasto del día contra
+  el tope y últimos errores del agente (lee `/salud/panel`).
+- **Estados de error/vacío**: las vistas validaban nada y un 200 con otra forma las dejaba
+  en "cargando…" para siempre. Ahora `extraerLista`/`mensajeError` + el bloque `Estado`.
+- **Verificación**: `scripts/smoke-auth.sh` (8 casos con HTTP real) corre en el CI.
