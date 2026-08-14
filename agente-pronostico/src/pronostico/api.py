@@ -11,17 +11,19 @@ nunca en la respuesta.
 """
 from __future__ import annotations
 
+import logging
 import os
 import secrets
 import time
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Query, status
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
 
 from pronostico import anomalias as anomalias_mod
 from pronostico import audit
 from pronostico import backtest as backtest_mod
 from pronostico import data as data_mod
+from pronostico import limites
 from pronostico import salud as salud_mod
 from pronostico import uso as uso_mod
 from pronostico.domain import Variable
@@ -36,6 +38,8 @@ _MAX_HORIZONTE_SEG = _HORIZONTE["maximum"]
 
 # Nombre de la variable de entorno con la clave (si no esta, la API es abierta).
 ENV_API_KEY = "FORECAST_API_KEY"
+
+_log = logging.getLogger(__name__)
 
 app = FastAPI(
     title="Pronostico ambiental (irradiancia + humedad de suelo)",
@@ -100,6 +104,44 @@ class AnomaliasRequest(BaseModel):
     )
 
 
+def _identidad(req: Request, x_api_key: str | None) -> str:
+    """Quien llama, para el rate-limit: la API key si viene, si no la IP."""
+    if x_api_key:
+        return f"key:{x_api_key[:8]}"
+    return f"ip:{req.client.host if req.client else 'desconocida'}"
+
+
+def _limitar(limitador: limites.LimitadorRitmo, req: Request,
+             x_api_key: str | None) -> None:
+    """429 si la identidad se paso del ritmo. Retry-After para que un cliente
+    bien hecho reintente solo."""
+    if limitador.permitir(_identidad(req, x_api_key)):
+        return
+    raise HTTPException(
+        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        detail=(f"limite de {limitador.por_minuto} solicitudes por minuto alcanzado; "
+                f"reintentá en unos segundos"),
+        headers={"Retry-After": str(limitador.espera_seg())},
+    )
+
+
+def _frenar_llm(req: Request, x_api_key: str | None = Header(default=None)) -> None:
+    """Freno de los endpoints que gastan tokens: ritmo + presupuesto diario."""
+    _limitar(limites.LIMITADOR_LLM, req, x_api_key)
+    agotado, gastado, tope = limites.presupuesto_agotado()
+    if agotado:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=(f"presupuesto diario agotado: US${gastado:.4f} de US${tope:.2f}. "
+                    f"Se reanuda a las 00:00 UTC o subiendo PRESUPUESTO_DIARIO_USD."),
+        )
+
+
+def _frenar_datos(req: Request, x_api_key: str | None = Header(default=None)) -> None:
+    """Freno de los endpoints deterministas: solo ritmo (no gastan tokens)."""
+    _limitar(limites.LIMITADOR_DATOS, req, x_api_key)
+
+
 def _verificar_api_key(x_api_key: str | None = Header(default=None)) -> None:
     """Exige la API key SOLO si esta configurada. Comparacion en tiempo
     constante (compare_digest) para no filtrar la clave por timing."""
@@ -110,6 +152,19 @@ def _verificar_api_key(x_api_key: str | None = Header(default=None)) -> None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="API key invalida"
         )
+
+
+def _registrar_uso(traza: dict) -> None:
+    """Acumula el uso sin tumbar la respuesta si el store falla.
+
+    Best-effort SI, silencioso NO: el acumulado venia fallando con
+    PermissionError en el contenedor y nadie se enteraba -> /uso reportaba 0.0
+    y el tope diario (que lo lee) nunca podia dispararse.
+    """
+    try:
+        uso_mod.registrar(traza)
+    except Exception:  # noqa: BLE001
+        _log.warning("no se pudo registrar el uso en %s", uso_mod._RUTA, exc_info=True)
 
 
 @app.get("/health")
@@ -155,7 +210,8 @@ def _agente():
     return _AGENTE
 
 
-@app.post("/preguntar", dependencies=[Depends(_verificar_api_key)])
+@app.post("/preguntar",
+          dependencies=[Depends(_verificar_api_key), Depends(_frenar_llm)])
 def preguntar(cuerpo: Pregunta) -> dict:
     """Corre el lazo LLM completo y devuelve la TRAZA (pasos + forecast + respuesta + costo).
 
@@ -163,22 +219,17 @@ def preguntar(cuerpo: Pregunta) -> dict:
     su salida cruda (valor + banda + contexto), la redaccion final y el costo USD.
     La acumulacion de uso/costo se hace ACA (no en conversar()) para mantener el lazo puro."""
     traza = _agente().conversar(cuerpo.pregunta)
-    try:
-        uso_mod.registrar(traza)  # best-effort: un fallo de disco no debe tumbar la respuesta
-    except Exception:
-        pass
+    _registrar_uso(traza)
     return traza
 
 
-@app.post("/chat", dependencies=[Depends(_verificar_api_key)])
+@app.post("/chat",
+          dependencies=[Depends(_verificar_api_key), Depends(_frenar_llm)])
 def chat(cuerpo: ChatBody) -> dict:
     """Turno de CHAT multi-turno del forecaster (para el widget): historial + contexto
     de la vista -> respuesta + traza (forecast/web) + costo."""
     traza = _agente().chat([m.model_dump() for m in cuerpo.mensajes], cuerpo.contexto)
-    try:
-        uso_mod.registrar(traza)
-    except Exception:
-        pass
+    _registrar_uso(traza)
     return traza
 
 
@@ -188,7 +239,8 @@ def consumo() -> dict:
     return uso_mod.resumen()
 
 
-@app.get("/serie", dependencies=[Depends(_verificar_api_key)])
+@app.get("/serie",
+         dependencies=[Depends(_verificar_api_key), Depends(_frenar_datos)])
 def serie(variable: str = Query(Variable.IRRADIANCIA.value),
           bucket: str = Query("D"), ultimos_dias: int | None = Query(60)) -> dict:
     """Panorama de una serie del store (resumen + puntos remuestreados para graficar)."""
@@ -200,7 +252,8 @@ def serie(variable: str = Query(Variable.IRRADIANCIA.value),
         ) from exc
 
 
-@app.get("/backtest", dependencies=[Depends(_verificar_api_key)])
+@app.get("/backtest",
+         dependencies=[Depends(_verificar_api_key), Depends(_frenar_datos)])
 def backtest(variable: str = Query(Variable.IRRADIANCIA.value),
              dias: int = Query(7), bucket: str = Query("h"),
              desde: str | None = Query(None), hasta: str | None = Query(None)) -> dict:
@@ -216,7 +269,8 @@ def backtest(variable: str = Query(Variable.IRRADIANCIA.value),
         ) from exc
 
 
-@app.post("/forecast", dependencies=[Depends(_verificar_api_key)])
+@app.post("/forecast",
+          dependencies=[Depends(_verificar_api_key), Depends(_frenar_datos)])
 def forecast(cuerpo: ForecastRequest) -> dict:
     """Ejecuta el pronostico fisico y devuelve el dict de run_forecast.
 
@@ -238,7 +292,8 @@ def forecast(cuerpo: ForecastRequest) -> dict:
         ) from exc
 
 
-@app.post("/anomalias", dependencies=[Depends(_verificar_api_key)])
+@app.post("/anomalias",
+          dependencies=[Depends(_verificar_api_key), Depends(_frenar_datos)])
 def detectar_anomalias(cuerpo: AnomaliasRequest) -> dict:
     """Detección DETERMINISTA de anomalías sobre la data reciente del store.
 
