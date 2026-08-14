@@ -2,7 +2,8 @@
 // Costo y uso: acumulado REAL del agente (GET /uso, persistido) + el gasto de la
 // sesión (cada pregunta suma su costo) con gráfico acumulado, split y proyección.
 import { useEffect, useState } from "react";
-import { jget, type Resp } from "@/app/lib/client";
+import { jget, mensajeError, type Resp } from "@/app/lib/client";
+import { Estado } from "@/app/components/console/Estado";
 import { lineChart, palette } from "@/app/lib/charts";
 import type { Traza } from "@/app/components/TraceViewer";
 
@@ -11,11 +12,18 @@ const usd = (n: number, d = 4) => "$" + (n || 0).toFixed(d);
 
 export function CostoView({ agent, theme, sesion }: { agent: string; theme: string; sesion: { agent: string; traza: Traza }[] }) {
   const [uso, setUso] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [intento, setIntento] = useState(0);
   const mias = sesion.filter((s) => s.agent === agent).map((s) => s.traza);
 
   useEffect(() => {
-    jget(`/api/${agent}/uso`).then((r: Resp) => setUso(r.ok ? r.data : null));
-  }, [agent, sesion.length]);
+    // Antes: un fallo dejaba `uso` en null y la vista mostraba $0 y 0 consultas,
+    // indistinguible de "el agente todavía no gastó nada".
+    jget(`/api/${agent}/uso`).then((r: Resp) => {
+      if (r.ok) { setUso(r.data); setError(null); }
+      else { setUso(null); setError(mensajeError(r)); }
+    }).catch((e) => setError(String(e?.message || e)));
+  }, [agent, sesion.length, intento]);
 
   const tarifa = (mias[0] as any)?.costo?.tarifa || { usd_in_por_mtok: 1, usd_out_por_mtok: 5 };
   const total = uso?.total_usd || 0;
@@ -41,6 +49,11 @@ export function CostoView({ agent, theme, sesion }: { agent: string; theme: stri
         <h1>Costo y uso · {agent === "analizador" ? "Analizador" : "Pronóstico"}</h1>
         <p>Cuánto cuesta operar el agente. Acumulado real de <span className="mono">GET /uso</span> (persistido) y el gasto de esta sesión.</p>
       </div>
+
+      {error && (
+        <Estado error={error} que="el consumo acumulado"
+                onReintentar={() => setIntento((i) => i + 1)} />
+      )}
 
       <div className="card costohero">
         <div>
