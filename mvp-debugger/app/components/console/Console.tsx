@@ -8,12 +8,13 @@ import { ReconView } from "@/app/components/console/ReconView";
 import { PredView } from "@/app/components/console/PredView";
 import { PerfView } from "@/app/components/console/PerfView";
 import { CostoView } from "@/app/components/console/CostoView";
+import { SaludView } from "@/app/components/console/SaludView";
 import { ChatWidget } from "@/app/components/chat/ChatWidget";
 import type { Traza } from "@/app/components/TraceViewer";
 
-type View = "recon" | "pred" | "perf" | "costo";
-const NAV: [View, string][] = [["recon", "Reconciliación"], ["pred", "Predicción vs Real"], ["perf", "Rendimiento"], ["costo", "Costo y uso"]];
-const LABEL: Record<View, string> = { recon: "Reconciliación", pred: "Predicción vs Real", perf: "Rendimiento", costo: "Costo y uso" };
+type View = "recon" | "pred" | "perf" | "costo" | "salud";
+const NAV: [View, string][] = [["recon", "Reconciliación"], ["pred", "Predicción vs Real"], ["perf", "Rendimiento"], ["costo", "Costo y uso"], ["salud", "Salud del sistema"]];
+const LABEL: Record<View, string> = { recon: "Reconciliación", pred: "Predicción vs Real", perf: "Rendimiento", costo: "Costo y uso", salud: "Salud del sistema" };
 const AGENT_OF: Partial<Record<View, string>> = { recon: "analizador", perf: "analizador", pred: "pronostico" };
 
 export function Console() {
@@ -90,6 +91,7 @@ export function Console() {
         {view === "pred" && <PredView theme={theme} />}
         {view === "perf" && <PerfView theme={theme} />}
         {view === "costo" && <CostoView agent={agent} theme={theme} sesion={sesion} />}
+        {view === "salud" && <SaludView />}
         <div className="foot">
           <span>AgroVoltaic · debugger de agentes</span>
           <span>datos: Supabase PV · San Carlos (10.33°N, 84.42°O) · UTC−6</span>

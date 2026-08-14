@@ -265,3 +265,10 @@ svg .hit { cursor:crosshair; }
 .chat-input { display:flex; gap:8px; padding:12px; border-top:1px solid var(--line); background:var(--panel); }
 .chat-input textarea { flex:1; resize:none; background:var(--panel2); color:var(--ink); border:1px solid var(--line2); border-radius:9px; padding:9px 12px; font-family:inherit; font-size:13.5px; max-height:120px; }
 .chat-input .btn { align-self:stretch; }
+
+/* ── Panel de salud ──────────────────────────────────────────────────────── */
+.pill-ok        { color:var(--good); border-color:color-mix(in srgb, var(--good) 40%, var(--line)); }
+.pill-stale     { color:var(--warn); border-color:color-mix(in srgb, var(--warn) 40%, var(--line)); }
+.pill-sin_datos { color:var(--crit); border-color:color-mix(in srgb, var(--crit) 40%, var(--line)); }
+.barra { height:6px; background:var(--panel2); border:1px solid var(--line); border-radius:99px; overflow:hidden; }
+.barra-fill { height:100%; background:var(--accent); transition:width .3s ease; }

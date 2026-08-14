@@ -28,11 +28,9 @@ ESTADO_OK = "ok"
 ESTADO_STALE = "stale"
 ESTADO_SIN_DATOS = "sin_datos"
 
-_SQL_FRESCURA = """
-    SELECT variable, max(ts) AS ultimo, count(*) AS filas
-    FROM lecturas_ambientales_sc
-    GROUP BY variable
-"""
+# Lee la VISTA, no la tabla: la definicion de "frescura" vive en el esquema y
+# se puede consultar igual desde psql o el dashboard de Supabase.
+_SQL_FRESCURA = "SELECT variable, ultimo_dato, filas FROM v_salud_ingesta"
 _SQL_ULTIMO_ERROR = """
     SELECT ts, evento, detalle->>'error' AS error
     FROM agente_log
