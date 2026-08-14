@@ -20,8 +20,9 @@ Propiedades:
   * OBSERVABLE: cada corrida deja filas en `agente_log` (componente 'etl').
 
 Uso (en la EC2, unico nodo con acceso a ambas DBs):
-    STORE_URL=... python -m pronostico.etl            # incremental
+    STORE_URL=... python -m pronostico.etl            # incremental, todos los targets
     STORE_URL=... python -m pronostico.etl --full      # backfill desde BACKFILL_SINCE
+    STORE_URL=... python -m pronostico.etl --full --variable irradiancia
 """
 from __future__ import annotations
 
@@ -163,12 +164,31 @@ def _ingest(src: psycopg.Connection, store: psycopg.Connection,
     }
 
 
+def _targets(variables: list[str] | None) -> list[dict]:
+    """TARGETS filtrados por nombre de variable. Sin filtro, todos.
+
+    Acotar importa en backfills: `--full` sobre todos los targets puede traer
+    cientos de miles de filas de una variable que no interesa (y el store tiene
+    cuota). Falla explicito si el nombre no existe, en vez de no hacer nada.
+    """
+    if not variables:
+        return TARGETS
+    conocidas = {t["variable"] for t in TARGETS}
+    desconocidas = set(variables) - conocidas
+    if desconocidas:
+        raise SystemExit(
+            f"variable(s) desconocida(s): {sorted(desconocidas)}. "
+            f"Disponibles: {sorted(conocidas)}"
+        )
+    return [t for t in TARGETS if t["variable"] in variables]
+
+
 def _ingestar_targets(src: psycopg.Connection, store: psycopg.Connection,
-                      full: bool) -> dict:
+                      full: bool, variables: list[str] | None = None) -> dict:
     """Corre cada target. Un fallo de UN target no aborta los demas: se loguea
     y se sigue (el corte total lo maneja run(), que cubre la conexion)."""
     resumen: dict = {}
-    for tgt in TARGETS:
+    for tgt in _targets(variables):
         var = tgt["variable"]
         try:
             wm = None if full else _watermark(store, var)
@@ -187,8 +207,8 @@ def _ingestar_targets(src: psycopg.Connection, store: psycopg.Connection,
     return resumen
 
 
-def run(full: bool = False) -> dict:
-    """Corre el ETL para todos los TARGETS. Devuelve el resumen por variable.
+def run(full: bool = False, variables: list[str] | None = None) -> dict:
+    """Corre el ETL para los TARGETS (todos, o los de `variables`).
 
     El STORE se conecta PRIMERO y la fuente DENTRO del try: si la fuente esta
     caida (Cartago apagado -> ConnectionTimeout), el fallo queda registrado en
@@ -214,7 +234,7 @@ def run(full: bool = False) -> dict:
             with psycopg.connect(src_dsn, connect_timeout=CONNECT_TIMEOUT_SEG) as src:
                 src.execute("SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY")
                 src.commit()
-                resumen = _ingestar_targets(src, store, full)
+                resumen = _ingestar_targets(src, store, full, variables)
         except Exception as exc:                             # noqa: BLE001
             store.rollback()
             _log(store, "error", "fallo:fuente", {
@@ -225,15 +245,27 @@ def run(full: bool = False) -> dict:
 
         _log(store, "info", "corrida", {
             "seg": round(time.time() - t0, 1), "full": full,
-            "backfill_since": BACKFILL_SINCE, "resumen": resumen,
+            "variables": variables, "backfill_since": BACKFILL_SINCE,
+            "resumen": resumen,
         })
         store.commit()
     return resumen
 
 
+def _variables_de_argv(argv: list[str]) -> list[str] | None:
+    """Lee `--variable X` (repetible) o `--variable=X,Y`. Sin flag -> None."""
+    variables: list[str] = []
+    for i, arg in enumerate(argv):
+        if arg.startswith("--variable="):
+            variables += arg.split("=", 1)[1].split(",")
+        elif arg == "--variable" and i + 1 < len(argv):
+            variables += argv[i + 1].split(",")
+    return [v.strip() for v in variables if v.strip()] or None
+
+
 def main() -> None:
-    full = "--full" in sys.argv[1:]
-    resumen = run(full=full)
+    argv = sys.argv[1:]
+    resumen = run(full="--full" in argv, variables=_variables_de_argv(argv))
     print(json.dumps(resumen, indent=2, default=str, ensure_ascii=False))
 
 

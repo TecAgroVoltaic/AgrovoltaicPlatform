@@ -140,3 +140,34 @@ def test_sin_store_url_falla_explicito(monkeypatch):
     # When / Then: no arranca a ciegas
     with pytest.raises(SystemExit):
         etl.run()
+
+
+def test_filtro_de_variables_acota_los_targets():
+    # Given/When: se pide solo una variable
+    solo = etl._targets(["irradiancia"])
+
+    # Then: no se toca el resto (un --full sobre humedad son ~936k filas)
+    assert [t["variable"] for t in solo] == ["irradiancia"]
+
+
+def test_sin_filtro_corren_todos_los_targets():
+    # Given/When/Then: el comportamiento por defecto no cambia
+    assert etl._targets(None) == etl.TARGETS
+
+
+def test_variable_desconocida_falla_explicito():
+    # Given/When/Then: mejor cortar que "correr" sin hacer nada
+    with pytest.raises(SystemExit):
+        etl._targets(["irradianza"])
+
+
+@pytest.mark.parametrize("argv,esperado", [
+    ([], None),
+    (["--full"], None),
+    (["--variable", "irradiancia"], ["irradiancia"]),
+    (["--variable=irradiancia"], ["irradiancia"]),
+    (["--variable=irradiancia,humedad_suelo"], ["irradiancia", "humedad_suelo"]),
+])
+def test_parseo_del_flag_variable(argv, esperado):
+    # Given/When/Then: las dos formas del flag se aceptan
+    assert etl._variables_de_argv(argv) == esperado
