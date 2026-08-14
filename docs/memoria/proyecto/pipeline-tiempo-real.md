@@ -64,6 +64,26 @@ Es la misma DB que `monitoreo_agrovoltaic` (36.485 filas). 3 tablas nuevas del a
   correcto (verificado: pico diurno de irradiancia a las 11h local).
 - **Timer `forecast-etl.timer`** (systemd, cada 15 min, `docker exec forecast-forecast-1
   python -m pronostico.etl`). Con la fuente congelada, no-op; listo para cuando vuelva.
+  **Units versionados** desde el 2026-08-14 en `agente-pronostico/deploy/systemd/`.
+- **Flag `--variable`** para acotar el ETL a un target (un `--full` sin filtro arrastra
+  las dos variables; humedad son ~936k filas y el store es Free tier).
+
+### 2026-08-14 — Cartago caído: fuente movida y fallo silencioso corregido
+
+- **El ETL falló cada 15 min durante 9 días SIN dejar rastro** en `agente_log`: la
+  conexión a la fuente estaba fuera del `try/except`, así que la excepción se propagaba
+  antes de poder loguear. Corregido (`etl.py`): el store se conecta primero, la fuente va
+  dentro del try (`evento='fallo:fuente'`), la excepción se re-lanza para que systemd
+  siga marcando `failed`, y hay `connect_timeout` explícito de 15 s. Regresión en
+  `tests/test_etl.py`; verificado en producción contra una fuente muerta a propósito.
+- **Fuente movida** a la réplica del dump restaurada en la propia EC2
+  (`127.0.0.1:5433`) — ver [[agrodash-local]]. La URL de Cartago quedó comentada en
+  `forecast.env`; volver es cambiar una línea.
+- **Backfill de irradiancia**: +73.290 filas (historia desde 2025-11-28). Supabase
+  365 → 395 MB de 500 (Free tier).
+- **`GET /salud/ingesta`** — frescura por variable (`ok`/`stale`/`sin_datos`), última
+  corrida y último error del ETL. Devuelve **503** si no está `ok`. Hoy reporta `stale`
+  con 540 h de edad: el outage SC, por fin visible.
 
 ## Forecaster multi-variable (Fase 3)
 

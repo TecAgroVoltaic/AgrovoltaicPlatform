@@ -1,17 +1,33 @@
 ---
 name: agrodash-local
-description: Réplica local de AgroDash restaurada desde el dump — cluster nativo en el puerto 5433 levantado con scripts/agrodash_local.sh; es la fuente del ETL mientras Cartago y el rig están caídos
+description: Réplica de AgroDash restaurada desde el dump — VIVE EN LA EC2 (contenedor agrodash-pg, 127.0.0.1:5433) y es la fuente del ETL mientras Cartago está caído; el script local sirve para trabajar de forma aislada
 categoria: proyecto
 ---
 
-# Réplica local de AgroDash (fuente del ETL cuando Cartago está off)
+# Réplica de AgroDash (fuente del ETL con Cartago off)
 
 **Creada 2026-08-14.** Ni el server vivo de Cartago (`100.101.177.71`) ni la réplica del
-rig (`100.100.130.47`) están accesibles: la máquina de trabajo no tiene Tailscale ni el
-contenedor `agrodash-pg`. Sin fuente, el ETL de [[pipeline-tiempo-real]] no puede correr.
-La solución es restaurar el dump localmente y apuntar ahí `DATABASE_URL`.
+rig (`100.100.130.47`) están accesibles. Sin fuente, el ETL de [[pipeline-tiempo-real]]
+fallaba cada 15 min. La solución es restaurar el dump y apuntar ahí `DATABASE_URL`.
 
-## Cómo levantarla
+## La que importa: la réplica de la EC2 (productiva)
+
+El dump está restaurado **en la EC2** (`52.1.28.77`), que es donde corre el ETL:
+
+| | |
+|---|---|
+| Contenedor | `agrodash-pg` (`postgres:16`, volumen `agrodash_pgdata`, `restart unless-stopped`) |
+| Puerto | `127.0.0.1:5433` — **atado a loopback**, no expuesto a internet |
+| DB / user | `agrodash_control` / `postgres` (clave en `/home/ec2-user/.agrodash_pw`, `chmod 600`) |
+| Alcance | el sidecar es `network_mode: host` → la ve directo, sin cambios de red |
+| Tamaño | 21.314.662 filas, 5.045 MB |
+
+`DATABASE_URL` en `forecast.env` apunta ahí; la URL de Cartago quedó **comentada** en el
+mismo archivo con la fecha y cómo revertir (backup en `forecast.env.bak-cartago-2026-08-14`).
+Cuando Cartago vuelva, es cambiar esa línea — cero código, porque `config.conninfo()` ya
+resuelve la fuente por URL.
+
+## La local (opcional, para trabajar aislado)
 
 ```bash
 ~/AgrovoltaicPlatform/agente-pronostico/scripts/agrodash_local.sh
@@ -61,9 +77,19 @@ réplica local y subir a Supabase **solo los targets de San Carlos**
 ## Límite: la data está congelada
 
 El dump es del **2026-06-30**, y las cajas SC dejaron de reportar el **2026-07-23**
-([[agrodash]]). El store de Supabase ya tiene hasta el 23-jul, así que esta réplica **no
-aporta datos nuevos hacia adelante**: sirve para backfill hacia atrás (antes del
-2026-05-01, piso del `BACKFILL_SINCE` actual) y para que el ETL tenga contra qué correr.
+([[agrodash]]). El store de Supabase ya tenía hasta el 23-jul, así que esta réplica **no
+aporta datos nuevos hacia adelante**: el ETL incremental corre verde trayendo 0 filas.
+Su valor es el **backfill hacia atrás**, ya aprovechado.
+
+## Backfill hecho (2026-08-14)
+
+`etl --full --variable irradiancia` con `BACKFILL_SINCE=2025-11-01`: **73.290 filas**
+insertadas, Supabase 365 → **395 MB**. La historia de irradiancia pasó de arrancar el
+2026-05-01 a arrancar el **2025-11-28** (con el gap conocido de ene–feb).
+
+**Humedad de suelo NO se backfilleó a propósito:** son 936.295 filas ≈ 375 MB y el store
+es Free tier (500 MB, hoy 395 usados → quedan ~105 MB). Por eso existe el flag
+`--variable`: `--full` sin filtro habría arrastrado ambas y reventado la cuota.
 
 Relacionado: [[agrodash]], [[pipeline-tiempo-real]], [[arquitectura-regiones]],
 [[conectividad-tailnet]], [[estado]].
