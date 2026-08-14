@@ -55,6 +55,28 @@ cd mvp-debugger
 `dev.sh` toma la `ANTHROPIC_API_KEY` de `agente-pronostico/.env`, usa el venv de
 `agente-pronostico/.venv`, y abre <http://localhost:3000>. Ctrl-C cierra todo.
 
+### Contra los agentes de la EC2 (sin montar nada local)
+
+```bash
+cd mvp-debugger
+./consola.sh      # túnel SSH a la EC2 + consola en un puerto libre
+```
+
+`consola.sh` abre un túnel a los agentes que **ya corren en producción** (siguen
+escuchando solo en el loopback del servidor: no se expone nada), elige puertos libres
+solo —8000, 8010 y 3000 suelen estar ocupados en una máquina de desarrollo—, sincroniza
+las URLs del `.env.local` con los puertos de esa corrida y cierra el túnel al salir.
+
+Requiere `.env.local` con `DEBUGGER_PASSWORD` (si no, no vas a poder entrar) y la llave
+SSH en `~/aws/visione-key.pem` (override: `EC2_KEY`, `EC2_HOST`, `CONSOLA_PORT`).
+
+## Acceso
+
+La consola tiene **gate de acceso**: `DEBUGGER_PASSWORD` en el entorno. Sin esa variable,
+en producción responde 503 en vez de abrirse —fallar abierto fue lo que la dejó expuesta
+en Amplify—; en desarrollo deja pasar para no estorbar. `DEBUGGER_SESSION_SECRET` firma
+la cookie: rotarlo cierra todas las sesiones sin cambiarle la contraseña al equipo.
+
 ### Manual (si preferís)
 
 ```bash
