@@ -22,6 +22,7 @@ from pronostico import anomalias as anomalias_mod
 from pronostico import audit
 from pronostico import backtest as backtest_mod
 from pronostico import data as data_mod
+from pronostico import salud as salud_mod
 from pronostico import uso as uso_mod
 from pronostico.domain import Variable
 from pronostico.tools.forecast_tool import FORECAST_TOOL_SCHEMA, run_forecast
@@ -115,6 +116,29 @@ def _verificar_api_key(x_api_key: str | None = Header(default=None)) -> None:
 def health() -> dict:
     """Ping para monitoreo/orquestadores. No toca datos ni exige clave."""
     return {"status": "ok"}
+
+
+@app.get("/salud/ingesta")
+def salud_ingesta(umbral_horas: float | None = Query(default=None, gt=0)) -> dict:
+    """Frescura de la ingesta por variable + ultima corrida y ultimo error del ETL.
+
+    ABIERTO como /health: es un endpoint de MONITOREO (no expone datos de la
+    serie, solo edades y estado) y un monitor externo debe poder consultarlo sin
+    manejar la clave. Devuelve 503 si la ingesta no esta `ok`, para que un
+    healthcheck HTTP lo detecte por status code sin parsear el cuerpo.
+    """
+    try:
+        reporte = salud_mod.estado_ingesta(umbral_horas)
+    except Exception as exc:  # store caido: eso TAMBIEN es un fallo de salud
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"no se pudo consultar el store: {type(exc).__name__}",
+        ) from exc
+    if reporte["estado"] != salud_mod.ESTADO_OK:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=reporte
+        )
+    return reporte
 
 
 # Agente perezoso: solo se construye al primer /preguntar (anthropic.Anthropic()
