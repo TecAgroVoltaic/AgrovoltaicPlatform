@@ -23,6 +23,7 @@ from pronostico import anomalias as anomalias_mod
 from pronostico import audit
 from pronostico import backtest as backtest_mod
 from pronostico import data as data_mod
+from pronostico import gasto as gasto_mod
 from pronostico import limites
 from pronostico import salud as salud_mod
 from pronostico import uso as uso_mod
@@ -165,6 +166,9 @@ def _registrar_uso(traza: dict) -> None:
         uso_mod.registrar(traza)
     except Exception:  # noqa: BLE001
         _log.warning("no se pudo registrar el uso en %s", uso_mod._RUTA, exc_info=True)
+    # El gasto va TAMBIEN al store: es lo que lee el tope diario y sobrevive a
+    # que se recree el contenedor (gasto.py ya es best-effort, no lanza).
+    gasto_mod.registrar((traza.get("costo") or {}).get("usd_total"))
 
 
 @app.get("/health")
