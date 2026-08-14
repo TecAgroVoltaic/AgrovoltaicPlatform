@@ -78,3 +78,21 @@ COMMENT ON TABLE agente_log IS
     'Log estructurado de corridas/errores del agente (ETL, forecaster, flujo).';
 
 CREATE INDEX IF NOT EXISTS idx_agente_log_ts ON agente_log (ts DESC);
+
+-- ----------------------------------------------------------------------------
+-- 4. Gasto diario del LLM. UNA fila por día: es la fuente de verdad del tope de
+--    presupuesto (`PRESUPUESTO_DIARIO_USD`).
+--
+--    Vive acá y no en el JSON local del contenedor por dos razones: ese JSON se
+--    pierde cada vez que `forecast-refresh.timer` recrea el contenedor (cada
+--    6 h), y con más de una instancia cada proceso llevaría su propia cuenta,
+--    duplicando el tope en silencio. El día se corta en UTC.
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS gasto_diario (
+    fecha          DATE PRIMARY KEY,                    -- día UTC
+    usd            DOUBLE PRECISION NOT NULL DEFAULT 0, -- gasto acumulado del día
+    n_consultas    INTEGER          NOT NULL DEFAULT 0,
+    actualizado_en TIMESTAMPTZ      NOT NULL DEFAULT now()
+);
+COMMENT ON TABLE gasto_diario IS
+    'Gasto diario del LLM (1 fila por día UTC). Fuente de verdad del tope de presupuesto del agente.';

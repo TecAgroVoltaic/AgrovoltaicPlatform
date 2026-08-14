@@ -21,6 +21,7 @@ import threading
 import time
 from dataclasses import dataclass, field
 
+from pronostico import gasto as gasto_mod
 from pronostico import uso as uso_mod
 
 # Llamadas por minuto que gastan LLM (/preguntar, /chat). Generoso para uso
@@ -98,7 +99,15 @@ LIMITADOR_DATOS = LimitadorRitmo(por_minuto=LIMITE_DATOS_POR_MIN)
 
 
 def presupuesto_agotado(tope_usd: float | None = None) -> tuple[bool, float, float]:
-    """(agotado, gastado_hoy, tope). Con tope 0 nunca se agota."""
+    """(agotado, gastado_hoy, tope). Con tope 0 nunca se agota.
+
+    El gasto se lee del STORE (fuente de verdad compartida entre procesos y
+    resistente a que se recree el contenedor). Si el store no responde, se cae
+    al acumulado local: es un limite mas debil, pero preferible a bloquear el
+    servicio por un fallo de infraestructura.
+    """
     tope = PRESUPUESTO_DIARIO_USD if tope_usd is None else tope_usd
-    gastado = uso_mod.usd_hoy()
+    gastado = gasto_mod.usd_hoy()
+    if gastado is None:                      # store inaccesible -> plan B local
+        gastado = uso_mod.usd_hoy()
     return (tope > 0 and gastado >= tope), gastado, tope
