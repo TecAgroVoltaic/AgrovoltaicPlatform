@@ -17,6 +17,11 @@ y el **objetivo de comparación** del Agente Comparador (ver [[capa-agentes]], [
   `sql/dump/agrodash_control_2026-06-30.dump` (609 MB, formato `-Fc`, ~19.4M filas en `readings`).
   Generado con `pg_dump` (solo lectura, no tocó prod) usando `postgres` (contraseña redactada), traído del
   server por AnyDesk→Drive→Mac (credenciales de `pg_dump` **redactadas**). Restaurar con `pg_restore --no-owner --no-privileges`. **Gitignored.**
+- **Réplica local (2026-08-14):** con Cartago y el rig **inalcanzables**, el dump está restaurado
+  en un **cluster nativo del equipo de trabajo** (`~/pgdata-agrodash`, PostgreSQL 18, puerto
+  **5433**, DB `agrodash_control`, 21.3M filas, 5.046 MB). Se levanta con
+  `agente-pronostico/scripts/agrodash_local.sh`. **Es la fuente actual del ETL** — ver
+  [[agrodash-local]].
 - **Copia viva en el rig (2026-06-30):** el dump ya está **restaurado y corriendo** en `izack-rig`
   como contenedor Docker `agrodash-pg` (postgres:16, volumen persistente `agrodash_pgdata`,
   `--restart unless-stopped`). DB **`agrodash_control`** con **21.3M filas** en `readings`
