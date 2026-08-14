@@ -16,7 +16,7 @@ concurrency:
 
 env:
   PYTHON_VERSION: "3.12"     # la misma que la imagen del sidecar (python:3.12-slim)
-  NODE_VERSION: "20"
+  NODE_VERSION: "22"
 
 jobs:
   pronostico:
@@ -26,8 +26,8 @@ jobs:
       run:
         working-directory: agente-pronostico
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
@@ -43,8 +43,8 @@ jobs:
       run:
         working-directory: agente-analizador
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
@@ -60,8 +60,8 @@ jobs:
       run:
         working-directory: mvp-debugger
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
