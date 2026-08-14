@@ -16,6 +16,9 @@ dos **agentes LLM** (análisis histórico y pronóstico) y una **consola** para 
 | **Ingesta AgroDash → Supabase** | `agente-pronostico/` | automática en la EC2 cada 15 min; a mano: `python -m pronostico.etl` |
 | **Réplica local de AgroDash** | `agente-pronostico/scripts/` | `./agrodash_local.sh` (restaura el dump si falta) |
 
+**Levantar todo desde cero:** `docs/RUNBOOK.md` — secretos que hacen falta, orden de
+arranque, cómo reconstruir la réplica de datos y qué mirar si algo se rompe.
+
 Cada carpeta tiene su README con el detalle. Lo que corre en producción está en la EC2
 (`52.1.28.77`): dos contenedores de agentes, la réplica de AgroDash y dos temporizadores
 systemd (`agente-pronostico/deploy/systemd/`).
