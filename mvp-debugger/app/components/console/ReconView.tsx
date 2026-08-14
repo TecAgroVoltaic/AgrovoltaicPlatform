@@ -3,7 +3,8 @@
 // tools SQL = la verdad de la DB. Debajo, los datos crudos en vivo (buscables, con
 // cargar más) para cruzar a mano. Todo real, vía /api/analizador/*.
 import { useEffect, useState } from "react";
-import { jget, type Resp } from "@/app/lib/client";
+import { jget, extraerLista, type Resp } from "@/app/lib/client";
+import { Estado } from "@/app/components/console/Estado";
 
 const COLS: [string, string, number][] = [
   ["timestamp", "timestamp", -1],
@@ -23,15 +24,25 @@ export function ReconView() {
   const [cob, setCob] = useState<any[]>([]);
   const [q, setQ] = useState("");
   const [n, setN] = useState(14);
+  const [err, setErr] = useState<string | null>(null);
+  const [cargando, setCargando] = useState(true);
+  const [intento, setIntento] = useState(0);
 
   useEffect(() => {
-    jget("/api/analizador/datos/muestra?tabla=electrico_corregido&limit=400").then((r: Resp) => {
-      if (r.ok) setFilas(r.data.filas || []);
-    });
-    jget("/api/analizador/datos/tablas").then((r: Resp) => {
-      if (r.ok) setCob(r.data.relaciones || []);
-    });
-  }, []);
+    setCargando(true); setErr(null);
+    Promise.all([
+      jget("/api/analizador/datos/muestra?tabla=electrico_corregido&limit=400"),
+      jget("/api/analizador/datos/tablas"),
+    ]).then(([m, t]: Resp[]) => {
+      const muestra = extraerLista(m, "filas");
+      const tablas = extraerLista(t, "relaciones");
+      setFilas(muestra.lista);
+      setCob(tablas.lista);
+      // Una tabla vacia sin explicacion es indistinguible de "no hay datos":
+      // si la carga fallo, hay que decirlo.
+      setErr(muestra.error || tablas.error);
+    }).catch((e) => setErr(String(e?.message || e))).finally(() => setCargando(false));
+  }, [intento]);
 
   const ql = q.trim().toLowerCase();
   const filt = ql ? filas.filter((f) => String(f.timestamp).toLowerCase().includes(ql)) : filas;
@@ -67,7 +78,17 @@ export function ReconView() {
             <tbody>
               {vis.length ? vis.map((f, i) => (
                 <tr key={i}>{COLS.map(([k, , d], j) => <td key={j} className={j === 0 ? "lead" : ""}>{nf(f[k], d)}</td>)}</tr>
-              )) : <tr><td className="lead muted" colSpan={6}>{filas.length ? `sin coincidencias para “${q}”` : "cargando…"}</td></tr>}
+              )) : (
+                <tr><td className="lead" colSpan={6}>
+                  {filas.length ? (
+                    <span className="muted">sin coincidencias para “{q}”</span>
+                  ) : (
+                    <Estado cargando={cargando} error={err} vacio={!cargando && !err}
+                            que="las filas crudas"
+                            onReintentar={() => setIntento((i) => i + 1)} />
+                  )}
+                </td></tr>
+              )}
             </tbody>
           </table>
         </div>

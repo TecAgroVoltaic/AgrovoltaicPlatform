@@ -53,3 +53,29 @@ export function inlineMd(texto: string): string {
     .replace(/>/g, "&gt;");
   return esc.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
 }
+
+// --- lectura defensiva de respuestas ---------------------------------------
+// Las vistas consumen /api/* y asumian la forma de la respuesta: un 200 con otro
+// shape hacia que `.map` lanzara DENTRO del .then, dejando la promesa rechazada
+// y la UI en "cargando..." para siempre. Estos helpers convierten eso en un
+// estado de error explicito y accionable.
+
+/** Mensaje legible de una respuesta fallida (detail de FastAPI, error del proxy, o el status). */
+export function mensajeError(r: Resp): string {
+  const d = r.data as any;
+  if (typeof d?.detail === "string") return d.detail;
+  if (typeof d?.error === "string") return d.error;
+  if (r.status === 0) return "no se pudo contactar al servicio";
+  if (r.status === 401) return "sesión vencida: recargá la página para volver a entrar";
+  return `el servicio respondió ${r.status}`;
+}
+
+/** Extrae una lista de un campo, validando la forma. Nunca lanza. */
+export function extraerLista(r: Resp, campo: string): { lista: any[]; error: string | null } {
+  if (!r.ok) return { lista: [], error: mensajeError(r) };
+  const valor = (r.data as any)?.[campo];
+  if (!Array.isArray(valor)) {
+    return { lista: [], error: `respuesta inesperada: falta "${campo}"` };
+  }
+  return { lista: valor, error: null };
+}
