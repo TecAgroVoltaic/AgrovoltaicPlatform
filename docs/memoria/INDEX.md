@@ -26,6 +26,7 @@ multi-variable VIVO en la EC2, fuente SC congelada 23-jul → "solo histórico".
 - [integracion-visioneflow.md](proyecto/integracion-visioneflow.md) — agente montándose en VisioneFlow: servicio FastAPI /forecast HECHO (53 tests) + modelos agregados + deploy preparado (runbook docs/pronostico/04); bloqueante: la EC2 no alcanza la DB AgroDash (sin Tailscale)
 - [conectividad-tailnet.md](proyecto/conectividad-tailnet.md) — malla Tailscale para acceso a datos: la EC2 (100.125.236.125) YA lee la DB viva de Cartago (100.101.177.71) por Postgres 5432, rol read-only `agrovoltaic_ro`, probado OK; pendiente: rotar la clave débil de prueba
 - [pipeline-tiempo-real.md](proyecto/pipeline-tiempo-real.md) — pipeline arquitectura A (AgroDash→ETL→Supabase store→forecaster multi-variable irradiancia+humedad); congelamiento SC 23-jul → "solo histórico"; desplegado en la EC2 con timers (~812k filas backfilleadas)
+- [agrodash-local.md](proyecto/agrodash-local.md) — **NUEVO (2026-08-14):** réplica local de AgroDash (cluster nativo, puerto 5433, `scripts/agrodash_local.sh`) como fuente del ETL con Cartago y el rig caídos; 5.046 MB restaurados → el dump completo NO cabe en la Supabase Free
 - [metodologia.md](proyecto/metodologia.md) — metodología del equipo (San Carlos): variables, puntos de medición, arquitectura HW, frecuencias, periodos
 - [evaluacion-datos.md](proyecto/evaluacion-datos.md) — plan de análisis/dashboard San Carlos: DataViz/Stats/Mining, 7 objetivos energéticos, Ridge, Colab
 
