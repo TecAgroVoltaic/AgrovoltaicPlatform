@@ -16,7 +16,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest"]
+dev = ["pytest", "httpx"]   # httpx: lo exige TestClient de FastAPI
 service = ["fastapi", "uvicorn[standard]"]
 
 [project.scripts]

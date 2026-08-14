@@ -1,0 +1,79 @@
+name: CI
+
+# Corre en cada push y PR. Ninguno de los jobs necesita red hacia Supabase, la
+# EC2 ni Anthropic: los tests mockean DB y LLM, y el smoke del debugger levanta
+# la app contra si misma. Si algun dia un test empieza a exigir credenciales,
+# es senal de que dejo de ser un test unitario.
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+# Un push nuevo sobre la misma rama cancela la corrida anterior.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.12"     # la misma que la imagen del sidecar (python:3.12-slim)
+  NODE_VERSION: "22"
+
+jobs:
+  pronostico:
+    name: Agente de pronóstico (pytest)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: agente-pronostico
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - name: Instalar el paquete y sus extras
+        run: pip install -e ".[dev,service]"
+      - name: pytest
+        run: pytest -q
+
+  analizador:
+    name: Agente analizador (pytest)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: agente-analizador
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - name: Instalar el paquete y sus extras
+        run: pip install -e ".[dev,service]"
+      - name: pytest
+        run: pytest -q
+
+  debugger:
+    name: Consola de depuración (build + smoke de auth)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mvp-debugger
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: mvp-debugger/package-lock.json
+      - name: Instalar dependencias
+        run: npm ci
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Build
+        run: npm run build
+      # El gate de acceso no tiene runner de tests (no hay jest/vitest y no se
+      # agrega uno solo para esto): se verifica con HTTP real contra la app
+      # buildeada, que es lo que se despliega.
+      - name: Smoke del gate de acceso
+        run: ./scripts/smoke-auth.sh
