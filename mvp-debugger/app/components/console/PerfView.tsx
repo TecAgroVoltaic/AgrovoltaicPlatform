@@ -3,28 +3,10 @@
 // Honesto: el gráfico de "potencia" es potencia media por bucket (robusta a la
 // cadencia variable); la energía real en kWh vive en el KPI.
 import { useEffect, useState } from "react";
-import { jget, jpost, type Resp } from "@/app/lib/client";
+import { jget, jpost, extraerLista, mensajeError, type Resp } from "@/app/lib/client";
+import { Estado } from "@/app/components/console/Estado";
 import { lineChart, scatter, palette } from "@/app/lib/charts";
-
-const fmt = (n: any, d = 1) => n == null || !isFinite(n) ? "—" : Number(n).toLocaleString("es-CR", { minimumFractionDigits: d, maximumFractionDigits: d });
-
-const PERIODS: Record<string, { label: string; desde?: string; hasta?: string; bucket: string }> = {
-  todo: { label: "Todo el histórico", bucket: "month" },
-  y2026: { label: "2026", desde: "2026-01-01", hasta: "2027-01-01", bucket: "week" },
-  mayo: { label: "Mayo 2026", desde: "2026-05-01", hasta: "2026-06-02", bucket: "day" },
-};
-const VARS: Record<string, { label: string; tabla: string; cols: [string, string][]; unit: string; dec: number; cmp: boolean }> = {
-  pot: { label: "Potencia", tabla: "electrico_corregido", cols: [["potencia_pv1_w", "PV1"], ["potencia_pv2_w", "PV2"]], unit: "W", dec: 0, cmp: true },
-  ghi: { label: "Irradiancia", tabla: "radiacion_calibrada", cols: [["irradiancia_incidente_wm2", "GHI"]], unit: "W/m²", dec: 1, cmp: false },
-  kt: { label: "Índice kt*", tabla: "radiacion_calibrada", cols: [["kt_star", "kt*"]], unit: "", dec: 3, cmp: false },
-  pr: { label: "Performance Ratio", tabla: "performance", cols: [["pr_pv1", "PR PV1"], ["pr_pv2", "PR PV2"]], unit: "", dec: 3, cmp: true },
-};
-
-function q(tabla: string, columna: string, p: any) {
-  const u = new URLSearchParams({ tabla, columna, bucket: p.bucket, agg: "avg" });
-  if (p.desde) u.set("desde", p.desde); if (p.hasta) u.set("hasta", p.hasta);
-  return `/api/analizador/datos/serie?${u}`;
-}
+import { PERIODS, VARS, q, fmt } from "@/app/components/console/perfCatalogo";
 
 export function PerfView({ theme }: { theme: string }) {
   const [kpi, setKpi] = useState<any>(null);
@@ -33,6 +15,10 @@ export function PerfView({ theme }: { theme: string }) {
   const [cmp, setCmp] = useState("ambos");
   const [series, setSeries] = useState<any>(null);
   const [scat, setScat] = useState<[number, number][] | null>(null);
+  const [errKpi, setErrKpi] = useState<string | null>(null);
+  const [errSerie, setErrSerie] = useState<string | null>(null);
+  const [errScat, setErrScat] = useState<string | null>(null);
+  const [intento, setIntento] = useState(0);
 
   useEffect(() => {
     Promise.all([
@@ -40,25 +26,36 @@ export function PerfView({ theme }: { theme: string }) {
       jpost("/api/analizador/tool/performance_ratio", {}),
       jpost("/api/analizador/tool/irradiancia_resumen", {}),
       jpost("/api/analizador/tool/temperatura_por_arreglo", {}),
-    ]).then(([e, pr, g, t]: Resp[]) => setKpi({ e: e.data, pr: pr.data, g: g.data, t: t.data }));
-  }, []);
+    ]).then(([e, pr, g, t]: Resp[]) => {
+      const fallidas = [e, pr, g, t].filter((r) => !r.ok);
+      setErrKpi(fallidas.length ? mensajeError(fallidas[0]) : null);
+      setKpi({ e: e.data || {}, pr: pr.data || {}, g: g.data || {}, t: t.data || {} });
+    }).catch((e) => setErrKpi(String(e?.message || e)));
+  }, [intento]);
 
   const V = VARS[vari], P = PERIODS[period];
   useEffect(() => {
-    setSeries(null);
+    setSeries(null); setErrSerie(null);
     Promise.all(V.cols.map(([c]) => jget(q(V.tabla, c, P)))).then((rs: Resp[]) => {
-      setSeries({ labels: (rs[0].ok ? rs[0].data.puntos : []).map((p: any) => p.t.slice(2, 10)), cols: rs.map((r) => r.ok ? r.data.puntos.map((p: any) => p.v) : []) });
-    });
-  }, [vari, period]);
+      const extraidas = rs.map((r) => extraerLista(r, "puntos"));
+      const fallida = extraidas.find((e) => e.error);
+      if (fallida) { setErrSerie(fallida.error); return; }
+      setSeries({
+        labels: extraidas[0].lista.map((p: any) => String(p.t).slice(2, 10)),
+        cols: extraidas.map((e) => e.lista.map((p: any) => p.v)),
+      });
+    }).catch((e) => setErrSerie(String(e?.message || e)));
+  }, [vari, period, intento]);
 
   useEffect(() => {
-    setScat(null);
+    setScat(null); setErrScat(null);
     Promise.all([jget(q("radiacion_calibrada", "irradiancia_incidente_wm2", P)), jget(q("electrico_corregido", "potencia_pv1_w", P))]).then(([g, pw]: Resp[]) => {
-      if (!g.ok || !pw.ok) return;
-      const pm = Object.fromEntries(pw.data.puntos.map((p: any) => [p.t, p.v]));
-      setScat(g.data.puntos.filter((p: any) => pm[p.t] != null && p.v != null && pm[p.t] > 0).map((p: any) => [p.v, pm[p.t]] as [number, number]));
-    });
-  }, [period]);
+      const ghi = extraerLista(g, "puntos"), pot = extraerLista(pw, "puntos");
+      if (ghi.error || pot.error) { setErrScat(ghi.error || pot.error); return; }
+      const pm = Object.fromEntries(pot.lista.map((p: any) => [p.t, p.v]));
+      setScat(ghi.lista.filter((p: any) => pm[p.t] != null && p.v != null && pm[p.t] > 0).map((p: any) => [p.v, pm[p.t]] as [number, number]));
+    }).catch((e) => setErrScat(String(e?.message || e)));
+  }, [period, intento]);
 
   void theme;
   const Pal = typeof window !== "undefined" ? palette() : ({} as any);
@@ -85,11 +82,15 @@ export function PerfView({ theme }: { theme: string }) {
         <p>Generación, irradiancia y eficiencia por arreglo — PV1 inclinado vs PV2 vertical (bifacial). Datos vivos de la Supabase PV.</p>
       </div>
 
-      <div className="grid g4">
-        {kpis.length ? kpis.map((k, i) => (
-          <div className="kpi" key={i}><span className="lbl">{k.l}</span><div className="k">{k.v}<small>{k.u}</small></div><div className="d">{k.d}</div></div>
-        )) : [0, 1, 2, 3].map((i) => <div className="kpi" key={i}><span className="lbl muted">cargando…</span><div className="k">—</div></div>)}
-      </div>
+      {errKpi ? (
+        <Estado error={errKpi} que="los indicadores" onReintentar={() => setIntento((i) => i + 1)} />
+      ) : (
+        <div className="grid g4">
+          {kpis.length ? kpis.map((k, i) => (
+            <div className="kpi" key={i}><span className="lbl">{k.l}</span><div className="k">{k.v}<small>{k.u}</small></div><div className="d">{k.d}</div></div>
+          )) : [0, 1, 2, 3].map((i) => <div className="kpi" key={i}><span className="lbl muted">cargando…</span><div className="k">—</div></div>)}
+        </div>
+      )}
 
       <div className="controls">
         <div className="ctl"><span className="lbl">Período</span>
@@ -108,13 +109,24 @@ export function PerfView({ theme }: { theme: string }) {
         <p className="hint">{vari === "pot" ? "Potencia media por período (robusta a la cadencia variable de muestreo)." : "Promedio por período."} · {P.label}</p>
         {chart ? <><figure dangerouslySetInnerHTML={{ __html: chart }} />
           <div className="legend">{(cmp === "ambos" || !V.cmp ? V.cols : cmp === "pv1" ? [V.cols[0]] : [V.cols[1]]).map(([, name], i) => <span key={i}><span className="sw" style={{ background: colors[V.cols.findIndex((c) => c[1] === name)] }} />{name}</span>)}</div>
-        </> : <div className="muted loading">cargando serie…</div>}
+        </> : (
+          <Estado cargando={!series && !errSerie} error={errSerie}
+                  vacio={!!series && !chart} que="la serie" pista="Probá otro período."
+                  onReintentar={() => setIntento((i) => i + 1)} />
+        )}
       </div>
 
       <div className="card" style={{ marginTop: 16 }}>
         <h3>Correlación irradiancia → potencia PV1</h3>
         <p className="hint">Cada punto es un período: cuánto explica el sol la generación. · {P.label}</p>
-        {scat ? <figure dangerouslySetInnerHTML={{ __html: scatter(scat, { height: 320 }) }} /> : <div className="muted loading">cargando…</div>}
+        {scat && scat.length ? (
+          <figure dangerouslySetInnerHTML={{ __html: scatter(scat, { height: 320 }) }} />
+        ) : (
+          <Estado cargando={!scat && !errScat} error={errScat}
+                  vacio={!!scat && scat.length === 0} que="la correlación"
+                  pista="Puede que no haya solape entre irradiancia y potencia en este período."
+                  onReintentar={() => setIntento((i) => i + 1)} />
+        )}
       </div>
     </section>
   );

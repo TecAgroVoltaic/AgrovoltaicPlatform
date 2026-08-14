@@ -3,7 +3,8 @@
 // histórico real, vía /api/pronostico/backtest) + la traza de un forecast en vivo.
 // Deja claro que el agente no predice de forma continua.
 import { useEffect, useState } from "react";
-import { jget, type Resp } from "@/app/lib/client";
+import { jget, extraerLista, type Resp } from "@/app/lib/client";
+import { Estado } from "@/app/components/console/Estado";
 import { lineChart, palette } from "@/app/lib/charts";
 
 const fmt = (n: any, d = 1) => n == null || !isFinite(n) ? "—" : Number(n).toLocaleString("es-CR", { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -13,20 +14,25 @@ export function PredView({ theme }: { theme: string }) {
   const [dias, setDias] = useState(7);
   const [bt, setBt] = useState<any>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [intento, setIntento] = useState(0);
 
   useEffect(() => {
     setBt(null); setErr(null);
     jget(`/api/pronostico/backtest?variable=${vari}&dias=${dias}&bucket=h`).then((r: Resp) => {
-      if (r.ok) setBt(r.data); else setErr(`HTTP ${r.status}: ${JSON.stringify(r.data)}`);
-    });
-  }, [vari, dias]);
+      // No alcanza con r.ok: un 200 con otra forma hacia que pts.map() lanzara
+      // en pleno render y la vista quedara en blanco.
+      const { lista, error } = extraerLista(r, "puntos");
+      if (error) { setErr(error); return; }
+      setBt({ ...r.data, puntos: lista });
+    }).catch((e) => setErr(String(e?.message || e)));
+  }, [vari, dias, intento]);
 
   const unit = vari === "irradiancia" ? "W/m²" : "crudo";
   const dec = vari === "irradiancia" ? 0 : 0;
   let chart = "", metricas: any = null, det: any[] = [];
   if (bt) {
     const P = palette();
-    const pts = bt.puntos as any[];
+    const pts = (bt.puntos || []) as any[];
     const x = pts.map((p) => p.t.slice(5).replace(" ", " "));
     const series: any[] = [
       { points: pts.map((p) => p.real), color: P.real, area: true, width: 2.4, name: "Real (medido)" },
@@ -73,14 +79,18 @@ export function PredView({ theme }: { theme: string }) {
 
       <div className="card">
         <h3>Backtest {vari === "irradiancia" ? "de irradiancia" : "de humedad de suelo"} · horario</h3>
-        <p className="hint">{bt ? bt.metodo : "cargando…"} — contra el sensor, últimos {dias} días.</p>
-        {err && <div className="alert">{err}</div>}
-        {chart && <>
+        <p className="hint">{bt ? bt.metodo : err ? "no disponible" : "cargando…"} — contra el sensor, últimos {dias} días.</p>
+        {(!chart || err) && (
+          <Estado cargando={!bt && !err} error={err} vacio={!!bt && !chart}
+                  que="el backtest" pista="Probá una ventana más larga."
+                  onReintentar={() => setIntento((i) => i + 1)} />
+        )}
+        {chart && !err && <>
           <figure dangerouslySetInnerHTML={{ __html: chart }} />
           <div className="legend">
             <span><span className="sw" style={{ background: P.real }} />Real (medido)</span>
             <span><span className="sw" style={{ background: P.pred }} />Reconstrucción del método</span>
-            {bt.puntos[0]?.cs != null && <span><span className="sw" style={{ background: P.ceil }} />Cielo despejado (techo)</span>}
+            {bt.puntos?.[0]?.cs != null && <span><span className="sw" style={{ background: P.ceil }} />Cielo despejado (techo)</span>}
           </div>
         </>}
       </div>
