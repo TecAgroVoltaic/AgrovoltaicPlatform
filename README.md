@@ -1,13 +1,53 @@
-# AgroVoltaic — ETL de Monitoreo a Supabase
+# AgroVoltaic — plataforma de datos y agentes
 
-Pipeline **idempotente y escalable** que estandariza los CSV crudos del sistema
-agrovoltaico (inversor + piranometros + sensores de temperatura) y los carga a
-**Supabase (PostgreSQL)**. Soporta CSV nuevos sin tocar codigo: se sueltan en la
-carpeta del dataset y se vuelve a correr.
+Monorepo del sistema agrovoltaico de San Carlos: el **ETL de los CSV crudos** a Supabase,
+dos **agentes LLM** (análisis histórico y pronóstico) y una **consola** para depurarlos.
 
 > Contexto del problema, decisiones y estado: ver `CLAUDE.md` y `docs/memoria/INDEX.md`.
 
-## Estructura
+## Qué hay acá y cómo se levanta cada cosa
+
+| Qué | Dónde | Cómo se corre |
+|---|---|---|
+| **ETL de CSV → Supabase** | raíz (`main.py`) | `python3 main.py` (menú interactivo) |
+| **Agente de pronóstico** | `agente-pronostico/` | `python -m pronostico.cli "…"` · servicio: `uvicorn pronostico.api:app` |
+| **Agente analizador** | `agente-analizador/` | `analizador` · servicio: `uvicorn analizador.api:app --port 8010` |
+| **Consola de depuración** | `mvp-debugger/` | `./dev.sh` (todo local) · `./consola.sh` (contra la EC2) |
+| **Ingesta AgroDash → Supabase** | `agente-pronostico/` | automática en la EC2 cada 15 min; a mano: `python -m pronostico.etl` |
+| **Réplica local de AgroDash** | `agente-pronostico/scripts/` | `./agrodash_local.sh` (restaura el dump si falta) |
+
+Cada carpeta tiene su README con el detalle. Lo que corre en producción está en la EC2
+(`52.1.28.77`): dos contenedores de agentes, la réplica de AgroDash y dos temporizadores
+systemd (`agente-pronostico/deploy/systemd/`).
+
+## Tests y CI
+
+```bash
+cd agente-pronostico && pip install -e ".[dev,service]" && pytest -q   # 117 tests
+cd agente-analizador && pip install -e ".[dev,service]" && pytest -q   #  24 tests
+cd mvp-debugger      && npm ci && npm run build && ./scripts/smoke-auth.sh
+```
+
+Los tres corren en GitHub Actions en cada push y cada PR (`.github/workflows/ci.yml`).
+Ninguno necesita credenciales ni red hacia Supabase: si un test empieza a pedirlas,
+dejó de ser unitario.
+
+## Salud del sistema
+
+La ingesta y el gasto se miran sin entrar al servidor:
+
+- `GET /salud/ingesta` — antigüedad de los datos por variable. **503** si están viejos.
+- `GET /salud/panel` — lo anterior más errores recientes, gasto del día y última predicción.
+- En la consola: sección **Salud del sistema**.
+
+## El ETL de CSV
+
+Pipeline **idempotente y escalable** que estandariza los CSV crudos (inversor +
+piranómetros + sensores de temperatura) y los carga a **Supabase (PostgreSQL)**.
+Soporta CSV nuevos sin tocar código: se sueltan en la carpeta del dataset y se
+vuelve a correr.
+
+### Estructura
 
 ```
 main.py          # punto de entrada: python3 main.py (menu interactivo)
@@ -87,9 +127,12 @@ y un chequeo pasa/falla de la limpieza (temp 85 y negativos deben ser 0).
   nunca duplica.
 - **CSV nuevo:** soltarlo en `dataset/Monitoreo-AgroVoltaic-SC-NEW/` y correr la opción 6.
 
-## Pendiente (bloqueado por info del sitio)
+## Pendiente
 
-Calibracion de irradiancia a W/m2 (pvlib), Performance Ratio y features derivados
-esperan: lat/lon, kWp por string, timezone y modelo del piranometro. Ver
-`docs/equipo/DUDAS-Pendientes.md`. La separacion fina de filas mezcladas (Paso 2) tambien
-queda pendiente; hoy se conservan las filas que matchean el header del archivo.
+La geometría del sitio (lat/lon, kWp, tilt/azimut, timezone) quedó **resuelta** el
+2026-08-10, así que la calibración de irradiancia y el Performance Ratio ya están
+implementados — ver `docs/memoria/proyecto/implementacion.md`.
+
+Sigue pendiente la **separación fina de filas mezcladas** (Paso 2): hoy se conservan
+las filas que matchean el header del archivo. Estado completo en
+`docs/memoria/proyecto/estado.md`.

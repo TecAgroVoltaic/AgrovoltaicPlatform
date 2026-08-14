@@ -32,10 +32,35 @@ src/analizador/
 ## Uso
 
 ```bash
-cp .env.example .env    # completá ANTHROPIC_API_KEY (DB toma la del repo si no ponés otra)
-pip install -e .
-analizador              # o: python -m analizador.cli
+cp .env.example .env              # completá ANTHROPIC_API_KEY (la DB toma la del repo)
+pip install -e ".[dev,service]"   # dev = pytest+httpx · service = fastapi+uvicorn
+analizador                        # o: python -m analizador.cli
 ```
+
+Como servicio HTTP (es lo que consume la consola y VisioneFlow):
+
+```bash
+uvicorn analizador.api:app --host 127.0.0.1 --port 8010
+```
+
+| Ruta | Para qué | Clave |
+|---|---|---|
+| `GET /health` · `/tools` | ping y esquemas de las tools | no |
+| `POST /tool/<nombre>` | ejecutar una tool directo, sin LLM | sí |
+| `POST /preguntar` · `/chat` | el lazo del LLM completo, con traza | sí |
+| `GET /datos/*` | peek read-only de las relaciones permitidas | sí |
+
+La clave se exige solo si `ANALIZADOR_API_KEY` está definida (header `x-api-key`).
+
+Tests:
+
+```bash
+pytest -q      # 24 tests, sin red ni DB
+```
+
+Los endpoints `/datos/*` interpolan nombres de tabla en el SQL, así que la **allowlist**
+de `datos.py` es el borde de seguridad: agregar una relación es agregarla ahí, nunca
+pasar el nombre desde afuera. Hay tests que fijan esa regla.
 
 Ejemplos de preguntas: *"¿cuánta energía generó cada arreglo?"*, *"¿cuál arreglo
 tiene mejor Performance Ratio?"*, *"¿cómo estuvo la irradiancia en abril 2026?"*,

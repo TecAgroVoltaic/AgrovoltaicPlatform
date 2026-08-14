@@ -96,9 +96,22 @@ agente-pronostico/
 ```bash
 cd agente-pronostico
 python3 -m venv .venv && source .venv/bin/activate
-pip install -e .
+pip install -e ".[dev,service]"   # dev = pytest+httpx · service = fastapi+uvicorn
 
-cp .env.example .env          # y completá ANTHROPIC_API_KEY y AGRODASH_PASSWORD
+cp .env.example .env              # completá ANTHROPIC_API_KEY y las dos DBs
+```
+
+Dos bases, con roles distintos —no confundirlas es lo que evita mezclar regiones:
+
+| Variable | Qué es | Acceso |
+|---|---|---|
+| `DATABASE_URL` | **fuente**: AgroDash (región Cartago) de donde se ingiere | solo lectura |
+| `STORE_URL` | **store**: la Supabase de AgroVoltaic donde se escribe y se lee | lectura/escritura |
+
+Con Cartago caído, `DATABASE_URL` apunta a una réplica del dump. Para levantarla local:
+
+```bash
+./scripts/agrodash_local.sh       # cluster en :5433, restaura el dump si falta
 ```
 
 ## Uso
@@ -116,10 +129,51 @@ python scripts/hindcast_demo.py
 # Tests (deterministas, sin red ni LLM):
 pytest
 
-# Servicio HTTP (/health, POST /forecast) — para VisioneFlow u otro cliente.
-# Instalar el extra: pip install -e ".[service]". API key opcional por
-# FORECAST_API_KEY (header x-api-key). Docker: ver Dockerfile.
+# Servicio HTTP — para VisioneFlow, la consola u otro cliente. Docker: ver Dockerfile.
 uvicorn pronostico.api:app --host 127.0.0.1 --port 8000
+
+# Ingesta AgroDash -> store (idempotente e incremental)
+python -m pronostico.etl                              # incremental
+python -m pronostico.etl --full --variable irradiancia  # backfill de una sola variable
+```
+
+### Endpoints
+
+| Ruta | Para qué | Clave |
+|---|---|---|
+| `GET /health` | ping | no |
+| `GET /salud/ingesta` | antigüedad de los datos; **503** si están viejos | no |
+| `GET /salud/panel` | ingesta + errores + gasto del día + última predicción | sí |
+| `POST /forecast` | pronóstico a un horizonte | sí |
+| `POST /anomalias` | detección determinista de anomalías | sí |
+| `POST /preguntar` · `/chat` | el lazo del LLM completo, con traza | sí |
+| `GET /serie` · `/backtest` · `/uso` | datos y consumo | sí |
+
+`/health` y `/salud/ingesta` quedan abiertos a propósito: son para monitoreo automático
+y no exponen datos de la serie.
+
+### Frenos de consumo
+
+Sin esto, un bucle o un scraper dispara el costo del LLM sin tope:
+
+| Variable | Default | Qué hace |
+|---|---|---|
+| `RATE_LIMIT_LLM_POR_MIN` | 12 | tope por identidad en los endpoints que gastan tokens |
+| `RATE_LIMIT_DATOS_POR_MIN` | 120 | ídem en los deterministas (solo protege CPU) |
+| `PRESUPUESTO_DIARIO_USD` | 5 | gasto diario máximo; `0` desactiva |
+| `INGESTA_STALE_HORAS` | 6 | a partir de cuándo la ingesta se reporta vieja |
+
+El gasto se acumula en la tabla `gasto_diario` del store, no en un archivo local: así
+sobrevive a que se recree el contenedor y no se duplica si hay más de una instancia.
+
+## Producción (EC2)
+
+El servicio corre como sidecar Docker y la ingesta la dispara systemd. Los units están
+versionados en `deploy/systemd/` — instalación, verificación y diagnóstico en su README.
+
+```bash
+systemctl list-timers 'forecast-*' --no-pager   # próxima y última corrida
+journalctl -t forecast-etl -n 50                # log de la ingesta
 ```
 
 ## Notas de seguridad
@@ -134,6 +188,9 @@ uvicorn pronostico.api:app --host 127.0.0.1 --port 8000
 - **Fase 0-1 (este MVP):** lazo del agente + backtest. La física está validada y el
   pronosticador de persistencia inteligente le gana al ingenuo en todo horizonte
   (skill +0,13 a 30 min → +0,48 a 3 h). Ver `docs/pronostico/` en el repo.
-- **Fase 2:** forecaster serio (AutoARIMA / ML) + incertidumbre conformal (MAPIE),
-  y humedad de suelo (Cartago) reutilizando la misma interfaz.
-- **Fase 3:** arnés de comparación LLM-vs-estadístico con ruteo multi-herramienta.
+- **Multi-variable:** irradiancia + humedad de suelo, ambas vivas, leyendo del store.
+- **Operación:** ingesta automática, salud, frenos de consumo y observabilidad
+  (ver `docs/memoria/proyecto/pipeline-tiempo-real.md`).
+- **Límite actual:** la fuente de San Carlos está congelada desde el 2026-07-23, así que
+  todo corre sobre histórico. Cuando el equipo la restaure, el ETL backfillea solo.
+- **Siguiente:** forecaster serio (AutoARIMA / ML) + incertidumbre conformal (MAPIE).
