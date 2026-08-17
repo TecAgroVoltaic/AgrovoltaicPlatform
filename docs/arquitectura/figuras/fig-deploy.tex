@@ -1,0 +1,28 @@
+% Figura: despliegue real. Que corre donde y como sobrevive a un reinicio.
+\begin{tikzpicture}[node distance=8mm]
+
+% --- Maquina del desarrollador ---------------------------------------------
+\node[comp,text width=32mm] (nav) {Navegador\\\nota{\cd{localhost}}};
+\node[comp,text width=32mm,below=of nav] (next) {Consola Next.js\\\nota{rutas \cd{/api/*} en el servidor}};
+\draw[flecha] (nav) -- node[etiq,right]{cookie de sesión} (next);
+\node[grupo,fit=(nav)(next),label={[titgrupo]above:MÁQUINA LOCAL}] (glocal) {};
+
+% --- EC2 --------------------------------------------------------------------
+\node[comp,font=\scriptsize,text width=42mm,right=34mm of nav] (fc) {\cd{forecast-forecast-1}\\\nota{\cd{127.0.0.1:8000}}};
+\node[comp,font=\scriptsize,text width=42mm,below=of fc] (an) {\cd{analizador-analizador-1}\\\nota{\cd{127.0.0.1:8010}}};
+\node[agro,font=\scriptsize,text width=42mm,below=of an] (pg) {\cd{agrodash-pg}\\\nota{réplica del dump}\\\nota{\cd{127.0.0.1:5433}}};
+\node[comp,text width=34mm,above=of fc] (timers) {temporizadores systemd\\\nota{\cd{forecast-etl} 15 min}\\\nota{\cd{forecast-refresh} 6 h}};
+
+\node[grupo,fit=(timers)(fc)(an)(pg),label={[titgrupo]above:EC2 52.1.28.77}] (gec2) {};
+
+% --- Supabase ---------------------------------------------------------------
+\node[almacen,font=\scriptsize,text width=40mm,right=16mm of an] (sb) {Supabase\\\cd{jijklguopafevyucogro}\\\nota{RLS activo}};
+
+\draw[flecha] (next.east) -- node[etiq,above,sloped]{túnel SSH} (fc.west);
+\draw[flecha] (next.east) -- (an.west);
+\draw[flecha] (timers) -- node[etiq,right]{\cd{docker exec}} (fc);
+\draw[flecha] (pg.east) -- ++(6mm,0) |- node[etiq,pos=0.25,right]{fuente} (fc.east);
+\draw[flecha] (fc.east) -- ++(10mm,0) |- (sb.north);
+\draw[flecha] (an.east) -- (sb.west);
+
+\end{tikzpicture}

@@ -1,0 +1,26 @@
+% Figura: lazo "cerebro vs manos". El LLM orquesta; los numeros salen de las tools.
+\begin{tikzpicture}[node distance=10mm]
+
+\node[comp,text width=32mm] (q) {Pregunta en español\\\nota{``¿cuánta irradiancia}\\\nota{en 2 horas?''}};
+
+\node[comp,text width=34mm,right=16mm of q] (llm) {\textbf{Claude}\\\nota{entiende, decide,}\\\nota{redacta}};
+
+\node[comp,text width=38mm,right=18mm of llm] (tool) {\textbf{Herramienta}\\\nota{clear-sky + kt*}\\\nota{(persistencia inteligente)}};
+
+\node[almacen,text width=28mm,right=14mm of tool] (db) {Store\\\nota{sólo lectura}};
+
+\node[comp,text width=32mm,below=14mm of q] (r) {Respuesta + banda\\\nota{``$\approx$540 W/m$^2$}\\\nota{(410--660)''}};
+
+\node[comp,text width=34mm,below=14mm of tool] (audit) {\cd{predicciones}\\\nota{write-back de auditoría}};
+
+\draw[flecha] (q) -- (llm);
+\draw[flecha] (llm) -- node[etiq,above]{\cd{forecast(\dots)}} (tool);
+\draw[flecha] (tool) -- node[etiq,above]{SELECT} (db);
+\draw[flecha] ([yshift=-4mm]tool.west) -- node[etiq,below]{\{valor, banda\}} ([yshift=-4mm]llm.east);
+\draw[flecha] (llm) -- (r);
+\draw[flechad] (tool) -- (audit);
+
+\node[etiq,fill=none,below=2mm of llm,align=center]
+  {el LLM \textbf{nunca} calcula:\\ todo número viene de una tool};
+
+\end{tikzpicture}

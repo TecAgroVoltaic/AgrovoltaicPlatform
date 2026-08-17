@@ -1,0 +1,29 @@
+% Figura: pipeline ETL de CSV, etapa por etapa, con el modulo responsable.
+\begin{tikzpicture}[node distance=9mm]
+
+\node[fuente,etapa] (a) {CSV crudo\\\nota{ragged, 13 esquemas}};
+\node[etapa,right=of a] (b) {\textbf{extract}\\\nota{leer + tipar}\\\nota{+ normalizar cabeceras}};
+\node[etapa,right=of b] (c) {\textbf{transform}\\\nota{separar flujos}\\\nota{+ remuestrear}};
+\node[etapa,right=of c] (d) {\textbf{load}\\\nota{UPSERT por}\\\nota{\cd{timestamp}}};
+
+\node[almacen,font=\scriptsize,text width=38mm,right=12mm of d] (t1) {\cd{monitoreo\_sc\_electrico}\\\nota{5 min}};
+\node[almacen,font=\scriptsize,text width=38mm,below=8mm of t1] (t2) {\cd{radiacion\_sc\_15s}\\\nota{15 s}};
+
+\draw[flecha] (a) -- (b);
+\draw[flecha] (b) -- node[etiq,above]{\cd{slugify}} (c);
+\draw[flecha] (c) -- (d);
+\draw[flecha] (d.east) -- ++(4mm,0) |- (t1);
+\draw[flecha] (d.east) -- ++(4mm,0) |- (t2);
+
+% Estado / idempotencia
+\node[comp,text width=30mm,below=14mm of b] (log) {\cd{\_ingest\_log}\\\nota{md5 por archivo}};
+\draw[flechad] (a) |- node[etiq,pos=0.72,below]{¿cambió?} (log);
+\draw[flechad] (log) -| (d.south);
+
+% Capa solar
+\node[comp,text width=36mm,below=14mm of t2] (solar) {\textbf{calibracion} + \textbf{performance}\\\nota{pvlib: clear-sky y POA}};
+\draw[flecha] (t2) -- (solar);
+\node[almacen,font=\scriptsize,text width=36mm,left=12mm of solar] (t3) {\cd{radiacion\_sc\_clearsky}\\ \cd{radiacion\_sc\_poa}};
+\draw[flecha] (solar) -- (t3);
+
+\end{tikzpicture}

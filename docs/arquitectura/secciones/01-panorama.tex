@@ -1,0 +1,69 @@
+\section{Panorama}
+
+AgroVoltaic es la plataforma de datos del sistema agrovoltaico del TEC en San Carlos
+(Costa Rica): paneles solares bifaciales instalados sobre cultivo. El repositorio es un
+\emph{monorepo} con cuatro piezas que se pueden levantar por separado.
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{34mm}p{34mm}p{72mm}@{}}
+\toprule
+\textbf{Pieza} & \textbf{Dónde vive} & \textbf{Qué resuelve} \\
+\midrule
+ETL de CSV & \cd{src/agrovoltaic} & Estandarizar 19 meses de CSV crudos del inversor
+y los sensores, y cargarlos a Supabase de forma idempotente. \\
+Agente de pronóstico & \cd{agente-pronostico/} & Pronosticar irradiancia y humedad de
+suelo con anclaje físico; el LLM sólo orquesta. \\
+Agente analizador & \cd{agente-analizador/} & Responder preguntas sobre el histórico
+fotovoltaico ya limpio, componiendo herramientas atómicas. \\
+Consola de depuración & \cd{mvp-debugger/} & Ver la traza completa de cada agente y
+cruzar cada número contra los datos. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{El problema de origen}
+
+Los datos no tenían estándar. El EDA sobre los 285 CSV encontró \textbf{13 esquemas
+distintos}: nombres de columna que cambian entre cortos (\cd{vpv1}), largos
+(\cd{Voltaje PV1 [V]}) y \cd{snake\_case}; erratas persistentes (\cd{Energì} con acento
+grave en 72 archivos, \cd{POTencia}, \cd{Corriente PV2[A]} sin espacio); filas de
+sensores distintos intercaladas en el mismo archivo; irradiancia sin calibrar con un
+\emph{offset} nocturno constante de $-38{,}845$; temperaturas saturadas en 85\,°C
+(el código de error clásico del DS18B20 desconectado); intervalos de muestreo que van
+de 2 segundos a 5 minutos según la época; y dos huecos largos de 126 y 71 días.
+
+\begin{clave}[title=Regla rectora del tratamiento de datos]
+Validada con Leo Cardinale el 2026-08-10: \textbf{el dato crudo se guarda tal cual en la
+base; toda corrección vive en una capa de análisis} (vistas SQL) que genera variables
+nuevas. Ninguna transformación destructiva en la ingesta. Esta regla reemplazó las
+decisiones previas de convertir 85\,°C a NULL, forzar el \emph{offset} a cero y
+remuestrear todo a 5 minutos durante la carga.
+\end{clave}
+
+\subsection{Dos regiones, sin base central}
+
+El proyecto abarca dos sitios y \textbf{no} se fusionan sus bases:
+
+\begin{itemize}[leftmargin=*,itemsep=2pt]
+  \item \textbf{Cartago} --- recolección automática hacia \textbf{AgroDash} (PostgreSQL,
+    app Rust/Axum). Sensores de suelo y ambiente: humedad, conductividad, temperatura,
+    irradiancia, PAR. No mide fotovoltaica.
+  \item \textbf{San Carlos} --- recolección semi-manual de CSV hacia \textbf{Supabase}.
+    Es la región fotovoltaica.
+\end{itemize}
+
+El matiz que define la arquitectura: \textbf{San Carlos está partido entre las dos
+bases}. Lo eléctrico (voltaje, corriente, potencia, energía, irradiancia del inversor)
+vive en Supabase; lo ambiental y de suelo de San Carlos vive en AgroDash, en cajas con
+sufijo \cd{SC}. Como Cartago no mide fotovoltaica, no existe comparación cruzada
+PV contra PV: lo único común entre regiones son las variables ambientales.
+
+% Pagina propia, sin rotar: el diagrama esta dibujado en vertical justamente para
+% que entre derecho y se lea sin ladear la cabeza.
+\begin{figure}[p]
+\centering
+\resizebox{\textwidth}{!}{\input{figuras/fig-global}}
+\caption{Arquitectura global. Dos rutas de ingesta independientes convergen en una sola
+Supabase, que es lo único que los agentes leen.}
+\end{figure}

@@ -1,0 +1,55 @@
+\section{Consola de depuración}
+
+Una web mínima en Next.js para probar los dos agentes en vivo, con datos reales. No es
+un producto: es el instrumento con el que se verifica que un agente no está inventando.
+
+\subsection{La regla de verificación}
+
+Por cada pregunta, la consola dibuja la traza completa: cada turno del modelo con su
+texto y las herramientas que decide llamar, cada ejecución real con su entrada, su
+\textbf{salida cruda}, su tiempo en milisegundos y su error si lo hubo, y al final la
+respuesta redactada con el consumo de tokens y el costo.
+
+\begin{clave}[title=Regla de oro]
+Todo número de la respuesta final tiene que aparecer en la salida de alguna herramienta.
+Si aparece un número que no está en ninguna salida, el modelo lo alucinó.
+\end{clave}
+
+\subsection{Camino de un request}
+
+\begin{center}
+\small
+\cd{Navegador} $\to$ \cd{/api/analizador/*} $\to$ \cd{:8010} $\to$ Supabase (RO) \\[2pt]
+\cd{Navegador} $\to$ \cd{/api/pronostico/*} $\to$ \cd{:8000} $\to$ store (RO)
+\end{center}
+
+El navegador \textbf{nunca} habla directo con los servicios Python ni ve las API keys.
+Todo pasa por manejadores de ruta del lado servidor, que reenvían la petición inyectando
+la clave. Las claves viven sólo en la configuración del servidor.
+
+Los endpoints que la consola necesita se agregaron a los propios agentes, no se
+reimplementaron en Node. Es una decisión de fuente única de verdad: si el lazo del LLM se
+reimplementara en el cliente, habría dos lazos que mantener sincronizados y la traza
+dejaría de reflejar lo que realmente corre en producción.
+
+\subsection{Control de acceso}
+
+El \emph{middleware} decide si un request pasa; no sabe firmar cookies ni renderizar el
+login. Las páginas redirigen al login; las rutas \cd{/api/*} responden 401 en JSON,
+porque un \cd{fetch} no puede hacer nada útil con una redirección a HTML.
+
+\begin{aviso}[title=Fallar cerrado]
+Sin \cd{DEBUGGER\_PASSWORD} configurada, en producción la consola responde \textbf{503}
+en lugar de abrirse. Fallar abierto fue exactamente lo que la dejó expuesta en Amplify
+en su momento. En desarrollo sí deja pasar, para no estorbar el trabajo local.
+\cd{DEBUGGER\_SESSION\_SECRET} firma la cookie: rotarlo cierra todas las sesiones sin
+cambiarle la contraseña al equipo.
+\end{aviso}
+
+\subsection{Dos formas de levantarla}
+
+\cd{./dev.sh} monta todo local: analizador, pronóstico y la web. \cd{./consola.sh} abre
+un túnel SSH contra los agentes que \emph{ya corren} en la EC2 ---que siguen escuchando
+sólo en el loopback del servidor, sin exponer nada--- elige puertos libres (8000, 8010 y
+3000 suelen estar ocupados en una máquina de trabajo), sincroniza las URLs con los
+puertos de esa corrida y cierra el túnel al salir.

@@ -1,0 +1,92 @@
+\section{ETL de CSV a Supabase}
+
+Es el pipeline histórico: convierte la carpeta de CSV crudos en dos tablas normalizadas.
+No es un script de una sola vez, sino un proceso reproducible que se vuelve a correr
+cada vez que aparecen archivos nuevos.
+
+\begin{figure}[htbp]
+\centering
+\resizebox{\textwidth}{!}{\input{figuras/fig-etl}}
+\caption{Pipeline de CSV. El \cd{\_ingest\_log} decide qué archivos ni siquiera se abren;
+la capa solar (pvlib) se refresca al final de cada corrida.}
+\end{figure}
+
+\subsection{Principio de diseño: cero columnas quemadas}
+
+La única fuente irreducible de verdad es \cd{normalize.CONCEPT\_MAP}: un mapa
+\emph{slug canónico $\rightarrow$ concepto}, con una entrada por concepto. Todo lo demás se
+deriva de ahí: la lista de columnas canónicas, las etiquetas de cada variable, el método
+de agregación al remuestrear, las columnas de inserción y \textbf{el DDL SQL completo}
+(\cd{sql/schema.sql} es un artefacto generado, no se edita a mano).
+
+Las consecuencias prácticas son las que importan:
+
+\begin{itemize}[leftmargin=*,itemsep=2pt]
+  \item Una columna nueva es \textbf{una línea} en \cd{CONCEPT\_MAP}; entra sola al
+    esquema, a la tabla y al remuestreo.
+  \item Una \emph{grafía} nueva del mismo concepto (otra errata, otro acento, otras
+    unidades) la absorbe \cd{slugify} sin tocar código. Así se colapsaron las
+    aproximadamente 70 variantes crudas de nombres de columna.
+\end{itemize}
+
+\subsection{Módulos}
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{26mm}p{114mm}@{}}
+\toprule
+\textbf{Módulo} & \textbf{Responsabilidad única} \\
+\midrule
+\cd{normalize} & \cd{slugify} normaliza acentos, unidades y mayúsculas; \cd{CONCEPT\_MAP}
+  traduce el slug al nombre canónico. \\
+\cd{schemas} & Deriva \cd{CANONICAL\_COLUMNS}, infiere etiquetas del nombre y decide el
+  método de agregación por etiqueta. \\
+\cd{extract} & Lee el CSV tolerando filas irregulares, normaliza cabeceras, tipa y parsea
+  el \cd{timestamp}. \\
+\cd{transform} & \cd{split\_streams} separa el flujo eléctrico del de radiación
+  \emph{por columnas}; remuestrea a 5\,min y 15\,s. \textbf{Sin limpieza}. \\
+\cd{ddl} & Genera tablas, vistas de corrección y calibración, diccionario y sentencias RLS. \\
+\cd{clearsky} & GHI de cielo despejado con pvlib (modelo Ineichen). \\
+\cd{calibracion} & Puebla \cd{radiacion\_sc\_clearsky} de forma incremental. \\
+\cd{performance} & Calcula POA por arreglo (transposición Erbs + isotrópica, modelo
+  bifacial de dos planos) y puebla \cd{radiacion\_sc\_poa}. \\
+\cd{load} & UPSERT por \cd{timestamp} en cada tabla. \\
+\cd{state} & Registro md5 en \cd{\_ingest\_log}. \\
+\cd{pipeline} & Orquesta \emph{extract $\to$ transform $\to$ load} y el refresco solar. \\
+\cd{cli} & Menú interactivo numerado. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Idempotencia}
+
+Dos niveles, deliberadamente redundantes:
+
+\begin{itemize}[leftmargin=*,itemsep=2pt]
+  \item \textbf{Nivel archivo} --- \cd{\_ingest\_log} guarda el md5 de cada CSV. Si no
+    cambió, ni se abre.
+  \item \textbf{Nivel fila} --- \cd{timestamp} es PRIMARY KEY con
+    \cd{ON CONFLICT DO UPDATE}. Reprocesar nunca duplica, aunque el md5 falle.
+\end{itemize}
+
+Un archivo que revienta no frena la corrida: se registra el fallo, se hace \emph{rollback}
+de esa transacción y el pipeline sigue con el siguiente. La capa solar va en su propio
+\cd{try}, para que un problema de pvlib no invalide una carga de datos que ya funcionó.
+
+\subsection{Uso}
+
+Un solo comando, menú interactivo:
+
+\begin{center}\cd{python3 main.py}\end{center}
+
+Las opciones van en orden de confianza creciente: auditar el dataset, ejecutar en seco
+sin tocar la base, generar el DDL, aplicarlo en Supabase, y recién ahí cargar datos
+(incremental o reprocesando todo). Para archivos nuevos basta soltarlos en
+\cd{dataset/Monitoreo-AgroVoltaic-SC-NEW/} y repetir la carga incremental.
+
+\begin{aviso}[title=Lo que este ETL todavía no hace]
+La \textbf{separación fina de filas mezcladas} (el llamado Paso 2) sigue pendiente. Hoy
+se conservan las filas que coinciden con la cabecera del archivo y las irregulares se
+saltan con registro en el log. El criterio acordado es recuperar lo que se pueda y
+aceptar huecos; existe un par de archivos original/corregido como referencia.
+\end{aviso}

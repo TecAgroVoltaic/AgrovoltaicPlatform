@@ -1,0 +1,106 @@
+\section{Modelo de datos}
+
+Todo vive en un único proyecto Supabase (\cd{jijklguopafevyucogro}). El modelo tiene
+cuatro capas: el crudo se guarda intacto y cada capa siguiente es una vista que agrega
+información sin destruir la anterior.
+
+\begin{figure}[htbp]
+\centering
+\resizebox{0.98\textwidth}{!}{\input{figuras/fig-capas}}
+\caption{Capas del modelo. Una consulta puede pedir el dato tal como salió del sensor o
+el dato corregido y calibrado, según lo que necesite justificar.}
+\end{figure}
+
+\subsection{Relaciones}
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{44mm}p{18mm}p{74mm}@{}}
+\toprule
+\textbf{Relación} & \textbf{Tipo} & \textbf{Contenido} \\
+\midrule
+\cd{monitoreo\_sc\_electrico} & tabla & Crudo eléctrico a 5\,min: voltaje, corriente,
+  potencia y energía por arreglo, salida AC, temperatura del inversor y de cada arreglo. \\
+\cd{radiacion\_sc\_15s} & tabla & Crudo de radiación a 15\,s: incidente, reflejada,
+  albedo, y las mismas del piranómetro SP722. \\
+\cd{radiacion\_sc\_clearsky} & tabla & \cd{cs\_ghi\_wm2} por instante, calculado con pvlib. \\
+\cd{radiacion\_sc\_poa} & tabla & Irradiancia en el plano del arreglo, frontal y
+  bifacial, para PV1 y PV2. \\
+\cd{diccionario\_variables} & tabla & Definición en prosa de cada variable. \\
+\cd{\_ingest\_log} & tabla & md5 y conteo por archivo procesado. \\
+\midrule
+\cd{v\_sc\_electrico\_corregido} & vista & Aplica rangos válidos; fuera de rango pasa a NULL. \\
+\cd{v\_sc\_radiacion\_corregida} & vista & Neutraliza el \emph{offset}, recorta negativos
+  y anula el período inválido; marca \cd{valido}. \\
+\cd{v\_sc\_radiacion\_calibrada} & vista & Radiación en W/m$^2$, \cd{kt\_star} y
+  bandera \cd{qc\_ok}. \\
+\cd{v\_sc\_performance} & vista & \cd{pr\_pv1} y \cd{pr\_pv2}: Performance Ratio por arreglo. \\
+\midrule
+\cd{lecturas\_ambientales\_sc} & tabla & Store de la ingesta ambiental, formato largo. \\
+\cd{predicciones} & tabla & Auditoría de cada pronóstico emitido. \\
+\cd{agente\_log} & tabla & Log estructurado del ETL y de los agentes. \\
+\cd{gasto\_diario} & tabla & Gasto acumulado en el LLM, por día. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Reglas de corrección}
+
+Los umbrales son parámetros en \cd{config.py} y el SQL de las vistas se genera a partir
+de ellos, así que cambiar un límite es cambiar una constante y regenerar el DDL.
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{40mm}p{34mm}p{62mm}@{}}
+\toprule
+\textbf{Variable} & \textbf{Rango válido} & \textbf{Motivo} \\
+\midrule
+Temperaturas & 10--80\,°C & Criterio de Leo Cardinale; además el valor exacto 85{,}0
+  es el código de error del DS18B20 desconectado. \\
+Potencia por string & 0--5000\,W & Cota física provisional; el instalado real es
+  1420\,Wp por arreglo. \\
+Voltaje de string & 0--600\,V & Rango del inversor. \\
+Corriente de string & 0--20\,A & Rango del inversor. \\
+Frecuencia de red & 55--65\,Hz & Red de 60\,Hz. \\
+Tensión AC & 100--280\,V & Salida monofásica. \\
+Albedo & 0--1 & Definición del cociente. \\
+Irradiancia & --- & \emph{Offset} $-38{,}845 \to 0$; negativos $\to 0$; todo lo anterior al
+  2025-07-01 pasa a NULL (error de sensor corregido a mediados de 2025). \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Calibración y desempeño}
+
+No existe constante de calibración guardada: ``celda calibrada'' resultó ser un nombre
+comercial, no un dato de fábrica. La calibración se hace entonces \textbf{contra cielo
+despejado}: se calcula el GHI teórico con pvlib para la posición y el instante, y se
+compara con lo medido. El hallazgo fue que el período válido \emph{ya viene en W/m$^2$}
+(factor empírico $k \approx 0{,}98$), así que la escala aplicada es 1{,}0 y lo que aporta
+la capa es el índice de cielo despejado y el control de calidad.
+
+\begin{equation*}
+  \mathrm{kt^*} = \frac{\mathrm{GHI_{medida}}}{\mathrm{GHI_{cielo\ despejado}}}
+  \qquad\text{sólo donde}\quad \mathrm{GHI_{cs}} > 20\ \mathrm{W/m^2}
+\end{equation*}
+
+El Performance Ratio compara la potencia real con la esperada según la irradiancia que
+efectivamente recibe el plano del arreglo:
+
+\begin{equation*}
+  \mathrm{PR} = \frac{P/P_0}{\mathrm{POA}/1000}
+  \qquad P_0 = 1420\ \mathrm{Wp\ por\ arreglo}
+\end{equation*}
+
+Como los paneles son bifaciales, la POA se modela con dos planos (frontal más
+$\varphi\cdot$trasera, con $\varphi = 0{,}80$ y el albedo medido). La validación de ese
+modelo fue por convergencia: PV1 (inclinado, 20°/150°) da PR $= 0{,}622$ y PV2 (vertical,
+90°/50°) da $0{,}626$. Dos geometrías muy distintas que aterrizan en el mismo número
+indican que la ganancia bifacial está bien repartida.
+
+\begin{clave}[title=Geometría confirmada del sitio]
+1420\,Wp por arreglo ($4 \times 355$\,Wp), 2840\,Wp en total, ambos bifaciales.
+PV1 es el arreglo inclinado (\emph{tilt} 20°, azimut 150°); PV2 es el vertical
+(\emph{tilt} 90°, azimut 50°), con Norte $=0$° y sentido horario positivo. Zona horaria
+UTC$-6$ sin horario de verano.
+\end{clave}

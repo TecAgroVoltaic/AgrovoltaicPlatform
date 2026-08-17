@@ -1,0 +1,128 @@
+\section{Agente de pronóstico}
+
+Pronostica irradiancia y humedad de suelo para San Carlos. Es un agente LLM con
+herramientas, pero el reparto de trabajo es estricto.
+
+\begin{clave}[title=El LLM nunca toca los números]
+Claude hace cuatro cosas: entiende la pregunta, traduce el horizonte a segundos, llama a
+una herramienta que hace el cálculo físico, y redacta la respuesta con su incertidumbre.
+Los números salen de un modelo con anclaje físico, no de la intuición del modelo de
+lenguaje. Así la parte numérica es auditable y reproducible, y el LLM aporta lo que sí
+sabe hacer: orquestación, ruteo y explicación.
+\end{clave}
+
+\begin{figure}[htbp]
+\centering
+\resizebox{\textwidth}{!}{\input{figuras/fig-agente}}
+\caption{El lazo de \emph{tool-use}. La flecha de vuelta lleva un diccionario con valor y
+banda; el LLM sólo lo narra.}
+\end{figure}
+
+\subsection{La física}
+
+El método es descomposición por cielo despejado. La idea: pronosticar la irradiancia
+directa es difícil porque la domina la parábola diurna del sol, que es perfectamente
+predecible. Si se divide por esa parábola, queda sólo el efecto de las nubes ---una señal
+mucho más suave--- y \emph{eso} es lo que se persiste.
+
+\begin{equation*}
+  \mathrm{GHI_{medida}} = \mathrm{kt^*} \times \mathrm{GHI_{cielo\ despejado}}
+\end{equation*}
+
+La receta de \cd{smart\_persistence}, en tres pasos:
+
+\begin{enumerate}[leftmargin=*,itemsep=2pt]
+  \item Calcular kt* de los últimos 60 minutos, usando \emph{sólo} lecturas anteriores a
+    \emph{ahora}.
+  \item Tomar la \textbf{mediana} de esos kt* (robusta: un reflejo o una lectura atípica
+    no arrastra el pronóstico).
+  \item Reconstruir: $\mathrm{GHI_{pred}}(t+h) = \overline{\mathrm{kt^*}} \times
+    \mathrm{GHI_{cs}}(t+h)$.
+\end{enumerate}
+
+El tercer paso mete la geometría solar del futuro, que es astronómica y por lo tanto
+lícita: si $t+h$ cae más cerca del mediodía el pronóstico sube aunque las nubes no
+cambien. Eso es exactamente lo que la persistencia ingenua ---repetir la última lectura---
+no sabe hacer, y por eso se degrada en horizontes largos.
+
+Para humedad de suelo no hay cielo despejado que descontar: se persiste la mediana
+reciente, con banda por variabilidad. El suelo cambia lento y está muy autocorrelado.
+
+\begin{aviso}[title=Barrera anti-fuga]
+\cd{get\_recent\_data(now, lookback)} sólo devuelve lecturas con \cd{timestamp < now}.
+Es una sola función, en una sola capa (\cd{data.py}), y es la que hace honesto al
+\emph{backtest}: el reloj se simula y el pronosticador jamás ve el futuro que se le está
+pidiendo predecir.
+\end{aviso}
+
+\subsection{Estructura y dirección de dependencias}
+
+Las capas dependen sólo hacia abajo. Nadie importa hacia arriba:
+
+\begin{center}
+\cd{config} $\to$ \cd{domain} $\to$ \{\cd{data}, \cd{physics}\} $\to$
+\cd{forecasters} $\to$ \cd{tools} $\to$ \cd{agent} $\to$ \cd{cli}
+\end{center}
+
+El valor de esa disciplina se ve al sustituir piezas: cambiar el sitio o el modelo es
+tocar \cd{config}; agregar un pronosticador serio (AutoARIMA, ML) es implementar la
+interfaz \cd{forecast(variable, horizon\_seconds, now)} sin tocar nada aguas arriba.
+
+\subsection{La ingesta ambiental}
+
+Un ETL propio, distinto del de CSV, trae datos de AgroDash al store:
+
+\begin{itemize}[leftmargin=*,itemsep=2pt]
+  \item \textbf{Fuente y destino son distintos a propósito}: \cd{DATABASE\_URL} apunta a
+    AgroDash (sólo lectura) y \cd{STORE\_URL} a Supabase. El store desacopla el
+    pronosticador de la fuente, le da historia propia y aloja predicciones y logs.
+  \item \textbf{Idempotente e incremental}: \cd{ON CONFLICT (origen\_id) DO NOTHING},
+    con marca de agua igual al máximo \cd{ts} del store menos un solape.
+  \item \textbf{Escalable en memoria}: cursor del lado del servidor y COPY a tabla
+    temporal en lotes de 50\,000. Los lotes chicos existen porque un COPY único de
+    577\,000 filas chocaba contra el \cd{statement\_timeout} de Supabase.
+  \item Los \emph{timestamps} \emph{naive} de AgroDash se etiquetan como hora local de
+    Costa Rica, lo que se verificó viendo el pico diurno de irradiancia caer a las 11h.
+\end{itemize}
+
+\subsection{Endpoints}
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{40mm}p{78mm}p{14mm}@{}}
+\toprule
+\textbf{Ruta} & \textbf{Para qué} & \textbf{Clave} \\
+\midrule
+\cd{GET /health} & Ping para monitoreo. & no \\
+\cd{GET /salud/ingesta} & Antigüedad de los datos por variable; responde \textbf{503} si
+  están viejos, para que un \emph{healthcheck} lo note por código de estado. & no \\
+\cd{GET /salud/panel} & Lo anterior más errores recientes, gasto del día y última
+  predicción. & sí \\
+\cd{POST /forecast} & Pronóstico a un horizonte; audita en \cd{predicciones}. & sí \\
+\cd{POST /anomalias} & Detección determinista, sin LLM. & sí \\
+\cd{POST /preguntar}, \cd{/chat} & Lazo completo del LLM, con traza. & sí \\
+\cd{GET /serie}, \cd{/backtest}, \cd{/uso} & Datos y consumo. & sí \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Las dos rutas abiertas lo están por diseño: son de monitoreo automático y no exponen
+datos de la serie, sólo edades y estado.
+
+\subsection{Frenos de consumo}
+
+Sin tope, un bucle o un \emph{scraper} dispara el costo del LLM. Hay tres frenos:
+límite de ritmo por identidad en los endpoints que gastan tokens (12 por minuto),
+límite más laxo en los deterministas (120 por minuto, que sólo protege CPU), y
+presupuesto diario en dólares. El gasto se acumula en la tabla \cd{gasto\_diario} del
+store, no en un archivo local: así sobrevive a que se recree el contenedor y no se
+duplica si hay más de una instancia corriendo.
+
+\subsection{Detección de anomalías}
+
+Primer ladrillo de la futura capa de agentes, y deliberadamente sin LLM. Dado
+(variable, ventana) devuelve hallazgos tipificados: \cd{sin\_datos\_recientes},
+\cd{sensor\_plano} (el patrón de los 85\,°C), \cd{fuera\_de\_rango}, \cd{outlier}
+(puntuación robusta por mediana y MAD) y \cd{drift}. La señal analizada es kt* para
+irradiancia ---reutiliza el mismo clear-sky--- y el crudo para humedad. El LLM lo llama
+como herramienta y sólo narra los hallazgos.

@@ -1,0 +1,69 @@
+\section{Estado y pendientes}
+
+\subsection{Volúmenes actuales}
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{54mm}p{28mm}p{56mm}@{}}
+\toprule
+\textbf{Relación} & \textbf{Filas} & \textbf{Nota} \\
+\midrule
+\cd{monitoreo\_sc\_electrico} & 36\,469 & 285 CSV, ventanas de 5\,min. \\
+\cd{radiacion\_sc\_15s} & 94\,868 & Ventanas de 15\,s. \\
+\cd{radiacion\_sc\_clearsky} & 94\,868 & Un cielo despejado por instante. \\
+\cd{radiacion\_sc\_poa} & 56\,450 & Instantes con POA por arreglo. \\
+\cd{lecturas\_ambientales\_sc} & $\approx$\,812\,000 & Ingesta de AgroDash, formato largo. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+La verificación cruzada confirmó que el crudo sigue siendo crudo (temperaturas en 85 y el
+\emph{offset} presentes en la tabla base) y que las vistas hacen su trabajo (85 pasa a
+NULL, la potencia máxima cae a un valor físico, la irradiancia negativa queda en cero,
+kt* con percentil 95 en 1{,}01 y 99{,}4\% de filas aprobando el control de calidad).
+
+\subsection{Lo que bloquea}
+
+\begin{itemize}[leftmargin=*,itemsep=3pt]
+  \item \textbf{Ingesta de San Carlos congelada} desde el 2026-07-23. No es un fallo del
+    sistema; es un corte del subsistema de campo. Todo corre en modo sólo histórico.
+  \item \textbf{Mapeo fino de caja a sitio en AgroDash} ---qué cajas son Cartago y cuáles
+    San Carlos---. No bloquea nada de San Carlos fotovoltaico; sólo el futuro agente
+    comparador entre regiones.
+  \item \textbf{Factor de bifacialidad real} de la hoja de datos y geometría de filas para
+    modelar la POA trasera. Hoy se usa $\varphi = 0{,}80$ asumido, respaldado por la
+    convergencia del PR entre los dos arreglos.
+  \item \textbf{Límite del plan gratuito de Supabase}: 500\,MB, y el proyecto anda cerca.
+\end{itemize}
+
+\subsection{Trabajo pendiente}
+
+\begin{itemize}[leftmargin=*,itemsep=3pt]
+  \item \textbf{Separación fina de filas mezcladas} (Paso 2 del ETL de CSV).
+  \item \textbf{Pronosticador serio} ---AutoARIMA o ML--- detrás de la misma interfaz, e
+    incertidumbre conformal en lugar de la banda heurística actual.
+  \item \textbf{Capa de agentes}: el comparador entre regiones, del que ya existe el
+    primer ladrillo (detección de anomalías) y la vista de predicho contra real.
+  \item \textbf{Pruebas del ETL de CSV}: hoy la verificación es el \emph{notebook} de EDA,
+    que imprime un veredicto por sección, pero no hay suite automatizada.
+\end{itemize}
+
+\subsection{Decisiones que conviene no revisitar}
+
+\begin{itemize}[leftmargin=*,itemsep=3pt]
+  \item El crudo se guarda; la corrección vive en vistas. Cualquier propuesta de
+    ``limpiar al insertar'' ya se descartó explícitamente.
+  \item No se generan datos sintéticos para los huecos largos de 126 y 71 días. Como
+    referencia paralela se usa NASA POWER.
+  \item Los duplicados exactos por md5 se eliminan; los fragmentos numerados requieren
+    decisión humana.
+  \item Las bases de las dos regiones no se fusionan a nivel de almacenamiento, aunque un
+    agente lea ambas.
+\end{itemize}
+
+\vspace{1em}
+\begin{clave}[title=Dónde seguir]
+El sistema de memoria del proyecto (\cd{docs/memoria/INDEX.md}) es la fuente viva: un
+tema por archivo, con la evidencia contada y la fecha de cada decisión. Este documento
+resume la arquitectura; ese índice explica \emph{por qué} cada pieza quedó así.
+\end{clave}

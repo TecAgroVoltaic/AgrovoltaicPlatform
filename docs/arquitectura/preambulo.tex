@@ -1,0 +1,98 @@
+% Preambulo compartido: paquetes, paleta, estilos de TikZ y macros.
+% Responsabilidad unica: configurar el documento. No contiene contenido.
+
+% Tipografia (requiere xelatex; ver README). Pagella para el cuerpo, Heros para
+% titulos y diagramas, JetBrains Mono para codigo. Las tres estan instaladas:
+% las dos primeras vienen con texlive-fontsrecommended, la tercera es del sistema.
+\usepackage{fontspec}
+\usepackage{unicode-math}
+% Las TeX Gyre viven en texmf y NO estan registradas en fontconfig: se cargan por
+% nombre de archivo, no por nombre de familia.
+\setmainfont{texgyrepagella}[
+  Extension=.otf, UprightFont=*-regular, ItalicFont=*-italic,
+  BoldFont=*-bold, BoldItalicFont=*-bolditalic]
+\setsansfont{texgyreheros}[
+  Extension=.otf, UprightFont=*-regular, ItalicFont=*-italic,
+  BoldFont=*-bold, BoldItalicFont=*-bolditalic, Scale=MatchLowercase]
+\setmonofont{JetBrains Mono}[Scale=MatchLowercase]
+\setmathfont{texgyrepagella-math.otf}
+\usepackage[spanish,es-noquoting,es-tabla]{babel}
+% expansion no existe en xetex; protrusion si, y es la que mas se nota.
+\usepackage[protrusion=true,expansion=false]{microtype}
+\usepackage{geometry}
+\geometry{a4paper,margin=2.4cm,headsep=12pt}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{tcolorbox}
+\usepackage{tikz}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage[hidelinks]{hyperref}
+
+\usetikzlibrary{positioning,shapes.geometric,arrows.meta,calc,fit,backgrounds}
+\tcbuselibrary{skins,breakable}
+
+% --- Paleta -----------------------------------------------------------------
+\definecolor{solar}{HTML}{B26B00}   % naranja apagado: fuentes fisicas / energia
+\definecolor{tierra}{HTML}{4F6B3A}  % verde: agro / AgroDash
+\definecolor{agua}{HTML}{20566E}    % azul: almacenamiento
+\definecolor{tinta}{HTML}{1F2328}   % texto
+\definecolor{humo}{HTML}{6B7280}    % texto secundario
+\definecolor{papel}{HTML}{F5F3EE}   % fondo de cajas
+\definecolor{borde}{HTML}{D6D2C8}
+
+\hypersetup{colorlinks=false,pdftitle={AgroVoltaic --- Arquitectura},
+            pdfauthor={Proyecto AgroVoltaic (TEC)}}
+
+% --- Titulos ----------------------------------------------------------------
+\titleformat{\section}{\Large\bfseries\color{agua}}{\thesection}{0.7em}{}
+\titleformat{\subsection}{\large\bfseries\color{tinta}}{\thesubsection}{0.7em}{}
+\titlespacing*{\section}{0pt}{2.2ex plus 1ex minus .2ex}{1.2ex plus .2ex}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\color{humo}AgroVoltaic --- Arquitectura del sistema}
+\fancyhead[R]{\small\color{humo}\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% --- Macros -----------------------------------------------------------------
+\newcommand{\cd}[1]{\texttt{\small #1}}          % identificador / ruta / comando
+% \nota: texto secundario. OJO: no admite \\ adentro — el salto de linea de un
+% nodo de TikZ es una celda de alineacion y no cruza el grupo. Una \nota por linea.
+\newcommand{\nota}[1]{{\color{humo}\small #1}}
+
+\newtcolorbox{clave}[1][]{
+  enhanced, breakable, colback=papel, colframe=agua, boxrule=0.6pt,
+  left=8pt, right=8pt, top=6pt, bottom=6pt, arc=2pt,
+  fonttitle=\bfseries\small, coltitle=white, colbacktitle=agua, #1}
+
+\newtcolorbox{aviso}[1][]{
+  enhanced, breakable, colback=white, colframe=solar, boxrule=0.6pt,
+  left=8pt, right=8pt, top=6pt, bottom=6pt, arc=2pt,
+  fonttitle=\bfseries\small, coltitle=white, colbacktitle=solar, #1}
+
+% --- Estilos de diagrama ----------------------------------------------------
+\tikzset{
+  comp/.style={
+    draw=agua, fill=papel, line width=0.7pt, rounded corners=3pt,
+    align=center, inner sep=6pt, minimum height=10mm, font=\small},
+  compx/.style={comp, draw=humo, fill=white},          % componente externo
+  fuente/.style={comp, draw=solar, fill=solar!8},      % fuente fisica / dato crudo
+  agro/.style={comp, draw=tierra, fill=tierra!8},      % region Cartago
+  almacen/.style={
+    draw=agua, fill=agua!8, line width=0.7pt, cylinder, shape border rotate=90,
+    aspect=0.16, align=center, inner sep=6pt, minimum height=13mm, font=\small},
+  etapa/.style={comp, minimum width=27mm},
+  flecha/.style={-{Stealth[length=2.4mm]}, line width=0.7pt, draw=tinta},
+  flechad/.style={flecha, dashed, draw=humo},
+  etiq/.style={font=\scriptsize\itshape, color=humo, inner sep=2pt, fill=white},
+  grupo/.style={draw=borde, line width=0.6pt, rounded corners=4pt, inner sep=8pt},
+  % Sin guiones dentro de los diagramas: partir "ana-lizador" en una caja de
+  % 27 mm se lee peor que dejar la caja un poco mas holgada.
+  every picture/.append style={execute at begin picture={%
+    \hyphenpenalty=10000\relax\exhyphenpenalty=10000\relax}},
+  titgrupo/.style={font=\scriptsize\bfseries, color=humo},
+}

@@ -1,0 +1,100 @@
+\section{Despliegue y operación}
+
+\begin{figure}[htbp]
+\centering
+\resizebox{0.96\textwidth}{!}{\input{figuras/fig-deploy}}
+\caption{Qué corre dónde. Ningún puerto de la EC2 está publicado: los agentes y la
+réplica escuchan sólo en el loopback y se alcanzan por túnel SSH.}
+\end{figure}
+
+\subsection{Qué corre dónde}
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{34mm}p{50mm}p{56mm}@{}}
+\toprule
+\textbf{Pieza} & \textbf{Dónde} & \textbf{Cómo sobrevive a un reinicio} \\
+\midrule
+Agente de pronóstico & EC2, contenedor \cd{forecast-forecast-1} & \cd{restart: unless-stopped} \\
+Agente analizador & EC2, contenedor \cd{analizador-analizador-1} & ídem \\
+Réplica de AgroDash & EC2, \cd{agrodash-pg} en \cd{127.0.0.1:5433} & ídem, sobre volumen persistente \\
+Ingesta cada 15 min & EC2, \cd{forecast-etl.timer} & unidad systemd habilitada \\
+Refresco cada 6 h & EC2, \cd{forecast-refresh.timer} & ídem \\
+Almacenamiento & Supabase & servicio gestionado \\
+Consola & sólo local & --- \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Por qué hay una réplica de AgroDash}
+
+El servidor de Cartago está caído, así que la fuente de la ingesta pasó a ser una
+réplica restaurada de un volcado, montada en la propia EC2. El puerto queda atado al
+loopback y ocupa unos 5\,GB. Volver a la fuente viva es cambiar una línea de
+configuración: la URL de Cartago quedó comentada, no borrada.
+
+Un detalle que cuesta tiempo si no se sabe: si el \cd{pg\_restore} de la máquina es más
+nuevo que el servidor, falla con \cd{unrecognized configuration parameter "transaction\_timeout"}.
+Por eso la restauración se hace con el \cd{pg\_restore} de \emph{adentro} del contenedor.
+
+\subsection{Salud del sistema}
+
+Se mira sin entrar al servidor, por HTTP: \cd{/salud/ingesta} da la antigüedad de los
+datos por variable (503 si están viejos) y \cd{/salud/panel} agrega errores recientes,
+gasto del día y última predicción. La consola los muestra en su sección de salud.
+
+\begin{aviso}[title=El 503 actual es correcto]
+La fuente de San Carlos está congelada desde el 2026-07-23: el subsistema de cajas con
+sufijo \cd{SC} y los nodos de suelo dejaron de reportar. \cd{/salud/ingesta} responde 503
+porque está informando la antigüedad \emph{real} de los datos, no porque el agente falle.
+Todo corre en modo ``sólo histórico''; cuando el equipo restaure la ingesta, el ETL
+rellena solo por ser idempotente e incremental.
+\end{aviso}
+
+\subsection{Lección de observabilidad}
+
+El ETL falló cada 15 minutos durante nueve días \textbf{sin dejar rastro} en
+\cd{agente\_log}. La causa: la conexión a la fuente estaba \emph{fuera} del bloque
+\cd{try}, así que la excepción se propagaba antes de que hubiera con qué registrarla.
+La corrección tiene tres partes, y las tres importan: conectar primero al store (que es
+donde se escribe el log), meter la conexión a la fuente dentro del \cd{try} con su propio
+evento de fallo, y \textbf{volver a lanzar} la excepción para que systemd siga marcando
+la unidad como fallida. Hay una prueba de regresión que fija ese comportamiento.
+
+\subsection{Diagnóstico rápido}
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{56mm}p{84mm}@{}}
+\toprule
+\textbf{Síntoma} & \textbf{Dónde mirar} \\
+\midrule
+La ingesta no trae datos & \cd{systemctl status forecast-etl.service} y la tabla
+  \cd{agente\_log} filtrando por nivel de error. \\
+El pronóstico responde datos viejos & \cd{GET /salud/ingesta}: la fuente está congelada,
+  no es un fallo del agente. \\
+Todo responde 429 & Tope diario de gasto o límite de ritmo. \\
+La consola responde 503 & Falta \cd{DEBUGGER\_PASSWORD} en el entorno. \\
+Supabase rechaza escrituras & El plan gratuito son 500\,MB y está cerca del límite. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Pruebas}
+
+Ninguna suite necesita credenciales ni red hacia Supabase; si una empieza a pedirlas,
+dejó de ser unitaria. Las tres corren en CI en cada \emph{push} y cada PR.
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{40mm}p{26mm}p{68mm}@{}}
+\toprule
+\textbf{Componente} & \textbf{Pruebas} & \textbf{Qué cubren} \\
+\midrule
+Agente de pronóstico & 117 & Horizonte, física, herramienta, ETL, límites, salud, API. \\
+Agente analizador & 24 & API, costos, lista blanca de datos. \\
+Consola & 9 casos de humo & Construcción y control de acceso. \\
+ETL de CSV & --- & Sin suite; la verificación es el \emph{notebook} de EDA. \\
+\bottomrule
+\end{tabular}
+\end{center}

@@ -1,0 +1,61 @@
+\section{Agente analizador}
+
+Responde preguntas en español sobre el histórico fotovoltaico ya limpio. Mismo principio
+que el forecaster: el LLM entiende y redacta, los números salen de consultas SQL de sólo
+lectura contra las vistas corregidas y calibradas.
+
+\subsection{Una herramienta, un archivo, una pregunta}
+
+La diferencia con el pronóstico está en la granularidad. Aquí cada herramienta responde
+\emph{una} pregunta concreta y el LLM \textbf{compone} varias cuando la pregunta es
+compuesta. No hay una herramienta genérica de ``ejecutá este SQL'', que sería la vía
+rápida y también la que abre la puerta a inyección y a respuestas incomprobables.
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{26mm}p{114mm}@{}}
+\toprule
+\textbf{Herramienta} & \textbf{Qué responde} \\
+\midrule
+\cd{energia} & Energía generada por arreglo (integral de potencia). \\
+\cd{performance} & Performance Ratio por arreglo, con el modelo bifacial. \\
+\cd{irradiancia} & GHI, kt* e insolación, con control de calidad. \\
+\cd{temperatura} & Temperatura por arreglo. \\
+\cd{cobertura} & Qué datos hay: rango temporal y conteos. \\
+\cd{catalogo} & Diccionario de variables. \\
+\cd{tendencia} & Evolución de una variable en el tiempo. \\
+\cd{graficar} & Serie lista para dibujar. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+El registro (\cd{tools/\_\_init\_\_.py}) es puro ensamblado: junta los esquemas que ve el
+modelo y el mapa nombre\,$\to$\,función. Agregar una herramienta es crear su archivo e
+importarlo ahí; no hay lógica que actualizar en dos lugares.
+
+\subsection{Endpoints}
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{40mm}p{78mm}p{14mm}@{}}
+\toprule
+\textbf{Ruta} & \textbf{Para qué} & \textbf{Clave} \\
+\midrule
+\cd{GET /health}, \cd{/tools} & Ping y esquemas de las herramientas. & no \\
+\cd{POST /tool/<nombre>} & Ejecutar una herramienta directo, sin LLM. & sí \\
+\cd{POST /preguntar}, \cd{/chat} & Lazo completo del LLM, con traza. & sí \\
+\cd{GET /datos/*} & Vistazo de sólo lectura a las relaciones permitidas. & sí \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Exponer cada herramienta como endpoint HTTP tiene un motivo concreto: permite verificar
+un número sin gastar tokens, y permite que un orquestador externo la cablee como nodo de
+acción en vez de depender del lazo conversacional.
+
+\begin{aviso}[title=El borde de seguridad de \cd{/datos/*}]
+Esos endpoints interpolan nombres de tabla dentro del SQL, porque un identificador no se
+puede parametrizar. Por eso la \textbf{lista blanca} de \cd{datos.py} es el borde de
+seguridad real: agregar una relación es agregarla ahí, nunca aceptar el nombre desde
+afuera. Hay pruebas que fijan esa regla para que no se relaje por descuido.
+\end{aviso}

@@ -1,0 +1,58 @@
+\section{Seguridad}
+
+\begin{itemize}[leftmargin=*,itemsep=4pt]
+  \item \textbf{AgroDash es sólo lectura, y se fuerza.} Toda conexión fija
+    \cd{SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY} y sólo se ejecutan
+    \cd{SELECT}. No se confía en que el rol esté bien configurado del otro lado.
+
+  \item \textbf{RLS en modo cierre} en las tablas públicas de Supabase, deliberadamente
+    \emph{sin políticas}: sólo los roles de servicio acceden y la API REST pública queda
+    bloqueada. Se verificó que no rompe al forecaster, que corre con un rol que la
+    salta.
+
+  \item \textbf{Vistas con \cd{security\_invoker}}, para que ejecuten con los permisos de
+    quien consulta y no con los del dueño.
+
+  \item \textbf{Claves sólo por entorno}, nunca en el código ni en el repositorio.
+    Ningún secreto está versionado.
+
+  \item \textbf{Comparación en tiempo constante} de las API keys
+    (\cd{secrets.compare\_digest}), para no filtrar la clave por diferencias de tiempo de
+    respuesta.
+
+  \item \textbf{Clave exigida sólo si está configurada.} En local los servicios corren
+    abiertos para no estorbar; en producción la variable está definida y el borde exige
+    el encabezado. La excepción son \cd{/health} y \cd{/salud/ingesta}, abiertas a
+    propósito para monitoreo automático: no exponen datos de la serie.
+
+  \item \textbf{Nada publicado en la EC2.} Los agentes y la réplica escuchan sólo en el
+    loopback; el acceso es por túnel SSH.
+
+  \item \textbf{Errores internos genéricos.} Un fallo interno responde el 500 estándar;
+    el detalle queda en el log del servidor, nunca en la respuesta.
+\end{itemize}
+
+\subsection{Secretos necesarios}
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{44mm}p{96mm}@{}}
+\toprule
+\textbf{Variable} & \textbf{Para qué} \\
+\midrule
+\cd{DATABASE\_URL} & Conexión a Supabase (usar el \emph{Session pooler}; la conexión
+  directa es sólo IPv6). \\
+\cd{STORE\_URL} & El store del agente, separado de la fuente a propósito. \\
+\cd{ANTHROPIC\_API\_KEY} & Los dos agentes. \\
+\cd{FORECAST\_API\_KEY} & Proteger el servicio de pronóstico. \\
+\cd{ANALIZADOR\_API\_KEY} & Proteger el servicio del analizador. \\
+\cd{DEBUGGER\_PASSWORD} & Entrar a la consola. \\
+\cd{DEBUGGER\_SESSION\_SECRET} & Firmar la cookie de sesión. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Pendiente de seguridad}
+
+Rotar la clave débil del rol de sólo lectura que se usó para probar el acceso a la base
+viva de Cartago por la malla Tailscale.

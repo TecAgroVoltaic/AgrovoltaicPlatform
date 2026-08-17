@@ -1,0 +1,91 @@
+% Figura: arquitectura global. Flujo de arriba hacia abajo, una banda por etapa:
+% fuentes -> acarreo -> ingesta -> almacen -> agentes -> clientes. Vertical a
+% proposito: asi entra en una pagina normal sin rotarla ni encogerla hasta
+% volverla ilegible.
+\begin{tikzpicture}[
+  banda/.style={font=\scriptsize\bfseries, color=humo, anchor=east},
+  fila/.style={text width=27mm, minimum height=11mm},
+]
+
+% --- Coordenadas: una y por banda, una x por columna -------------------------
+\def\yfuentes{0}
+\def\yacarreo{-3.2}
+\def\yingesta{-6.4}
+\def\yalmacen{-9.6}
+\def\yagentes{-12.8}
+\def\yclientes{-16.0}
+\def\xpv{3.2}
+\def\xamb{10.6}
+
+% --- Banda 1: fuentes fisicas ------------------------------------------------
+\node[fuente,fila] (inv) at (0,\yfuentes) {Inversor solar\\\nota{PV1 + PV2}};
+\node[fuente,fila] (pir) at (\xpv,\yfuentes) {Piranómetros\\\nota{incidente / reflejada}};
+\node[fuente,fila] (ds)  at (6.4,\yfuentes) {DS18B20\\\nota{temp.\ de arreglo}};
+\node[agro,fila] (cajas) at (\xamb,\yfuentes) {Cajas y nodos SC\\\nota{suelo, ambiente}};
+
+\node[grupo, fit=(inv)(pir)(ds),
+      label={[titgrupo]above:SAN CARLOS --- FOTOVOLTAICO}] (gf) {};
+\node[grupo, fit=(cajas),
+      label={[titgrupo]above:SAN CARLOS --- AMBIENTAL}] (gc) {};
+
+% --- Banda 2: acarreo --------------------------------------------------------
+\node[comp,fila] (csv) at (\xpv,\yacarreo)
+  {CSV crudos\\\nota{285 archivos}\\\nota{13 esquemas}};
+\node[agro,fila] (agrodash) at (\xamb,\yacarreo)
+  {AgroDash\\\nota{PostgreSQL}\\\nota{región Cartago}};
+
+% --- Banda 3: ingesta --------------------------------------------------------
+\node[comp,fila] (etlcsv) at (\xpv,\yingesta)
+  {\textbf{ETL de CSV}\\\cd{src/agrovoltaic}\\\nota{lote, manual}};
+\node[comp,fila] (etlamb) at (\xamb,\yingesta)
+  {\textbf{ETL ambiental}\\\cd{pronostico.etl}\\\nota{timer, 15 min}};
+
+% --- Banda 4: almacenamiento -------------------------------------------------
+\node[almacen,text width=46mm] (store) at (6.9,\yalmacen)
+  {\textbf{Supabase AgroVoltaic}\\\nota{crudo + vistas + store del agente}};
+
+% --- Banda 5: agentes --------------------------------------------------------
+\node[comp,fila] (ana) at (\xpv,\yagentes)
+  {\textbf{Agente analizador}\\\nota{Q\&A histórico PV}\\\nota{\cd{:8010}}};
+\node[comp,fila] (pro) at (\xamb,\yagentes)
+  {\textbf{Agente de pronóstico}\\\nota{irradiancia + humedad}\\\nota{\cd{:8000}}};
+\node[compx,text width=22mm] (llm) at (6.9,\yagentes) {API de Claude};
+
+% --- Banda 6: clientes -------------------------------------------------------
+\node[comp,fila] (web) at (4.6,\yclientes)
+  {\textbf{Consola}\\\cd{mvp-debugger}\\\nota{Next.js, local}};
+\node[compx,fila] (vf) at (9.2,\yclientes) {VisioneFlow\\\nota{flujos programados}};
+
+% --- Etiquetas de banda ------------------------------------------------------
+\node[banda] at (-1.9,\yfuentes)  {FUENTES};
+\node[banda] at (-1.9,\yacarreo)  {ACARREO};
+\node[banda] at (-1.9,\yingesta)  {INGESTA};
+\node[banda] at (-1.9,\yalmacen)  {ALMACÉN};
+\node[banda] at (-1.9,\yagentes)  {AGENTES};
+\node[banda] at (-1.9,\yclientes) {CLIENTES};
+
+% --- Flujos ------------------------------------------------------------------
+\draw[flecha] (inv.south) -- (csv.north);
+\draw[flecha] (pir.south) -- (csv.north);
+\draw[flecha] (ds.south)  -- (csv.north);
+\draw[flecha] (cajas)     -- (agrodash);
+
+\draw[flecha] (csv)      -- (etlcsv);
+\draw[flecha] (agrodash) -- node[etiq,right]{sólo lectura} (etlamb);
+
+\draw[flecha] (etlcsv.south) -- ++(0,-0.6) -| (store.north);
+\draw[flecha] (etlamb.south) -- ++(0,-0.6) -| (store.north);
+
+\draw[flecha] (store.south) -- ++(0,-0.6) -| (ana.north);
+\draw[flecha] (store.south) -- ++(0,-0.6) -| (pro.north);
+\node[etiq,anchor=south west] at ($(ana.north)+(0.12,0.02)$) {sólo lectura};
+\node[etiq,anchor=south east] at ($(pro.north)+(-0.12,0.02)$) {lee y escribe predicciones};
+
+\draw[flechad] (ana) -- (llm);
+\draw[flechad] (pro) -- (llm);
+
+\draw[flecha]  (ana.south) -- ++(0,-0.6) -| (web.north);
+\draw[flecha]  (pro.south) -- ++(0,-0.6) -| (web.north);
+\draw[flechad] (pro.south) -- ++(0,-0.6) -| (vf.north);
+
+\end{tikzpicture}
