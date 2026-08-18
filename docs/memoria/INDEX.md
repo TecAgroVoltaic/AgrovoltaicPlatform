@@ -3,7 +3,17 @@
 Sistema de memoria jerárquico. Un tema por archivo, agrupados por carpeta. Empieza aquí
 para ubicar qué buscas; cada línea apunta al archivo de detalle.
 
-**Última actualización:** 2026-08-10 · *(**Leo Cardinale validó el tratamiento de datos** —
+**Última actualización:** 2026-08-18 · *(**Cartago caído → la fuente del ETL es ahora una réplica
+del dump dentro de la EC2** (`agrodash-pg`, `127.0.0.1:5433`, 21,3 M filas). El ETL llevaba 9 días
+fallando en silencio: corregido, con `/salud/ingesta` que lo hace visible (hoy **503, stale**, dato
+congelado desde el 23-jul). Jonathan cerró además **6 tareas de confiabilidad** —auth de la consola
+que falla cerrada, rate-limit + tope de gasto en el store, CI con 3 jobs, vistas de salud, estados
+de error— y sumó un **documento de arquitectura en LaTeX** y un RUNBOOK. Verificado en vivo el
+18-ago: ver [agrodash-local](proyecto/agrodash-local.md). **Dos riesgos nuevos documentados:**
+[cuota-store-supabase](proyecto/cuota-store-supabase.md) (79 % del Free tier) y
+[superficie-expuesta](proyecto/superficie-expuesta.md).)*
+
+**Anterior:** 2026-08-10 · *(**Leo Cardinale validó el tratamiento de datos** —
 doc rev LCV, ver [respuestas-leo-cardinale](decisiones/respuestas-leo-cardinale.md). Regla
 rectora nueva: **guardar el crudo en la DB y corregir en una capa de análisis** (superó 85→NULL,
 offset→0, resampleo-todo-a-5-min). Muestreo: eléctricas 5 min / radiación 15 s aparte. Temp válida
@@ -27,6 +37,8 @@ multi-variable VIVO en la EC2, fuente SC congelada 23-jul → "solo histórico".
 - [conectividad-tailnet.md](proyecto/conectividad-tailnet.md) — malla Tailscale para acceso a datos: la EC2 (100.125.236.125) YA lee la DB viva de Cartago (100.101.177.71) por Postgres 5432, rol read-only `agrovoltaic_ro`, probado OK; pendiente: rotar la clave débil de prueba
 - [pipeline-tiempo-real.md](proyecto/pipeline-tiempo-real.md) — pipeline arquitectura A (AgroDash→ETL→Supabase store→forecaster multi-variable irradiancia+humedad); congelamiento SC 23-jul → "solo histórico"; desplegado en la EC2 con timers (~812k filas backfilleadas)
 - [agrodash-local.md](proyecto/agrodash-local.md) — **NUEVO (2026-08-14):** réplica del dump de AgroDash **restaurada en la EC2** (`agrodash-pg`, 127.0.0.1:5433) como fuente del ETL con Cartago caído; 5.045 MB / 21.3M filas → el dump completo NO cabe en la Supabase Free (500 MB); + script para levantarla local
+- [cuota-store-supabase.md](proyecto/cuota-store-supabase.md) — **NUEVO (2026-08-18):** el store está al **79 % del Free tier** (395/500 MB) y `lecturas_ambientales_sc` se lleva el 89 %; pasarse = solo-lectura; opciones sin decidir
+- [superficie-expuesta.md](proyecto/superficie-expuesta.md) — **NUEVO (2026-08-18):** qué escucha y qué es alcanzable en la EC2 (verificado desde fuera); 8000/8010 bindean `0.0.0.0` y solo los frena el security group; `/forecast/salud/ingesta` es público
 - [metodologia.md](proyecto/metodologia.md) — metodología del equipo (San Carlos): variables, puntos de medición, arquitectura HW, frecuencias, periodos
 - [evaluacion-datos.md](proyecto/evaluacion-datos.md) — plan de análisis/dashboard San Carlos: DataViz/Stats/Mining, 7 objetivos energéticos, Ridge, Colab
 
@@ -65,6 +77,9 @@ multi-variable VIVO en la EC2, fuente SC congelada 23-jul → "solo histórico".
 ## Material fuera de la memoria (en `../`, agrupado por carpeta)
 
 Detalle largo, binarios y material de apoyo. La memoria de arriba los cita cuando hace falta.
+
+### analisis/ — análisis puntuales
+- `../analisis/cambios-2026-08-18.html` — resumen de los 19 commits del 14–17 ago (réplica de AgroDash en la EC2, 6 tareas de confiabilidad, doc de arquitectura) + verificación en vivo y riesgos
 
 ### referencia/ — documentos largos de detalle
 - `../referencia/EDA-Monitoreo-AgroVoltaic.md` — análisis exploratorio completo (los 13 schemas, calidad, gaps)

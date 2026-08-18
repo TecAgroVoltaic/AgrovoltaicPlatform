@@ -1,6 +1,6 @@
 ---
 name: bloqueantes
-description: Bloqueantes de calibración/Performance Ratio; 2026-08-10 Leo resolvió kWp, tilt/azimut, PV1↔inclinado/PV2↔vertical y constante de calibración; solo queda el mapeo caja→sitio fino (Comparador)
+description: Bloqueantes de calibración/Performance Ratio + operativos (cuota del store al 79 %, password de la consola); 2026-08-10 Leo resolvió kWp, tilt/azimut, PV1↔inclinado/PV2↔vertical y constante de calibración; solo queda el mapeo caja→sitio fino (Comparador)
 categoria: pendiente
 ---
 
@@ -36,6 +36,20 @@ Bloquea la **calibración de irradiancia** y el cálculo de **Performance Ratio*
    Cartago y la irradiancia en San Carlos.** Queda el mapeo caja-por-caja fino para el Comparador
    ([[capa-agentes]]). *No bloquea San Carlos PV; solo la capa de comparación entre regiones.*
 
+## Bloqueantes operativos (no son de datos, pero frenan igual)
+
+Detectados y medidos el **2026-08-18**:
+
+8. **Cuota del store al 79 %** — 395 MB de los 500 del Free tier, y `lecturas_ambientales_sc` se
+   lleva el 89 %. Quedan ~105 MB: el próximo backfill grande (la humedad son ~375 MB) deja el
+   proyecto en **solo-lectura** y rompe la escritura del ETL, de `predicciones` y de
+   `gasto_diario`. Decisión pendiente entre subir de plan, aplicar retención o mover la ingesta
+   ambiental fuera. → [[cuota-store-supabase]]
+9. **`DEBUGGER_PASSWORD` en el despliegue de la consola** — el gate falla cerrado, así que sin esa
+   variable la consola responde 503 y parece caída. Verificar dónde esté publicada. →
+   [[superficie-expuesta]]
+
 Detalle de las preguntas para el equipo: `../../equipo/DUDAS-Pendientes.md` y `../../equipo/Preguntas-Profesor-CapaAgentes.pdf`.
 
-Relacionado: [[irradiancia-sin-calibrar]], [[agrodash]], [[capa-agentes]].
+Relacionado: [[irradiancia-sin-calibrar]], [[agrodash]], [[capa-agentes]],
+[[cuota-store-supabase]], [[superficie-expuesta]].

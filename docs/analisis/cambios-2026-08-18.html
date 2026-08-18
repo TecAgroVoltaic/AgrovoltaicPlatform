@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cambios del 14–17 ago · AgroVoltaic</title>
+<style>
+  :root {
+    --surface: #fcfcfb; --card: #ffffff; --ink: #17171a; --ink2: #52514e; --ink3: #8a8985;
+    --line: #e3e2df; --accent: #2a78d6; --accent-bg: #f4f8fd;
+    --ok: #1baf7a; --warn: #eda100; --bad: #e34948; --code-bg: #f2f1ee;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --surface: #17171a; --card: #1f1f22; --ink: #f5f4f1; --ink2: #b9b8b2; --ink3: #85847f;
+      --line: #33322e; --accent: #6fa8ea; --accent-bg: #1c2733;
+      --ok: #38c795; --warn: #d6a02c; --bad: #ef6f6e; --code-bg: #26262a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--surface); color: var(--ink);
+    font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6; font-size: 16px;
+  }
+  .wrap { max-width: 940px; margin: 0 auto; padding: 40px 22px 80px; }
+
+  header { border-top: 4px solid var(--accent); padding-top: 18px; }
+  .eyebrow { font-size: 12px; letter-spacing: .12em; text-transform: uppercase;
+             color: var(--accent); font-weight: 700; margin: 0 0 8px; }
+  h1 { font-size: 32px; line-height: 1.15; margin: 0 0 10px; letter-spacing: -.02em; }
+  .meta { color: var(--ink2); font-size: 15px; margin: 0 0 6px; }
+  .lede { font-size: 18px; color: var(--ink); margin: 22px 0 0; }
+  .lede b { color: var(--accent); }
+
+  h2 { font-size: 21px; margin: 46px 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+  h2 .n { color: var(--accent); margin-right: 8px; }
+  h3 { font-size: 16px; margin: 26px 0 6px; }
+  p { margin: 12px 0; }
+  ul { margin: 12px 0; padding-left: 20px; } li { margin: 6px 0; }
+  code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px;
+         font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 13.5px; }
+  a { color: var(--accent); }
+
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 26px 0; }
+  .kpi { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 15px; }
+  .kpi .v { font-size: 24px; font-weight: 700; color: var(--accent); line-height: 1.1; }
+  .kpi .l { font-size: 12.5px; color: var(--ink2); margin-top: 5px; line-height: 1.4; }
+
+  .box { background: var(--accent-bg); border-left: 3px solid var(--accent);
+         border-radius: 0 8px 8px 0; padding: 14px 18px; margin: 20px 0; }
+  .box b { color: var(--accent); }
+
+  .scroll { overflow-x: auto; margin: 16px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 14.5px; min-width: 520px; }
+  th { text-align: left; background: var(--code-bg); font-weight: 600; padding: 9px 11px;
+       border-bottom: 1px solid var(--line); white-space: nowrap; }
+  td { padding: 9px 11px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  td.mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; }
+
+  .tag { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .04em;
+         padding: 2px 8px; border-radius: 20px; white-space: nowrap; }
+  .t-ok { background: color-mix(in srgb, var(--ok) 16%, transparent); color: var(--ok); }
+  .t-warn { background: color-mix(in srgb, var(--warn) 20%, transparent); color: var(--warn); }
+  .t-bad { background: color-mix(in srgb, var(--bad) 16%, transparent); color: var(--bad); }
+  .t-info { background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent); }
+
+  .riesgo { background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+            padding: 15px 17px; margin: 12px 0; }
+  .riesgo .cab { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; flex-wrap: wrap; }
+  .riesgo .cab strong { font-size: 15.5px; }
+  .riesgo p { margin: 6px 0 0; font-size: 14.5px; color: var(--ink2); }
+  .riesgo p b { color: var(--ink); }
+
+  footer { margin-top: 60px; padding-top: 18px; border-top: 1px solid var(--line);
+           color: var(--ink3); font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">AgroVoltaic · análisis de cambios</p>
+  <h1>Qué se subió mientras Cartago está caído</h1>
+  <p class="meta">
+    Pull del <b>18-ago-2026</b> · 19 commits de Jonathan (18 del 14-ago, PRs #1–#18, y 1 del 17-ago)
+    · 74 archivos, +4.738 / −137 líneas · rama <code>feat/agente-pronostico-humedad-etl-store</code>
+    actualizada hasta <code>32c3d82</code>
+  </p>
+  <p class="lede">
+    El servidor de Cartago se cayó y con él la fuente del ETL, que llevaba
+    <b>9 días fallando en silencio</b>. Jonathan restauró el dump de respaldo <b>dentro de la
+    EC2</b>, apuntó ahí la ingesta, y aprovechó para cerrar seis tareas de confiabilidad que el
+    MVP tenía abiertas: autenticación, topes de gasto, CI, observabilidad y documentación.
+  </p>
+</header>
+
+<div class="kpis">
+  <div class="kpi"><div class="v">19</div><div class="l">commits nuevos, 74 archivos tocados</div></div>
+  <div class="kpi"><div class="v">21,3 M</div><div class="l">filas de la réplica de AgroDash en la EC2 (5.046 MB)</div></div>
+  <div class="kpi"><div class="v">102</div><div class="l">funciones de test entre los dos agentes (antes 47)</div></div>
+  <div class="kpi"><div class="v">395/500</div><div class="l">MB usados del store en Supabase (Free tier)</div></div>
+</div>
+
+<h2><span class="n">1.</span>El cambio de fondo: de dónde sale ahora el dato</h2>
+
+<p>
+El ETL de ingesta corre cada 15 minutos en la EC2 y leía la base viva de Cartago por Tailscale.
+Con ese servidor en mantenimiento, la conexión moría y —este es el detalle importante— <b>moría sin
+dejar rastro</b>: la conexión a la fuente estaba fuera del <code>try/except</code>, así que la
+excepción se propagaba antes de poder registrar el fallo. Nueve días de ETL rojo que nadie vio.
+</p>
+
+<div class="scroll">
+<table>
+  <thead><tr><th>Aspecto</th><th>Antes</th><th>Ahora</th></tr></thead>
+  <tbody>
+    <tr><td>Fuente del ETL</td>
+        <td class="mono">100.101.177.71:5432/control<br><span style="color:var(--ink3)">Cartago vivo, vía Tailscale</span></td>
+        <td class="mono">127.0.0.1:5433/agrodash_control<br><span style="color:var(--ink3)">réplica del dump, en la propia EC2</span></td></tr>
+    <tr><td>Dónde vive</td><td>Servidor del TEC en Cartago</td>
+        <td>Contenedor <code>agrodash-pg</code> (<code>postgres:16</code>), volumen <code>agrodash_pgdata</code>, <code>restart unless-stopped</code></td></tr>
+    <tr><td>Exposición</td><td>Red privada Tailscale</td>
+        <td>Atado a <b>loopback</b>: el puerto 5433 no sale de la máquina</td></tr>
+    <tr><td>Fallo del ETL</td><td>Excepción silenciosa, systemd en <code>failed</code> sin explicación</td>
+        <td>Se registra <code>evento='fallo:fuente'</code>, se re-lanza para que systemd marque el fallo, y hay <code>connect_timeout</code> de 15 s</td></tr>
+    <tr><td>Cómo se revierte</td><td>—</td>
+        <td>Una línea en <code>forecast.env</code>: la URL de Cartago quedó comentada ahí mismo, con backup en <code>forecast.env.bak-cartago-2026-08-14</code>. Cero código.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="box">
+<b>Por qué el dump no se subió entero a Supabase:</b> la réplica pesa 5.046 MB y el proyecto está en
+Free tier (límite 500 MB, hoy 395 usados). El dump es 10× el límite y pasarse deja el proyecto en
+solo-lectura. La vía correcta es la que ya hace el ETL: leer la réplica local y subir a Supabase
+únicamente los targets de San Carlos.
+</div>
+
+<h2><span class="n">2.</span>Verificado en vivo en la EC2 y en Supabase</h2>
+
+<p>No me quedé con lo que dicen los commits; comprobé cada pieza contra producción hoy:</p>
+
+<div class="scroll">
+<table>
+  <thead><tr><th>Comprobación</th><th>Resultado</th><th>Estado</th></tr></thead>
+  <tbody>
+    <tr><td>Contenedor de la réplica</td><td class="mono">agrodash-pg · postgres:16 · Up 3 días · 127.0.0.1:5433</td><td><span class="tag t-ok">OK</span></td></tr>
+    <tr><td>Contenido de la réplica</td><td>21.314.662 filas · 5.046 MB · último dato <b>2026-06-30 09:39</b></td><td><span class="tag t-ok">OK</span></td></tr>
+    <tr><td>A dónde apunta el ETL</td><td><code>DATABASE_URL</code> → <code>127.0.0.1:5433</code>; línea de Cartago comentada; backup presente</td><td><span class="tag t-ok">OK</span></td></tr>
+    <tr><td>Temporizadores</td><td><code>forecast-etl</code> cada 15 min (última corrida hace 10 min, <b>exit 0</b>) · <code>forecast-refresh</code> cada 6 h</td><td><span class="tag t-ok">OK</span></td></tr>
+    <tr><td>Frescura de la ingesta</td><td><code>/salud/ingesta</code> → HTTP 503, estado <b>stale</b>: último dato 2026-07-23, <b>629 h de edad</b></td><td><span class="tag t-warn">Esperado</span></td></tr>
+    <tr><td>Último error registrado</td><td>2026-08-14 21:09 · <code>fallo:fuente</code> contra el puerto 9999 — la prueba deliberada de la regresión</td><td><span class="tag t-info">Prueba</span></td></tr>
+    <tr><td>Store en Supabase</td><td>395 MB · irradiancia 191.676 filas desde <b>2025-11-28</b> · humedad 693.930 desde 2026-05-01</td><td><span class="tag t-ok">OK</span></td></tr>
+    <tr><td>Objetos nuevos del store</td><td><code>v_salud_ingesta</code>, <code>v_agente_errores</code>, <code>gasto_diario</code> existen</td><td><span class="tag t-ok">OK</span></td></tr>
+    <tr><td>Puertos desde internet</td><td>5433, 8000 y 8010 <b>sin respuesta</b> desde fuera</td><td><span class="tag t-ok">OK</span></td></tr>
+    <tr><td>Rutas públicas</td><td><code>/analizador/health</code> → 200 · <code>/forecast/salud/ingesta</code> → 503 con el reporte completo</td><td><span class="tag t-warn">Ver riesgos</span></td></tr>
+    <tr><td>Disco de la EC2</td><td>22 GB usados de 50 (43 %); la réplica se lleva ~5 GB</td><td><span class="tag t-ok">OK</span></td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2><span class="n">3.</span>Las seis tareas de confiabilidad que cerró</h2>
+
+<div class="scroll">
+<table>
+  <thead><tr><th style="width:24%">Tarea</th><th>Qué implicó</th></tr></thead>
+  <tbody>
+    <tr><td><b>Ingesta y frescura</b></td>
+        <td>Fallo silencioso corregido, fuente movida a la réplica, <code>connect_timeout</code> explícito, units de systemd versionados en el repo, flag <code>--variable</code> para acotar el ETL a un target, y endpoint <code>GET /salud/ingesta</code> que devuelve 503 si el dato no está fresco.</td></tr>
+    <tr><td><b>Autenticación de la consola</b></td>
+        <td>Middleware de Next con cookie <code>&lt;expiración&gt;.&lt;hmac&gt;</code> firmada con Web Crypto (obligatorio: el middleware corre en runtime Edge). Cubre páginas y <code>/api/*</code>, que es donde se gastan tokens. <b>Falla cerrada</b>: sin <code>DEBUGGER_PASSWORD</code> responde 503 en producción en vez de abrirse. Comparación en tiempo constante y límite de intentos de login.</td></tr>
+    <tr><td><b>Topes de costo</b></td>
+        <td>Token bucket por identidad (API key, o IP si no hay) para acotar ráfagas, más un tope de gasto diario. Lo relevante: el acumulado se movió del JSON dentro del contenedor —que <code>forecast-refresh</code> recreaba cada 6 h, así que el tope <b>nunca llegaba a dispararse</b>— a una fila por día en el store.</td></tr>
+    <tr><td><b>CI y pruebas</b></td>
+        <td>Tres jobs en GitHub Actions: pytest de cada agente y build + typecheck + smoke de autenticación de la consola. El analizador pasó de 0 a 19 funciones de test; el pronóstico está en 83.</td></tr>
+    <tr><td><b>Observabilidad</b></td>
+        <td>Vistas <code>v_salud_ingesta</code> y <code>v_agente_errores</code> en el store, y panel «Salud del sistema» en la consola: frescura por variable, gasto del día contra el tope y últimos errores.</td></tr>
+    <tr><td><b>Estados de error en la web</b></td>
+        <td>Las vistas no validaban la forma de la respuesta: un 200 con otra estructura las dejaba en «cargando…» para siempre. Ahora hay estados explícitos de error y de vacío.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>Además, documentación</h3>
+<ul>
+  <li><b>Documento de arquitectura en LaTeX</b> (<code>docs/arquitectura/</code>): 9 secciones —panorama, ETL, modelo de datos, pronóstico, analizador, consola, despliegue, seguridad y estado— con 5 figuras TikZ y el PDF compilado.</li>
+  <li><b><code>docs/RUNBOOK.md</code></b>: cómo levantar todo desde cero, incluidos los secretos necesarios y qué hacer si algo se rompe.</li>
+  <li><b><code>mvp-debugger/consola.sh</code></b>: levanta la consola contra los agentes que ya corren en la EC2 mediante un túnel SSH, sin desplegar ni exponer nada.</li>
+</ul>
+
+<h2><span class="n">4.</span>Lo que ganó el histórico</h2>
+
+<p>
+La réplica no aporta datos nuevos hacia adelante —el dump está congelado en el 30-jun y las cajas de
+San Carlos dejaron de reportar el 23-jul—, pero sí sirvió para rellenar hacia atrás:
+<b>+73.290 filas de irradiancia</b>, con lo que esa serie pasó de arrancar en mayo-2026 a arrancar
+el <b>28-nov-2025</b>. La humedad de suelo se dejó fuera a propósito: son unas 936.000 filas
+(≈375 MB) y no caben en lo que queda del Free tier. Para eso existe el flag <code>--variable</code>.
+</p>
+
+<h2><span class="n">5.</span>Riesgos y cosas a vigilar</h2>
+
+<div class="riesgo">
+  <div class="cab"><span class="tag t-bad">ALTO</span><strong>El store va al 79 % del Free tier</strong></div>
+  <p>395 MB de 500. <code>lecturas_ambientales_sc</code> se lleva 353 MB, el <b>89 % del total</b>.
+  Quedan ~105 MB de margen: cualquier backfill adicional (empezando por la humedad) revienta la
+  cuota y <b>Supabase deja el proyecto en solo-lectura</b>, lo que tumbaría la escritura del ETL y
+  de las predicciones. Decisión pendiente: subir de plan, podar histórico o mover esa tabla fuera.</p>
+</div>
+
+<div class="riesgo">
+  <div class="cab"><span class="tag t-warn">MEDIO</span><strong>El dato lleva 26 días congelado</strong></div>
+  <p>Ninguna variable tiene lecturas posteriores al 23-jul. <code>/salud/ingesta</code> va a seguir
+  devolviendo <b>503</b> hasta que vuelva Cartago <i>y</i> las cajas SC vuelvan a reportar — son dos
+  problemas distintos y la réplica no resuelve ninguno. Conviene tenerlo claro antes de que el 503
+  se lea como «se rompió algo nuevo».</p>
+</div>
+
+<div class="riesgo">
+  <div class="cab"><span class="tag t-warn">MEDIO</span><strong>Confirmar la contraseña de la consola en el despliegue</strong></div>
+  <p>El gate falla cerrado, que es lo correcto, pero eso significa que <b>si el despliegue real no
+  tiene <code>DEBUGGER_PASSWORD</code> definida, la consola responde 503</b> y parece caída. Hay que
+  verificar la variable donde esté publicada, y de paso definir <code>DEBUGGER_SESSION_SECRET</code>
+  aparte para poder rotarlo sin cambiarle la contraseña al equipo.</p>
+</div>
+
+<div class="riesgo">
+  <div class="cab"><span class="tag t-info">BAJO</span><strong>Los agentes escuchan en 0.0.0.0, no en loopback</strong></div>
+  <p>Los procesos de pronóstico (8000) y analizador (8010) están atados a todas las interfaces.
+  Hoy <b>no son alcanzables desde internet</b> —lo comprobé— porque el security group los bloquea,
+  así que el riesgo real es bajo; pero la única capa que protege es esa regla de red, y el
+  comentario de <code>consola.sh</code> afirma que «los servicios siguen escuchando solo en el
+  loopback», lo cual no es exacto. La réplica de Postgres sí está bien atada a
+  <code>127.0.0.1</code>.</p>
+</div>
+
+<div class="riesgo">
+  <div class="cab"><span class="tag t-info">BAJO</span><strong>El endpoint de salud es público y detallado</strong></div>
+  <p><code>/forecast/salud/ingesta</code> responde sin API key y devuelve conteos de filas,
+  marcas de tiempo y el texto del último error, que incluye host y puerto internos. Para un endpoint
+  de salud es discutible, no grave; si se quiere cerrar, es la misma protección por key que ya usa
+  <code>/salud/panel</code>.</p>
+</div>
+
+<h2><span class="n">6.</span>Qué no cambió</h2>
+<ul>
+  <li><b>Mi trabajo local está intacto.</b> El merge entró como fast-forward y el WIP (informes de avance de las semanas 1 y 2, y los cambios del ChatWidget, Console, globals.css y charts.ts) volvió del stash <b>sin un solo conflicto</b>.</li>
+  <li><b>El ETL de los CSV fotovoltaicos no se tocó.</b> El histórico de San Carlos, su modelo crudo y sus capas de corrección y calibración quedan igual.</li>
+  <li><b>Sigue pendiente</b> lo mismo de antes: la separación fina de filas mezcladas, el notebook de análisis exploratorio y el agente Comparador.</li>
+</ul>
+
+<footer>
+  Generado el 18-ago-2026 a partir del repositorio en <code>32c3d82</code> y de comprobaciones en
+  vivo contra la EC2 <code>52.1.28.77</code> y el proyecto de Supabase del store. Fuentes de detalle:
+  <code>docs/memoria/proyecto/agrodash-local.md</code>, <code>docs/memoria/proyecto/estado.md</code>,
+  <code>docs/RUNBOOK.md</code> y <code>docs/arquitectura/arquitectura.pdf</code>.
+</footer>
+
+</div>
+</body>
+</html>

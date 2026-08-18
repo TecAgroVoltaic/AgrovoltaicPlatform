@@ -91,5 +91,26 @@ insertadas, Supabase 365 → **395 MB**. La historia de irradiancia pasó de arr
 es Free tier (500 MB, hoy 395 usados → quedan ~105 MB). Por eso existe el flag
 `--variable`: `--full` sin filtro habría arrastrado ambas y reventado la cuota.
 
+## Verificación en producción (2026-08-18)
+
+Comprobado contra la EC2 y el store, no solo contra los commits:
+
+| Qué | Resultado |
+|---|---|
+| Contenedor | `agrodash-pg` (`postgres:16`) **Up 3 días**, `127.0.0.1:5433` |
+| Contenido | **21.314.662 filas**, 5.046 MB, último dato `2026-06-30 09:39:41` |
+| Fuente del ETL | `DATABASE_URL` → `127.0.0.1:5433`; la línea de Cartago sigue comentada y el backup existe |
+| Temporizadores | `forecast-etl` cada 15 min (última corrida **exit 0**, 0 filas nuevas) · `forecast-refresh` cada 6 h |
+| Frescura | `/salud/ingesta` → **HTTP 503, estado `stale`**: último dato 2026-07-23, **629 h de edad** |
+| Último error del ETL | 2026-08-14 21:09 · `fallo:fuente` contra el puerto 9999 — la **prueba deliberada** de la regresión, no un fallo real |
+| Store | 395 MB · irradiancia 191.676 filas desde **2025-11-28** · humedad 693.930 desde 2026-05-01 |
+| Disco de la EC2 | 22 GB usados de 50 (43 %); la réplica se lleva ~5 GB |
+
+El 503 de `/salud/ingesta` es **el estado correcto**, no una regresión: refleja que el dato lleva
+26 días congelado. Volverá a verde solo cuando Cartago esté arriba **y** las cajas SC vuelvan a
+reportar — son dos problemas distintos y esta réplica no resuelve ninguno.
+
+Resumen ejecutivo de todo el cambio: `../../analisis/cambios-2026-08-18.html`.
+
 Relacionado: [[agrodash]], [[pipeline-tiempo-real]], [[arquitectura-regiones]],
-[[conectividad-tailnet]], [[estado]].
+[[conectividad-tailnet]], [[estado]], [[cuota-store-supabase]], [[superficie-expuesta]].

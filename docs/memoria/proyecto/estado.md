@@ -1,6 +1,6 @@
 ---
 name: estado
-description: Pipeline ETL implementado y corrido OK (36.630 filas en Supabase); falta calibración de irradiancia (bloqueada) y separación fina de filas mezcladas
+description: Pipeline ETL corrido OK; MVP endurecido (auth, topes, CI, salud) y verificado en producción el 2026-08-18; riesgos abiertos: cuota del store al 79 % y superficie expuesta
 categoria: proyecto
 ---
 
@@ -35,7 +35,24 @@ categoria: proyecto
 
 Detalle en [[pipeline-tiempo-real]] y [[agrodash-local]]. 12 PRs.
 
-**Próximo paso:** explorar AgroDash para el Agente Comparador ([[capa-agentes]]);
-notebook EDA; atacar Paso 2 (filas mezcladas); calibración de irradiancia.
+## 2026-08-18 — verificación en producción y dos riesgos operativos
 
-Relacionado: [[objetivo]], [[implementacion]], [[dataset-actual]], [[bloqueantes]].
+Todo lo del 14-ago **comprobado en vivo** contra la EC2 y el store (no solo contra los commits):
+réplica arriba con 21.314.662 filas, ETL corriendo cada 15 min con `exit 0`, `forecast.env`
+apuntando a `127.0.0.1:5433` y los objetos nuevos del store presentes. Detalle y tabla completa
+en [[agrodash-local]]; resumen ejecutivo en `../../analisis/cambios-2026-08-18.html`.
+
+Dos riesgos que **no existían documentados** y ahora sí:
+
+- **Cuota del store al 79 %** (395/500 MB del Free tier), con `lecturas_ambientales_sc`
+  llevándose el 89 %. El próximo backfill grande deja el proyecto en solo-lectura →
+  [[cuota-store-supabase]].
+- **Superficie expuesta de la EC2**: los agentes bindean `0.0.0.0:8000/8010` y hoy solo los frena
+  el security group (verificado: no responden desde internet); `/forecast/salud/ingesta` es
+  público sin key → [[superficie-expuesta]].
+
+**Próximo paso:** decidir qué hacer con la cuota antes de cualquier backfill nuevo; explorar
+AgroDash para el Agente Comparador ([[capa-agentes]]); notebook EDA; Paso 2 (filas mezcladas).
+
+Relacionado: [[objetivo]], [[implementacion]], [[dataset-actual]], [[bloqueantes]],
+[[cuota-store-supabase]], [[superficie-expuesta]].
