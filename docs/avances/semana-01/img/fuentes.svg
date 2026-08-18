@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 292" width="760" height="292">
+  <rect x="0" y="0" width="244" height="150" rx="6" fill="#fcfcfb" stroke="#d9d8d4" stroke-width="1"/>
+  <text x="14" y="22" font-family="Helvetica, Arial, sans-serif" font-size="10.2" font-weight="700" fill="#0b0b0b">Inversor solar</text>
+  <text x="14" y="37" font-family="Helvetica, Arial, sans-serif" font-size="8.6" font-weight="400" fill="#6d6c68">2 arreglos fotovoltaicos</text>
+  <text x="14" y="60" font-family="Helvetica, Arial, sans-serif" font-size="8.8" font-weight="400" fill="#33322e">· voltaje, corriente y potencia por arreglo</text>
+  <text x="14" y="75" font-family="Helvetica, Arial, sans-serif" font-size="8.8" font-weight="400" fill="#33322e">· salida en corriente alterna</text>
+  <text x="14" y="90" font-family="Helvetica, Arial, sans-serif" font-size="8.8" font-weight="400" fill="#33322e">· energía del día y acumulada</text>
+  <text x="14" y="105" font-family="Helvetica, Arial, sans-serif" font-size="8.8" font-weight="400" fill="#33322e">· temperatura interna y estado</text>
+  <text x="14" y="140" font-family="Helvetica, Arial, sans-serif" font-size="9.4" font-weight="700" fill="#2a78d6">16 variables</text>
+  <rect x="258" y="0" width="244" height="150" rx="6" fill="#fcfcfb" stroke="#d9d8d4" stroke-width="1"/>
+  <text x="272" y="22" font-family="Helvetica, Arial, sans-serif" font-size="10.2" font-weight="700" fill="#0b0b0b">Piranómetros</text>
+  <text x="272" y="37" font-family="Helvetica, Arial, sans-serif" font-size="8.6" font-weight="400" fill="#6d6c68">celda calibrada y SP722</text>
+  <text x="272" y="60" font-family="Helvetica, Arial, sans-serif" font-size="8.8" font-weight="400" fill="#33322e">· irradiancia incidente</text>
+  <text x="272" y="75" font-family="Helvetica, Arial, sans-serif" font-size="8.8" font-weight="400" fill="#33322e">· irradiancia reflejada</text>
+  <text x="272" y="90" font-family="Helvetica, Arial, sans-serif" font-size="8.8" font-weight="400" fill="#33322e">· albedo</text>
+  <text x="272" y="105" font-family="Helvetica, Arial, sans-serif" font-size="8.8" font-weight="400" fill="#33322e">· segundo sensor, desde may-2026</text>
+  <text x="272" y="140" font-family="Helvetica, Arial, sans-serif" font-size="9.4" font-weight="700" fill="#2a78d6">8 variables</text>
+  <rect x="516" y="0" width="244" height="150" rx="6" fill="#fcfcfb" stroke="#d9d8d4" stroke-width="1"/>
+  <text x="530" y="22" font-family="Helvetica, Arial, sans-serif" font-size="10.2" font-weight="700" fill="#0b0b0b">Sensores de temperatura</text>
+  <text x="530" y="37" font-family="Helvetica, Arial, sans-serif" font-size="8.6" font-weight="400" fill="#6d6c68">DS18B20 sobre los módulos</text>
+  <text x="530" y="60" font-family="Helvetica, Arial, sans-serif" font-size="8.8" font-weight="400" fill="#33322e">· temperatura del arreglo inclinado</text>
+  <text x="530" y="75" font-family="Helvetica, Arial, sans-serif" font-size="8.8" font-weight="400" fill="#33322e">· temperatura del arreglo vertical</text>
+  <text x="530" y="140" font-family="Helvetica, Arial, sans-serif" font-size="9.4" font-weight="700" fill="#2a78d6">2 variables</text>
+  <path d="M122,150 L122,168 L380,168 L380,179" stroke="#8a8985" stroke-width="1.2" fill="none"/>
+  <path d="M380,150 L380,168 L380,168 L380,179" stroke="#8a8985" stroke-width="1.2" fill="none"/>
+  <path d="M638,150 L638,168 L380,168 L380,179" stroke="#8a8985" stroke-width="1.2" fill="none"/>
+  <path d="M376,179 L384,179 L380,186 z" fill="#8a8985"/>
+  <rect x="130" y="186" width="500" height="44" rx="6" fill="#f7f9fd" stroke="#2a78d6" stroke-width="1.4"/>
+  <text x="146" y="206" font-family="Helvetica, Arial, sans-serif" font-size="9.8" font-weight="700" fill="#33322e">Registrador de campo — un archivo CSV por día</text>
+  <text x="146" y="222" font-family="Helvetica, Arial, sans-serif" font-size="8.8" font-weight="400" fill="#6d6c68">285 archivos · 10-nov-2024 a 1-jun-2026 · 13 estructuras de columnas distintas</text>
+  <path d="M380,230 L380,249" stroke="#8a8985" stroke-width="1.2" fill="none"/><path d="M376,249 L384,249 L380,256 z" fill="#8a8985"/>
+  <rect x="130" y="256" width="500" height="30" rx="6" fill="#fcfcfb" stroke="#8a8985" stroke-width="1.2" stroke-dasharray="5 4"/>
+  <text x="146" y="275" font-family="Helvetica, Arial, sans-serif" font-size="9.4" font-weight="400" fill="#33322e">26 variables físicas a normalizar · 18 del subsistema eléctrico, 8 del de radiación</text>
+  </svg>

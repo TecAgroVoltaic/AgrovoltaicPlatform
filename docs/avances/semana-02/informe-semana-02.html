@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Informe de avance · Semana 2 · AGRIVOLTAIC</title>
+<style>
+  @page {
+    size: A4;
+    margin: 1.9cm 1.7cm 1.6cm;
+    @bottom-center {
+      content: "Proyecto AGRIVOLTAIC · Informe de avance semanal · Semana 2 · página " counter(page) " de " counter(pages);
+      font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+      font-size: 8.5pt; color: #8a8985;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    color: #17171a; line-height: 1.55; font-size: 10.4pt; margin: 0;
+  }
+
+  /* ---------- encabezado ---------- */
+  .cintillo { border-top: 4px solid #2a78d6; padding-top: 14px; margin-bottom: 4px; }
+  .eyebrow { font-size: 8.6pt; letter-spacing: .11em; text-transform: uppercase;
+             color: #2a78d6; font-weight: 700; margin: 0 0 6px; }
+  h1 { font-size: 20pt; line-height: 1.2; margin: 0 0 6px; color: #0b0b0b; letter-spacing: -.01em; }
+  .meta { font-size: 9.4pt; color: #52514e; margin: 0 0 18px; }
+  .meta b { color: #17171a; font-weight: 600; }
+
+  h2 { font-size: 12.6pt; margin: 26px 0 9px; color: #0b0b0b;
+       border-bottom: 1px solid #e3e2df; padding-bottom: 5px; }
+  h2 .n { color: #2a78d6; font-weight: 700; margin-right: 7px; }
+  h3 { font-size: 10.6pt; margin: 16px 0 5px; color: #17171a; }
+  p { margin: 8px 0; }
+  ul, ol { margin: 8px 0 8px 0; padding-left: 18px; }
+  li { margin: 3px 0; }
+  code { font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+         font-size: 8.9pt; background: #f2f1ee; padding: 1px 4px; border-radius: 3px; color: #33322e; }
+
+  /* ---------- destacados ---------- */
+  .kpis { display: flex; gap: 9px; margin: 16px 0 6px; }
+  .kpi { flex: 1; border: 1px solid #e3e2df; border-radius: 8px; padding: 10px 11px; background: #fcfcfb; }
+  .kpi .v { font-size: 15.5pt; font-weight: 700; color: #2a78d6; line-height: 1.1; }
+  .kpi .l { font-size: 8.3pt; color: #52514e; margin-top: 3px; line-height: 1.35; }
+
+  .nota { background: #f7f9fd; border-left: 3px solid #2a78d6; border-radius: 0 6px 6px 0;
+          padding: 10px 13px; margin: 13px 0; font-size: 9.8pt; }
+  .nota b { color: #1b5ea8; }
+
+  /* ---------- tablas ---------- */
+  table { width: 100%; border-collapse: collapse; margin: 11px 0; font-size: 9.1pt; }
+  th { text-align: left; background: #f2f1ee; color: #33322e; font-weight: 600;
+       padding: 6px 8px; border-bottom: 1px solid #d9d8d4; }
+  td { padding: 5px 8px; border-bottom: 1px solid #eceae6; vertical-align: top; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tr.total td { font-weight: 700; background: #f7f9fd; border-top: 1.5px solid #2a78d6; }
+  .tabla-chica { font-size: 8.6pt; }
+
+  /* ---------- figuras ---------- */
+  figure { margin: 15px 0; page-break-inside: avoid; }
+  figure img { width: 100%; border: 1px solid #e9e8e4; border-radius: 6px; }
+  figcaption { font-size: 8.6pt; color: #52514e; margin-top: 5px; }
+  figcaption b { color: #17171a; }
+
+  .avoid { page-break-inside: avoid; }
+  tr { page-break-inside: avoid; }
+  thead { display: table-header-group; }
+  h2, h3 { page-break-after: avoid; }
+  .salto { page-break-before: always; }
+  svg { display: block; margin: 6px auto 0; }
+</style>
+</head>
+<body>
+
+<div class="cintillo">
+  <p class="eyebrow">Proyecto AGRIVOLTAIC · Región Huetar Norte</p>
+  <h1>Informe de avance — Semana 2</h1>
+  <p class="meta">
+    Plataforma en la nube para recolección, almacenamiento, visualización y predicción de datos
+    agrovoltaicos · <b>Periodo:</b> 10 al 16 de agosto de 2026 ·
+    <b>Sitio:</b> sistema fotovoltaico de San Carlos · <b>Dedicación:</b> 20 horas
+  </p>
+</div>
+
+<h2><span class="n">1.</span>Resumen ejecutivo</h2>
+
+<p>
+Esta semana se cerró el principal bloqueo técnico del proyecto: las <b>consultas sobre el
+tratamiento de los datos quedaron respondidas</b> con el documento de decisiones devuelto por
+el Ing. Leo Cardinale. Con ese criterio ya definido, se ejecutó el <b>procesamiento completo del
+histórico de monitoreo</b> —diecinueve meses de archivos crudos— hasta dejarlo almacenado y
+consultable en una base de datos en la nube, y se <b>inició la construcción de la capa de
+agentes</b> que operará sobre esos datos.
+</p>
+
+<div class="kpis">
+  <div class="kpi"><div class="v">16 de 16</div><div class="l">consultas de tratamiento de datos resueltas (12 de criterio + 4 de geometría del sistema)</div></div>
+  <div class="kpi"><div class="v">285</div><div class="l">archivos CSV crudos procesados de forma automatizada e idempotente</div></div>
+  <div class="kpi"><div class="v">131.337</div><div class="l">registros almacenados en la base de datos, de nov-2024 a jun-2026</div></div>
+  <div class="kpi"><div class="v">26</div><div class="l">variables normalizadas y documentadas en un diccionario formal</div></div>
+</div>
+
+<div class="nota">
+<b>Correspondencia con el plan de trabajo.</b> Esta semana cubre la Semana 2 de la Fase 1 del plan
+de pasantía: diseño de la arquitectura conceptual del prototipo, definición del flujo de datos
+—entrada, almacenamiento, procesamiento, visualización y predicción— y diseño del flujo
+multiagente. El diagrama de arquitectura y el diseño de la capa de agentes comprometidos como
+entregables están en la sección 6. El procesamiento del histórico se adelantó respecto del plan al
+quedar disponible el criterio de tratamiento.
+</div>
+
+<h2><span class="n">2.</span>Bloqueo levantado: criterio de tratamiento de datos</h2>
+
+<p>
+El histórico de monitoreo presenta problemas de calidad documentados en la etapa de análisis
+exploratorio: nombres de columna inconsistentes entre archivos, sensores saturados, lecturas sin
+calibrar y ritmos de muestreo cambiantes. Ninguno de esos problemas se podía resolver por decisión
+propia, porque cada uno implica <b>descartar o alterar mediciones físicas reales</b>. Se elevaron
+como consulta formal y esta semana llegaron las respuestas.
+</p>
+
+<table>
+  <thead><tr><th style="width:26%">Consulta</th><th>Criterio recibido</th></tr></thead>
+  <tbody>
+    <tr><td>Nomenclatura de variables</td><td>Aprobada; se permiten abreviaturas siempre que existan descritas en una tabla de definiciones.</td></tr>
+    <tr><td>Temperatura fija en 85 °C</td><td>Falla física confirmada (adhesivo del sensor y falsos contactos). Se conserva el valor crudo y se limpia en el análisis.</td></tr>
+    <tr><td>Desfase constante de irradiancia</td><td>Comportamiento esperado del equipo; es un asunto de exactitud de calibración y de ruido eléctrico.</td></tr>
+    <tr><td>¿Corregir o conservar?</td><td><b>Conservar el valor crudo y generar una variable corregida nueva</b> en una etapa de análisis. El crudo puede tener utilidad futura.</td></tr>
+    <tr><td>Filas de sensores mezclados</td><td>Recuperar lo que sea recuperable y aceptar huecos donde no lo sea.</td></tr>
+    <tr><td>Ritmo de muestreo</td><td>Variables eléctricas cada 5 minutos; radiación cada 15 segundos, en almacenamiento aparte.</td></tr>
+    <tr><td>Límites de validez</td><td>Aceptados; temperatura válida entre 10 °C y 80 °C. Se aplican en posprocesamiento, no sobre el dato original.</td></tr>
+    <tr><td>Constante de calibración</td><td>No existe ajuste guardado: la denominación del sensor es comercial y no implica dato escalado.</td></tr>
+    <tr><td>Validez del periodo inicial</td><td>La medición de irradiancia previa a mediados de 2025 no es válida; el segundo piranómetro entró en operación en mayo de 2026.</td></tr>
+    <tr><td>Geometría del sistema</td><td>1420 Wp por arreglo (4 × 355 Wp, bifaciales). Arreglo 1 inclinado a 20°, orientación 150°; arreglo 2 vertical a 90°, orientación 50°.</td></tr>
+  </tbody>
+</table>
+
+<div class="nota">
+<b>Regla rectora derivada:</b> el dato crudo se almacena tal como lo entregó el sensor y
+<b>toda corrección vive en una capa de análisis posterior</b>, como variable nueva. Esta regla
+reemplaza el enfoque inicial de corregir durante la carga y es la que gobierna el diseño de la
+base de datos descrito en la sección 4. Su ventaja es que cualquier criterio de limpieza puede
+revisarse o revertirse sin volver a procesar los archivos originales.
+</div>
+
+<h2><span class="n">3.</span>Procesamiento de los datos</h2>
+
+<p>
+Con el criterio definido se ejecutó el procesamiento del histórico completo. El punto de partida
+son 285 archivos CSV diarios producidos por el registrador de campo entre el 10 de noviembre de
+2024 y el 1 de junio de 2026, que en conjunto presentan <b>trece estructuras de columnas
+distintas</b>: los mismos conceptos físicos aparecen con nombres cortos, nombres largos con
+unidades, variantes en minúsculas y errores de digitación heredados del registrador.
+</p>
+
+<p>El procesamiento se implementó como un proceso repetible de cinco etapas:</p>
+
+<table>
+  <thead><tr><th style="width:20%">Etapa</th><th>Qué hace</th></tr></thead>
+  <tbody>
+    <tr><td><b>Lectura tolerante</b></td><td>Abre cada archivo aunque tenga filas con distinto número de columnas, y registra las que no se pueden interpretar en lugar de detener el proceso.</td></tr>
+    <tr><td><b>Normalización</b></td><td>Reduce las cerca de 70 variantes de encabezado a 26 nombres canónicos, resolviendo acentos, unidades, mayúsculas y errores de digitación.</td></tr>
+    <tr><td><b>Separación por subsistema</b></td><td>Divide cada archivo en dos flujos independientes: medición eléctrica del inversor y medición de radiación de los piranómetros.</td></tr>
+    <tr><td><b>Homogeneización temporal</b></td><td>Lleva la parte eléctrica a intervalos de 5 minutos y la de radiación a 15 segundos, conservando en cada registro cuántas muestras se agregaron y cuál era el intervalo original.</td></tr>
+    <tr><td><b>Carga idempotente</b></td><td>Inserta en la base de datos con control por huella digital del archivo y por marca de tiempo, de modo que reprocesar no duplica ni corrompe nada.</td></tr>
+  </tbody>
+</table>
+
+<p>
+La condición de <b>idempotencia</b> es la que convierte esto en un proceso permanente y no en una
+carga de una sola vez: al agregar archivos nuevos, el proceso reconoce lo ya cargado, procesa
+únicamente lo nuevo y deja la base en un estado consistente. Es el requisito mínimo para que la
+plataforma pueda alimentarse de forma continua.
+</p>
+
+<h3>Ritmo de muestreo encontrado</h3>
+<p>
+El muestreo no fue constante a lo largo del proyecto, lo que confirma en los datos lo indicado en
+la metodología del equipo. Cada registro almacenado conserva su intervalo de origen:
+</p>
+
+<table class="tabla-chica">
+  <thead><tr><th>Intervalo original</th><th class="num">Registros eléctricos</th><th class="num">Registros de radiación</th><th>Interpretación</th></tr></thead>
+  <tbody>
+    <tr><td>5 minutos o más</td><td class="num">27.249</td><td class="num">27.230</td><td>Operación actual, conforme a la metodología</td></tr>
+    <tr><td>Entre 1 y 5 minutos</td><td class="num">5.118</td><td class="num">24.241</td><td>Etapa intermedia del proyecto</td></tr>
+    <tr><td>Entre 20 y 54 segundos</td><td class="num">3.121</td><td class="num">27.234</td><td>Etapa intermedia del proyecto</td></tr>
+    <tr><td>Menos de 20 segundos</td><td class="num">979</td><td class="num">16.157</td><td>Etapas de prueba y muestreo fino de radiación</td></tr>
+    <tr class="total"><td>Total</td><td class="num">36.469</td><td class="num">94.868</td><td></td></tr>
+  </tbody>
+</table>
+<p style="font-size:9pt;color:#52514e;margin-top:-2px">
+Dos registros eléctricos y seis de radiación quedaron sin intervalo determinable por ser el único
+dato de su archivo; se conservan igualmente.
+</p>
+
+<h2><span class="n">4.</span>Cómo se ven los datos</h2>
+
+<p>
+Las siguientes figuras se generaron consultando directamente la base de datos ya cargada. No son
+ilustraciones: son el estado real del histórico al cierre de esta semana.
+</p>
+
+<figure>
+  <img src="img/01-cobertura-temporal.png" alt="Cobertura temporal del histórico eléctrico por mes">
+  <figcaption><b>Figura 1 — Cobertura temporal.</b> Registros eléctricos disponibles por mes. Se
+  confirman dos interrupciones prolongadas de captura: de enero a abril de 2025 y de julio a agosto
+  de 2025. A partir de octubre de 2025 la operación es estable, con más de 3.500 registros
+  mensuales. Los meses en rojo no tienen ningún dato; se documentan como vacíos y no se rellenan
+  con valores artificiales.</figcaption>
+</figure>
+
+<figure>
+  <img src="img/02-perfil-diario.png" alt="Perfil diario de potencia por arreglo">
+  <figcaption><b>Figura 2 — Comportamiento físico esperado.</b> Mediana horaria de potencia de cada
+  arreglo sobre todo el histórico. La curva reproduce el ciclo solar y muestra la diferencia
+  esperada entre los dos montajes: el arreglo inclinado alcanza su máximo cerca del mediodía solar,
+  mientras que el vertical rinde menos al mediodía pero sostiene su producción por más tiempo en la
+  tarde. Que esta forma aparezca sin ajuste alguno indica que la normalización y la separación de
+  subsistemas están bien hechas.</figcaption>
+</figure>
+
+<figure>
+  <img src="img/03-temperatura-cruda.png" alt="Distribución de la temperatura cruda del arreglo inclinado">
+  <figcaption><b>Figura 3 — El dato crudo se conserva.</b> Distribución de la temperatura del
+  arreglo inclinado tal como quedó almacenada. La barra aislada corresponde a 11.880 registros con
+  el valor exacto de 85,0 °C, la señal de falla del sensor confirmada por el equipo. El valor no se
+  borra: permanece en la base y es la capa de corrección la que lo descarta, de acuerdo con el
+  criterio recibido.</figcaption>
+</figure>
+
+<figure>
+  <img src="img/04-irradiancia-cruda.png" alt="Irradiancia incidente cruda de un día">
+  <figcaption><b>Figura 4 — Radiación sin calibrar.</b> Un día completo de irradiancia incidente a
+  15 segundos. La curva diaria es coherente y las caídas bruscas corresponden a paso de nubes, pero
+  la señal aún no está escalada a unidades físicas y arrastra el desfase constante de −38,845
+  identificado en 3.198 registros del histórico. Convertir esta señal a W/m² es el trabajo de la
+  próxima semana.</figcaption>
+</figure>
+
+<h3>Efecto de la capa de corrección</h3>
+<p>
+La diferencia entre el dato almacenado y el dato analizable se ve mejor comparando los valores
+extremos de cada uno. La columna izquierda es lo que entregó el sensor; la derecha, lo que ve
+quien consulta la capa de análisis:
+</p>
+
+<table class="avoid">
+  <thead><tr><th>Variable</th><th class="num">Máximo en el dato crudo</th><th class="num">Máximo tras la corrección</th><th>Regla aplicada</th></tr></thead>
+  <tbody>
+    <tr><td>Potencia del arreglo 1</td><td class="num">26.503.162,8 W</td><td class="num">1.602,9 W</td><td>Rango físico plausible (0–5.000 W)</td></tr>
+    <tr><td>Temperatura del arreglo 1</td><td class="num">127,9 °C</td><td class="num">79,8 °C</td><td>Validez entre 10 y 80 °C</td></tr>
+    <tr><td>Irradiancia incidente</td><td class="num">valores negativos</td><td class="num">nunca negativa</td><td>Desfase del sensor y periodo inicial no válido</td></tr>
+  </tbody>
+</table>
+
+<p>
+En números: la regla de temperatura anula <b>11.949 registros</b> del arreglo inclinado, y la de
+validez temporal marca <b>37.825 registros</b> de radiación como no utilizables por corresponder al
+periodo previo a la corrección de esa medición. Todos siguen existiendo en la base; simplemente no
+los devuelve la capa de análisis. Conviene señalar también una limitación real del histórico: la
+potencia total de salida solo está presente en el <b>54,5 %</b> de los registros, porque no todas
+las versiones del archivo de campo la incluían.
+</p>
+
+<h2><span class="n">5.</span>Modelo de datos implementado</h2>
+
+<p>
+La base de datos quedó organizada en tres niveles, siguiendo la regla rectora de la sección 2:
+almacenamiento crudo, capa de corrección y catálogo de definiciones.
+</p>
+
+<table>
+  <thead><tr><th style="width:27%">Objeto</th><th>Contenido</th><th class="num">Registros</th></tr></thead>
+  <tbody>
+    <tr><td><code>monitoreo_sc_electrico</code><br><span style="font-size:8.2pt;color:#52514e">tabla · 22 columnas</span></td>
+        <td>Medición eléctrica del inversor a 5 minutos, tal cual la entregó el equipo: voltaje, corriente y potencia de cada arreglo, salida en corriente alterna, energía acumulada, temperaturas y código de estado.</td>
+        <td class="num">36.469</td></tr>
+    <tr><td><code>radiacion_sc_15s</code><br><span style="font-size:8.2pt;color:#52514e">tabla · 12 columnas</span></td>
+        <td>Medición de radiación a 15 segundos, en almacenamiento separado tal como se solicitó: irradiancia incidente y reflejada, albedo y las lecturas del segundo piranómetro.</td>
+        <td class="num">94.868</td></tr>
+    <tr><td><code>v_sc_electrico_corregido</code><br><span style="font-size:8.2pt;color:#52514e">capa de análisis</span></td>
+        <td>Misma información eléctrica con los criterios de validez aplicados: temperatura fuera de 10–80 °C, potencias, voltajes, corrientes y frecuencia fuera de rango físico.</td>
+        <td class="num">36.469</td></tr>
+    <tr><td><code>v_sc_radiacion_corregida</code><br><span style="font-size:8.2pt;color:#52514e">capa de análisis</span></td>
+        <td>Radiación con el desfase del sensor neutralizado, valores negativos acotados y bandera de validez para el periodo previo a la corrección de la medición.</td>
+        <td class="num">94.868</td></tr>
+    <tr><td><code>diccionario_variables</code><br><span style="font-size:8.2pt;color:#52514e">catálogo</span></td>
+        <td>Definición en texto de cada variable, su unidad y a qué arreglo físico corresponde. Responde al criterio de que toda abreviatura esté descrita.</td>
+        <td class="num">26</td></tr>
+    <tr><td><code>_ingest_log</code><br><span style="font-size:8.2pt;color:#52514e">control</span></td>
+        <td>Huella digital de cada archivo procesado. Es lo que permite reprocesar sin duplicar y saber exactamente qué se cargó y cuándo.</td>
+        <td class="num">285</td></tr>
+  </tbody>
+</table>
+
+<p style="font-size:9.2pt;color:#52514e">
+Cada registro almacenado conserva además su trazabilidad de origen: archivo del que proviene,
+número de muestras agregadas e intervalo de muestreo original. El acceso público a las tablas está
+deshabilitado; solo los roles de servicio pueden leerlas.
+</p>
+
+<h2><span class="n">6.</span>Arquitectura propuesta</h2>
+
+<p>
+La arquitectura de la plataforma se organiza en capas con una separación estricta de
+responsabilidades: cada capa recibe un dato en un estado conocido y lo entrega en otro, sin
+retroceder. El diagrama muestra el estado actual —las tres primeras capas ya operando— y las dos
+capas en construcción.
+</p>
+
+<figure><img src="img/arquitectura.svg" alt="Diagrama de la arquitectura propuesta por capas" style="border:none"></figure>
+
+<h3>Criterios de diseño</h3>
+<ul>
+  <li><b>El dato original nunca se altera.</b> Toda corrección es una capa por encima, revisable y reversible sin volver a procesar los archivos.</li>
+  <li><b>El cálculo numérico no lo hace el modelo de lenguaje.</b> La detección de anomalías y las métricas se resuelven con estadística determinista; el agente interpreta y comunica el resultado. Esto es lo que hace auditable el sistema: un hallazgo siempre se puede rastrear hasta los registros que lo produjeron.</li>
+  <li><b>Las dos regiones del proyecto se mantienen separadas en el almacenamiento.</b> La región de Cartago tiene su propia base de datos, con sensores de suelo y ambiente; San Carlos tiene la suya, fotovoltaica. La comparación entre sitios se resuelve en la capa de agentes al momento de consultar, sin fusionar ni reestructurar ninguna de las dos bases.</li>
+  <li><b>Cada capa es sustituible.</b> Agregar una variable nueva o un sensor nuevo se resuelve en la capa de normalización y se propaga solo; no obliga a reescribir el resto.</li>
+</ul>
+
+<h2><span class="n">7.</span>Por qué Python en esta etapa</h2>
+
+<p>
+Todo el procesamiento y la capa de agentes se están construyendo en Python. La decisión es
+deliberada y responde a tres razones concretas:
+</p>
+<ul>
+  <li><b>El dominio ya está resuelto en Python.</b> Las bibliotecas de referencia para energía solar —modelos de cielo despejado, control de calidad de series solares, cálculo de irradiancia sobre plano inclinado— son bibliotecas de Python validadas por la comunidad científica. Reimplementar esa física sería asumir un riesgo innecesario.</li>
+  <li><b>Es el mismo lenguaje de las tres etapas siguientes.</b> Calibración, modelos de predicción y agentes comparten entorno, dependencias y pruebas. No hay traspaso de datos entre tecnologías ni reescrituras intermedias.</li>
+  <li><b>Es el lenguaje del equipo investigador.</b> El análisis exploratorio y los cuadernos de trabajo del proyecto ya están en Python, lo que permite que el código se revise, se reutilice y se continúe sin dependencias de una sola persona.</li>
+</ul>
+<p>
+La interfaz de visualización sí se construirá en tecnología web, pero se alimentará de esta base y
+de estos servicios; la lógica de datos no se duplica.
+</p>
+
+<h2 class="salto"><span class="n">8.</span>Dedicación</h2>
+
+<p>
+Detalle de las 20 horas semanales comprometidas, con el resultado verificable asociado a cada
+bloque de trabajo.
+</p>
+
+<h3>Semana 1 · 3 al 7 de agosto de 2026</h3>
+<table>
+  <thead><tr><th style="width:34%">Actividad</th><th>Resultado</th><th class="num" style="width:11%">Horas</th></tr></thead>
+  <tbody>
+    <tr><td>Revisión de objetivos de ambos proyectos y delimitación del aporte</td>
+        <td>Alcance acotado y criterio de prioridad</td><td class="num">2,5</td></tr>
+    <tr><td>Inventario de fuentes físicas y variables del sistema</td>
+        <td>3 fuentes documentadas y 26 variables identificadas</td><td class="num">4,5</td></tr>
+    <tr><td>Diagnóstico de calidad del histórico de campo</td>
+        <td>285 archivos revisados; 7 hallazgos cuantificados</td><td class="num">6,0</td></tr>
+    <tr><td>Definición de usuarios y casos de uso preliminares</td>
+        <td>3 perfiles de usuario y 4 casos de uso</td><td class="num">3,0</td></tr>
+    <tr><td>Preparación y seguimiento de la consulta al equipo</td>
+        <td>16 puntos consolidados en un documento de consulta</td><td class="num">4,0</td></tr>
+    <tr class="total"><td>Total Semana 1</td><td></td><td class="num">20,0</td></tr>
+  </tbody>
+</table>
+
+<h3>Semana 2 · 10 al 16 de agosto de 2026</h3>
+<table>
+  <thead><tr><th style="width:34%">Actividad</th><th>Resultado</th><th class="num" style="width:11%">Horas</th></tr></thead>
+  <tbody>
+    <tr><td>Análisis de las respuestas recibidas y actualización del criterio del proyecto</td>
+        <td>16 consultas cerradas y registradas como decisiones del proyecto, con su justificación</td><td class="num">3,0</td></tr>
+    <tr><td>Rediseño del modelo de datos según la regla de dato crudo más capa de análisis</td>
+        <td>Modelo de dos tablas crudas, dos capas de corrección y un catálogo de definiciones</td><td class="num">4,0</td></tr>
+    <tr><td>Reimplementación del procesamiento</td>
+        <td>Separación por subsistema, homogeneización a 5 min y 15 s, y generación automática de la estructura de la base</td><td class="num">5,0</td></tr>
+    <tr><td>Carga del histórico completo y verificación</td>
+        <td>285 archivos procesados; 131.337 registros cargados y contrastados contra los archivos de origen</td><td class="num">3,0</td></tr>
+    <tr><td>Diccionario de variables y control de acceso a la base</td>
+        <td>26 variables documentadas; acceso público deshabilitado</td><td class="num">2,0</td></tr>
+    <tr><td>Definición de la capa de agentes e inicio de su construcción</td>
+        <td>Alcance de los dos agentes, arquitectura de la capa y criterio de separación entre cálculo determinista e interpretación</td><td class="num">3,0</td></tr>
+    <tr class="total"><td>Total Semana 2</td><td></td><td class="num">20,0</td></tr>
+  </tbody>
+</table>
+
+<table class="avoid" style="margin-top:14px">
+  <thead><tr><th>Acumulado</th><th class="num" style="width:14%">Horas</th></tr></thead>
+  <tbody><tr class="total"><td>Semanas 1 y 2</td><td class="num">40,0</td></tr></tbody>
+</table>
+
+<h2><span class="n">9.</span>Próximos pasos</h2>
+
+<ol>
+  <li><b>Convertir la irradiancia a unidades físicas.</b> Como no existe una constante de calibración guardada, la escala se deducirá comparando la señal medida contra el modelo de cielo despejado del sitio, usando la ubicación geográfica y la geometría de los arreglos ya confirmada.</li>
+  <li><b>Recuperar las filas con sensores mezclados</b>, aplicando el criterio recibido: rescatar lo recuperable y documentar los huecos restantes.</li>
+  <li><b>Continuar la construcción de la capa de agentes</b> sobre la capa de análisis ya disponible.</li>
+  <li><b>Definir los indicadores de desempeño del sistema</b> que alimentarán el dashboard, ahora que se conoce la potencia instalada de cada arreglo.</li>
+</ol>
+
+<div class="nota" style="margin-top:18px">
+<b>Riesgo abierto:</b> la correspondencia fina entre las estaciones de medición ambiental y cada
+uno de los dos sitios del proyecto aún no está confirmada. No afecta el trabajo sobre San Carlos,
+pero sí es requisito para la comparación entre regiones. Se plantea como consulta al equipo.
+</div>
+
+</body>
+</html>

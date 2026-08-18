@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Informe de avance · Semana 1 · AGRIVOLTAIC</title>
+<style>
+  @page {
+    size: A4;
+    margin: 1.9cm 1.7cm 1.6cm;
+    @bottom-center {
+      content: "Proyecto AGRIVOLTAIC · Informe de avance semanal · Semana 1 · página " counter(page) " de " counter(pages);
+      font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+      font-size: 8.5pt; color: #8a8985;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    color: #17171a; line-height: 1.55; font-size: 10.4pt; margin: 0;
+  }
+  .cintillo { border-top: 4px solid #2a78d6; padding-top: 14px; margin-bottom: 4px; }
+  .eyebrow { font-size: 8.6pt; letter-spacing: .11em; text-transform: uppercase;
+             color: #2a78d6; font-weight: 700; margin: 0 0 6px; }
+  h1 { font-size: 20pt; line-height: 1.2; margin: 0 0 6px; color: #0b0b0b; letter-spacing: -.01em; }
+  .meta { font-size: 9.4pt; color: #52514e; margin: 0 0 18px; }
+  .meta b { color: #17171a; font-weight: 600; }
+
+  h2 { font-size: 12.6pt; margin: 26px 0 9px; color: #0b0b0b;
+       border-bottom: 1px solid #e3e2df; padding-bottom: 5px; }
+  h2 .n { color: #2a78d6; font-weight: 700; margin-right: 7px; }
+  h3 { font-size: 10.6pt; margin: 16px 0 5px; color: #17171a; }
+  p { margin: 8px 0; }
+  ul, ol { margin: 8px 0 8px 0; padding-left: 18px; }
+  li { margin: 3px 0; }
+  code { font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+         font-size: 8.9pt; background: #f2f1ee; padding: 1px 4px; border-radius: 3px; color: #33322e; }
+
+  .kpis { display: flex; gap: 9px; margin: 16px 0 6px; }
+  .kpi { flex: 1; border: 1px solid #e3e2df; border-radius: 8px; padding: 10px 11px; background: #fcfcfb; }
+  .kpi .v { font-size: 15.5pt; font-weight: 700; color: #2a78d6; line-height: 1.1; }
+  .kpi .l { font-size: 8.3pt; color: #52514e; margin-top: 3px; line-height: 1.35; }
+
+  .nota { background: #f7f9fd; border-left: 3px solid #2a78d6; border-radius: 0 6px 6px 0;
+          padding: 10px 13px; margin: 13px 0; font-size: 9.8pt; }
+  .nota b { color: #1b5ea8; }
+
+  table { width: 100%; border-collapse: collapse; margin: 11px 0; font-size: 9.1pt; }
+  th { text-align: left; background: #f2f1ee; color: #33322e; font-weight: 600;
+       padding: 6px 8px; border-bottom: 1px solid #d9d8d4; }
+  td { padding: 5px 8px; border-bottom: 1px solid #eceae6; vertical-align: top; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tr.total td { font-weight: 700; background: #f7f9fd; border-top: 1.5px solid #2a78d6; }
+  .tabla-chica { font-size: 8.6pt; }
+
+  figure { margin: 15px 0; page-break-inside: avoid; }
+  figure img { width: 100%; border: 1px solid #e9e8e4; border-radius: 6px; }
+  figcaption { font-size: 8.6pt; color: #52514e; margin-top: 5px; }
+  figcaption b { color: #17171a; }
+
+  .avoid { page-break-inside: avoid; }
+  tr { page-break-inside: avoid; }
+  thead { display: table-header-group; }
+  h2, h3 { page-break-after: avoid; }
+</style>
+</head>
+<body>
+
+<div class="cintillo">
+  <p class="eyebrow">Proyecto AGRIVOLTAIC · Región Huetar Norte</p>
+  <h1>Informe de avance — Semana 1</h1>
+  <p class="meta">
+    Plataforma en la nube para recolección, almacenamiento, visualización y predicción de datos
+    agrovoltaicos · <b>Periodo:</b> 3 al 7 de agosto de 2026 ·
+    <b>Sitio:</b> sistema fotovoltaico de San Carlos · <b>Dedicación:</b> 20 horas
+  </p>
+</div>
+
+<h2><span class="n">1.</span>Resumen ejecutivo</h2>
+
+<p>
+Primera semana de trabajo, dedicada a <b>entender qué hay antes de construir nada</b>. Se revisaron
+los objetivos de los dos proyectos asociados para delimitar qué le corresponde aportar a esta
+pasantía; se levantó el inventario completo de fuentes de datos y variables del sistema
+agrovoltaico; se diagnosticó la calidad real del histórico de monitoreo archivo por archivo; y se
+definieron los usuarios y casos de uso que debe atender la plataforma.
+</p>
+
+<p>
+El resultado principal de la semana es un <b>diagnóstico documentado</b>: el histórico de monitoreo
+no es utilizable tal como está y los problemas encontrados no son homogéneos ni triviales. Ese
+diagnóstico derivó en <b>16 consultas formales al equipo del proyecto</b>, porque cada una implica
+decidir qué se hace con mediciones físicas reales y esa decisión no le corresponde a quien procesa
+los datos.
+</p>
+
+<div class="kpis">
+  <div class="kpi"><div class="v">3</div><div class="l">fuentes físicas de medición inventariadas en el sistema</div></div>
+  <div class="kpi"><div class="v">26</div><div class="l">variables identificadas y descritas para su normalización</div></div>
+  <div class="kpi"><div class="v">285</div><div class="l">archivos de campo revisados, equivalentes a 19 meses</div></div>
+  <div class="kpi"><div class="v">16</div><div class="l">consultas planteadas al equipo para desbloquear el tratamiento</div></div>
+</div>
+
+<div class="nota">
+<b>Correspondencia con el plan de trabajo.</b> Esta semana cubre la Semana 1 de la Fase 1 del plan
+de pasantía: revisión de objetivos de ambos proyectos, levantamiento de requerimientos e
+identificación de variables, fuentes de datos, tipos de usuario y casos de uso. Los entregables
+comprometidos —lista de variables agrovoltaicas, inventario de fuentes y casos de uso
+preliminares— quedan cubiertos por las secciones 3 y 5 de este informe.
+</div>
+
+<h2><span class="n">2.</span>Alcance del aporte</h2>
+
+<p>
+La pasantía contribuye a dos proyectos de investigación con necesidades distintas, y la primera
+tarea fue delimitar qué parte de cada uno se asume, para no dispersar el esfuerzo:
+</p>
+
+<table>
+  <thead><tr><th style="width:30%">Proyecto</th><th>Aporte comprometido</th></tr></thead>
+  <tbody>
+    <tr><td><b>AGRIVOLTAIC</b><br><span style="font-size:8.4pt;color:#52514e">competitividad de la región Huetar Norte</span></td>
+        <td>Implementar la plataforma en la nube que sostenga la recolección, el almacenamiento, la visualización y la predicción de datos del sistema agrovoltaico de San Carlos.</td></tr>
+    <tr><td><b>Arquitectura multiagente</b><br><span style="font-size:8.4pt;color:#52514e">mapeo y monitorización con IA</span></td>
+        <td>Construir el flujo mínimo funcional de extremo a extremo con agentes virtuales, trazabilidad y componentes básicos de operación continua de modelos.</td></tr>
+  </tbody>
+</table>
+
+<p>
+Ambos aportes convergen en un punto: <b>sin datos confiables no hay ni visualización, ni
+predicción, ni agente que valga</b>. Por eso la primera semana se dedicó íntegramente a la fuente
+de datos y no al desarrollo.
+</p>
+
+<h2><span class="n">3.</span>Inventario de fuentes y variables</h2>
+
+<p>
+El sistema agrovoltaico de San Carlos instrumenta tres fuentes físicas independientes, cuyas
+lecturas terminan mezcladas en un único archivo diario. Identificar qué mide cada una, con qué
+unidad y a qué elemento físico corresponde es lo que permite después separarlas correctamente.
+</p>
+
+<figure>
+  <img src="img/fuentes.svg" alt="Inventario de fuentes físicas y variables del sistema" style="border:none">
+  <figcaption><b>Figura 1 — Inventario de fuentes.</b> Las tres fuentes de medición, lo que aporta
+  cada una y su convergencia en el archivo diario de campo.</figcaption>
+</figure>
+
+<p>
+Un hallazgo relevante del inventario: la correspondencia entre los nombres que usa el registrador
+(<i>PV1</i>, <i>PV2</i>) y los dos arreglos físicos del sistema —uno inclinado y otro vertical— no
+está documentada en ninguna parte de los archivos. Sin esa correspondencia, cualquier comparación
+de rendimiento entre montajes es inválida, así que se incorporó como consulta al equipo.
+</p>
+
+<table class="tabla-chica avoid">
+  <thead><tr><th style="width:24%">Subsistema</th><th class="num" style="width:12%">Variables</th><th>Contenido</th></tr></thead>
+  <tbody>
+    <tr><td>Eléctrico</td><td class="num">18</td><td>Voltaje, corriente y potencia de cada arreglo; potencia, voltaje, corriente y frecuencia de salida en corriente alterna; energía del día y acumulada, global y por arreglo; temperatura interna del equipo; código de estado; temperatura de cada uno de los dos arreglos.</td></tr>
+    <tr><td>Radiación</td><td class="num">8</td><td>Irradiancia incidente y reflejada, y albedo, tanto de la celda de referencia como del segundo piranómetro incorporado posteriormente.</td></tr>
+    <tr class="total"><td>Total</td><td class="num">26</td><td></td></tr>
+  </tbody>
+</table>
+
+<h2><span class="n">4.</span>Diagnóstico del histórico</h2>
+
+<p>
+Se revisaron los 285 archivos de campo disponibles, que cubren del 10 de noviembre de 2024 al 1 de
+junio de 2026. El diagnóstico confirma que el histórico <b>no es utilizable sin un trabajo previo
+de estandarización</b>, y cuantifica cada problema en lugar de describirlo en general.
+</p>
+
+<figure>
+  <img src="img/01-hallazgos-calidad.png" alt="Archivos afectados por cada hallazgo de calidad">
+  <figcaption><b>Figura 2 — Magnitud de cada hallazgo.</b> Número de archivos afectados por cada
+  problema. No se trata de casos aislados: los dos hallazgos principales alcanzan a la mayoría del
+  histórico, lo que descarta resolverlos archivo por archivo a mano.</figcaption>
+</figure>
+
+<table>
+  <thead><tr><th style="width:30%">Hallazgo</th><th>Descripción y evidencia</th></tr></thead>
+  <tbody>
+    <tr><td><b>Estructuras de columnas múltiples</b></td>
+        <td>Trece estructuras distintas conviven en el histórico. La misma magnitud física aparece con nombre corto, con nombre largo y unidad, o en minúsculas con guiones bajos. Además hay columnas que aparecen y desaparecen entre épocas.</td></tr>
+    <tr><td><b>Errores tipográficos en los encabezados</b></td>
+        <td>Acento incorrecto en «Energía» en 72 archivos, mayúsculas erróneas en 2 y falta de espacio antes de la unidad en 5. Señal de que la configuración del registrador fue editada por distintas personas.</td></tr>
+    <tr><td><b>Desfase constante en la irradiancia</b></td>
+        <td>Un valor negativo constante de −38,845 aparece en 205 archivos, y se registran mínimos de hasta −15.538. La señal no está en unidades físicas.</td></tr>
+    <tr><td><b>Temperatura saturada</b></td>
+        <td>Valor fijo de 85,0 °C en 137 archivos. Corresponde al código de error del sensor utilizado cuando pierde comunicación, no a una temperatura real.</td></tr>
+    <tr><td><b>Filas de sensores mezcladas</b></td>
+        <td>En 8 archivos se intercalan filas del inversor y filas de solo radiación con distinto número de columnas. Leídas sin separar, los valores de irradiancia caen en la columna de voltaje y corrompen el dato.</td></tr>
+    <tr><td><b>Muestreo variable</b></td>
+        <td>El intervalo de registro cambia a lo largo del proyecto, de pocos segundos a cinco minutos, sin que el archivo lo declare.</td></tr>
+    <tr><td><b>Duplicados y fragmentos</b></td>
+        <td>Dos archivos son copias exactas de otro y cinco son fragmentos de una o dos filas, producto de descargas incompletas.</td></tr>
+  </tbody>
+</table>
+
+<h3>Continuidad de la serie</h3>
+<p>
+Aparte de la calidad del dato, la serie tiene interrupciones de captura que condicionan cualquier
+análisis posterior y que conviene tener presentes desde ya:
+</p>
+
+<table class="tabla-chica avoid">
+  <thead><tr><th>Periodo sin datos</th><th class="num" style="width:14%">Días</th><th>Implicación</th></tr></thead>
+  <tbody>
+    <tr><td>29-dic-2024 a 4-may-2025</td><td class="num">126</td><td>Falta la estación seca completa del primer año</td></tr>
+    <tr><td>26-jun-2025 a 5-sep-2025</td><td class="num">71</td><td>Falta buena parte de la estación lluviosa</td></tr>
+    <tr><td>21-nov-2024 a 23-dic-2024</td><td class="num">32</td><td>Interrupción temprana del arranque</td></tr>
+    <tr><td>5-sep-2025 a 22-sep-2025</td><td class="num">17</td><td>Interrupción menor</td></tr>
+  </tbody>
+</table>
+
+<p>
+Se descarta rellenar estas brechas con datos generados artificialmente: introduciría en la base
+valores que ningún sensor midió. La alternativa planteada es apoyarse en datos satelitales
+públicos como serie de referencia paralela, sin mezclarlos con la medición real.
+</p>
+
+<h2><span class="n">5.</span>Usuarios y casos de uso preliminares</h2>
+
+<p>
+La plataforma no se diseña en abstracto. Se identificaron tres perfiles de usuario y los casos de
+uso que cada uno necesita, lo que fija qué tiene que poder responder el sistema:
+</p>
+
+<table>
+  <thead><tr><th style="width:24%">Usuario</th><th>Qué necesita resolver</th></tr></thead>
+  <tbody>
+    <tr><td><b>Equipo investigador</b></td>
+        <td>Consultar el comportamiento del sistema en un periodo dado, comparar el rendimiento de los dos montajes de paneles y relacionar la producción eléctrica con las condiciones ambientales.</td></tr>
+    <tr><td><b>Equipo de campo</b></td>
+        <td>Enterarse de que un sensor dejó de reportar o de que una medición se salió de su comportamiento esperado, sin tener que revisar los archivos manualmente.</td></tr>
+    <tr><td><b>Coordinación del proyecto</b></td>
+        <td>Obtener una lectura resumida del estado del sistema y de la disponibilidad de datos, en lenguaje comprensible y sin manipular la base.</td></tr>
+  </tbody>
+</table>
+
+<p>De ahí se derivan cuatro casos de uso preliminares para el prototipo:</p>
+<ol>
+  <li><b>Visualizar</b> la producción y las condiciones ambientales del sistema en un periodo seleccionado.</li>
+  <li><b>Comparar</b> el comportamiento entre los dos montajes de paneles y, más adelante, entre las dos regiones del proyecto.</li>
+  <li><b>Detectar</b> automáticamente cuándo una medición se aparta de su comportamiento esperado y avisarlo.</li>
+  <li><b>Consultar</b> en lenguaje natural, para que quien no maneje la base pueda preguntar y obtener una respuesta trazable hasta el dato que la sustenta.</li>
+</ol>
+
+<h2><span class="n">6.</span>Consultas planteadas al equipo</h2>
+
+<p>
+El diagnóstico deja doce decisiones de tratamiento que no se pueden tomar unilateralmente, porque
+implican descartar o alterar mediciones físicas reales, más cuatro datos técnicos del sistema que
+no constan en ningún archivo. Se consolidaron en una consulta formal al equipo del proyecto:
+</p>
+
+<table>
+  <thead><tr><th style="width:34%">Grupo</th><th>Qué se consulta</th></tr></thead>
+  <tbody>
+    <tr><td>Nomenclatura</td><td>Validación de los nombres propuestos para las variables y de la interpretación de las distintas medidas de energía.</td></tr>
+    <tr><td>Temperatura saturada</td><td>Causa del error y qué hacer con esos registros: descartarlos o conservarlos marcados.</td></tr>
+    <tr><td>Irradiancia</td><td>Origen del desfase constante, si debe corregirse en la carga o en el análisis, y si existe una constante de calibración registrada.</td></tr>
+    <tr><td>Filas mezcladas</td><td>Si esos registros deben recuperarse o descartarse, y con qué criterio.</td></tr>
+    <tr><td>Muestreo</td><td>Cuál es el ritmo de registro definido por la metodología para cada tipo de variable.</td></tr>
+    <tr><td>Límites de validez</td><td>Rangos físicos aceptables para temperatura, potencia, voltaje, corriente y frecuencia.</td></tr>
+    <tr><td>Datos del sistema</td><td>Potencia instalada por arreglo, inclinación y orientación de cada montaje, correspondencia de cada arreglo con su identificador en los archivos, y constante de calibración del sensor de referencia.</td></tr>
+  </tbody>
+</table>
+
+<div class="nota">
+<b>Estado al cierre de la semana:</b> la consulta queda planteada y a la espera de respuesta. El
+procesamiento del histórico no puede avanzar hasta tenerla, porque el criterio de tratamiento
+condiciona el diseño del almacenamiento: no es lo mismo guardar el dato corregido que guardar el
+dato original y corregirlo después.
+</div>
+
+<h2><span class="n">7.</span>Dedicación</h2>
+
+<p>Detalle de las 20 horas de la semana, con el resultado asociado a cada bloque de trabajo.</p>
+
+<table>
+  <thead><tr><th style="width:36%">Actividad</th><th>Resultado</th><th class="num" style="width:11%">Horas</th></tr></thead>
+  <tbody>
+    <tr><td>Revisión de los objetivos de ambos proyectos y delimitación del aporte</td>
+        <td>Alcance acotado y criterio de prioridad para las semanas siguientes</td><td class="num">2,5</td></tr>
+    <tr><td>Inventario de fuentes físicas y variables del sistema</td>
+        <td>3 fuentes documentadas y 26 variables identificadas con su unidad y su elemento físico</td><td class="num">4,5</td></tr>
+    <tr><td>Diagnóstico de calidad del histórico de campo</td>
+        <td>285 archivos revisados; 7 hallazgos cuantificados y 4 interrupciones de la serie documentadas</td><td class="num">6,0</td></tr>
+    <tr><td>Definición de usuarios y casos de uso preliminares</td>
+        <td>3 perfiles de usuario y 4 casos de uso que orientan el diseño del prototipo</td><td class="num">3,0</td></tr>
+    <tr><td>Preparación y seguimiento de la consulta al equipo</td>
+        <td>16 puntos consolidados en un documento de consulta, con evidencia y opciones para cada uno</td><td class="num">4,0</td></tr>
+    <tr class="total"><td>Total Semana 1</td><td></td><td class="num">20,0</td></tr>
+  </tbody>
+</table>
+
+<h2><span class="n">8.</span>Próximos pasos</h2>
+
+<ol>
+  <li><b>Diseñar la arquitectura de la plataforma</b> y el flujo de datos de extremo a extremo, junto con el diseño del flujo multiagente, conforme a lo previsto para la segunda semana del plan.</li>
+  <li><b>Procesar el histórico</b> en cuanto se reciba el criterio de tratamiento consultado.</li>
+  <li><b>Dejar el proceso automatizado y repetible</b>, no como una carga de una sola vez: la plataforma tiene que poder seguir recibiendo los archivos que el sistema siga generando.</li>
+</ol>
+
+</body>
+</html>
