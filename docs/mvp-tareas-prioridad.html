@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AgroVoltaic · Tareas del MVP por prioridad</title>
+<style>
+  :root {
+    --ground:#F2F4F0; --panel:#FBFCFA; --panel2:#E9EDE6; --raise:#FFFFFF;
+    --ink:#181D17; --ink2:#464F44; --muted:#767E74;
+    --line:#E1E5DD; --line2:#CFD5C9;
+    --brand:#2E6F55; --brand-ink:#245A45;
+    --crit:#B6473A; --warn:#AE7420; --good:#3C875F;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,sans-serif;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground:#14170F; --panel:#1B1F17; --panel2:#242921; --raise:#1F241B;
+      --ink:#E9EDE3; --ink2:#B7BEAF; --muted:#8A9184;
+      --line:#2A2F26; --line2:#3B4133;
+      --brand:#77BE99; --brand-ink:#8FCDAC;
+      --crit:#D9776B; --warn:#D3A052; --good:#79BE96;
+    }
+  }
+  * { box-sizing:border-box; }
+  body {
+    margin:0; background:var(--ground); color:var(--ink);
+    font-family:var(--sans); font-size:15px; line-height:1.6; letter-spacing:-.003em;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap { max-width:880px; margin:0 auto; padding:56px 28px 100px; }
+  .mono { font-family:var(--mono); font-variant-numeric:tabular-nums; }
+
+  .eyebrow { font-family:var(--mono); font-size:11.5px; text-transform:uppercase; letter-spacing:.16em;
+    color:var(--brand); font-weight:600; margin-bottom:14px; }
+  h1 { margin:0; font-size:36px; line-height:1.08; font-weight:680; letter-spacing:-.03em; text-wrap:balance; }
+  .lede { margin:16px 0 0; font-size:16px; color:var(--ink2); line-height:1.6; max-width:64ch; }
+  .stamp { margin-top:12px; font-family:var(--mono); font-size:12px; color:var(--muted); display:flex; gap:16px; flex-wrap:wrap; }
+  .stamp b { color:var(--ink2); font-weight:600; }
+
+  .legend { margin-top:24px; border:1px solid var(--line); border-radius:12px; background:var(--panel);
+    padding:14px 18px; display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:7px 26px; }
+  .legend .row { font-size:12.5px; color:var(--ink2); display:flex; gap:8px; align-items:baseline; }
+  .legend .k { font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:.06em;
+    color:var(--muted); flex:0 0 auto; min-width:64px; }
+
+  .list { margin-top:34px; display:flex; flex-direction:column; gap:14px; }
+  .task { display:flex; gap:0; background:var(--panel); border:1px solid var(--line); border-radius:14px; overflow:hidden; }
+  .rank { flex:0 0 62px; background:var(--panel2); border-right:1px solid var(--line);
+    display:flex; align-items:flex-start; justify-content:center; padding-top:20px; }
+  .rank span { font-family:var(--mono); font-size:26px; font-weight:680; color:var(--brand); font-variant-numeric:tabular-nums; }
+  .body { flex:1; min-width:0; padding:18px 22px 20px; }
+  .body h2 { margin:0; font-size:18px; font-weight:640; letter-spacing:-.018em; line-height:1.3; }
+
+  .badges { display:flex; flex-wrap:wrap; gap:7px; margin:12px 0 15px; }
+  .badge { font-family:var(--mono); font-size:11px; color:var(--ink2);
+    background:var(--panel2); border:1px solid var(--line); border-radius:6px; padding:2px 9px;
+    display:inline-flex; align-items:center; gap:6px; }
+  .badge.dot::before { content:""; width:7px; height:7px; border-radius:50%; }
+  .badge.alto::before{background:var(--crit);} .badge.medio::before{background:var(--warn);}
+  .badge.bajo::before{background:var(--muted);}
+  .badge.ok::before{background:var(--good);} .badge.conf::before{background:var(--warn);}
+
+  .block { margin:10px 0; font-size:14px; line-height:1.64; color:var(--ink); }
+  .block .lbl { display:block; font-family:var(--mono); font-size:10.5px; text-transform:uppercase;
+    letter-spacing:.09em; color:var(--muted); margin-bottom:3px; }
+  .block.done { color:var(--ink2); }
+  .block.done .lbl { color:var(--brand); }
+  strong { font-weight:660; }
+  .refs { margin-top:13px; display:flex; flex-wrap:wrap; gap:6px; }
+  .refs code { font-family:var(--mono); font-size:11px; color:var(--muted); background:var(--panel2);
+    border:1px solid var(--line); border-radius:5px; padding:1px 7px; }
+
+  footer { margin-top:52px; padding-top:22px; border-top:1px solid var(--line);
+    font-family:var(--mono); font-size:11.5px; color:var(--muted); line-height:1.7; }
+
+  @media (max-width:560px){
+    .wrap{padding:36px 16px 80px;} h1{font-size:28px;}
+    .rank{flex-basis:46px;} .rank span{font-size:21px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="eyebrow">AgroVoltaic · San Carlos · tareas priorizadas</div>
+  <h1>Tareas del MVP por prioridad</h1>
+  <p class="lede">Seis tareas de confiabilidad, ordenadas por prioridad. Cada una con su descripción (qué es y por qué importa) y el problema concreto que tiene hoy. Derivado de una revisión del código real.</p>
+  <div class="stamp">
+    <span>Revisión <b>2026-08-11</b></span>
+    <span><b>6</b> tareas</span>
+  </div>
+
+  <div class="legend">
+    <div class="row"><span class="k">Nº</span> orden de prioridad (1 = primero).</div>
+    <div class="row"><span class="k">Impacto</span> alto · medio · bajo — cuánto mueve la aguja.</div>
+    <div class="row"><span class="k">Esfuerzo</span> S · M · L — tamaño del trabajo.</div>
+    <div class="row"><span class="k">Estado</span> <span class="mono">Verificado</span> en código · <span class="mono">Por confirmar</span> en el server.</div>
+  </div>
+
+  <div class="list">
+
+    <article class="task">
+      <div class="rank"><span>1</span></div>
+      <div class="body">
+        <h2>Automatizar la ingesta AgroDash → store (frescura de datos)</h2>
+        <div class="badges"><span class="badge dot alto">Impacto alto</span><span class="badge">Esfuerzo S</span><span class="badge dot conf">Por confirmar en EC2</span></div>
+        <div class="block"><span class="lbl">Descripción</span> El pronóstico usa como "ahora" el último timestamp del <em>store</em>, no el reloj de pared. El <span class="mono">forecast-refresh.timer</span> recrea el contenedor del forecaster para recargar esa serie desde el store.</div>
+        <div class="block"><span class="lbl">Problema</span> La ingesta <span class="mono">python -m pronostico.etl</span> (AgroDash → store) solo se corre a mano: no hay <span class="mono">.timer</span> ni cron en el repo. Si el store no se refresca, el forecaster queda congelado y cualquier demo "en vivo" muestra datos viejos.</div>
+        <div class="block done"><span class="lbl">Listo cuando</span> Un timer/cron corre el ETL incremental cada N minutos, documentado, con un healthcheck que avise si el último dato tiene más de X horas.</div>
+        <div class="refs"><code>etl.py:23</code><code>data.py:89</code><code>docker-compose.forecast.yml:34</code></div>
+      </div>
+    </article>
+
+    <article class="task">
+      <div class="rank"><span>2</span></div>
+      <div class="body">
+        <h2>Poner auth en el mvp-debugger</h2>
+        <div class="badges"><span class="badge dot alto">Impacto alto</span><span class="badge">Esfuerzo S</span><span class="badge dot ok">Verificado</span></div>
+        <div class="block"><span class="lbl">Descripción</span> La web pega a los agentes por rutas <span class="mono">/api/*</span> del lado servidor, inyectando la clave ahí (bien: el browser nunca la ve).</div>
+        <div class="block"><span class="lbl">Problema</span> La web en sí <strong>no tiene auth de usuario</strong>: no hay <span class="mono">middleware.ts</span> ni sesión. Cualquiera con la URL puede consultar los agentes y <strong>gastar tokens del LLM</strong>. En producción (Amplify) queda expuesta.</div>
+        <div class="block done"><span class="lbl">Listo cuando</span> Un gate protege la app (password básico, NextAuth o auth de Amplify).</div>
+        <div class="refs"><code>app/lib/config.ts</code><code>sin middleware.ts</code></div>
+      </div>
+    </article>
+
+    <article class="task">
+      <div class="rank"><span>3</span></div>
+      <div class="body">
+        <h2>Tests de humo + CI</h2>
+        <div class="badges"><span class="badge dot medio">Impacto medio</span><span class="badge">Esfuerzo M</span><span class="badge dot ok">Verificado</span></div>
+        <div class="block"><span class="lbl">Descripción</span> El agente de pronóstico ya tiene su carpeta <span class="mono">tests/</span>.</div>
+        <div class="block"><span class="lbl">Problema</span> El <strong>analizador no tiene tests</strong>, el <strong>mvp-debugger tampoco</strong>, y <strong>no hay CI</strong> (<span class="mono">.github/workflows</span> no existe). Cualquier cambio puede romper un endpoint o el build sin que nadie se entere hasta el demo.</div>
+        <div class="block done"><span class="lbl">Listo cuando</span> Smoke tests de los endpoints clave (health, una tool, /chat) + un workflow que corra pytest y <span class="mono">next build</span> en cada push.</div>
+        <div class="refs"><code>agente-analizador · sin tests</code><code>sin .github/workflows</code></div>
+      </div>
+    </article>
+
+    <article class="task">
+      <div class="rank"><span>4</span></div>
+      <div class="body">
+        <h2>Tope de gasto y rate-limit en los agentes</h2>
+        <div class="badges"><span class="badge dot medio">Impacto medio</span><span class="badge">Esfuerzo S</span></div>
+        <div class="block"><span class="lbl">Descripción</span> El endpoint <span class="mono">/uso</span> ya acumula tokens y USD por agente, pero es solo lectura.</div>
+        <div class="block"><span class="lbl">Problema</span> No hay límite de tasa ni presupuesto. Un bucle, un scraper o abuso puede disparar el costo del LLM sin ningún freno. Combinado con la web abierta (tarea 2), es riesgo directo de factura.</div>
+        <div class="block done"><span class="lbl">Listo cuando</span> Rate-limit por IP/clave en <span class="mono">/chat</span> y <span class="mono">/preguntar</span>, y un tope diario configurable que corte con un mensaje claro.</div>
+        <div class="refs"><code>uso.py</code><code>api.py</code></div>
+      </div>
+    </article>
+
+    <article class="task">
+      <div class="rank"><span>5</span></div>
+      <div class="body">
+        <h2>Observabilidad mínima (usar agente_log)</h2>
+        <div class="badges"><span class="badge dot medio">Impacto medio</span><span class="badge">Esfuerzo S</span></div>
+        <div class="block"><span class="lbl">Descripción</span> La tabla <span class="mono">agente_log</span> ya registra eventos del ETL, el forecaster y los flujos.</div>
+        <div class="block"><span class="lbl">Problema</span> Nadie la mira. No hay panel de salud ni alertas: un fallo de ingesta o del forecaster pasa silencioso, y sin la tarea 1 resuelta ni siquiera nos enteraríamos de que los datos se congelaron.</div>
+        <div class="block done"><span class="lbl">Listo cuando</span> Una vista (o tool) simple muestra los últimos errores y el estado/edad de la última ingesta.</div>
+        <div class="refs"><code>agente_log</code><code>audit.log_evento</code></div>
+      </div>
+    </article>
+
+    <article class="task">
+      <div class="rank"><span>6</span></div>
+      <div class="body">
+        <h2>Endurecer estados de error y carga en la web</h2>
+        <div class="badges"><span class="badge dot bajo">Impacto bajo</span><span class="badge">Esfuerzo S</span></div>
+        <div class="block"><span class="lbl">Descripción</span> Las vistas consumen <span class="mono">/api/*</span> y asumen cierta forma de la respuesta.</div>
+        <div class="block"><span class="lbl">Problema</span> Algunas acceden directo a datos anidados (p.ej. <span class="mono">bt.puntos[0]</span>, <span class="mono">kpi.e.energia_*</span>); si un endpoint devuelve error o vacío, la UI puede quedarse en "cargando…" para siempre, sin un mensaje que diga qué pasó o cómo seguir.</div>
+        <div class="block done"><span class="lbl">Listo cuando</span> Cada vista maneja error y vacío con un mensaje accionable.</div>
+        <div class="refs"><code>PredView.tsx</code><code>PerfView.tsx</code></div>
+      </div>
+    </article>
+
+  </div>
+
+  <footer>
+    Generado a partir de una revisión del código real de AgroVoltaic (agente-analizador, agente-pronostico, mvp-debugger, ETL) · 2026-08-11.<br>
+    "Verificado" = confirmado en el código; "Por confirmar" = revisar en el servidor de producción.
+  </footer>
+
+</div>
+</body>
+</html>

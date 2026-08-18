@@ -19,10 +19,13 @@ const fmt = (n: any, d = 1) =>
   n == null || !isFinite(n) ? "—" : Number(n).toLocaleString("es-CR", { minimumFractionDigits: d, maximumFractionDigits: d });
 
 type Serie = { points: (number | null)[]; color: string; name?: string; area?: boolean; width?: number; dash?: boolean };
-type LineOpts = { x: string[]; height?: number; yfmt?: (v: number) => string; area?: boolean; unit?: string; tipfmt?: (v: number) => string };
+type LineOpts = { x: string[]; height?: number; w?: number; yfmt?: (v: number) => string; area?: boolean; unit?: string; tipfmt?: (v: number) => string };
 
-export function lineChart(series: Serie[], { x, height = 320, yfmt = (v) => fmt(v, 0), area = true, unit = "", tipfmt = null as any }: LineOpts): string {
-  const W = 1000, H = height, mL = 54, mR = 18, mT = 18, mB = 36, P = palette(), tf = tipfmt || yfmt;
+// `w` = ancho del viewBox. Renderizar cerca del ancho real del contenedor mantiene
+// las fuentes legibles (en un bubble angosto, un viewBox de 1000 se achica 3x y el
+// texto queda ilegible). Vistas grandes: 1000. Chat: ~500.
+export function lineChart(series: Serie[], { x, height = 320, w = 1000, yfmt = (v) => fmt(v, 0), area = true, unit = "", tipfmt = null as any }: LineOpts): string {
+  const W = w, H = height, mL = 54, mR = 18, mT = 18, mB = 36, P = palette(), tf = tipfmt || yfmt;
   const n = x.length;
   const flat = series.flatMap((s) => s.points).filter((v) => v != null && isFinite(v as number)) as number[];
   let ymin = Math.min(0, ...flat), ymax = Math.max(...flat); if (ymax === ymin) ymax = ymin + 1;

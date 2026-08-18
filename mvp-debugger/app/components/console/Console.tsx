@@ -80,6 +80,7 @@ export function Console() {
             </Fragment>
           ))}
         </nav>
+        <a className="navitem" href="/docs" style={{ textDecoration: "none" }}>Documentación ↗</a>
         <div className="sidefoot">
           <span className="live"><span className={"pulse" + (up ? "" : " off")} /> {up ? "DB en vivo" : "servicio caído"}</span>
           <button className="tgl" onClick={toggleTheme} title="Cambiar tema" aria-label="Cambiar tema">◐</button>

@@ -31,7 +31,7 @@ function graficoHTML(g: any): string {
   const series = g.series.map((s: any, i: number) => ({
     points: s.valores, color: serieColor(P, i), name: s.nombre, area: g.series.length === 1,
   }));
-  return lineChart(series, { x: g.x, height: 220, unit: g.unidad, yfmt: (v) => v.toLocaleString("es-CR", { maximumFractionDigits: 1 }) });
+  return lineChart(series, { x: g.x, w: 500, height: 300, unit: g.unidad, yfmt: (v) => v.toLocaleString("es-CR", { maximumFractionDigits: 1 }) });
 }
 
 export function ChatWidget({ agent, contexto, onTraza }: {
@@ -65,6 +65,11 @@ export function ChatWidget({ agent, contexto, onTraza }: {
   }, [cargando]);
   // Autoscroll.
   useEffect(() => { finRef.current?.scrollIntoView({ behavior: "smooth" }); }, [cur.length, cargando, abierto]);
+  // Reserva espacio a la derecha en pantallas anchas para que el panel no tape el contenido.
+  useEffect(() => {
+    document.body.classList.toggle("chat-abierto", abierto);
+    return () => document.body.classList.remove("chat-abierto");
+  }, [abierto]);
 
   async function enviar(texto: string) {
     const t = texto.trim();
