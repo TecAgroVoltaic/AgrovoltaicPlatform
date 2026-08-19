@@ -141,6 +141,18 @@ métrica. Ahora **todo lee del mismo backtest**: gráfico, KPI y agente.
   porque kt* = medido / techo es justo la señal que el forecaster persiste. El KPI del momento
   elegido ahora muestra **«7 % del techo de cielo despejado (505 W/m²)»** en vez de un genérico
   "valor real de esa franja". En humedad de suelo no hay techo y la vista cae al texto genérico.
+- **La predicción dejó de dibujarse como curva** y pasó a ser **un punto sobre la guía**, en el
+  momento elegido. Trazarla para todo el día repetía el KPI y —más grave— sugería que el sistema
+  predice en continuo: cada valor es una reconstrucción independiente, a pedido. El gráfico queda
+  con el TERRENO (medido + techo) y la predicción aparece donde se la pide.
+- **Qué es la «anticipación», con sus asteriscos.** Fija el `bucket` del backtest, y la
+  reconstrucción es siempre **una franja hacia adelante**: `pred(N) = kt*(N−1) × techo(N)`. No
+  adelanta datos — el algoritmo solo ve lo ya ocurrido; el techo del momento objetivo sí se usa,
+  y es lícito porque es astronómico. **Cuidado al comparar MAE entre anticipaciones**: el bucket
+  cambia a la vez el horizonte y el promediado, así que el objetivo mismo cambia (media horaria
+  vs. media de 15 min). La caída 32 → 14 W/m² es sobre todo efecto del horizonte corto, pero no
+  es una comparación estricta. Y **no es el forecaster en vivo**: `/forecast` usa lookback de
+  60 min y MEDIANA de kt* a resolución instantánea; esta vista usa la franja anterior.
 - **Procedencia de la curva predicha, dicha en la vista.** Al no estar escrito, es razonable
   suponer que hay un LLM analizando cada franja. No lo hay: las tres curvas salen de **una sola
   llamada determinista** a `/backtest` (~20 ms, pandas + pvlib), y el agente recién interviene al

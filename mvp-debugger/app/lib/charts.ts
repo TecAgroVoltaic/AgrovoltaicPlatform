@@ -18,7 +18,7 @@ export function palette() {
 const fmt = (n: any, d = 1) =>
   n == null || !isFinite(n) ? "—" : Number(n).toLocaleString("es-CR", { minimumFractionDigits: d, maximumFractionDigits: d });
 
-type Serie = { points: (number | null)[]; color: string; name?: string; area?: boolean; width?: number; dash?: boolean };
+type Serie = { points: (number | null)[]; color: string; name?: string; area?: boolean; width?: number; dash?: boolean; r?: number };
 // `marca` resalta un punto del eje X (guía vertical + etiqueta): sirve para
 // señalar "la hora que estoy mirando" sin sacar al lector del gráfico.
 type Marca = { i: number; label?: string };
@@ -59,7 +59,7 @@ export function lineChart(series: Serie[], { x, height = 320, w = 1000, yfmt = (
     s.points.forEach((v, i) => { if (v == null || !isFinite(v)) return;
       const cx = px(i).toFixed(1), cy = py(v).toFixed(1);
       const tip = `${x[i]} · ${s.name ? s.name + ": " : ""}${tf(v)}${unit ? " " + unit : ""}`;
-      g += `<circle cx="${cx}" cy="${cy}" r="2.4" fill="${s.color}"/>`;
+      g += `<circle cx="${cx}" cy="${cy}" r="${s.r || 2.4}" fill="${s.color}"/>`;
       g += `<circle class="hit" cx="${cx}" cy="${cy}" r="12" fill="transparent" data-tip="${tip}"/>`; });
   }
   return `<svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img">${g}</svg>`;

@@ -100,16 +100,23 @@ export function PredView({ theme }: { theme: string }) {
     void theme;                                      // recomputar al cambiar tema
     const P = palette();
     const pts = dia.puntos as any[];
+    // El gráfico muestra el TERRENO: lo que midió el sensor y el máximo físico
+    // posible. Sin el techo no se puede leer nada — un medido de 33 W/m² no dice
+    // si el día estuvo tapado o si simplemente era temprano.
     const series: any[] = [
       { points: pts.map((p) => p.real), color: P.real, area: true, width: 2.4, name: "Medido" },
-      { points: pts.map((p) => p.pred), color: P.pred, dash: true, width: 2.2, name: "Predicho" },
     ];
-    // Techo de cielo despejado: es el máximo físico posible con el sol donde
-    // está. Sin esa referencia no se puede leer nada — un medido de 33 W/m² no
-    // dice si el día estuvo nublado o si simplemente era temprano.
     if (pts[0].cs != null) {
       series.push({ points: pts.map((p) => p.cs), color: P.ceil, width: 1.4,
                     name: "Techo (cielo despejado)" });
+    }
+    // La predicción NO se dibuja para todo el día: se calcula para el momento
+    // que elegís, y va como un punto único sobre la guía. Trazar la curva entera
+    // repetía el KPI de abajo y, peor, sugería que el sistema predice en
+    // continuo — cada valor es una reconstrucción independiente, a pedido.
+    if (idx >= 0) {
+      series.push({ points: pts.map((p, i) => (i === idx ? p.pred : null)),
+                    color: P.pred, r: 5.5, name: "Predicho en ese momento" });
     }
     return lineChart(series, {
       x: momentos, height: 300, unit: unidad,
@@ -169,7 +176,9 @@ export function PredView({ theme }: { theme: string }) {
           </select>
         </div>
         <div className="ctl">
-          <span className="lbl">Anticipación</span>
+          <span className="lbl" title="Cuánto ANTES se hizo la predicción. Con 1 hora, el valor del momento elegido se reconstruye con el índice de claridad de la franja anterior, proyectado sobre el techo de cielo despejado del momento. No se adelantan datos: el algoritmo solo ve lo que ya había ocurrido.">
+            Anticipación
+          </span>
           <div className="chips">
             {ANTICIPACIONES.map(([b, l]) => (
               <button key={b} className={"chip" + (bucket === b ? " on" : "")}
@@ -190,20 +199,22 @@ export function PredView({ theme }: { theme: string }) {
             <figure dangerouslySetInnerHTML={{ __html: chart }} />
             <div className="legend">
               <span><span className="sw" style={{ background: "var(--real)" }} />Medido</span>
-              <span><span className="sw" style={{ background: "var(--pred)" }} />Predicho</span>
               {hayTecho && (
-                <span title="Máximo físico posible con el sol en esa posición y cielo sin nubes. La razón medido/techo es el índice de claridad kt*.">
+                <span title="Máximo físico posible con el sol en esa posición y el cielo sin nubes. La razón medido/techo es el índice de claridad kt*.">
                   <span className="sw" style={{ background: "var(--ceil)" }} />Techo (cielo despejado)
                 </span>
               )}
+              <span><span className="sw sw-punto" style={{ background: "var(--pred)" }} />Predicho en {momento}</span>
               <span className="muted">{fecha} · hora local (UTC−6)</span>
             </div>
-            <p className="note">
-              La curva predicha <b>no la calcula el agente</b>: sale de una sola llamada al
-              algoritmo (<span className="mono">backtest</span>, ~20 ms, sin modelo de lenguaje),
-              que reconstruye franja por franja qué habría predicho el método viendo solo datos
-              anteriores. El agente entra recién al pulsar <b>Analizar</b>.
-            </p>
+            {hayTecho && (
+              <p className="note">
+                <b>Techo</b>: GHI de cielo despejado por el modelo <b>Ineichen</b> (turbidez Linke
+                climatológica, <span className="mono">pvlib</span>) con la latitud, longitud y
+                altitud del sitio. Es <b>puramente astronómico</b>: no usa ningún dato medido, por
+                eso conocerlo a futuro no es hacer trampa.
+              </p>
+            )}
           </>
         )}
       </div>
