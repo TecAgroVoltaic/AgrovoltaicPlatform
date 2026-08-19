@@ -141,10 +141,19 @@ métrica. Ahora **todo lee del mismo backtest**: gráfico, KPI y agente.
   porque kt* = medido / techo es justo la señal que el forecaster persiste. El KPI del momento
   elegido ahora muestra **«7 % del techo de cielo despejado (505 W/m²)»** en vez de un genérico
   "valor real de esa franja". En humedad de suelo no hay techo y la vista cae al texto genérico.
-- **La predicción dejó de dibujarse como curva** y pasó a ser **un punto sobre la guía**, en el
-  momento elegido. Trazarla para todo el día repetía el KPI y —más grave— sugería que el sistema
-  predice en continuo: cada valor es una reconstrucción independiente, a pedido. El gráfico queda
-  con el TERRENO (medido + techo) y la predicción aparece donde se la pide.
+- **La predicción salió del gráfico y de los KPI.** El gráfico muestra solo el **terreno**
+  —lo medido y el techo de cielo despejado— y la predicción vive **únicamente en la lectura del
+  agente**, que es donde se la pide. Se borraron las tres tarjetas (midió / predijo / error) y el
+  pie de métricas, y con ellos el componente `PuntoEvaluado.tsx` y la llamada de referencia a
+  `/backtest?dias=7`. Motivo: sin predicción en el gráfico, esas tarjetas mostraban un número que
+  nadie había pedido; y trazar la curva completa sugería que el sistema predice en continuo,
+  cuando cada valor es una reconstrucción independiente.
+- **Carga de la vista.** Cada llamada tarda 110–140 ms contra la EC2 (el backend no es el
+  cuello). Lo que se arregló fue la **cadena secuencial**: había que esperar a `/serie` para saber
+  qué día pedir y recién ahí salía la del gráfico. Ahora el rango se recuerda en `localStorage`,
+  así las dos llamadas salen a la vez y la revalidación corrige si la ingesta avanzó. Además
+  `/serie` pasó a `ultimos_dias=1` (el `resumen` se calcula sobre la serie completa igual, ver
+  `peek_serie`). Neto: **3 llamadas y 19,3 kB → 2 llamadas y 2,1 kB**.
 - **Qué es la «anticipación», con sus asteriscos.** Fija el `bucket` del backtest, y la
   reconstrucción es siempre **una franja hacia adelante**: `pred(N) = kt*(N−1) × techo(N)`. No
   adelanta datos — el algoritmo solo ve lo ya ocurrido; el techo del momento objetivo sí se usa,
@@ -170,6 +179,18 @@ métrica. Ahora **todo lee del mismo backtest**: gráfico, KPI y agente.
   una segunda granularidad. Ver [[agente-pronostico]].
 - El KPI «Skill vs. ingenuo» muestra **n/a** en humedad de suelo: ahí el método *es* la
   persistencia, así que el 0 % era una tautología, no una falla del modelo.
+
+### La lectura del agente: fichas de lo que devolvió cada herramienta
+
+La tarjeta lista, en **fichas chicas**, lo que devolvió cada herramienta llamada: predicho,
+medido, error, techo, claridad kt* y error medio del día. Salen de la salida de la tool, no del
+texto. Para que existieran hubo que enriquecer `backtest_tool`: `punto_consultado` ahora trae
+`techo_cielo_despejado` y `kt_estrella`, y la serie compacta trae `techo`.
+
+**Trampa encontrada ahí:** de noche el techo vale **0**, que es un valor válido, no un campo
+ausente. La primera versión usaba `if techo:` y lo descartaba, confundiendo «no aplica» (humedad,
+que no tiene análogo de cielo despejado) con «vale cero» (irradiancia nocturna). Se distingue con
+`is not None`; el kt* sí se omite de noche, porque dividir por cero no significa nada.
 
 ### Cómo se renderiza lo que escribe el agente (2026-08-19)
 

@@ -76,6 +76,8 @@ button, input, textarea, select { font-family:inherit; }
 .phead p { margin:4px 0 0; color:var(--muted); font-size:13px; max-width:74ch; }
 .note { font-size:12px; color:var(--muted); font-family:var(--mono); border-left:2px solid var(--line2); padding:2px 0 2px 12px; margin:18px 0; }
 .note b { color:var(--ink2); font-weight:600; }
+.note a { color:var(--accent); text-decoration:none; border-bottom:1px solid color-mix(in srgb, var(--accent) 35%, transparent); }
+.note a:hover { border-bottom-color:var(--accent); }
 .banner { display:flex; gap:12px; background:var(--panel); border:1px solid var(--line); border-left:2px solid var(--accent); border-radius:10px; padding:12px 15px; margin:0 0 20px; font-size:12.5px; color:var(--ink2); }
 .banner b { color:var(--ink); }
 
@@ -327,13 +329,14 @@ svg .hit { cursor:crosshair; }
 .bloq-check.ok  { color:var(--good); border-color:color-mix(in srgb, var(--good) 40%, var(--line)); }
 .bloq-check.mal { color:var(--crit); border-color:color-mix(in srgb, var(--crit) 40%, var(--line)); }
 
-/* Los tres números que devolvió el algoritmo. */
-.valores { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
-.valor { flex:1 1 130px; background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:10px 12px; }
-.valor-acento { border-color:color-mix(in srgb, var(--accent) 35%, var(--line)); }
-.valor-l { display:block; font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); }
-.valor-n { display:block; margin-top:4px; font-size:19px; font-weight:600; letter-spacing:-.02em; font-family:var(--mono); font-variant-numeric:tabular-nums; color:var(--ink); }
-.valor-n small { font-size:11px; color:var(--muted); font-weight:500; margin-left:4px; font-family:system-ui; }
+/* Fichas de lo que devolvió una herramienta. Pequeñas a propósito: son seis y
+   tienen que caber sin volverse el centro de la pantalla. */
+.fichas { display:grid; grid-template-columns:repeat(auto-fit,minmax(104px,1fr)); gap:8px; margin-top:12px; }
+.ficha { background:var(--panel); border:1px solid var(--line); border-radius:7px; padding:8px 10px; }
+.ficha-acento { border-color:color-mix(in srgb, var(--accent) 40%, var(--line)); background:color-mix(in srgb, var(--accent) 5%, var(--panel)); }
+.ficha-l { display:block; font-size:9.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ficha-v { display:block; margin-top:3px; font-size:15.5px; font-weight:600; letter-spacing:-.02em; font-family:var(--mono); font-variant-numeric:tabular-nums; color:var(--ink); }
+.ficha-v small { font-size:10px; color:var(--muted); font-weight:500; margin-left:3px; font-family:system-ui; }
 
 .lectura-txt { margin-top:16px; }
 .lectura { display:flex; flex-direction:column; gap:14px; }

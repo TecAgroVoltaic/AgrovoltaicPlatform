@@ -17,7 +17,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { jget, mensajeError, type Resp } from "@/app/lib/client";
 import { Estado } from "@/app/components/console/Estado";
-import { PuntoEvaluado } from "@/app/components/console/PuntoEvaluado";
 import { LecturaAgente } from "@/app/components/console/LecturaAgente";
 import { lineChart, palette } from "@/app/lib/charts";
 
@@ -30,7 +29,6 @@ const VARIABLES: [string, string][] = [
 const ANTICIPACIONES: [string, string][] = [
   ["15min", "15 min"], ["30min", "30 min"], ["h", "1 hora"],
 ];
-const DIAS_REFERENCIA = 7;      // ventana del dato agregado de contexto
 const MS_POR_DIA = 86400000;
 
 const fmt = (n: any, d = 1) =>
@@ -51,24 +49,45 @@ export function PredView({ theme }: { theme: string }) {
   const [rango, setRango] = useState<{ desde: string; hasta: string } | null>(null);
   const [dia, setDia] = useState<any>(null);
   const [errDia, setErrDia] = useState<string | null>(null);
-  const [ref, setRef] = useState<any>(null);         // métricas de los últimos N días
 
   const unidad = vari === "irradiancia" ? "W/m²" : "crudo";
   const dec = vari === "irradiancia" ? 1 : 0;
 
   // 1. Rango disponible -> día por defecto: el último COMPLETO (el del último
   //    dato viene cortado a media madrugada y no se ve nada).
+  //
+  //    El rango se recuerda en localStorage porque, si no, la vista queda
+  //    SECUENCIAL: hay que esperar a /serie para saber qué día pedir, y recién
+  //    entonces sale la llamada del gráfico. Con el rango recordado las dos
+  //    salen a la vez y la revalidación corrige si la ingesta avanzó.
   useEffect(() => {
     setDia(null); setErrDia(null);
-    jget(`/api/pronostico/serie?variable=${vari}&bucket=D&ultimos_dias=9999`).then((r: Resp) => {
+    const clave = `agrov-rango-${vari}`;
+    const aplicar = (r: { desde: string; hasta: string }, esCache: boolean) => {
+      setRango(r);
+      const ultimo = new Date(r.hasta + "T00:00:00");
+      const porDefecto = new Date(ultimo.getTime() - MS_POR_DIA).toISOString().slice(0, 10);
+      // Del caché solo se toma el día inicial; si el usuario ya eligió otro, no
+      // se le pisa la selección cuando llega la revalidación.
+      setFecha((f) => (esCache || !f ? porDefecto : f));
+    };
+    let cacheado: { desde: string; hasta: string } | null = null;
+    try {
+      const guardado = localStorage.getItem(clave);
+      if (guardado) cacheado = JSON.parse(guardado);
+    } catch { /* caché corrupto: se ignora y manda la red */ }
+    if (cacheado) aplicar(cacheado, true);
+
+    jget(`/api/pronostico/serie?variable=${vari}&bucket=D&ultimos_dias=1`).then((r: Resp) => {
       const resumen = r.ok ? (r.data as any)?.resumen : null;
-      if (!resumen?.hasta) { setRango(null); return; }
-      setRango({ desde: resumen.desde.slice(0, 10), hasta: resumen.hasta.slice(0, 10) });
-      const ultimo = new Date(resumen.hasta.slice(0, 10) + "T00:00:00");
-      setFecha(new Date(ultimo.getTime() - MS_POR_DIA).toISOString().slice(0, 10));
+      if (!resumen?.hasta) { if (!cacheado) setRango(null); return; }
+      const nuevo = { desde: resumen.desde.slice(0, 10), hasta: resumen.hasta.slice(0, 10) };
+      try { localStorage.setItem(clave, JSON.stringify(nuevo)); } catch { /* modo privado */ }
+      setRango(nuevo);
+      // El día por defecto solo se recalcula si el rango cambió respecto al
+      // caché: si no, se respeta lo que ya se está mostrando.
+      if (!cacheado || cacheado.hasta !== nuevo.hasta) aplicar(nuevo, !cacheado);
     });
-    jget(`/api/pronostico/backtest?variable=${vari}&dias=${DIAS_REFERENCIA}&bucket=h`)
-      .then((r: Resp) => setRef(r.ok ? (r.data as any)?.metricas : null));
   }, [vari]);
 
   // 2. El día elegido a la resolución elegida: única fuente de la vista.
@@ -109,14 +128,6 @@ export function PredView({ theme }: { theme: string }) {
     if (pts[0].cs != null) {
       series.push({ points: pts.map((p) => p.cs), color: P.ceil, width: 1.4,
                     name: "Techo (cielo despejado)" });
-    }
-    // La predicción NO se dibuja para todo el día: se calcula para el momento
-    // que elegís, y va como un punto único sobre la guía. Trazar la curva entera
-    // repetía el KPI de abajo y, peor, sugería que el sistema predice en
-    // continuo — cada valor es una reconstrucción independiente, a pedido.
-    if (idx >= 0) {
-      series.push({ points: pts.map((p, i) => (i === idx ? p.pred : null)),
-                    color: P.pred, r: 5.5, name: "Predicho en ese momento" });
     }
     return lineChart(series, {
       x: momentos, height: 300, unit: unidad,
@@ -204,36 +215,22 @@ export function PredView({ theme }: { theme: string }) {
                   <span className="sw" style={{ background: "var(--ceil)" }} />Techo (cielo despejado)
                 </span>
               )}
-              <span><span className="sw sw-punto" style={{ background: "var(--pred)" }} />Predicho en {momento}</span>
               <span className="muted">{fecha} · hora local (UTC−6)</span>
             </div>
             {hayTecho && (
               <p className="note">
-                <b>Techo</b>: GHI de cielo despejado por el modelo <b>Ineichen</b> (turbidez Linke
-                climatológica, <span className="mono">pvlib</span>) con la latitud, longitud y
-                altitud del sitio. Es <b>puramente astronómico</b>: no usa ningún dato medido, por
-                eso conocerlo a futuro no es hacer trampa.
+                <b>Techo</b>: la luz que habría con el cielo despejado (modelo Ineichen, puramente
+                astronómico). La distancia entre las dos curvas son las nubes.{" "}
+                <a href="/docs#metodo">Ver el método completo ↗</a>
               </p>
             )}
           </>
         )}
       </div>
 
-      {punto && <PuntoEvaluado punto={punto} unidad={unidad} dec={dec} anticipacion={etiqueta(bucket)} />}
-
       {punto && <LecturaAgente pregunta={preguntaAgente}
                                contexto={`Predicción vs Real · ${vari} · ${fecha} ${momento}`}
                                esperado={{ real: punto.real, pred: punto.pred }} />}
-
-      <div className="pie-metricas">
-        <span><b>Ese día:</b> error medio {fmt(dia?.metricas?.mae, 1)} {unidad} · sesgo {fmt(dia?.metricas?.bias, 1)} · {dia?.n ?? "—"} puntos</span>
-        <span>
-          <b>Últimos {DIAS_REFERENCIA} días:</b> error medio {fmt(ref?.mae, 1)} {unidad}
-          {vari === "irradiancia"
-            ? <> · mejora sobre el modelo ingenuo {fmt(ref?.skill_pct, 0)} %</>
-            : <> · sin mejora medible: acá el método <em>es</em> la persistencia</>}
-        </span>
-      </div>
     </section>
   );
 }

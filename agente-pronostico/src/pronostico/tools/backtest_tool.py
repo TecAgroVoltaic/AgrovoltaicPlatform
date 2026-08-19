@@ -67,13 +67,29 @@ _MAX_PUNTOS_AL_LLM = 32
 
 
 def _punto(pts: list[dict], etiqueta, hora: str | None) -> dict | None:
-    """El punto de una hora concreta ('12:00'), o None si esa hora no esta."""
+    """El punto de una hora concreta ('12:00'), o None si esa hora no esta.
+
+    Incluye el TECHO de cielo despejado y el kt* resultante cuando la variable los
+    tiene (irradiancia). Sin ellos el agente no puede explicar POR QUE acerto o
+    fallo: 33 W/m2 no dice nada si no se sabe que el maximo posible eran 505.
+    """
     if not hora:
         return None
     for p in pts:
-        if p["t"].endswith(hora):
-            return {"t": etiqueta(p["t"]), "real": p["real"], "reconstruido": p["pred"],
-                    "error": round(p["pred"] - p["real"], 2)}
+        if not p["t"].endswith(hora):
+            continue
+        punto = {"t": etiqueta(p["t"]), "real": p["real"], "reconstruido": p["pred"],
+                 "error": round(p["pred"] - p["real"], 2)}
+        # OJO: de noche el techo es 0, que es un valor VALIDO, no un campo
+        # ausente. Se distingue "no aplica" (humedad, sin cs) de "vale cero"
+        # (irradiancia nocturna); el kt* si se omite, porque dividir por 0 no
+        # significa nada.
+        techo = p.get("cs")
+        if techo is not None:
+            punto["techo_cielo_despejado"] = round(float(techo), 2)
+            if float(techo) > 0:
+                punto["kt_estrella"] = round(p["real"] / float(techo), 3)
+        return punto
     return None
 
 
@@ -99,8 +115,13 @@ def run(variable: str, desde: str, hasta: str | None = None, bucket: str = "h",
         resumen["aviso_hora"] = (f"no hay dato para las {hora} en ese periodo; "
                                  f"horas disponibles: {etiqueta(pts[0]['t'])}"
                                  f"-{etiqueta(pts[-1]['t'])}")
-    serie = ([{"t": etiqueta(p["t"]), "real": p["real"], "reconstruido": p["pred"]}
-              for p in pts] if len(pts) <= _MAX_PUNTOS_AL_LLM else None)
+    def _fila(p: dict) -> dict:
+        fila = {"t": etiqueta(p["t"]), "real": p["real"], "reconstruido": p["pred"]}
+        if p.get("cs") is not None:            # 0 de noche es un valor, no un hueco
+            fila["techo"] = round(float(p["cs"]), 1)
+        return fila
+
+    serie = ([_fila(p) for p in pts] if len(pts) <= _MAX_PUNTOS_AL_LLM else None)
 
     return {
         "variable": variable,

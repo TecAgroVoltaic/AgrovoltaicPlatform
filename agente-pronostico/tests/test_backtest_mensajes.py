@@ -91,3 +91,39 @@ def test_hora_inexistente_avisa_en_vez_de_devolver_nada(monkeypatch):
     out = backtest_tool.run("irradiancia", desde="2026-07-22", hora="99:00")
     assert out["punto_consultado"] is None
     assert "no hay dato para las 99:00" in out["resumen"]["aviso_hora"]
+
+
+def test_el_punto_trae_techo_y_kt(monkeypatch):
+    """Sin el techo, el agente no puede explicar por qué el método acertó:
+    33 W/m² no dice nada si no se sabe que el máximo posible eran 505."""
+    from pronostico.tools import backtest_tool
+    monkeypatch.setattr(bt.data, "cargar_serie", lambda *a, **k: _serie_dia())
+    out = backtest_tool.run("irradiancia", desde="2026-07-22", hora="12:00")
+    punto = out["punto_consultado"]
+    assert punto["techo_cielo_despejado"] > 0
+    assert punto["kt_estrella"] == round(punto["real"] / punto["techo_cielo_despejado"], 3)
+    # Y la serie compacta también lo lleva, en todas las franjas.
+    assert all("techo" in f for f in out["serie"])
+
+
+def test_de_noche_el_techo_es_cero_y_no_hay_kt(monkeypatch):
+    """De noche el techo vale 0: es un dato, no un campo faltante. El kt* sí se
+    omite, porque dividir por cero no significa nada."""
+    from pronostico.tools import backtest_tool
+    monkeypatch.setattr(bt.data, "cargar_serie", lambda *a, **k: _serie_dia())
+    out = backtest_tool.run("irradiancia", desde="2026-07-22", hora="01:00")
+    punto = out["punto_consultado"]
+    assert punto["techo_cielo_despejado"] == 0
+    assert "kt_estrella" not in punto
+
+
+def test_humedad_no_inventa_techo(monkeypatch):
+    """La humedad de suelo no tiene análogo de cielo despejado: los campos
+    simplemente no aparecen, en vez de salir en cero o en null."""
+    from pronostico.tools import backtest_tool
+    idx = pd.date_range("2026-07-22 00:00", "2026-07-22 23:00", freq="h", tz=TZ)
+    serie = pd.Series(range(len(idx)), index=idx, dtype=float, name="humedad_suelo")
+    monkeypatch.setattr(bt.data, "cargar_serie", lambda *a, **k: serie)
+    out = backtest_tool.run("humedad_suelo", desde="2026-07-22", hora="12:00")
+    assert "techo_cielo_despejado" not in out["punto_consultado"]
+    assert "techo" not in out["serie"][0]

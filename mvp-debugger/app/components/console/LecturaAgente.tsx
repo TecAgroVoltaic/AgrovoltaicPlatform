@@ -1,15 +1,17 @@
 "use client";
-// Lectura del agente sobre el momento que se está viendo, EN LA MISMA VISTA.
+// Lectura del agente sobre el momento que se está viendo.
 //
-// La tarjeta está armada para hacer visible la separación que sostiene todo el
-// proyecto: **el agente no predice**. Predice un algoritmo determinista; el
-// modelo elige cuál llamar, con qué parámetros, y explica lo que devuelve. Por
-// eso el orden es: primero lo que devolvió el algoritmo (números), después lo
-// que dijo el agente (texto), y al final cómo llegó ahí (traza).
+// Esta tarjeta es el único lugar de la vista donde aparece una PREDICCIÓN, y es
+// deliberado: el gráfico muestra el terreno (lo que midió el sensor y el techo
+// físico), y la predicción se calcula cuando la pedís. Eso además hace visible
+// la separación que sostiene el proyecto: **el agente no predice**. Predice un
+// algoritmo determinista; el modelo elige cuál llamar, con qué parámetros, y
+// explica lo que devuelve.
 //
-// La verificación cruzada es el remate: los valores que recibió el agente se
-// comparan con los que muestra el gráfico de arriba. Si coinciden, queda probado
-// que la explicación habla de los mismos datos que estás mirando.
+// Orden: (1) lo que devolvió cada herramienta, en cifras; (2) lo que dijo el
+// agente; (3) cómo llegó ahí. Y un sello que compara las cifras que recibió el
+// agente con las que dibuja el gráfico — si no coinciden, está hablando de otros
+// datos y hay que verlo.
 //
 // Al agente se le manda la PREGUNTA, nunca los números: pasárselos en el prompt
 // lo convertiría en un redactor de datos que no verificó.
@@ -29,67 +31,80 @@ const fmt = (n: any, d = 1) =>
   n == null || !isFinite(n) ? "—" : Number(n).toLocaleString("es-CR",
     { minimumFractionDigits: d, maximumFractionDigits: d });
 
+type Ficha = { l: string; v: string; u?: string; acento?: boolean; nota?: string };
 type Resultado = {
-  tool: string; metodo: string | null; unidad: string;
-  valores: { etiqueta: string; valor: number | null; acento?: boolean }[];
-  contexto: string | null;
+  tool: string; metodo: string | null; fichas: Ficha[]; contexto: string | null;
   real: number | null; pred: number | null;
 };
 
 /**
- * Lo que devolvió el algoritmo, sacado de la traza. Se contemplan las dos formas
- * que existen hoy: `backtest` (punto reconstruido contra el real) y `forecast`
- * (valor esperado con banda). Cualquier otra tool cae en null y la tarjeta
- * simplemente no muestra el bloque de números — no inventa una lectura.
+ * Lo que devolvió cada herramienta, sacado de la traza. Se contemplan las dos
+ * formas que existen hoy: `backtest` (reconstrucción contra lo medido) y
+ * `forecast` (valor esperado con banda). Una herramienta desconocida no rompe
+ * nada: se omite su bloque de cifras y queda su paso en la traza.
  */
-function resultadoAlgoritmo(pasos: Paso[]): Resultado | null {
-  const paso = pasos.find((p) => p.tipo === "tool" && !p.error
-                                 && p.salida && typeof p.salida === "object");
-  if (!paso) return null;
-  const s = paso.salida;
-  const unidad = s.unidad === "W/m2" ? "W/m²" : (s.unidad || "");
+function resultados(pasos: Paso[]): Resultado[] {
+  const salida: Resultado[] = [];
+  for (const paso of pasos) {
+    if (paso.tipo !== "tool" || paso.error) continue;
+    const s = paso.salida;
+    if (!s || typeof s !== "object") continue;
+    const unidad = s.unidad === "W/m2" ? "W/m²" : (s.unidad || "");
 
-  if (s.punto_consultado) {
-    const p = s.punto_consultado;
-    const m = s.metricas || {};
-    return {
-      tool: paso.nombre, metodo: s.metodo || null, unidad,
-      valores: [
-        { etiqueta: "medido", valor: p.real },
-        { etiqueta: "predicho", valor: p.reconstruido },
-        { etiqueta: "error", valor: p.error, acento: true },
-      ],
-      contexto: [
-        s.resumen?.maximo_real
-          ? `máximo del día ${fmt(s.resumen.maximo_real.valor, 1)} a las ${s.resumen.maximo_real.t}`
+    if (s.punto_consultado) {
+      const p = s.punto_consultado;
+      const m = s.metricas || {};
+      const fichas: Ficha[] = [
+        { l: "Predicho", v: fmt(p.reconstruido, 1), u: unidad, acento: true,
+          nota: "lo que el algoritmo habría dicho" },
+        { l: "Medido", v: fmt(p.real, 1), u: unidad, nota: "lo que registró el sensor" },
+        { l: "Error", v: (p.error > 0 ? "+" : "") + fmt(p.error, 1), u: unidad,
+          nota: "predicho − medido" },
+      ];
+      if (p.techo_cielo_despejado != null) {
+        fichas.push({ l: "Techo", v: fmt(p.techo_cielo_despejado, 0), u: unidad,
+                      nota: "máximo con cielo despejado" });
+      }
+      if (p.kt_estrella != null) {
+        fichas.push({ l: "Claridad kt*", v: fmt(p.kt_estrella * 100, 0), u: "%",
+                      nota: "del techo dejaron pasar las nubes" });
+      }
+      if (m.mae != null) {
+        fichas.push({ l: "Error medio", v: fmt(m.mae, 1), u: unidad,
+                      nota: "promedio de todo el día" });
+      }
+      salida.push({
+        tool: paso.nombre, metodo: s.metodo || null, fichas,
+        contexto: s.resumen?.maximo_real
+          ? `máximo del día ${fmt(s.resumen.maximo_real.valor, 1)} ${unidad} a las ${s.resumen.maximo_real.t}`
           : null,
-        m.mae != null ? `error medio del día ${fmt(m.mae, 1)}` : null,
-        m.skill_pct != null ? `mejora sobre el ingenuo ${fmt(m.skill_pct, 0)} %` : null,
-      ].filter(Boolean).join(" · ") || null,
-      real: p.real, pred: p.reconstruido,
-    };
-  }
+        real: p.real, pred: p.reconstruido,
+      });
+      continue;
+    }
 
-  if (s.valor_esperado !== undefined) {
-    return {
-      tool: paso.nombre, metodo: null, unidad,
-      valores: [
-        { etiqueta: "esperado", valor: s.valor_esperado, acento: true },
-        { etiqueta: "banda baja", valor: s.banda?.bajo },
-        { etiqueta: "banda alta", valor: s.banda?.alto },
-      ],
-      contexto: s.momento_pronosticado
-        ? `para las ${String(s.momento_pronosticado).slice(11, 16)}` : null,
-      real: s.medido?.valor ?? null, pred: s.valor_esperado ?? null,
-    };
+    if (s.valor_esperado !== undefined) {
+      salida.push({
+        tool: paso.nombre, metodo: null,
+        fichas: [
+          { l: "Esperado", v: fmt(s.valor_esperado, 1), u: unidad, acento: true },
+          { l: "Banda baja", v: fmt(s.banda?.bajo, 1), u: unidad },
+          { l: "Banda alta", v: fmt(s.banda?.alto, 1), u: unidad },
+          ...(s.medido ? [{ l: "Medido", v: fmt(s.medido.valor, 1), u: unidad }] : []),
+        ],
+        contexto: s.momento_pronosticado
+          ? `para las ${String(s.momento_pronosticado).slice(11, 16)}` : null,
+        real: s.medido?.valor ?? null, pred: s.valor_esperado ?? null,
+      });
+    }
   }
-  return null;
+  return salida;
 }
 
 export function LecturaAgente({ pregunta, contexto, esperado }: {
   pregunta: string;
   contexto: string;
-  /** Valores que muestra la vista, para la verificación cruzada. */
+  /** Valores que dibuja el gráfico, para la verificación cruzada. */
   esperado?: { real: number; pred: number } | null;
 }) {
   const [respuesta, setRespuesta] = useState("");
@@ -117,14 +132,15 @@ export function LecturaAgente({ pregunta, contexto, esperado }: {
     setCosto(r.data?.costo?.usd_total ?? null);
   }
 
-  const res = resultadoAlgoritmo(pasos);
+  const res = resultados(pasos);
   const herramientas = pasos.filter((p) => p.tipo === "tool").map((p) => p.nombre);
   const webs = pasos.filter((p) => p.tipo === "web").length;
 
-  // Verificación cruzada: ¿el agente vio los mismos números que la vista?
-  const coincide = res && esperado && res.real != null && res.pred != null
-    ? Math.abs(res.real - esperado.real) <= TOLERANCIA
-      && Math.abs(res.pred - esperado.pred) <= TOLERANCIA
+  // ¿El agente vio los mismos números que dibuja el gráfico?
+  const primero = res[0];
+  const coincide = primero && esperado && primero.real != null && primero.pred != null
+    ? Math.abs(primero.real - esperado.real) <= TOLERANCIA
+      && Math.abs(primero.pred - esperado.pred) <= TOLERANCIA
     : null;
 
   return (
@@ -133,8 +149,8 @@ export function LecturaAgente({ pregunta, contexto, esperado }: {
         <div>
           <h3>Lectura del agente</h3>
           <p className="hint">
-            El agente <b>no calcula</b>: elige el algoritmo, le pasa los parámetros y explica
-            lo que devuelve. Acá se ve cada parte por separado.
+            Acá se pide la predicción. El agente <b>no la calcula</b>: elige el algoritmo, le pasa
+            los parámetros y explica lo que devuelve.
           </p>
         </div>
         <button className="btn" onClick={analizar} disabled={cargando}>
@@ -150,35 +166,32 @@ export function LecturaAgente({ pregunta, contexto, esperado }: {
         </div>
       )}
 
-      {res && (
-        <section className="bloq bloq-algo">
+      {res.map((r, i) => (
+        <section className="bloq bloq-algo" key={i}>
           <header className="bloq-h">
             <span className="bloq-ic bloq-ic-algo"><IconoAlgoritmo size={15} /></span>
-            <span className="bloq-t">Lo que devolvió el algoritmo</span>
-            <code className="tz-tool">{res.tool}</code>
-            {coincide !== null && (
+            <span className="bloq-t">Devolvió el algoritmo</span>
+            <code className="tz-tool">{r.tool}</code>
+            {i === 0 && coincide !== null && (
               <span className={"bloq-check" + (coincide ? " ok" : " mal")}>
                 {coincide ? <IconoCheck size={13} /> : <IconoAlerta size={13} />}
                 {coincide ? "coincide con el gráfico" : "no coincide con el gráfico"}
               </span>
             )}
           </header>
-          {res.metodo && <p className="bloq-metodo">{res.metodo}</p>}
-          <div className="valores">
-            {res.valores.map((v, i) => (
-              <div className={"valor" + (v.acento ? " valor-acento" : "")} key={i}>
-                <span className="valor-l">{v.etiqueta}</span>
-                <span className="valor-n">
-                  {v.valor != null && v.valor > 0 && v.etiqueta === "error" ? "+" : ""}
-                  {fmt(v.valor, 2)}
-                  <small>{res.unidad}</small>
-                </span>
+          <div className="fichas">
+            {r.fichas.map((f, j) => (
+              <div className={"ficha" + (f.acento ? " ficha-acento" : "")} key={j} title={f.nota}>
+                <span className="ficha-l">{f.l}</span>
+                <span className="ficha-v">{f.v}{f.u && <small>{f.u}</small>}</span>
               </div>
             ))}
           </div>
-          {res.contexto && <p className="bloq-ctx">{res.contexto}</p>}
+          {(r.metodo || r.contexto) && (
+            <p className="bloq-ctx">{[r.metodo, r.contexto].filter(Boolean).join(" · ")}</p>
+          )}
         </section>
-      )}
+      ))}
 
       {respuesta && (
         <section className="bloq bloq-agente">
