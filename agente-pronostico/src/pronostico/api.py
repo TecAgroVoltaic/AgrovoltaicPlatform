@@ -231,6 +231,21 @@ def salud_panel() -> dict:
         ) from exc
 
 
+@app.get("/arquitectura",
+         dependencies=[Depends(_verificar_api_key), Depends(_frenar_datos)])
+def arquitectura() -> dict:
+    """El agente descrito como dato: modos, herramientas con su esquema, limites.
+
+    Lo consume la vista de arquitectura de la consola para DIBUJAR el agente sin
+    transcribirlo. Todo se deriva de `agent.MODOS` y de los `input_schema`
+    reales, asi que la vista no puede quedar desincronizada del codigo.
+    """
+    # Import diferido igual que `_agente()`: `arquitectura` lee `agent.MODOS`, y
+    # eso arrastra el SDK de Anthropic. No hay razon para pagarlo al arrancar.
+    from pronostico import arquitectura as arquitectura_mod
+    return arquitectura_mod.mapa()
+
+
 # Agente perezoso: solo se construye al primer /preguntar (anthropic.Anthropic()
 # exige ANTHROPIC_API_KEY al crear el cliente; el resto de endpoints no dependen
 # de esa clave).

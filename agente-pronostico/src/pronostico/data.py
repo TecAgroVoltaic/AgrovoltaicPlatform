@@ -157,6 +157,21 @@ def get_recent_data(now, lookback_min: float,
     return serie[(serie.index >= desde) & (serie.index < now)]  # < now: sin fuga
 
 
+def rango_datos(variable: str = Variable.IRRADIANCIA.value) -> dict:
+    """Desde/hasta de la serie disponible de `variable`.
+
+    Fuente UNICA del rango: lo consumen el `forecast` (para que quien ancle un
+    pronostico vea si el instante elegido tiene sentido, sin adivinarlo desde una
+    advertencia) y el mapa de arquitectura. Serie vacia -> ambos en None.
+    """
+    serie = cargar_serie(variable)
+    if serie.empty:
+        return {"desde": None, "hasta": None, "n": 0}
+    return {"desde": serie.index.min().isoformat(),
+            "hasta": serie.index.max().isoformat(),
+            "n": int(len(serie))}
+
+
 def valor_medido(t, variable: str = Variable.IRRADIANCIA.value,
                  tolerancia_min: float = 10.0) -> dict | None:
     """Lo que el sensor MIDIO en el instante `t` (la lectura mas cercana).

@@ -6,16 +6,17 @@ import { jget } from "@/app/lib/client";
 import { ChartTooltip } from "@/app/components/ChartTooltip";
 import { ReconView } from "@/app/components/console/ReconView";
 import { PredView } from "@/app/components/console/PredView";
+import { ArqView } from "@/app/components/console/arquitectura/ArqView";
 import { PerfView } from "@/app/components/console/PerfView";
 import { CostoView } from "@/app/components/console/CostoView";
 import { SaludView } from "@/app/components/console/SaludView";
 import { ChatWidget } from "@/app/components/chat/ChatWidget";
 import type { Traza } from "@/app/components/TraceViewer";
 
-type View = "recon" | "pred" | "perf" | "costo" | "salud";
-const NAV: [View, string][] = [["recon", "Reconciliación"], ["pred", "Predicción vs Real"], ["perf", "Rendimiento"], ["costo", "Costo y uso"], ["salud", "Salud del sistema"]];
-const LABEL: Record<View, string> = { recon: "Reconciliación", pred: "Predicción vs Real", perf: "Rendimiento", costo: "Costo y uso", salud: "Salud del sistema" };
-const AGENT_OF: Partial<Record<View, string>> = { recon: "analizador", perf: "analizador", pred: "pronostico" };
+type View = "recon" | "pred" | "arq" | "perf" | "costo" | "salud";
+const NAV: [View, string][] = [["recon", "Reconciliación"], ["pred", "Predicción vs Real"], ["arq", "Arquitectura del agente"], ["perf", "Rendimiento"], ["costo", "Costo y uso"], ["salud", "Salud del sistema"]];
+const LABEL: Record<View, string> = { recon: "Reconciliación", pred: "Predicción vs Real", arq: "Arquitectura del agente", perf: "Rendimiento", costo: "Costo y uso", salud: "Salud del sistema" };
+const AGENT_OF: Partial<Record<View, string>> = { recon: "analizador", perf: "analizador", pred: "pronostico", arq: "pronostico" };
 // La navegación arranca un grupo nuevo acá (vistas transversales, no de un agente).
 const SEPARADOR: View = "costo";
 
@@ -54,7 +55,7 @@ export function Console({ analizador = true }: { analizador?: boolean }) {
   function goAgent(a: string) {
     setAgent(a);
     if (a === "pronostico" && (view === "recon" || view === "perf")) setView("pred");
-    if (a === "analizador" && view === "pred") setView("recon");
+    if (a === "analizador" && (view === "pred" || view === "arq")) setView("recon");
   }
   function toggleTheme() {
     const eff = theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
@@ -104,6 +105,7 @@ export function Console({ analizador = true }: { analizador?: boolean }) {
       <main className="content">
         {view === "recon" && <ReconView />}
         {view === "pred" && <PredView theme={theme} />}
+        {view === "arq" && <ArqView />}
         {view === "perf" && <PerfView theme={theme} />}
         {view === "costo" && <CostoView agent={agent} theme={theme} sesion={sesion} />}
         {view === "salud" && <SaludView />}

@@ -197,17 +197,6 @@ def _forecast_humedad(seg: int, now=None) -> dict:
     }
 
 
-def _rango_datos(variable: str) -> dict:
-    """Desde/hasta de la serie disponible. Va en la respuesta para que quien
-    ancle un pronostico pueda ver si el instante que eligio tiene sentido, sin
-    tener que adivinarlo desde una advertencia."""
-    serie = data.cargar_serie(variable)
-    if serie.empty:
-        return {"desde": None, "hasta": None}
-    return {"desde": serie.index.min().isoformat(),
-            "hasta": serie.index.max().isoformat()}
-
-
 # Despacho por variable -> forecaster.
 _FORECASTERS = {
     Variable.IRRADIANCIA.value: _forecast_irradiancia,
@@ -249,7 +238,7 @@ def run_forecast(variable: str, horizon_seconds: int,
         "instante": res["ahora"],
         "explicito": now is not None,
         "tipo": "instante_de_referencia" if now is not None else "ultimo_dato",
-        "rango_datos": _rango_datos(variable),
+        "rango_datos": data.rango_datos(variable),
     }
     # Lo que de verdad midio el sensor en el momento pronosticado (None si ese
     # instante todavia no ocurrio o cae en un hueco). Permite mostrar el

@@ -278,3 +278,40 @@ valor real (32,8).
 consola revela y puntúa). Hoy funciona por `/chat` con `modo=prediccion`.
 
 Relacionado: [[integracion-visioneflow]], [[capa-agentes]], [[agrodash-esquema]], [[bloqueantes]], [[agrodash]], [[pipeline-tiempo-real]], [[mvp-debugger]].
+
+## 2026-08-19 (noche) — `GET /arquitectura`: el agente descrito como dato
+
+Endpoint nuevo (`src/pronostico/arquitectura.py`, SRP igual que `salud.py`) que devuelve **el
+agente como estructura**: modos, catálogo de herramientas con su `input_schema` completo,
+frenos y cobertura de datos. Lo consume la vista de arquitectura de la consola (ver
+[[mvp-debugger]]).
+
+**La regla del módulo: no declara, deriva.** Los nombres, los parámetros, los rangos y la
+pertenencia a cada modo salen de `agent.MODOS` y de los esquemas reales — los mismos objetos
+que se le mandan al modelo. No hay una segunda lista que mantener sincronizada, así que la vista
+no puede quedar desfasada del código. Que `backtest` aparezca marcada como exclusiva de
+`analisis` no lo escribió nadie: se deduce de dónde está.
+
+Tres decisiones que valen la pena:
+- **El horizonte se lee del esquema**, no de `_MIN_SEG`/`_MAX_SEG`. Si alguna vez discreparan,
+  manda lo que el modelo tiene enfrente. (Es el mismo criterio que ya usaba `api.py`.)
+- **`_rango_datos` se promovió a `data.rango_datos(variable)`**: era privada en
+  `forecast_tool.py` y ahora hay una sola fuente del rango, con `n` de filas.
+- **El bloque `datos` no puede tumbar el endpoint**: si el store está caído devuelve
+  `{"error": ...}` por variable y el resto responde 200. La arquitectura del agente no depende
+  de que hoy haya datos.
+
+No expone el texto de los prompts: cada modo viaja con una frase de intención escrita en el
+módulo. Auth y frenos como `/salud/panel` (`x-api-key` + límite de datos).
+
+**Pruebas**: `tests/test_arquitectura.py` (13). Casi todas comparan contra `agent.MODOS` /
+`limites` / los esquemas en vez de literales — un test con los nombres a mano se desincronizaría
+igual que el archivo estático que el endpoint vino a evitar. Cubren también que ninguna
+herramienta del modo ciego acepte un parámetro con el resultado, que el store caído degrade solo
+su bloque, y el 401 sin clave. **159 tests en total.**
+
+**Desplegado en la EC2** (rsync de `src/` y `scripts/` + rebuild de `forecast-forecast-1`;
+respaldo en `.rollback-src`). **e2e contra producción: 72 chequeos, 0 fallas**, 3 avisos
+conocidos (ingesta congelada desde el 2026-07-23, skill 0 % de humedad por construcción). El
+bloque 6 del e2e es nuevo y verifica desde afuera que el modo predicción no publique `backtest`
+ni búsqueda web.

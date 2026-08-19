@@ -233,3 +233,54 @@ Se evaluó mandar la consulta al widget flotante (reusa el hilo) contra un panel
 **inline**: lo que se está haciendo es comparar real contra predicho, y un panel flotante tapa
 justo los números que se quieren contrastar. No duplica el chat — es un turno único, sin
 historial ni persistencia, contra el mismo `POST /chat`. El widget flotante sigue para conversar.
+
+## 2026-08-19 — vista «Arquitectura del agente»
+
+Vista nueva en la consola (5ª del pronóstico, `components/console/arquitectura/`) que **dibuja
+al agente como un grafo de nodos** estilo VisioneFlow: entradas → proxy → el modelo →
+herramientas → capa determinista. Hover para el resumen, clic para el detalle (qué hace, qué
+recibe, qué devuelve, límites, pruebas). Existe para **presentarla**: lo que estaba solo en el
+código ahora se ve.
+
+### La decisión que la hace confiable: la estructura se lee del servicio
+El error fácil era escribir un archivo con las herramientas a mano. Eso se desincroniza en
+silencio, y el pedido era justo lo contrario («debe ser a como lo tenemos construido»). En vez
+de eso hay un endpoint nuevo, **`GET /arquitectura`** (ver [[agente-pronostico]]), que **deriva**
+el mapa de `agent.MODOS` y de los `input_schema` reales — los mismos objetos que se le mandan
+al modelo. La vista pinta eso.
+
+El reparto queda así:
+- **el servicio** aporta lo verificable: nombres, parámetros, tipos, rangos, obligatoriedad, en
+  qué modo vive cada herramienta, los frenos y la cobertura de datos;
+- **`catalogo.ts`** aporta solo lo que ningún esquema puede decir: por qué existe cada pieza,
+  qué límite es una decisión, y qué prueba la blinda.
+
+Y la vista **denuncia la deriva** en vez de taparla: una herramienta que el servicio expone sin
+ficha se dibuja igual, con su contrato y la marca «sin documentar»; una ficha que ya no
+corresponde a ninguna herramienta viva se avisa en pantalla. Nunca puede aparecer una ficción
+callada.
+
+### El interruptor de modo es el argumento, no un adorno
+Al pasar a *predicción* se apagan `backtest` y `web_search` y se cortan sus aristas. Es la
+garantía del sistema hecha visible: el agente no ve la respuesta **porque la herramienta no está
+en la lista**, no porque el prompt se lo pida. Un prompt se puede ignorar; una herramienta
+ausente no se puede llamar.
+
+### Detalles de implementación
+- **Disposición**: lienzo de coordenadas fijas (1140 de ancho) en un contenedor con scroll
+  horizontal propio. Los nodos que no son herramientas llevan coordenadas fijas; la **pila de
+  herramientas se calcula** desde lo que publica el servicio, así que una sexta tool entra sola
+  y el lienzo crece.
+- **Hover sin código nuevo**: cada nodo lleva `data-tip` y lo atiende `ChartTooltip`, que ya
+  estaba montado en la consola y funciona por delegación.
+- **Prosa en markdown** renderizada con `lib/markdown.ts` (escapa el HTML antes de formatear).
+- **Pantalla completa** sobre el lienzo (Fullscreen API), para proyectar sin la barra lateral.
+- Enlace desde la doc (`docs/content/agentes.tsx`, sección Pronóstico) para que no haya dos
+  verdades.
+
+### Cómo se verificó sin navegador
+La extensión de Chrome no estaba conectada, así que los componentes se **renderizaron con
+`react-dom/server` contra el mapa real de producción**: 12 nodos por modo, los 3 apagados
+correctos en cada uno, un `data-tip` por nodo, y la tabla de parámetros de cada modal con
+exactamente las filas de su `input_schema` (`predecir` → 7). Incluido el caso de la herramienta
+sin ficha. 27 chequeos, todos OK.

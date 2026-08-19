@@ -282,7 +282,53 @@ def bloque_deterministas() -> None:
                 f"n={d.get('n_muestras')} · hallazgos: {tipos or 'ninguno'}")
 
 
-# ── 6. El lazo del LLM (gasta tokens) ────────────────────────────────────────
+# ── 6. El mapa de arquitectura ───────────────────────────────────────────────
+def bloque_arquitectura() -> None:
+    titulo("6. Mapa de arquitectura — /arquitectura")
+    s, d = _pedir("GET", "/arquitectura")
+    if not revisar("/arquitectura responde 200", s == 200 and isinstance(d, dict),
+                   f"status={s}"):
+        return
+
+    modos = d.get("modos") or {}
+    herramientas = [h.get("nombre") for h in (d.get("herramientas") or [])]
+    revisar("publica los dos modos", set(modos) == {"analisis", "prediccion"},
+            f"modos={sorted(modos)}")
+    revisar("publica el catalogo de herramientas", len(herramientas) >= 3,
+            ", ".join(herramientas))
+
+    # La garantia del sistema, verificada desde afuera: en el modo ciego no hay
+    # ninguna herramienta que pueda revelar lo que midio el sensor.
+    prediccion = modos.get("prediccion") or {}
+    revisar("modo prediccion sin backtest",
+            "backtest" not in (prediccion.get("herramientas") or []),
+            f"tools={prediccion.get('herramientas')}")
+    revisar("modo prediccion sin busqueda web",
+            prediccion.get("web_search") is False,
+            f"web_search={prediccion.get('web_search')}")
+
+    # Cada herramienta viaja con el contrato entero: es lo que dibuja la vista.
+    completas = [h.get("nombre") for h in (d.get("herramientas") or [])
+                 if (h.get("input_schema") or {}).get("properties")]
+    revisar("cada herramienta trae su input_schema",
+            len(completas) == len(herramientas),
+            f"{len(completas)}/{len(herramientas)}")
+
+    lim = d.get("limites") or {}
+    revisar("publica el horizonte y los frenos",
+            bool(lim.get("horizonte_seg")) and lim.get("llm_por_min"),
+            f"horizonte={lim.get('horizonte_seg')} · llm/min={lim.get('llm_por_min')} · "
+            f"presupuesto=US${lim.get('presupuesto_diario_usd')}")
+
+    datos = d.get("datos") or {}
+    for variable in ("irradiancia", "humedad_suelo"):
+        v = datos.get(variable) or {}
+        revisar(f"{variable}: publica su cobertura", bool(v.get("hasta")),
+                f"{v.get('desde')} → {v.get('hasta')} · n={v.get('n')}"
+                if v.get("hasta") else v.get("error", "sin rango"))
+
+
+# ── 7. El lazo del LLM (gasta tokens) ────────────────────────────────────────
 def _pasos_tool(traza: dict) -> list[dict]:
     return [p for p in (traza.get("pasos") or []) if p.get("tipo") == "tool"]
 
@@ -342,10 +388,11 @@ def main() -> int:
     bloque_auditoria(panel)
     bloque_backtest()
     bloque_deterministas()
+    bloque_arquitectura()
     if CON_LLM:
         bloque_llm()
     else:
-        titulo("6. Lazo del LLM — OMITIDO (SIN_LLM=1)")
+        titulo("7. Lazo del LLM — OMITIDO (SIN_LLM=1)")
 
     fallas = [r for r in _resultados if r[0] == "FALLA"]
     avisos = [r for r in _resultados if r[0] == "AVISO"]

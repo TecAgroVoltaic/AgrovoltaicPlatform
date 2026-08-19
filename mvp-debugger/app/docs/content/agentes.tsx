@@ -83,6 +83,14 @@ export function Pronostico() {
         ["Fuente", "AgroDash → store Supabase"],
       ]} />
 
+      <Note>
+        <div><b>Vale más verlo que leerlo.</b> La consola tiene una <a href="/">vista de
+        arquitectura</a> que dibuja este agente como un grafo: sus herramientas, qué recibe
+        y devuelve cada una, y el interruptor de modo que apaga <IC>backtest</IC> cuando el
+        agente tiene que predecir a ciegas. Se lee del servicio (<IC>GET /arquitectura</IC>),
+        así que muestra el agente como está hoy, no como estaba cuando se escribió esta página.</div>
+      </Note>
+
       <h2>Qué pronostica</h2>
       <Table
         head={["Variable", "Unidad", "Modelo"]}
