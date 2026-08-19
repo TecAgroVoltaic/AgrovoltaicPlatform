@@ -6,6 +6,7 @@ import { Overview, Glosario } from "./content/intro";
 import { Arquitectura } from "./content/arquitectura";
 import { DatosFuentes, DatosEsquema, DatosPipeline } from "./content/datos";
 import { Analizador, Pronostico } from "./content/agentes";
+import { Metodo } from "./content/metodo";
 import { WebArquitectura, WebConsola, WebChat } from "./content/web";
 import { VfPlataforma, VfAgentes } from "./content/visioneflow";
 import { Infra } from "./content/infra";
@@ -34,6 +35,11 @@ const GRUPOS_TODOS: Grp[] = [
   ] },
   { label: "Agente Pronóstico", agente: "pronostico", items: [
     { id: "pronostico", title: "Pronóstico ambiental", Comp: Pronostico },
+  ] },
+  // SIN `agente`: la matemática (clear-sky, kt*, metricas, z robusto) es el
+  // fundamento del sistema y se documenta igual aunque un agente este bloqueado.
+  { label: "Método y fórmulas", items: [
+    { id: "metodo", title: "Fórmulas del pronóstico", Comp: Metodo },
   ] },
   { label: "La web · mvp-debugger", items: [
     { id: "web", title: "Arquitectura y superficies", Comp: WebArquitectura },

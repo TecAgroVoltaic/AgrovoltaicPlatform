@@ -88,12 +88,22 @@ def backtest(variable: str = Variable.IRRADIANCIA.value, dias: int = 7,
         raise ValueError(_mensaje_sin_datos(serie, variable, disp0, disp1, lo, hi))
 
     if variable == Variable.IRRADIANCIA.value:
-        cs = clear_sky_ghi(s.index, **data.SITE)        # techo fisico por bucket
+        # El techo se PROMEDIA dentro de la franja, igual que la medida. Antes se
+        # evaluaba en el borde izquierdo (`clear_sky_ghi(s.index)`), lo que:
+        #   - sesgaba las franjas horarias (a las 07:00 usaba el techo del minuto
+        #     cero, no el de la hora entera: sube rapido por la manana);
+        #   - y ROMPIA bucket='D' por completo, porque el borde de un dia es la
+        #     medianoche -> techo 0 -> kt* NaN -> pred 0 TODOS los dias, con
+        #     metricas de forma plausible y sentido nulo (skill de -26 %).
+        # Comparar la media de lo medido contra la media del techo es lo unico
+        # coherente, y funciona en cualquier resolucion.
+        cs_nativo = clear_sky_ghi(sel.index, **data.SITE)
+        cs = cs_nativo.resample(bucket).mean().reindex(s.index)
         um = config.UMBRAL_CS
         kt = (s / cs).where(cs > um)                    # kt* (NaN de noche)
         pred = kt.shift(1) * cs                         # persistencia de kt*
         pred = pred.where(cs >= um, 0.0)                # de noche -> 0
-        metodo = "persistencia de kt* (indice de claridad) x cielo despejado"
+        metodo = "persistencia del indice de cielo despejado kt* x techo de cielo despejado"
     else:
         cs = None
         pred = s.shift(1)                               # persistencia del valor

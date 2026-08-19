@@ -182,4 +182,52 @@ vez de "+0 %". El valor sigue siendo **crudo del ADC** (sin curva de calibració
 **Desplegado en la EC2** (rsync de `src/` + rebuild del sidecar `forecast-forecast-1`);
 respaldo del código anterior en `.rollback-src`. **128 tests** en local.
 
+## 2026-08-19 (tarde) — el agente se hace cargo de su pronóstico
+
+Cambio de criterio pedido por el usuario, y no contradice la regla anterior: son dos cosas
+distintas. **Procedencia** (el número sale de una herramienta determinista y auditable, no de
+la intuición del modelo) se mantiene intacta. **Responsabilidad** cambia: la predicción es
+*del agente*. Antes decía «el método predijo 95»; ahora dice «predije 78, me equivoqué feo».
+
+Por qué importa y no es cosmético: si el valor no es tuyo, no tenés que explicar por qué
+falló. La apropiación es lo que obliga al análisis crítico.
+
+`CHAT_SYSTEM` incorpora tres reglas: hablar en primera persona sin despegarse («el algoritmo
+dice» está prohibido), **analizar en vez de narrar** (las cifras ya están en pantalla; el
+aporte es el mecanismo y la escala del error) y **ser crítico consigo mismo** (si le fue mal,
+empezar por ahí; si le fue bien, distinguir mérito de suerte).
+
+### Lo que hizo falta para que el juicio fuera honesto
+Un error suelto no permite juzgar: +45 W/m² puede ser excelente a mediodía y catastrófico al
+amanecer. `punto_consultado` suma **`error_relativo_pct`** y **`veces_el_error_tipico_del_dia`**,
+para que el veredicto salga de una razón y no de una impresión.
+
+### Dos defectos de interpretación cazados en pruebas
+1. **El agente invirtió la física.** Con el campo `kt_estrella: 0.054` leyó el nombre «índice
+   de cielo despejado», vio un número chico y concluyó *«muy despejado»* — justo al revés:
+   0,054 significa que pasó el 5 % de la luz, o sea cielo CERRADO. Se renombró a
+   **`pct_del_techo_que_paso: 5.4`**, que no se puede leer al revés, con la escala explicada
+   en la nota de la herramienta (cerca de 100 = despejado; cerca de 0 = cerrado).
+2. **Explicaba con el número equivocado.** El método persiste la claridad del momento
+   ANTERIOR, no la del momento evaluado, y el agente citaba la de este. Se agregó
+   **`momento_anterior`** con su hora y su porcentaje.
+   También se le prohíbe redondear las razones («1,6 veces» no es «casi dos veces y media»).
+
+## 2026-08-19 — BUG del backtest: el techo se evaluaba en el borde de la franja
+
+Encontrado al documentar las fórmulas. `cs = clear_sky_ghi(s.index)` tomaba el cielo despejado
+del **instante inicial** de cada franja en vez del promedio de la franja:
+
+- Con `bucket="D"` ese instante es la **medianoche** → techo 0 → kt* NaN → **`pred = 0` todos
+  los días**, con métricas de forma plausible y sentido nulo (skill −26 %). Y `"D"` está en el
+  enum que ve el LLM: bastaba pedir «cómo te fue la última semana, por día» para que narrara
+  ese disparate.
+- Con franjas horarias el sesgo era menor pero real: a las 07:00 usaba el techo del minuto
+  cero (386 → antes 264), y por la mañana el techo sube rápido.
+
+Corregido: el techo se calcula a resolución nativa y se **promedia con la misma regla** que la
+medida. Comparar media contra media es lo único coherente y funciona en cualquier resolución.
+Tras el arreglo, `bucket="D"` da skill **+28 %**. Cambian las cifras publicadas: el MAE del
+22-jul pasa de 32,0 a **28,9 W/m²** (`docs/conceptos/anticipacion/` regenerado).
+
 Relacionado: [[integracion-visioneflow]], [[capa-agentes]], [[agrodash-esquema]], [[bloqueantes]], [[agrodash]], [[pipeline-tiempo-real]], [[mvp-debugger]].

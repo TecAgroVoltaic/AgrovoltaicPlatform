@@ -106,6 +106,9 @@ export function Pronostico() {
         <li><IC>parse_horizon("dos horas") → 7200</IC> es determinista (sin LLM) y es la fuente de verdad del horizonte.</li>
       </ul>
       <p>La humedad de suelo persiste la <strong>mediana</strong> de lecturas recientes (el suelo cambia lento y es muy autocorrelacionado); no tiene análogo de cielo despejado.</p>
+      <Note>
+        <div><b>La matemática completa está en <a href="#metodo">Método y fórmulas</a>:</b> la ecuación de Ineichen, por qué el umbral de 20 W/m², por qué mediana y no media, cómo se arma la banda, las cuatro métricas del backtest y el z-score robusto de anomalías.</div>
+      </Note>
 
       <h2>Dos modalidades: pronóstico vs. backtest</h2>
       <Table

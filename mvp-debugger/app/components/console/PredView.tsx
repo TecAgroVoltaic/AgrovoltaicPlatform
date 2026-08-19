@@ -140,15 +140,16 @@ export function PredView({ theme }: { theme: string }) {
   // con la hora exacta y las cifras salen de ahí. Si se los pasáramos en el
   // prompt sería un redactor de datos que no verificó.
   //
-  // Se le pide prosa breve a propósito: los tres números ya están en los KPI de
-  // arriba, así que repetirlos en una tabla es ruido. Lo que aporta el agente es
-  // la INTERPRETACIÓN — por qué el método acertó o falló en ese momento.
+  // Se le pide JUSTIFICACIÓN y CRÍTICA, no descripción: las cifras ya están en
+  // las fichas de al lado, repetirlas no aporta nada. Lo único que el agente
+  // puede agregar es por qué salió ese número, cuánto vale y qué lo limitó.
   const preguntaAgente =
-    `Evaluá la ${vari === "irradiancia" ? "irradiancia" : "humedad de suelo"} del ${fecha} `
-    + `a las ${momento} (usá bucket "${bucket}"). ¿Por qué el método acertó o falló con `
-    + `${etiqueta(bucket)} de anticipación, y qué dice eso del día? `
-    + `Respondé en 3 o 4 frases, sin tablas ni listas: los valores ya están en pantalla, `
-    + `citalos dentro del texto solo cuando hagan falta para el argumento.`;
+    `Analizá tu pronóstico de ${vari === "irradiancia" ? "irradiancia" : "humedad de suelo"} `
+    + `del ${fecha} a las ${momento} con ${etiqueta(bucket)} de anticipación `
+    + `(usá bucket "${bucket}"). No describas las cifras, que ya están a la vista: `
+    + `justificá por qué te dio ese valor, juzgá con honestidad qué tan bueno fue `
+    + `—en escala, no en impresión— y decí qué limitación tuya lo explica. `
+    + `Si te equivocaste, empezá por ahí. 3 o 4 frases, sin tablas ni listas.`;
 
   return (
     <section className="vista">

@@ -66,20 +66,32 @@ SCHEMA = {
 _MAX_PUNTOS_AL_LLM = 32
 
 
-def _punto(pts: list[dict], etiqueta, hora: str | None) -> dict | None:
+def _punto(pts: list[dict], etiqueta, hora: str | None,
+           mae: float | None = None) -> dict | None:
     """El punto de una hora concreta ('12:00'), o None si esa hora no esta.
 
     Incluye el TECHO de cielo despejado y el kt* resultante cuando la variable los
     tiene (irradiancia). Sin ellos el agente no puede explicar POR QUE acerto o
     fallo: 33 W/m2 no dice nada si no se sabe que el maximo posible eran 505.
+
+    Incluye tambien el error en ESCALA: relativo al valor medido y comparado con
+    el error tipico del dia. Es lo que separa un analisis critico de un elogio.
     """
     if not hora:
         return None
-    for p in pts:
+    for i, p in enumerate(pts):
         if not p["t"].endswith(hora):
             continue
+        error = round(p["pred"] - p["real"], 2)
         punto = {"t": etiqueta(p["t"]), "real": p["real"], "reconstruido": p["pred"],
-                 "error": round(p["pred"] - p["real"], 2)}
+                 "error": error}
+        # Sin escala, un error es un numero suelto: +62 W/m2 puede ser excelente
+        # a mediodia y catastrofico al amanecer. Estas dos razones son las que
+        # permiten un juicio HONESTO en vez de un "estuvo cerca" automatico.
+        if p["real"] > 0:
+            punto["error_relativo_pct"] = round(abs(error) / p["real"] * 100, 1)
+        if mae:
+            punto["veces_el_error_tipico_del_dia"] = round(abs(error) / mae, 1)
         # OJO: de noche el techo es 0, que es un valor VALIDO, no un campo
         # ausente. Se distingue "no aplica" (humedad, sin cs) de "vale cero"
         # (irradiancia nocturna); el kt* si se omite, porque dividir por 0 no
@@ -87,8 +99,23 @@ def _punto(pts: list[dict], etiqueta, hora: str | None) -> dict | None:
         techo = p.get("cs")
         if techo is not None:
             punto["techo_cielo_despejado"] = round(float(techo), 2)
+            # En PORCENTAJE y con un nombre que no se pueda leer al reves. El
+            # campo `kt_estrella` (0.054) se malinterpretaba: se leia el nombre
+            # "indice de cielo despejado", se veia un numero chico y se concluia
+            # "muy despejado", cuando 0.054 significa que paso el 5 % de la luz,
+            # o sea cielo CERRADO. Con "pct_del_techo_que_paso = 5.4" no hay
+            # forma de invertirlo.
             if float(techo) > 0:
-                punto["kt_estrella"] = round(p["real"] / float(techo), 3)
+                punto["pct_del_techo_que_paso"] = round(p["real"] / float(techo) * 100, 1)
+        # El metodo NO uso la claridad de este momento: uso la del ANTERIOR. Sin
+        # ese dato el agente explicaba la prediccion con el numero equivocado.
+        if i > 0:
+            previo = pts[i - 1]
+            techo_previo = previo.get("cs")
+            punto["momento_anterior"] = {"t": etiqueta(previo["t"]), "real": previo["real"]}
+            if techo_previo:
+                punto["momento_anterior"]["pct_del_techo_que_paso"] = round(
+                    previo["real"] / float(techo_previo) * 100, 1)
         return punto
     return None
 
@@ -110,7 +137,7 @@ def run(variable: str, desde: str, hasta: str | None = None, bucket: str = "h",
         "maximo_real": {"t": etiqueta(maximo["t"]), "valor": maximo["real"]},
         "promedio_real": round(sum(p["real"] for p in pts) / len(pts), 2),
     }
-    punto = _punto(pts, etiqueta, hora)
+    punto = _punto(pts, etiqueta, hora, r["metricas"].get("mae"))
     if hora and punto is None:
         resumen["aviso_hora"] = (f"no hay dato para las {hora} en ese periodo; "
                                  f"horas disponibles: {etiqueta(pts[0]['t'])}"
@@ -149,5 +176,11 @@ def run(variable: str, desde: str, hasta: str | None = None, bucket: str = "h",
                 "IMPORTANTE: usa SOLO los numeros de esta salida ('serie', 'punto_consultado', "
                 "'resumen', 'metricas'). Si 'serie' viene en null no tenes los valores hora a "
                 "hora: NO describas la forma de la curva ni des magnitudes aproximadas — "
-                "limitate a las metricas, o volve a llamar acotando el periodo.",
+                "limitate a las metricas, o volve a llamar acotando el periodo. "
+                "COMO SE LEE 'pct_del_techo_que_paso': es cuanta luz dejaron pasar las nubes "
+                "sobre el maximo posible. Cerca de 100 = cielo despejado; cerca de 0 = cielo "
+                "CERRADO. Un 5 % es un dia tapado, no uno claro. La prediccion se hizo "
+                "persistiendo el porcentaje de 'momento_anterior', no el de este momento. "
+                "Y cita las razones tal como vienen: si dice 1.6 veces, es 1.6, no 'casi dos "
+                "veces y media'.",
     }

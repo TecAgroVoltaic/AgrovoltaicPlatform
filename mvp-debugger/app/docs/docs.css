@@ -62,6 +62,19 @@
 .dx-pre .k { color:var(--accent); }        /* keyword/acento */
 .dx-pre .s { color:var(--real); }          /* string */
 
+/* fórmula destacada (sección «Método y fórmulas»). No usamos KaTeX/MathJax: las
+   expresiones son de una línea, así que una librería de matemáticas sería una
+   dependencia nueva a cambio de nada. A diferencia de .dx-pre y .dx-diagram acá
+   NO se fija white-space:pre, para que <sub>/<sup>/× compongan como HTML normal
+   y la expresión pueda partirse en pantallas chicas en vez de desbordar. */
+.dx-formula { background:var(--panel2); border:1px solid var(--line); border-left:2px solid var(--accent);
+  border-radius:10px; padding:14px 18px; margin:18px 0; }
+.dx-formula .expr { font-size:14px; line-height:2; color:var(--ink); }
+.dx-formula .expr sub, .dx-formula .expr sup { font-size:.72em; }
+.dx-formula .nota { margin-top:9px; padding-top:9px; border-top:1px solid var(--line);
+  font-size:12.5px; color:var(--muted); line-height:1.65; }
+.dx-formula .nota .ic { font-size:.9em; }
+
 /* tabla */
 .dx-tblwrap { overflow-x:auto; margin:18px 0; border:1px solid var(--line); border-radius:10px; }
 .dx-tbl { width:100%; border-collapse:collapse; font-size:13px; }

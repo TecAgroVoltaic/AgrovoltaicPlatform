@@ -2,13 +2,19 @@
 // Lectura del agente sobre el momento que se está viendo.
 //
 // Esta tarjeta es el único lugar de la vista donde aparece una PREDICCIÓN, y es
-// deliberado: el gráfico muestra el terreno (lo que midió el sensor y el techo
-// físico), y la predicción se calcula cuando la pedís. Eso además hace visible
-// la separación que sostiene el proyecto: **el agente no predice**. Predice un
-// algoritmo determinista; el modelo elige cuál llamar, con qué parámetros, y
-// explica lo que devuelve.
+// deliberado: el gráfico muestra el terreno (lo medido y el techo físico), y la
+// predicción se calcula cuando la pedís.
 //
-// Orden: (1) lo que devolvió cada herramienta, en cifras; (2) lo que dijo el
+// Dos cosas que conviene no confundir:
+//  - PROCEDENCIA: el número lo produce una herramienta determinista y auditable,
+//    no la intuición del modelo. Por eso se muestran las cifras crudas, los
+//    parámetros con que se la llamó y la traza.
+//  - RESPONSABILIDAD: aun así, la predicción es DEL AGENTE. El prompt le pide
+//    hablar en primera persona y hacerse cargo. Si se despegara ("el algoritmo
+//    dijo X, yo solo lo cuento") no tendría que explicar por qué se equivocó, y
+//    justamente esa explicación es lo único que aporta sobre las cifras.
+//
+// Orden: (1) lo que calculó la herramienta, en cifras; (2) el análisis del
 // agente; (3) cómo llegó ahí. Y un sello que compara las cifras que recibió el
 // agente con las que dibuja el gráfico — si no coinciden, está hablando de otros
 // datos y hay que verlo.
@@ -66,8 +72,10 @@ function resultados(pasos: Paso[]): Resultado[] {
                       nota: "máximo con cielo despejado" });
       }
       if (p.kt_estrella != null) {
-        fichas.push({ l: "Claridad kt*", v: fmt(p.kt_estrella * 100, 0), u: "%",
-                      nota: "del techo dejaron pasar las nubes" });
+        // «índice de cielo despejado», no «de claridad»: en la literatura solar
+        // el clearness index es GHI/GHI_extraterrestre, que es otra cosa.
+        fichas.push({ l: "Índice kt*", v: fmt(p.kt_estrella * 100, 0), u: "%",
+                      nota: "del techo dejaron pasar las nubes (índice de cielo despejado)" });
       }
       if (m.mae != null) {
         fichas.push({ l: "Error medio", v: fmt(m.mae, 1), u: unidad,
@@ -149,8 +157,9 @@ export function LecturaAgente({ pregunta, contexto, esperado }: {
         <div>
           <h3>Lectura del agente</h3>
           <p className="hint">
-            Acá se pide la predicción. El agente <b>no la calcula</b>: elige el algoritmo, le pasa
-            los parámetros y explica lo que devuelve.
+            Acá se pide la predicción. El número lo produce una herramienta determinista —abajo se
+            ve cuál y con qué parámetros—, pero el agente <b>lo asume como propio</b>: lo justifica
+            y lo critica.
           </p>
         </div>
         <button className="btn" onClick={analizar} disabled={cargando}>
@@ -170,7 +179,7 @@ export function LecturaAgente({ pregunta, contexto, esperado }: {
         <section className="bloq bloq-algo" key={i}>
           <header className="bloq-h">
             <span className="bloq-ic bloq-ic-algo"><IconoAlgoritmo size={15} /></span>
-            <span className="bloq-t">Devolvió el algoritmo</span>
+            <span className="bloq-t">Lo que calculó su herramienta</span>
             <code className="tz-tool">{r.tool}</code>
             {i === 0 && coincide !== null && (
               <span className={"bloq-check" + (coincide ? " ok" : " mal")}>

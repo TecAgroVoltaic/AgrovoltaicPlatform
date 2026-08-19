@@ -93,7 +93,7 @@ def test_hora_inexistente_avisa_en_vez_de_devolver_nada(monkeypatch):
     assert "no hay dato para las 99:00" in out["resumen"]["aviso_hora"]
 
 
-def test_el_punto_trae_techo_y_kt(monkeypatch):
+def test_el_punto_trae_techo_y_claridad(monkeypatch):
     """Sin el techo, el agente no puede explicar por qué el método acertó:
     33 W/m² no dice nada si no se sabe que el máximo posible eran 505."""
     from pronostico.tools import backtest_tool
@@ -101,7 +101,8 @@ def test_el_punto_trae_techo_y_kt(monkeypatch):
     out = backtest_tool.run("irradiancia", desde="2026-07-22", hora="12:00")
     punto = out["punto_consultado"]
     assert punto["techo_cielo_despejado"] > 0
-    assert punto["kt_estrella"] == round(punto["real"] / punto["techo_cielo_despejado"], 3)
+    assert punto["pct_del_techo_que_paso"] == round(
+        punto["real"] / punto["techo_cielo_despejado"] * 100, 1)
     # Y la serie compacta también lo lleva, en todas las franjas.
     assert all("techo" in f for f in out["serie"])
 
@@ -127,3 +128,78 @@ def test_humedad_no_inventa_techo(monkeypatch):
     out = backtest_tool.run("humedad_suelo", desde="2026-07-22", hora="12:00")
     assert "techo_cielo_despejado" not in out["punto_consultado"]
     assert "techo" not in out["serie"][0]
+
+
+def test_el_error_viene_en_escala(monkeypatch):
+    """Un error suelto no permite juzgar: +62 W/m² puede ser excelente a mediodía
+    y catastrófico al amanecer. El punto trae el error relativo al valor medido y
+    comparado con el error típico del día."""
+    from pronostico.tools import backtest_tool
+    monkeypatch.setattr(bt.data, "cargar_serie", lambda *a, **k: _serie_dia())
+    out = backtest_tool.run("irradiancia", desde="2026-07-22", hora="12:00")
+    punto = out["punto_consultado"]
+    assert punto["error_relativo_pct"] == round(abs(punto["error"]) / punto["real"] * 100, 1)
+    assert punto["veces_el_error_tipico_del_dia"] == round(
+        abs(punto["error"]) / out["metricas"]["mae"], 1)
+
+
+def test_sin_valor_medido_no_hay_error_relativo(monkeypatch):
+    """De noche el medido es 0: dividir por él daría infinito, así que el campo
+    se omite en vez de emitir un porcentaje sin sentido."""
+    from pronostico.tools import backtest_tool
+    monkeypatch.setattr(bt.data, "cargar_serie", lambda *a, **k: _serie_dia())
+    punto = backtest_tool.run("irradiancia", desde="2026-07-22", hora="01:00")["punto_consultado"]
+    assert punto["real"] == 0
+    assert "error_relativo_pct" not in punto
+    assert "pct_del_techo_que_paso" not in punto     # techo 0: no hay de qué sacar %
+
+
+# ── El techo se promedia dentro de la franja ────────────────────────────────
+
+def _dia_completo():
+    """Un día entero de lecturas cada 10 min, con forma de campana."""
+    import math
+    idx = pd.date_range("2026-07-22 00:00", "2026-07-22 23:50", freq="10min", tz=TZ)
+    v = [max(0.0, 400 * math.sin(math.pi * (t.hour + t.minute / 60 - 6) / 12))
+         for t in idx]
+    return pd.Series(v, index=idx, dtype=float, name="irradiancia")
+
+
+def test_bucket_diario_no_predice_cero(monkeypatch):
+    """Regresión: el techo se evaluaba en el borde de la franja. Con bucket='D'
+    ese borde es la medianoche -> techo 0 -> kt* NaN -> pred 0 TODOS los días,
+    y unas métricas de forma plausible pero sin sentido (skill negativo)."""
+    monkeypatch.setattr(bt.data, "cargar_serie", lambda *a, **k: _dia_completo())
+    r = bt.backtest("irradiancia", desde="2026-07-22", hasta="2026-07-23", bucket="h")
+    assert any(p["cs"] > 0 for p in r["puntos"])
+    assert any(p["pred"] > 0 for p in r["puntos"]), "ninguna franja predijo nada"
+
+
+def test_el_techo_de_una_franja_no_es_el_de_su_borde(monkeypatch):
+    """El techo de las 07:00 tiene que ser el PROMEDIO de 07:00-08:00, no el
+    valor instantáneo de las 07:00 en punto (por la mañana sube rápido)."""
+    from pronostico.physics import clear_sky_ghi
+    from pronostico import data as data_mod
+    monkeypatch.setattr(bt.data, "cargar_serie", lambda *a, **k: _dia_completo())
+    r = bt.backtest("irradiancia", desde="2026-07-22", hasta="2026-07-23", bucket="h")
+    p7 = [p for p in r["puntos"] if p["t"].endswith("07:00")][0]
+    borde = float(clear_sky_ghi(
+        pd.DatetimeIndex([pd.Timestamp("2026-07-22 07:00", tz=TZ)]),
+        **data_mod.SITE).iloc[0])
+    assert p7["cs"] > borde, "el techo de la franja debería superar al de su borde"
+
+
+def test_la_claridad_va_en_porcentaje_y_con_el_momento_anterior(monkeypatch):
+    """Regresión de interpretación: con el campo `kt_estrella` (0.054) el agente
+    leía el nombre «índice de cielo despejado», veía un número chico y concluía
+    «muy despejado» —justo al revés—. Y explicaba la predicción con la claridad
+    de ESTE momento, cuando el método persistió la del anterior."""
+    from pronostico.tools import backtest_tool
+    monkeypatch.setattr(bt.data, "cargar_serie", lambda *a, **k: _dia_completo())
+    punto = backtest_tool.run("irradiancia", desde="2026-07-22",
+                              hasta="2026-07-23", hora="12:00")["punto_consultado"]
+    assert "kt_estrella" not in punto, "el nombre ambiguo no debe volver"
+    assert 0 <= punto["pct_del_techo_que_paso"] <= 200
+    anterior = punto["momento_anterior"]
+    assert anterior["t"] == "11:00"
+    assert "pct_del_techo_que_paso" in anterior

@@ -59,6 +59,7 @@ export function Overview() {
         { id: "datos-esquema", title: "La base de datos PV", desc: "Tablas crudas + vistas de corrección. El modelo «crudo en la DB, corrección en capa de análisis»." },
         ...(soloPronostico ? [] : [{ id: "analizador", title: "Agente Analizador PV", desc: "8 herramientas SQL sobre el histórico, endpoints y el lazo LLM." }]),
         { id: "pronostico", title: "Agente Pronóstico", desc: "Persistencia de kt* × cielo despejado, backtest histórico y anomalías." },
+        { id: "metodo", title: "Método y fórmulas", desc: "La matemática, fórmula por fórmula: clear-sky Ineichen, kt*, la banda, las métricas del backtest y el z robusto." },
         { id: "web-consola", title: "Vistas de la consola",
           desc: soloPronostico
             ? "Predicción vs Real, Costo y Salud del sistema — qué muestra cada una."
