@@ -1,11 +1,15 @@
-"""Uso acumulado del agente — tokens, costo y nº de consultas a nivel proceso.
+"""Uso acumulado del agente: tokens, costo y numero de consultas.
 
-SRP: acumular el consumo de TODAS las consultas y persistirlo en un JSON para que
-sobreviva reinicios. No calcula tarifas (eso es costos.py) ni corre el LLM. El
-servicio (api.py) llama registrar() por cada /preguntar; el lazo del agente queda
-puro (no sabe de acumulados).
+SRP: acumular el consumo de TODAS las consultas y servirlo por `GET /uso`. No
+calcula tarifas (eso es costos.py) ni corre el LLM. El servicio (api.py) llama
+registrar() por cada consulta; el lazo del agente queda puro.
 
-Es el "nodo extraíble" del consumo general: GET /uso devuelve resumen().
+DONDE VIVE EL ACUMULADO. La fuente de verdad es el store (`gasto.py`, tabla
+`uso_diario`). Este JSON local quedo como ESPEJO: sirve de respaldo cuando el
+store esta caido, y nada mas. Antes era al reves, y estaba mal: el contenedor no
+tiene volumen (`docker inspect` -> `Mounts: []`) y `forecast-refresh.timer` lo
+recrea cada 6 h, asi que el acumulado se borraba hasta 4 veces por dia. La
+consola mostraba 0 consultas y US$0 el mismo dia que se habian hecho 43.
 """
 from __future__ import annotations
 
@@ -16,7 +20,7 @@ import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
-from pronostico import config
+from pronostico import config, gasto
 
 # Archivo de persistencia (no se versiona). Override por env.
 #
@@ -86,7 +90,13 @@ def _escribir(d: dict) -> None:
 
 
 def registrar(traza: dict) -> dict:
-    """Suma una consulta (usage + costo de la traza) al acumulado y persiste."""
+    """Suma una consulta al acumulado: primero al store, despues al espejo local.
+
+    El store es el que importa; el JSON local se escribe igual para que el
+    respaldo siga siendo util si Supabase se cae justo despues. Ninguna de las
+    dos escrituras puede tumbar la respuesta del agente.
+    """
+    gasto.registrar_consulta(traza)
     usage = traza.get("usage") or {}
     costo = traza.get("costo") or {}
     modelo = traza.get("modelo", "?")
@@ -124,6 +134,14 @@ def usd_hoy() -> float:
 
 
 def resumen() -> dict:
-    """Acumulado actual (para GET /uso). Lectura consistente bajo el lock."""
+    """Acumulado actual (para GET /uso).
+
+    Prefiere el store, que es lo unico que sobrevive a que se recree el
+    contenedor. Si no responde, cae al espejo local y lo DICE en `fuente`: un
+    numero mas chico de lo real es peor que un numero con su procedencia al lado.
+    """
+    del_store = gasto.acumulado()
+    if del_store is not None:
+        return del_store
     with _LOCK:
-        return _leer()
+        return {**_leer(), "fuente": "espejo-local"}

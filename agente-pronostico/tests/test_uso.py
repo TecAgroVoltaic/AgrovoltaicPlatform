@@ -71,3 +71,32 @@ def test_el_historial_diario_se_poda(store):
 
     # Then: el JSON no crece sin fin
     assert len(uso.resumen()["por_dia"]) <= uso.DIAS_HISTORIAL
+
+
+def test_el_resumen_sale_del_store_no_del_json_local(monkeypatch, store):
+    # Given: el store sabe de consultas que este proceso nunca vio (el
+    # contenedor se recreo, que pasa hasta 4 veces por dia)
+    monkeypatch.setattr(uso.gasto, "acumulado",
+                        lambda: {"n_consultas": 43, "total_usd": 0.34, "fuente": "store"})
+
+    # When
+    r = uso.resumen()
+
+    # Then: manda el store. El JSON local vacio ya no puede reportar 0.
+    assert r["n_consultas"] == 43 and r["fuente"] == "store"
+
+
+def test_sin_store_cae_al_espejo_local_y_lo_declara(monkeypatch, store):
+    # Given: store inaccesible y una consulta registrada en el espejo
+    monkeypatch.setattr(uso.gasto, "acumulado", lambda: None)
+    monkeypatch.setattr(uso.gasto, "registrar_consulta", lambda traza: False)
+    uso.registrar({"modelo": "m", "usage": {"input_tokens": 10, "output_tokens": 5},
+                   "costo": {"usd_total": 0.001}})
+
+    # When
+    r = uso.resumen()
+
+    # Then: responde con lo que tiene, DICIENDO de donde sale. Un numero mas
+    # chico de lo real sin su procedencia es peor que no tenerlo.
+    assert r["n_consultas"] == 1
+    assert r["fuente"] == "espejo-local"

@@ -15,7 +15,7 @@ categoria: proyecto
 | `monitoreo_sc_electrico` | 7,8 MB | 36.469 | 2 % |
 | `radiacion_sc_clearsky` | 6,2 MB | 94.868 | 2 % |
 | `radiacion_sc_poa` | 5,1 MB | 56.450 | 1 % |
-| resto (`agente_log`, `predicciones`, `_ingest_log`, `diccionario_variables`, `gasto_diario`) | ~1,6 MB | — | <1 % |
+| resto (`agente_log`, `predicciones`, `_ingest_log`, `diccionario_variables`, `uso_diario`) | ~1,6 MB | — | <1 % |
 
 Casi todo el consumo es **la ingesta ambiental que viene de AgroDash**, no el histórico
 fotovoltaico propio (que suma ~30 MB entre todas sus tablas y vistas).

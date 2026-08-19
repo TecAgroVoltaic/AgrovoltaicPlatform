@@ -151,7 +151,6 @@ def agente_falso(monkeypatch):
     """Reemplaza el agente y anula la persistencia de uso (toca disco/red)."""
     monkeypatch.setattr(api, "_AGENTE", _AgenteFalso())
     monkeypatch.setattr(api.uso_mod, "registrar", lambda traza: traza)
-    monkeypatch.setattr(api.gasto_mod, "registrar", lambda usd: True)
 
 
 def test_chat_devuelve_la_traza(agente_falso):

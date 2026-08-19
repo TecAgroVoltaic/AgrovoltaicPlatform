@@ -80,22 +80,40 @@ COMMENT ON TABLE agente_log IS
 CREATE INDEX IF NOT EXISTS idx_agente_log_ts ON agente_log (ts DESC);
 
 -- ----------------------------------------------------------------------------
--- 4. Gasto diario del LLM. UNA fila por día: es la fuente de verdad del tope de
---    presupuesto (`PRESUPUESTO_DIARIO_USD`).
+-- 4. Consumo diario del LLM. UNA fila por (día UTC, modelo). Es la fuente de
+--    verdad de dos cosas: el tope de presupuesto (`PRESUPUESTO_DIARIO_USD`) y
+--    el acumulado que sirve `GET /uso`.
 --
---    Vive acá y no en el JSON local del contenedor por dos razones: ese JSON se
+--    Vive acá y no en un JSON del contenedor por tres razones: ese JSON se
 --    pierde cada vez que `forecast-refresh.timer` recrea el contenedor (cada
---    6 h), y con más de una instancia cada proceso llevaría su propia cuenta,
---    duplicando el tope en silencio. El día se corta en UTC.
+--    6 h) y el contenedor NO tiene volumen (`docker inspect` -> `Mounts: []`),
+--    así que /app/data se va con la capa escribible; y con más de una instancia
+--    cada proceso llevaría su propia cuenta, duplicando el tope en silencio.
+--    Síntoma real: la consola mostraba 0 consultas y US$0 el mismo día que se
+--    habían hecho 43. El día se corta en UTC.
+--
+--    Por qué `modelo` entra en la clave y no en un JSONB: sumar es trivial en
+--    el upsert, la historia queda atribuida al cambiar de modelo sin migrar
+--    nada, y el desglose sale con un GROUP BY en vez de con un merge de JSON.
+--    Crecimiento acotado: ~365 filas por año y por modelo.
 -- ----------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS gasto_diario (
-    fecha          DATE PRIMARY KEY,                    -- día UTC
-    usd            DOUBLE PRECISION NOT NULL DEFAULT 0, -- gasto acumulado del día
-    n_consultas    INTEGER          NOT NULL DEFAULT 0,
-    actualizado_en TIMESTAMPTZ      NOT NULL DEFAULT now()
+CREATE TABLE IF NOT EXISTS uso_diario (
+    fecha              DATE             NOT NULL,          -- día UTC
+    modelo             TEXT             NOT NULL,          -- claude-haiku-4-5, etc.
+    n_consultas        INTEGER          NOT NULL DEFAULT 0, -- turnos de usuario
+    requests           INTEGER          NOT NULL DEFAULT 0, -- llamadas a la API (>= n_consultas por el lazo de tools)
+    input_tokens       BIGINT           NOT NULL DEFAULT 0,
+    output_tokens      BIGINT           NOT NULL DEFAULT 0,
+    cache_read_tokens  BIGINT           NOT NULL DEFAULT 0, -- lo que el cache ahorró
+    cache_write_tokens BIGINT           NOT NULL DEFAULT 0,
+    web_searches       INTEGER          NOT NULL DEFAULT 0, -- tool de servidor de Anthropic
+    usd                DOUBLE PRECISION NOT NULL DEFAULT 0,
+    creado_en          TIMESTAMPTZ      NOT NULL DEFAULT now(),
+    actualizado_en     TIMESTAMPTZ      NOT NULL DEFAULT now(),
+    PRIMARY KEY (fecha, modelo)
 );
-COMMENT ON TABLE gasto_diario IS
-    'Gasto diario del LLM (1 fila por día UTC). Fuente de verdad del tope de presupuesto del agente.';
+COMMENT ON TABLE uso_diario IS
+    'Consumo diario del LLM (1 fila por día UTC y modelo): tokens, consultas y USD. Fuente de verdad del tope de presupuesto y del acumulado que sirve GET /uso.';
 
 -- ----------------------------------------------------------------------------
 -- 5. Vistas de observabilidad. Existen para que "¿esto está sano?" se pueda

@@ -2,7 +2,9 @@
 Tests de la salud de ingesta — sin DB real (la conexion se mockea).
 
 Fijan la regla que faltaba el 2026-08-14: una ingesta congelada tiene que
-reportarse como `stale`, no como "todo ok". Estructura Given-When-Then.
+reportarse como `stale`, no como "todo ok". Y la que faltaba el 2026-08-19: hay
+que poder decir DESDE CUANDO esta congelada, porque con la fuente apuntando a un
+dump el ETL corre verde para siempre. Estructura Given-When-Then.
 """
 from datetime import datetime, timedelta, timezone
 
@@ -12,6 +14,13 @@ from pronostico import salud
 
 UMBRAL_H = 6.0
 AHORA = datetime.now(timezone.utc)
+
+# Forma real del `detalle` que escribe `etl.run` al terminar una corrida.
+CORRIDA_SIN_FILAS = {
+    "seg": 0.3, "full": False, "backfill_since": "2026-05-01",
+    "resumen": {"irradiancia": {"leidas": 0, "insertadas": 0},
+                "humedad_suelo": {"leidas": 0, "insertadas": 0}},
+}
 
 
 class _ConexionFalsa:
@@ -54,7 +63,7 @@ def test_ingesta_fresca_reporta_ok(monkeypatch):
     reciente = AHORA - timedelta(minutes=10)
     _mockear(monkeypatch, _ConexionFalsa(
         frescura=[("irradiancia", reciente, 100), ("humedad_suelo", reciente, 200)],
-        ultima_corrida=(reciente,),
+        ultima_corrida=(reciente, CORRIDA_SIN_FILAS),
     ))
 
     # When
@@ -63,6 +72,7 @@ def test_ingesta_fresca_reporta_ok(monkeypatch):
     # Then
     assert reporte["estado"] == salud.ESTADO_OK
     assert reporte["variables"]["irradiancia"]["estado"] == salud.ESTADO_OK
+    assert reporte["congelamiento"]["congelada"] is False
 
 
 def test_ingesta_congelada_reporta_stale(monkeypatch):
@@ -70,7 +80,7 @@ def test_ingesta_congelada_reporta_stale(monkeypatch):
     viejo = AHORA - timedelta(days=22)
     _mockear(monkeypatch, _ConexionFalsa(
         frescura=[("irradiancia", viejo, 118386), ("humedad_suelo", viejo, 693930)],
-        ultima_corrida=(AHORA,),
+        ultima_corrida=(AHORA, CORRIDA_SIN_FILAS),
     ))
 
     # When
@@ -81,12 +91,32 @@ def test_ingesta_congelada_reporta_stale(monkeypatch):
     assert reporte["variables"]["irradiancia"]["edad_horas"] > 500
 
 
+def test_congelamiento_dice_desde_cuando_y_cuantos_dias(monkeypatch):
+    # Given: la irradiancia se corto 1 h despues que la humedad
+    corte_humedad = AHORA - timedelta(days=27, hours=1)
+    corte_irradiancia = AHORA - timedelta(days=27)
+    _mockear(monkeypatch, _ConexionFalsa(
+        frescura=[("irradiancia", corte_irradiancia, 191676),
+                  ("humedad_suelo", corte_humedad, 693930)],
+        ultima_corrida=(AHORA, CORRIDA_SIN_FILAS),
+    ))
+
+    # When
+    congelamiento = salud.estado_ingesta(UMBRAL_H)["congelamiento"]
+
+    # Then: el corte es el dato MAS RECIENTE del sistema (despues de eso no
+    # entro nada), y los dias son la unidad en la que se vive el problema
+    assert congelamiento["congelada"] is True
+    assert congelamiento["desde"] == corte_irradiancia.isoformat()
+    assert congelamiento["dias"] == 27.0
+
+
 def test_variable_sin_ninguna_fila_reporta_sin_datos(monkeypatch):
     # Given: irradiancia tiene datos, humedad_suelo no aparece en el store
     reciente = AHORA - timedelta(minutes=5)
     _mockear(monkeypatch, _ConexionFalsa(
         frescura=[("irradiancia", reciente, 10)],
-        ultima_corrida=(reciente,),
+        ultima_corrida=(reciente, CORRIDA_SIN_FILAS),
     ))
 
     # When
@@ -97,21 +127,51 @@ def test_variable_sin_ninguna_fila_reporta_sin_datos(monkeypatch):
     assert reporte["estado"] == salud.ESTADO_SIN_DATOS
 
 
+def test_store_vacio_no_inventa_una_fecha_de_corte(monkeypatch):
+    # Given: ninguna variable tiene una sola fila (store recien creado)
+    _mockear(monkeypatch, _ConexionFalsa(frescura=[], ultima_corrida=None))
+
+    # When
+    reporte = salud.estado_ingesta(UMBRAL_H)
+
+    # Then: "congelada" sin fecha, en vez de un instante inventado
+    assert reporte["congelamiento"] == {"congelada": True, "desde": None, "dias": None}
+
+
 def test_expone_el_ultimo_error_del_etl(monkeypatch):
     # Given: hay un fallo de fuente registrado
     reciente = AHORA - timedelta(minutes=5)
     _mockear(monkeypatch, _ConexionFalsa(
         frescura=[("irradiancia", reciente, 10), ("humedad_suelo", reciente, 10)],
         ultimo_error=(AHORA, "fallo:fuente", "connection timeout expired"),
-        ultima_corrida=(reciente,),
+        ultima_corrida=(reciente, CORRIDA_SIN_FILAS),
     ))
 
     # When
     reporte = salud.estado_ingesta(UMBRAL_H)
 
-    # Then: quien consulte la salud ve el error sin entrar a la DB
+    # Then: quien consulte la salud ve el error sin entrar a la DB, y ve que es
+    # POSTERIOR a la ultima corrida (o sea: el ETL esta fallando ahora)
     assert reporte["ultimo_error_etl"]["evento"] == "fallo:fuente"
     assert "timeout" in reporte["ultimo_error_etl"]["error"]
+    assert reporte["etl_fallando"] is True
+
+
+def test_la_corrida_del_etl_muestra_cuantas_filas_trajo(monkeypatch):
+    # Given: el ETL acaba de correr contra la replica del dump (0 filas nuevas)
+    reciente = AHORA - timedelta(minutes=5)
+    _mockear(monkeypatch, _ConexionFalsa(
+        frescura=[("irradiancia", reciente, 10), ("humedad_suelo", reciente, 10)],
+        ultima_corrida=(AHORA, CORRIDA_SIN_FILAS),
+    ))
+
+    # When
+    corrida = salud.estado_ingesta(UMBRAL_H)["ultima_corrida_etl"]
+
+    # Then: "corrio bien" y "trajo datos" son cosas distintas y ambas visibles
+    assert corrida["ok"] is True
+    assert corrida["filas_insertadas"] == 0
+    assert corrida["edad_horas"] is not None
 
 
 @pytest.mark.parametrize("edad_h,esperado", [

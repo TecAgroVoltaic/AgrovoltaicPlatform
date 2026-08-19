@@ -315,3 +315,46 @@ respaldo en `.rollback-src`). **e2e contra producción: 72 chequeos, 0 fallas**,
 conocidos (ingesta congelada desde el 2026-07-23, skill 0 % de humedad por construcción). El
 bloque 6 del e2e es nuevo y verifica desde afuera que el modo predicción no publique `backtest`
 ni búsqueda web.
+
+## 2026-08-19 (noche) — el acumulado de `/uso` vivía en un lugar efímero
+
+**Síntoma:** la vista «Costo y uso» mostraba US$0 y 0 consultas el mismo día en que
+`/salud/panel` reportaba US$0,342846 gastados. La vista no mentía: `/uso` devolvía ceros.
+
+**Causa.** El acumulado se guardaba en `DATA_DIR/uso.json`, dentro del contenedor. Y el
+contenedor **no tiene volumen**: `docker inspect forecast-forecast-1` devuelve `Mounts: []`,
+así que `/app/data` vive en la capa escribible y se va con ella. `forecast-refresh.timer`
+recrea el contenedor **cada 6 h**, o sea que el acumulado se borraba hasta 4 veces por día.
+
+Lo revelador es que el problema ya estaba diagnosticado en el repo: el docstring de `gasto.py`
+lo describía palabra por palabra. Se había resuelto para el **tope de presupuesto** (moviéndolo
+al store) y se había dejado atrás para `/uso`. Dos registros del mismo evento en dos lugares
+distintos, uno durable y otro no.
+
+### Tabla `uso_diario`: una fila por (día UTC, modelo)
+
+Reemplaza a `gasto_diario`, que solo tenía `usd` y `n_consultas`. Suma tokens de entrada y
+salida, tokens de cache leídos y escritos, `requests` (llamadas a la API, ≥ consultas por el
+lazo de tools), búsquedas web y USD.
+
+**Por qué `modelo` en la clave y no un JSONB:** sumar es trivial en el `UPSERT`, el desglose
+sale con un `GROUP BY` en vez de con un merge de JSON, y al cambiar de modelo la historia queda
+atribuida sin migrar nada. Crecimiento acotado (~365 filas por año y modelo), que importa
+estando al 79 % del Free tier ([[cuota-store-supabase]]).
+
+**Por qué NO en VisioneFlow** (fue la propuesta inicial): el presupuesto ya vive en Supabase y
+partir el registro del mismo evento en dos bases reproduce el bug que se está arreglando;
+VisioneFlow es otro producto con migraciones propias; es un *consumidor* del agente, no su
+dueño (el agente también responde desde la consola y desde curl, y eso quedaría sin contar); y
+el sidecar no tiene credenciales de esa base.
+
+### Un solo escritor
+
+`api._registrar_uso` hacía dos escrituras por consulta (`uso.registrar` al JSON y
+`gasto.registrar` al store). Ahora es una: `uso.registrar(traza)` escribe primero el store con
+un `UPSERT` que lleva todo, y después el espejo local. Dos escritores sobre la misma fila es la
+receta para contar doble al refactorizar; hay una prueba que lo fija.
+
+El JSON local queda como **espejo**: si el store no responde, `/uso` cae a él y lo **declara**
+en un campo `fuente` (`store` / `espejo-local`). Un número más chico de lo real sin su
+procedencia al lado es peor que no tenerlo.

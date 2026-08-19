@@ -23,7 +23,6 @@ from pronostico import anomalias as anomalias_mod
 from pronostico import audit
 from pronostico import backtest as backtest_mod
 from pronostico import data as data_mod
-from pronostico import gasto as gasto_mod
 from pronostico import limites
 from pronostico import observabilidad
 from pronostico import salud as salud_mod
@@ -175,13 +174,14 @@ def _registrar_uso(traza: dict) -> None:
     PermissionError en el contenedor y nadie se enteraba -> /uso reportaba 0.0
     y el tope diario (que lo lee) nunca podia dispararse.
     """
+    # UNA sola llamada: uso_mod escribe primero el store (la fuente de verdad,
+    # que sobrevive a que se recree el contenedor) y despues el espejo local.
+    # Antes habia dos escrituras desde aca y era facil terminar contando dos
+    # veces la misma consulta.
     try:
         uso_mod.registrar(traza)
     except Exception:  # noqa: BLE001
         _log.warning("no se pudo registrar el uso en %s", uso_mod._RUTA, exc_info=True)
-    # El gasto va TAMBIEN al store: es lo que lee el tope diario y sobrevive a
-    # que se recree el contenedor (gasto.py ya es best-effort, no lanza).
-    gasto_mod.registrar((traza.get("costo") or {}).get("usd_total"))
 
 
 @app.get("/health")
@@ -216,19 +216,16 @@ def salud_ingesta(umbral_horas: float | None = Query(default=None, gt=0)) -> dic
 @app.get("/salud/panel",
          dependencies=[Depends(_verificar_api_key), Depends(_frenar_datos)])
 def salud_panel() -> dict:
-    """Estado operativo para el panel: ingesta + errores recientes + gasto + última predicción.
+    """Estado operativo para el panel: fuente + ingesta + ETL + errores + gasto.
 
     A diferencia de /salud/ingesta (abierto, para monitoreo automático), este
-    exige la clave: incluye el gasto en USD. Responde 200 aunque el estado sea
-    `stale` — el panel necesita el detalle para MOSTRARLO, no un 503 vacío.
+    exige la clave: incluye el gasto en USD. Responde 200 SIEMPRE que el proceso
+    esté vivo — aunque la ingesta esté `stale` o el store no conteste. Un panel
+    de diagnóstico que devuelve un 503 vacío justo cuando algo se rompió esconde
+    lo único que el operador necesita ver; `observabilidad.panel()` garantiza
+    que cada bloque degrade con su propio `error` (por eso acá no hay try).
     """
-    try:
-        return observabilidad.panel()
-    except Exception as exc:  # store caido
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"no se pudo consultar el store: {type(exc).__name__}",
-        ) from exc
+    return observabilidad.panel()
 
 
 @app.get("/arquitectura",
