@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import logging
 import os
-import secrets
 import time
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, status
@@ -21,6 +20,7 @@ from pydantic import BaseModel, Field
 
 from pronostico import anomalias as anomalias_mod
 from pronostico import audit
+from pronostico import claves
 from pronostico import backtest as backtest_mod
 from pronostico import data as data_mod
 from pronostico import limites
@@ -118,9 +118,15 @@ class AnomaliasRequest(BaseModel):
 
 
 def _identidad(req: Request, x_api_key: str | None) -> str:
-    """Quien llama, para el rate-limit: la API key si viene, si no la IP."""
-    if x_api_key:
-        return f"key:{x_api_key[:8]}"
+    """Quien llama, para el rate-limit y los logs.
+
+    El NOMBRE del consumidor si la clave es valida, si no la IP. Antes viajaban
+    los primeros 8 caracteres de la clave: material de clave dando vueltas por
+    el diccionario del limitador y por cualquier log, a cambio de nada.
+    """
+    nombre = claves.identificar(x_api_key)
+    if nombre:
+        return f"cliente:{nombre}"
     return f"ip:{req.client.host if req.client else 'desconocida'}"
 
 
@@ -155,16 +161,21 @@ def _frenar_datos(req: Request, x_api_key: str | None = Header(default=None)) ->
     _limitar(limites.LIMITADOR_DATOS, req, x_api_key)
 
 
-def _verificar_api_key(x_api_key: str | None = Header(default=None)) -> None:
-    """Exige la API key SOLO si esta configurada. Comparacion en tiempo
-    constante (compare_digest) para no filtrar la clave por timing."""
-    esperada = os.environ.get(ENV_API_KEY)
-    if not esperada:
-        return
-    if not secrets.compare_digest(esperada, x_api_key or ""):
+def _verificar_api_key(x_api_key: str | None = Header(default=None)) -> str | None:
+    """Exige una API key valida SOLO si hay alguna configurada.
+
+    Devuelve el nombre del consumidor (util para el log). Sin claves definidas
+    la API queda abierta: es el modo de desarrollo local. Ver `claves.py` para
+    por que son con nombre y no una sola compartida.
+    """
+    if not claves.exigida():
+        return None
+    nombre = claves.identificar(x_api_key)
+    if nombre is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="API key invalida"
         )
+    return nombre
 
 
 def _registrar_uso(traza: dict) -> None:
@@ -190,17 +201,41 @@ def health() -> dict:
     return {"status": "ok"}
 
 
+# Claves del reporte de ingesta que NO salen por la ruta publica. El motivo no
+# es el volumen sino el contenido: `ultimo_error_etl` trae el mensaje CRUDO de
+# Postgres, que hoy incluye un fragmento de `COPY` con un UUID de sensor y el
+# nombre de una caja. Un monitor necesita saber si el sistema esta sano, no
+# leerle las entrañas. El detalle completo vive en /salud/panel, con clave.
+_PRIVADO_DE_INGESTA = ("ultimo_error_etl",)
+
+
+def _publico(reporte: dict) -> dict:
+    """El reporte de ingesta sin lo que no debe salir sin clave.
+
+    De la corrida del ETL sobrevive el HECHO (cuando fue, si termino bien, si
+    trajo filas) y se van los mensajes de error por variable, que arrastran
+    identificadores internos.
+    """
+    salida = {k: v for k, v in reporte.items() if k not in _PRIVADO_DE_INGESTA}
+    corrida = salida.get("ultima_corrida_etl")
+    if isinstance(corrida, dict):
+        salida["ultima_corrida_etl"] = {
+            k: v for k, v in corrida.items() if k != "por_variable"
+        }
+    return salida
+
+
 @app.get("/salud/ingesta")
 def salud_ingesta(umbral_horas: float | None = Query(default=None, gt=0)) -> dict:
-    """Frescura de la ingesta por variable + ultima corrida y ultimo error del ETL.
+    """Frescura de la ingesta por variable, para monitoreo externo.
 
-    ABIERTO como /health: es un endpoint de MONITOREO (no expone datos de la
-    serie, solo edades y estado) y un monitor externo debe poder consultarlo sin
-    manejar la clave. Devuelve 503 si la ingesta no esta `ok`, para que un
-    healthcheck HTTP lo detecte por status code sin parsear el cuerpo.
+    ABIERTO como /health: un monitor debe poder consultarlo sin manejar la
+    clave. Por eso mismo pasa por `_publico()`: lo que sale de aca lo puede leer
+    cualquiera. Devuelve 503 si la ingesta no esta `ok`, para que un healthcheck
+    HTTP lo detecte por status code sin parsear el cuerpo.
     """
     try:
-        reporte = salud_mod.estado_ingesta(umbral_horas)
+        reporte = _publico(salud_mod.estado_ingesta(umbral_horas))
     except Exception as exc:  # store caido: eso TAMBIEN es un fallo de salud
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
