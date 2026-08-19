@@ -108,6 +108,7 @@ Detalle largo, binarios y material de apoyo. La memoria de arriba los cita cuand
 - `../conceptos/sistema-fotovoltaico.html` — anatomía de un sistema fotovoltaico
 - `../conceptos/panel-desnivel-electrones.html` — por qué nace la corriente en el panel
 - `../conceptos/proceso-datos-agrovoltaico.html` — diagrama "de la luz al dato" (sol → Supabase)
+- `../conceptos/anticipacion/` — **NUEVO (2026-08-19):** el selector de anticipación explicado sin jerga, con el ejemplo real del 22-jul 08:00 y las dos advertencias al comparar errores entre resoluciones (`.html` fuente + `.pdf` de 2 páginas)
 
 ### equipo/ — interacción con el equipo de campo / profesor
 - `../equipo/DUDAS-Pendientes.md` (+`.pdf`) — 17 preguntas para el equipo de campo

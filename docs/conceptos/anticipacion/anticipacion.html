@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>El selector de anticipación · AgroVoltaic</title>
+<!--
+  Explicación del selector de anticipación de la vista «Predicción vs Real».
+  Fuente del PDF hermano: se genera con
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+      --headless --disable-gpu --no-pdf-header-footer \
+      --print-to-pdf=anticipacion.pdf anticipacion.html
+  (Se usa Chrome y no LaTeX porque la instalación de TeX de la máquina no trae
+  tikz ni tcolorbox, y el preámbulo del proyecto depende de fuentes ausentes.)
+  Paleta: la misma del documento de arquitectura (docs/arquitectura/preambulo.tex).
+-->
+<style>
+  :root {
+    --solar:#B26B00; --tierra:#4F6B3A; --agua:#20566E;
+    --tinta:#1F2328; --humo:#6B7280; --papel:#F5F3EE; --borde:#D6D2C8;
+  }
+  @page { size: A4; margin: 14mm 15mm; }
+  * { box-sizing: border-box; }
+  body {
+    margin:0; color:var(--tinta); background:#fff;
+    font-family: "Charter", "Georgia", "Times New Roman", serif;
+    font-size: 10pt; line-height: 1.48;
+  }
+  h1,h2,h3,.k,.eti,table,.nota { font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; }
+
+  header { text-align:center; margin-bottom: 14px; }
+  .kicker { font-size:8pt; letter-spacing:.14em; color:var(--humo); text-transform:uppercase; }
+  h1 { font-size:21pt; color:var(--agua); margin:8px 0 4px; letter-spacing:-.02em; }
+  .sub { font-size:11pt; color:var(--tinta); margin:0; }
+  .fecha { font-size:8.5pt; color:var(--humo); margin-top:6px; }
+
+  h2 { font-size:12pt; color:var(--agua); margin:16px 0 6px; letter-spacing:-.01em; }
+  h3 { font-size:10pt; color:var(--tinta); margin:12px 0 4px; }
+  p { margin:0 0 7px; }
+  ul { margin:0 0 10px; padding-left:18px; }
+  li { margin:4px 0; }
+  b, strong { color:#000; }
+  code { font-family:"Menlo",monospace; font-size:9pt; background:var(--papel); padding:1px 4px; border-radius:3px; }
+
+  .caja { border:1px solid var(--borde); border-left:3px solid var(--agua);
+          background:var(--papel); border-radius:4px; padding:9px 13px; margin:11px 0; }
+  .caja.aviso { border-left-color:var(--solar); }
+  .caja .t { display:block; font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;
+             font-size:8.5pt; font-weight:700; text-transform:uppercase;
+             letter-spacing:.07em; color:var(--agua); margin-bottom:5px; }
+  .caja.aviso .t { color:var(--solar); }
+  .caja p:last-child { margin-bottom:0; }
+
+  /* Diagrama de tres pasos, en SVG inline: no depende de nada externo. */
+  .diagrama { margin:10px 0 12px; text-align:center; }
+
+  table { border-collapse:collapse; width:100%; font-size:9.5pt; margin:8px 0 10px; }
+  th { text-align:left; font-size:8pt; text-transform:uppercase; letter-spacing:.06em;
+       color:var(--humo); font-weight:600; border-bottom:1.2px solid var(--tinta);
+       padding:0 8px 5px 0; }
+  td { padding:4px 8px 4px 0; border-bottom:1px solid var(--borde); }
+  td.n, th.n { text-align:right; font-variant-numeric:tabular-nums; }
+  tr.total td { font-weight:700; border-bottom:none; border-top:1.2px solid var(--tinta); }
+  .fuente { color:var(--humo); font-size:8.5pt; }
+
+  .pie { margin-top:18px; padding-top:8px; border-top:1px solid var(--borde);
+         font-size:8pt; color:var(--humo); font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; }
+  .evitar-corte { break-inside:avoid; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="kicker">Consola de evaluación · vista «Predicción vs Real»</div>
+  <h1>El selector de anticipación</h1>
+  <p class="sub">Qué significa, con un ejemplo real, y cómo leer los números sin equivocarse</p>
+  <div class="fecha">Proyecto AgroVoltaic · San Carlos</div>
+</header>
+
+<div class="caja">
+  <span class="t">La idea en una frase</span>
+  <p>La anticipación responde a una sola pregunta: <b>¿con cuánto tiempo de antelación
+  se hizo esta predicción?</b> Con «1 hora», el modelo predice el momento que elegiste
+  usando únicamente lo que sabía una hora antes.</p>
+</div>
+
+<h2>Por qué el modelo no predice la luz directamente</h2>
+
+<p>En lo que mide el sensor hay dos cosas mezcladas:</p>
+<ul>
+  <li><b>Dónde está el sol.</b> Es perfectamente predecible. Con pura astronomía sabemos
+      cuánta luz llegaría en cualquier instante <i>si el cielo estuviera despejado</i>.
+      A eso lo llamamos el <b>techo</b>.</li>
+  <li><b>Las nubes.</b> Eso es lo impredecible.</li>
+</ul>
+
+<p>Entonces el modelo hace algo astuto: en vez de predecir la luz, predice
+<b>qué porcentaje del techo están dejando pasar las nubes</b>. Si ahora pasa el 30 %,
+lo más probable es que dentro de un rato siga pasando algo parecido — las nubes no
+se disipan de un segundo a otro.</p>
+
+<div class="diagrama">
+  <svg width="520" height="92" viewBox="0 0 520 92" role="img"
+       aria-label="Techo por astronomía, por el porcentaje que dejan pasar las nubes, da la predicción">
+    <defs>
+      <marker id="f" markerWidth="7" markerHeight="7" refX="6" refY="3.2" orient="auto">
+        <path d="M0,0 L6.5,3.2 L0,6.4" fill="none" stroke="#1F2328" stroke-width="1.1"/>
+      </marker>
+    </defs>
+    <g font-family="Helvetica Neue, Helvetica, Arial, sans-serif" text-anchor="middle">
+      <rect x="2" y="14" width="140" height="64" rx="5" fill="#B26B0014" stroke="#B26B00" stroke-width="1"/>
+      <text x="72" y="38" font-size="11" font-weight="700" fill="#1F2328">Techo</text>
+      <text x="72" y="54" font-size="8.5" fill="#6B7280">cuánta luz habría</text>
+      <text x="72" y="65" font-size="8.5" fill="#6B7280">con cielo despejado</text>
+
+      <rect x="190" y="14" width="140" height="64" rx="5" fill="#F5F3EE" stroke="#20566E" stroke-width="1"/>
+      <text x="260" y="38" font-size="11" font-weight="700" fill="#1F2328">% que pasa</text>
+      <text x="260" y="54" font-size="8.5" fill="#6B7280">lo que dejan pasar</text>
+      <text x="260" y="65" font-size="8.5" fill="#6B7280">las nubes ahora</text>
+
+      <rect x="378" y="14" width="140" height="64" rx="5" fill="#4F6B3A14" stroke="#4F6B3A" stroke-width="1"/>
+      <text x="448" y="38" font-size="11" font-weight="700" fill="#1F2328">Predicción</text>
+      <text x="448" y="54" font-size="8.5" fill="#6B7280">techo del momento</text>
+      <text x="448" y="65" font-size="8.5" fill="#6B7280">× ese porcentaje</text>
+
+      <line x1="146" y1="46" x2="184" y2="46" stroke="#1F2328" stroke-width="1.1" marker-end="url(#f)"/>
+      <line x1="334" y1="46" x2="372" y2="46" stroke="#1F2328" stroke-width="1.1" marker-end="url(#f)"/>
+    </g>
+  </svg>
+</div>
+
+<p>El techo se calcula con el modelo <b>Ineichen</b> de la librería <code>pvlib</code>,
+a partir de la latitud, la longitud y la altitud del sitio. No usa ni un solo dato
+medido: es geometría solar. Por eso conocer el techo de un momento futuro
+<b>no es hacer trampa</b>.</p>
+
+<h2>Un ejemplo real: 22 de julio, 08:00</h2>
+
+<p>Elegimos las 08:00 con <b>1 hora de anticipación</b>. El modelo tiene que predecir
+las 08:00 sabiendo solo lo que pasó hasta las 07:00.</p>
+
+<table class="evitar-corte">
+  <thead>
+    <tr><th>Paso</th><th class="n">Valor</th><th>De dónde sale</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Techo a las 07:00</td><td class="n">264 W/m²</td><td class="fuente">astronomía</td></tr>
+    <tr><td>Midió el sensor a las 07:00</td><td class="n">49,7 W/m²</td><td class="fuente">el piranómetro</td></tr>
+    <tr><td><b>Pasó el</b></td><td class="n"><b>19 %</b></td><td class="fuente">49,7 ÷ 264</td></tr>
+    <tr><td>Techo a las 08:00</td><td class="n">505 W/m²</td><td class="fuente">astronomía</td></tr>
+    <tr><td><b>Predicción para las 08:00</b></td><td class="n"><b>95 W/m²</b></td><td class="fuente">505 × 19 %</td></tr>
+    <tr><td>Midió el sensor a las 08:00</td><td class="n">32,8 W/m²</td><td class="fuente">el piranómetro</td></tr>
+    <tr><td>Pasó en realidad</td><td class="n">7 %</td><td class="fuente">se nubló más</td></tr>
+    <tr class="total"><td>Error</td><td class="n">+62 W/m²</td><td class="fuente">el modelo se pasó</td></tr>
+  </tbody>
+</table>
+
+<p>El modelo no falló por estar mal hecho: falló porque <b>entre las 07:00 y las 08:00
+el cielo se cerró</b>. Pasó de dejar entrar el 19 % de la luz a dejar entrar el 7 %.
+Una hora es tiempo de sobra para que eso ocurra en San Carlos.</p>
+
+<h2>Qué cambia al mover el selector</h2>
+
+<p>Cuanta <b>menos</b> anticipación, menos tiempo tienen las nubes para cambiar, y mejor
+funciona el supuesto. El mismo 22 de julio:</p>
+
+<table class="evitar-corte">
+  <thead>
+    <tr><th>Anticipación</th><th>Usa el estado de…</th><th class="n">Error medio del día</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>15 min</td><td>15 minutos antes</td><td class="n">14 W/m²</td></tr>
+    <tr><td>30 min</td><td>media hora antes</td><td class="n">22 W/m²</td></tr>
+    <tr><td>1 hora</td><td>una hora antes</td><td class="n">32 W/m²</td></tr>
+  </tbody>
+</table>
+
+<div class="caja aviso evitar-corte">
+  <span class="t">Lo que el selector NO hace</span>
+  <p>No trae datos del futuro, no consulta a ningún agente y no gasta tokens. El algoritmo
+  mira <b>únicamente hacia atrás</b>. Lo único del momento objetivo que usa es el techo,
+  que es astronomía y se conoce de antemano.</p>
+</div>
+
+<h2>Dos advertencias al comparar</h2>
+
+<h3>1. Los errores de distintas anticipaciones no son del todo comparables</h3>
+
+<p>Al mover el selector cambian <b>dos cosas a la vez</b>: cuánto se anticipa y el tamaño
+de la franja que se promedia. Fijate en la columna «midió»:</p>
+
+<table class="evitar-corte">
+  <thead>
+    <tr><th>Anticipación</th><th class="n">Midió a las 08:00</th><th class="n">Predijo</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>15 min</td><td class="n">36,6 W/m²</td><td class="n">46,4 W/m²</td></tr>
+    <tr><td>30 min</td><td class="n">30,7 W/m²</td><td class="n">58,6 W/m²</td></tr>
+    <tr><td>1 hora</td><td class="n">32,8 W/m²</td><td class="n">95,0 W/m²</td></tr>
+  </tbody>
+</table>
+
+<p>El valor medido <b>cambia entre filas</b>, porque cada una promedia una franja distinta:
+los 15 minutos que arrancan a las 08:00, la media hora, o la hora entera. Así que la mejora
+de 32 a 14 W/m² es <b>sobre todo</b> mérito del horizonte corto, pero no es una comparación
+estricta — también cambió lo que se está midiendo. Si alguien pregunta «entonces, ¿predice
+mejor a 15 minutos?», la respuesta honesta es <i>sí, y además los números no son
+estrictamente comparables</i>.</p>
+
+<h3>2. Esta vista es una reconstrucción, no el pronóstico en vivo</h3>
+
+<p>Lo que ves acá reaplica el método sobre datos que <b>ya ocurrieron</b>, para poder
+evaluarlo contra la realidad. El pronóstico en vivo —el que responde el agente cuando le
+pedís «¿cuánta irradiancia habrá en dos horas?»— usa una ventana de 60 minutos de lecturas
+crudas y toma la <i>mediana</i> del porcentaje, en vez de la media de la franja anterior.
+Es la misma idea física, pero los números de una y otra no van a coincidir al decimal.</p>
+
+<div class="caja evitar-corte">
+  <span class="t">Para quedarse con una sola cosa</span>
+  <p>La anticipación es <b>cuánto antes se hizo la predicción</b>. Menos anticipación
+  significa menos margen para que el cielo cambie, y por eso menos error. Todo lo que ves
+  se calcula con un algoritmo determinista: si repetís la consulta, sale exactamente el
+  mismo número.</p>
+</div>
+
+<div class="pie">
+  AgroVoltaic · consola de evaluación · los datos del ejemplo son reales, medidos en San Carlos el 22 de julio de 2026
+</div>
+
+</body>
+</html>
