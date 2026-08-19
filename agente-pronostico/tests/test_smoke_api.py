@@ -142,7 +142,7 @@ class _AgenteFalso:
     def conversar(self, pregunta):
         return dict(self.TRAZA)
 
-    def chat(self, mensajes, contexto=None):
+    def chat(self, mensajes, contexto=None, modo="analisis"):
         return dict(self.TRAZA)
 
 

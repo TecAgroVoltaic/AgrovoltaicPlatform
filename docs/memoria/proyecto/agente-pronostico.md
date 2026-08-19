@@ -230,4 +230,51 @@ medida. Comparar media contra media es lo único coherente y funciona en cualqui
 Tras el arreglo, `bucket="D"` da skill **+28 %**. Cambian las cifras publicadas: el MAE del
 22-jul pasa de 32,0 a **28,9 W/m²** (`docs/conceptos/anticipacion/` regenerado).
 
+## 2026-08-19 (noche) — el agente pasa de traductor a pronosticador
+
+Planteo del usuario: el modelo solo aportaba una justificación crítica de un número que no
+podía cambiar. Un traductor que gasta tokens. Debería poder **intervenir sobre el método**.
+
+### El intento equivocado, y por qué se descartó
+Primera versión: una tool `comparar_configuraciones` que probaba perillas y devolvía el error
+de cada una, con partición ajuste/reservado para evitar el sobreajuste. **El usuario la
+rechazó con un argumento más fuerte que el mío:** el agente NUNCA puede tener la respuesta.
+Aunque se parta el periodo, elegir mirando el error no es predecir — es ajustar. Se borró
+entera (tool, endpoint y `backtest.comparar`).
+
+### El diseño correcto: hipótesis, no ajuste
+El agente elige la configuración **razonando sobre condiciones observables antes del hecho**:
+
+- **`diagnosticar_condiciones`** — cómo venía el cielo en los minutos previos (claridad
+  mediana, dispersión, tendencia, saltos bruscos, régimen) + cuánto sube el techo en el
+  horizonte (astronómico, lícito) + la **teoría** de qué hace cada perilla y cuándo debería
+  ayudar. El corte de datos es `instante − horizonte`.
+- **`contexto_historico`** — qué pasó a esa misma hora en los días anteriores y en qué
+  régimen viene el sitio. Aporte real: el 22-jul a las 08:00 lo típico de esa hora en 7 días
+  era 21,4 % y venía con 11,9 % — por debajo del mínimo de la semana. Sin fuga por
+  construcción: un día anterior es anterior al corte.
+- **`predecir`** — se compromete con un número usando la configuración elegida.
+  **`hipotesis` es obligatoria en el esquema**: si fuera opcional, el modelo pediría el
+  número y después inventaría el motivo.
+
+Perillas (en el forecaster REAL, no en el backtest): `lookback_min`, `estadistico`
+(mediana/media/último) y `kt_max` (tope al realce por nubes).
+
+### La garantía no es el prompt: es el juego de herramientas
+`chat()` acepta un **modo**. En `prediccion` las herramientas son las tres de arriba y
+**`backtest` no está** — es la única que revela lo medido. Un prompt se puede ignorar; una
+herramienta ausente no se puede llamar. `analisis` (el modo por defecto) la conserva, porque
+ahí ver el resultado *es* el objetivo. Cubierto por tests que verifican el juego de cada modo
+y que ni `predecir` ni los diagnósticos devuelven claves del resultado en ningún nivel.
+
+### Verificado en producción
+Pidiéndole las 08:00 del 22-jul: diagnosticó, consultó 7 días, eligió `kt_max=1.2`
+argumentando el cielo más cerrado de lo normal, predijo **56,8 W/m² (banda 41,8–71,7)** y
+declaró **confianza media** diciendo qué lo haría fallar — todo antes de conocer el
+resultado. Frente a los 78,1 de la configuración por defecto, su razonamiento lo acercó al
+valor real (32,8).
+
+**Pendiente:** cablear el flujo de dos fases en la consola (el agente predice a ciegas, la
+consola revela y puntúa). Hoy funciona por `/chat` con `modo=prediccion`.
+
 Relacionado: [[integracion-visioneflow]], [[capa-agentes]], [[agrodash-esquema]], [[bloqueantes]], [[agrodash]], [[pipeline-tiempo-real]], [[mvp-debugger]].

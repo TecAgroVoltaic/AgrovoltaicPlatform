@@ -99,6 +99,11 @@ class ChatBody(BaseModel):
 
     mensajes: list[ChatMsg]
     contexto: str | None = None
+    modo: str = Field(
+        default="analisis",
+        description="'analisis' (herramientas de evaluacion, incluye backtest) o "
+                    "'prediccion' (diagnostico + prediccion a ciegas, SIN backtest).",
+    )
 
 
 class AnomaliasRequest(BaseModel):
@@ -258,7 +263,8 @@ def preguntar(cuerpo: Pregunta) -> dict:
 def chat(cuerpo: ChatBody) -> dict:
     """Turno de CHAT multi-turno del forecaster (para el widget): historial + contexto
     de la vista -> respuesta + traza (forecast/web) + costo."""
-    traza = _agente().chat([m.model_dump() for m in cuerpo.mensajes], cuerpo.contexto)
+    traza = _agente().chat([m.model_dump() for m in cuerpo.mensajes],
+                           cuerpo.contexto, cuerpo.modo)
     _registrar_uso(traza)
     return traza
 

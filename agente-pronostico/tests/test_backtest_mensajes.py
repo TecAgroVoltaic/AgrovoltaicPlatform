@@ -203,3 +203,67 @@ def test_la_claridad_va_en_porcentaje_y_con_el_momento_anterior(monkeypatch):
     anterior = punto["momento_anterior"]
     assert anterior["t"] == "11:00"
     assert "pct_del_techo_que_paso" in anterior
+
+
+# ── El modo predicción no puede ver la respuesta ────────────────────────────
+
+def test_el_modo_prediccion_no_expone_backtest():
+    """La garantía no es el prompt: es que la herramienta que revela lo medido
+    NO está en el juego. Un prompt se puede ignorar; una tool ausente, no."""
+    from pronostico.agent.agent import MODOS
+    nombres = [e["name"] for e in MODOS["prediccion"]["schemas"]]
+    assert "backtest" not in nombres
+    assert set(nombres) == {"diagnosticar_condiciones", "contexto_historico", "predecir"}
+    # Y el modo de análisis sí la conserva: ahí ver el resultado es el objetivo.
+    assert "backtest" in [e["name"] for e in MODOS["analisis"]["schemas"]]
+
+
+# Claves que revelarian el resultado. Se buscan como CLAVES y no en el texto
+# crudo: las notas explicativas mencionan la palabra «medido» justamente para
+# aclarar que el valor no está, y eso no es una fuga.
+_CLAVES_PROHIBIDAS = {"medido", "real", "error", "error_relativo_pct", "punto_consultado"}
+
+
+def _claves(obj, acc=None):
+    acc = acc if acc is not None else set()
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            acc.add(k)
+            _claves(v, acc)
+    elif isinstance(obj, list):
+        for v in obj:
+            _claves(v, acc)
+    return acc
+
+
+def test_predecir_no_devuelve_el_valor_medido(monkeypatch):
+    """Contrato duro de `predecir`: ni el medido ni el error, en ningún nivel."""
+    from pronostico.tools import predecir_tool
+    monkeypatch.setattr(bt.data, "cargar_serie", lambda *a, **k: _dia_completo())
+    monkeypatch.setattr(predecir_tool.data, "cargar_serie", lambda *a, **k: _dia_completo())
+    out = predecir_tool.run("irradiancia", "2026-07-22T12:00", 3600,
+                            hipotesis="cielo estable, ventana por defecto")
+    assert not (_claves(out) & _CLAVES_PROHIBIDAS)
+    assert out["hipotesis"]                      # se guarda el argumento
+    assert out["valor_esperado"] is not None
+
+
+def test_el_diagnostico_corta_los_datos_antes_del_horizonte(monkeypatch):
+    """Si se predice 12:00 con 1 h de anticipación, no se puede haber mirado
+    nada posterior a las 11:00."""
+    from pronostico import diagnostico
+    monkeypatch.setattr(diagnostico.data, "cargar_serie", lambda *a, **k: _dia_completo())
+    d = diagnostico.condiciones("irradiancia", instante="2026-07-22T12:00",
+                                horizonte_seg=3600)
+    assert d["datos_visibles_hasta"].startswith("2026-07-22T11:00")
+    assert not (_claves(d) & _CLAVES_PROHIBIDAS)
+
+
+def test_el_contexto_historico_no_toca_el_dia_objetivo(monkeypatch):
+    """Solo mira días anteriores, así que tampoco puede filtrar el resultado."""
+    from pronostico import diagnostico
+    monkeypatch.setattr(diagnostico.data, "cargar_serie", lambda *a, **k: _dia_completo())
+    c = diagnostico.contexto_historico("irradiancia", instante="2026-07-22T12:00", dias=3)
+    assert not (_claves(c) & _CLAVES_PROHIBIDAS)
+    objetivo = c["instante_a_pronosticar"][:10]
+    assert all(d["fecha"] < objetivo for d in c["misma_hora_dias_previos"])

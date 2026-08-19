@@ -15,15 +15,43 @@ import time
 import anthropic
 
 from pronostico import config, costos
-from pronostico.agent.prompts import CHAT_SYSTEM, SYSTEM_PROMPT
+from pronostico.agent.prompts import CHAT_SYSTEM, PREDICCION_SYSTEM, SYSTEM_PROMPT
 from pronostico.tools.backtest_tool import SCHEMA as BACKTEST_SCHEMA, run as run_backtest
+from pronostico.tools.diagnostico_tool import (
+    SCHEMA_CONDICIONES, SCHEMA_HISTORICO, run_condiciones, run_historico,
+)
+from pronostico.tools.predecir_tool import SCHEMA as PREDECIR_SCHEMA, run as run_predecir
 from pronostico.tools.forecast_tool import FORECAST_TOOL_SCHEMA, run_forecast
 
 # Web search del lado servidor (Anthropic la ejecuta). max_uses acota el gasto.
 WEB_SEARCH = {"type": "web_search_20250305", "name": "web_search", "max_uses": 3}
 
-# Dos modalidades en el chat: forecast (futuro) y backtest (historico). Dispatch por nombre.
-_CHAT_TOOLS = {"forecast": run_forecast, "backtest": run_backtest}
+# Dispatch por nombre de TODAS las herramientas disponibles.
+_TOOLS = {
+    "forecast": run_forecast,
+    "backtest": run_backtest,
+    "diagnosticar_condiciones": run_condiciones,
+    "contexto_historico": run_historico,
+    "predecir": run_predecir,
+}
+
+# Juegos de herramientas por MODO. El modo `prediccion` deja fuera `backtest` a
+# proposito: es la unica herramienta que revela lo que midio el sensor, y con
+# ella a mano el agente podria "predecir" sabiendo la respuesta. Restringir el
+# juego es la unica garantia real — un prompt se puede ignorar, una herramienta
+# que no esta en la lista no se puede llamar.
+MODOS = {
+    "analisis": {
+        "system": CHAT_SYSTEM,
+        "schemas": [FORECAST_TOOL_SCHEMA, BACKTEST_SCHEMA],
+        "web": True,
+    },
+    "prediccion": {
+        "system": PREDICCION_SYSTEM,
+        "schemas": [SCHEMA_CONDICIONES, SCHEMA_HISTORICO, PREDECIR_SCHEMA],
+        "web": False,
+    },
+}
 
 
 class ForecastAgent:
@@ -120,7 +148,8 @@ class ForecastAgent:
         """Responde una pregunta en lenguaje natural (solo el texto final)."""
         return self.conversar(pregunta)["respuesta"]
 
-    def chat(self, mensajes: list[dict], contexto: str | None = None) -> dict:
+    def chat(self, mensajes: list[dict], contexto: str | None = None,
+             modo: str = "analisis") -> dict:
         """Turno de CHAT multi-turno del forecaster. `mensajes` = historial de texto
         limpio [{rol, texto}] (el ultimo es del usuario). Devuelve {respuesta, pasos,
         usage, costo}. Mismo diseno que el analizador: historial solo-texto (barato y
@@ -141,10 +170,12 @@ class ForecastAgent:
             ms[-1]["content"] = f"[Contexto de la vista: {contexto}]\n\n{ms[-1]['content']}"
         ms = ms[-16:]
 
-        system = [{"type": "text", "text": CHAT_SYSTEM, "cache_control": {"type": "ephemeral"}}]
-        client_tools = [dict(FORECAST_TOOL_SCHEMA), dict(BACKTEST_SCHEMA)]
+        perfil = MODOS.get(modo) or MODOS["analisis"]
+        system = [{"type": "text", "text": perfil["system"],
+                   "cache_control": {"type": "ephemeral"}}]
+        client_tools = [dict(e) for e in perfil["schemas"]]
         client_tools[-1] = {**client_tools[-1], "cache_control": {"type": "ephemeral"}}
-        herramientas = client_tools + [WEB_SEARCH]
+        herramientas = client_tools + ([WEB_SEARCH] if perfil["web"] else [])
 
         pasos: list[dict] = []
         usage = {"input_tokens": 0, "output_tokens": 0, "requests": 0,
@@ -194,7 +225,7 @@ class ForecastAgent:
             for b in resp.content:
                 if b.type != "tool_use":
                     continue
-                fn = _CHAT_TOOLS.get(b.name)
+                fn = _TOOLS.get(b.name)
                 ts = time.perf_counter()
                 try:
                     if fn is None:

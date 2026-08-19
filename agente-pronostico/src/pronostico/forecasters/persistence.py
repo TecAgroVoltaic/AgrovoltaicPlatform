@@ -31,9 +31,13 @@ def _cs_default(times):
 MIN_MUESTRAS = 3
 
 
+_ESTADISTICOS = {"mediana", "media", "ultimo"}
+
+
 def smart_persistence(now, horizon_seconds, lookback_min: float = 60,
                       umbral_cs: float | None = None, get_recent=None,
-                      clear_sky_fn=None, retornar_banda: bool = False):
+                      clear_sky_fn=None, retornar_banda: bool = False,
+                      estadistico: str = "mediana", kt_max: float | None = None):
     """Persistencia INTELIGENTE del indice de cielo despejado kt*.
 
     Receta:
@@ -51,7 +55,16 @@ def smart_persistence(now, horizon_seconds, lookback_min: float = 60,
     Devuelve float (GHI [W/m2]). Con retornar_banda=True devuelve (pred, lo, hi),
     una banda heuristica de +-1 sigma de kt* sobre el lookback (incertidumbre por
     variabilidad reciente de nubes).
+
+    `lookback_min`, `estadistico` y `kt_max` son las PERILLAS del metodo. Sus
+    defaults reproducen el comportamiento historico. Existen para que se pueda
+    elegir la configuracion RAZONANDO sobre las condiciones previas (ver
+    `diagnostico.condiciones`), nunca ajustandolas contra el resultado: eso
+    ultimo no seria predecir.
     """
+    if estadistico not in _ESTADISTICOS:
+        raise ValueError(f"estadistico invalido: {estadistico!r} "
+                         f"({', '.join(sorted(_ESTADISTICOS))})")
     get_recent = get_recent or _data.get_recent_data
     clear_sky_fn = clear_sky_fn or _cs_default
     umbral_cs = config.UMBRAL_CS if umbral_cs is None else umbral_cs
@@ -67,9 +80,18 @@ def smart_persistence(now, horizon_seconds, lookback_min: float = 60,
     if len(kt) < MIN_MUESTRAS:           # ventana nocturna o con muy pocos kt* utiles
         return _nan
 
-    # MEDIANA (no media): un pico de reflejo o una lectura atipica de la ultima
-    # hora no arrastran el kt* pronosticado.
-    kt_bar = float(kt.median())
+    # El realce por nubes produce kt* > 1 (visto 3.09 en el sitio): persistir ese
+    # pico proyecta un valor imposible. El tope es opcional y se pide explicito.
+    if kt_max is not None:
+        kt = kt.clip(upper=kt_max)
+    # Por defecto MEDIANA (no media): un pico de reflejo o una lectura atipica de
+    # la ultima hora no arrastran el kt* pronosticado.
+    if estadistico == "media":
+        kt_bar = float(kt.mean())
+    elif estadistico == "ultimo":
+        kt_bar = float(kt.iloc[-1])
+    else:
+        kt_bar = float(kt.median())
     t_target = now + pd.Timedelta(seconds=horizon_seconds)
     cs_target = float(clear_sky_fn(pd.DatetimeIndex([t_target])).iloc[0])
     pred = float(reconstruct_ghi(kt_bar, cs_target))

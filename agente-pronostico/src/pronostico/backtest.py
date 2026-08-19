@@ -17,6 +17,52 @@ from pronostico.domain import Variable
 from pronostico.physics import clear_sky_ghi
 
 _BUCKETS = {"15min", "30min", "h", "D"}
+_ESTADISTICOS = {"mediana", "media", "ultimo"}
+# Minimo de franjas pasadas antes de que la climatologia expansiva signifique algo.
+_MIN_CLIMATOLOGIA = 3
+
+
+def _agregar(previos: pd.Series, ventanas: int, estadistico: str) -> pd.Series:
+    """Agrega las `ventanas` franjas anteriores con el estadistico pedido.
+
+    `previos` ya viene desplazada (shift(1)): contiene, para cada franja, lo que
+    se sabia ANTES de ella. Por eso el rolling no introduce fuga.
+    """
+    if ventanas <= 1 or estadistico == "ultimo":
+        return previos
+    roll = previos.rolling(ventanas, min_periods=1)
+    return roll.median() if estadistico == "mediana" else roll.mean()
+
+
+def _kt_a_persistir(kt: pd.Series, ventanas: int, estadistico: str,
+                    damping: float) -> pd.Series:
+    """El kt* que el metodo lleva al futuro, con las perillas aplicadas.
+
+    El `damping` mezcla lo reciente con la climatologia del periodo. Esa
+    climatologia es una mediana EXPANSIVA del pasado (`shift(1).expanding()`):
+    usar la mediana de todo el periodo seria mirar el futuro, aunque fuera solo
+    un promedio.
+    """
+    base = _agregar(kt.shift(1), ventanas, estadistico)
+    if damping >= 1.0:
+        return base
+    clima = kt.shift(1).expanding(min_periods=_MIN_CLIMATOLOGIA).median()
+    # Donde todavia no hay climatologia (arranque del periodo) manda lo reciente.
+    return (damping * base + (1 - damping) * clima).fillna(base)
+
+
+def _describir(ventanas: int, estadistico: str, damping: float,
+               kt_max: float | None) -> str:
+    """Nombre legible del metodo CON su configuracion: si el agente cambia una
+    perilla, tiene que verse en la respuesta y no quedar como el mismo metodo."""
+    partes = ["persistencia del indice de cielo despejado kt* x techo de cielo despejado"]
+    if ventanas > 1:
+        partes.append(f"{estadistico} de las ultimas {ventanas} franjas")
+    if damping < 1.0:
+        partes.append(f"amortiguado hacia la climatologia (damping {damping:g})")
+    if kt_max is not None:
+        partes.append(f"kt* topado en {kt_max:g}")
+    return "; ".join(partes)
 
 
 def _ts(x) -> pd.Timestamp:
@@ -60,11 +106,38 @@ def _mensaje_sin_datos(serie, variable, disp0, disp1, lo, hi) -> str:
 
 def backtest(variable: str = Variable.IRRADIANCIA.value, dias: int = 7,
              bucket: str = "h", desde: str | None = None,
-             hasta: str | None = None) -> dict:
+             hasta: str | None = None, ventanas: int = 1,
+             estadistico: str = "mediana", damping: float = 1.0,
+             kt_max: float | None = None) -> dict:
     """Reconstruye pred vs real. Por defecto los ultimos `dias`; si se pasa `desde`
-    (y opcional `hasta`), evalua ESE rango historico. Cadencia `bucket`."""
+    (y opcional `hasta`), evalua ESE rango historico. Cadencia `bucket`.
+
+    Las cuatro ultimas son las PERILLAS del metodo. Sus valores por defecto
+    reproducen exactamente el comportamiento historico, asi que no cambian nada
+    salvo que se pidan:
+
+      ventanas     cuantas franjas anteriores se agregan para estimar el kt* a
+                   persistir. 1 = solo la anterior. Mas ventanas = mas estable
+                   frente a una nube suelta, mas lento para reaccionar.
+      estadistico  como se agregan esas ventanas: 'mediana' (robusta a un valor
+                   raro), 'media' o 'ultimo' (la mas reactiva).
+      damping      cuanto se le cree a lo reciente, de 0 a 1. Con 1 se persiste
+                   tal cual; con menos, el kt* se acerca a la climatologia del
+                   propio periodo (mediana expansiva del PASADO, sin fuga). Es la
+                   perilla clasica contra el sobre-disparo de la persistencia a
+                   horizontes largos.
+      kt_max       tope superior de kt*. El realce por nubes produce kt* > 1
+                   (visto hasta 3,09), y persistir ese pico dispara el error.
+    """
     if bucket not in _BUCKETS:
         raise ValueError(f"bucket invalido: {bucket!r} ({', '.join(sorted(_BUCKETS))})")
+    if estadistico not in _ESTADISTICOS:
+        raise ValueError(f"estadistico invalido: {estadistico!r} "
+                         f"({', '.join(sorted(_ESTADISTICOS))})")
+    if not 0.0 <= damping <= 1.0:
+        raise ValueError(f"damping fuera de [0,1]: {damping!r}")
+    if ventanas < 1:
+        raise ValueError(f"ventanas debe ser >= 1: {ventanas!r}")
 
     serie = data.cargar_serie(variable)                 # tz-aware (hora local CR)
     disp0, disp1 = serie.index.min(), serie.index.max()
@@ -101,12 +174,15 @@ def backtest(variable: str = Variable.IRRADIANCIA.value, dias: int = 7,
         cs = cs_nativo.resample(bucket).mean().reindex(s.index)
         um = config.UMBRAL_CS
         kt = (s / cs).where(cs > um)                    # kt* (NaN de noche)
-        pred = kt.shift(1) * cs                         # persistencia de kt*
+        if kt_max is not None:
+            kt = kt.clip(upper=kt_max)
+        kt_usado = _kt_a_persistir(kt, ventanas, estadistico, damping)
+        pred = kt_usado * cs                            # persistencia de kt*
         pred = pred.where(cs >= um, 0.0)                # de noche -> 0
-        metodo = "persistencia del indice de cielo despejado kt* x techo de cielo despejado"
+        metodo = _describir(ventanas, estadistico, damping, kt_max)
     else:
         cs = None
-        pred = s.shift(1)                               # persistencia del valor
+        pred = _agregar(s.shift(1), ventanas, estadistico)   # persistencia del valor
         metodo = "persistencia del valor (el suelo cambia lento)"
 
     naive = s.shift(1)                                   # baseline ingenuo = valor previo
