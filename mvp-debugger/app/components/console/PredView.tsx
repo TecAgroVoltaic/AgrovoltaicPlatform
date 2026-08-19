@@ -123,7 +123,7 @@ export function PredView({ theme }: { theme: string }) {
     + `citalos dentro del texto solo cuando hagan falta para el argumento.`;
 
   return (
-    <section>
+    <section className="vista">
       <div className="phead phead-row">
         <div>
           <h1>Predicción vs Real</h1>

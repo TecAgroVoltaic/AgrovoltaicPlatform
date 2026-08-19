@@ -19,7 +19,7 @@ export function PuntoEvaluado({ punto, unidad, dec, anticipacion }: {
   const error = punto ? punto.pred - punto.real : null;
 
   return (
-    <div className="grid g3" style={{ marginTop: 14 }}>
+    <div className="grid g3">
       <div className="kpi">
         <span className="lbl">Midió el sensor</span>
         <div className="k">{fmt(punto?.real, dec)}<small>{unidad}</small></div>

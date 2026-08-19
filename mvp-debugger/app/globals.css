@@ -282,6 +282,15 @@ svg .hit { cursor:crosshair; }
 
 /* ── Predicción vs Real: cabecera con etiqueta de modo, lectura del agente y
       pie de métricas. Todo pensado para quitar párrafos de la vista. ───────── */
+/* Apilado de una vista con ritmo uniforme. Cada vista venía separando sus
+   bloques con `style={{marginTop:N}}` a mano, con N distinto en cada archivo
+   (10, 14, 16, 22) — y donde alguien olvidaba ponerlo, dos tarjetas quedaban
+   pegadas. Acá el espacio lo pone el contenedor, una sola vez. */
+.vista { display:flex; flex-direction:column; gap:16px; }
+.vista > .phead { margin-bottom:0; }
+.vista > .controls { margin:6px 0 0; }
+.vista > .pie-metricas { margin-top:2px; }
+
 .phead-row { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
 .pill-modo { flex:none; margin-top:4px; cursor:help; border-color:color-mix(in srgb, var(--accent) 40%, var(--line)); color:var(--accent); }
 
