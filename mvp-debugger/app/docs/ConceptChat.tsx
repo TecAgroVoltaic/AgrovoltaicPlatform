@@ -8,7 +8,8 @@
 // pregunta va al de pronóstico (también resuelve conocimiento externo por web).
 // Antes apuntaba duro a /api/analizador/chat y el bloqueo lo dejaba en 503.
 import { useEffect, useRef, useState } from "react";
-import { jpost, inlineMd } from "@/app/lib/client";
+import { jpost } from "@/app/lib/client";
+import { renderMd } from "@/app/lib/markdown";
 import { useAgenteDocs } from "./agenteCtx";
 
 type Msg = { rol: "user" | "assistant"; texto: string };
@@ -76,7 +77,7 @@ export function ConceptChat() {
         <div className="dx-ask-thread">
           {msgs.map((m, i) => (
             <div key={i} className={"dx-ask-msg " + m.rol}>
-              <div className="dx-ask-bub" dangerouslySetInnerHTML={{ __html: inlineMd(m.texto) }} />
+              <div className="dx-ask-bub md" dangerouslySetInnerHTML={{ __html: renderMd(m.texto) }} />
             </div>
           ))}
           {cargando && (

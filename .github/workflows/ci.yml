@@ -82,3 +82,7 @@ jobs:
       # con HTTP real, y se comprueba que encender el flag lo devuelve entero.
       - name: Smoke del bloqueo de agentes
         run: ./scripts/smoke-agentes.sh
+      # Lo que redacta el agente pasa por este renderizador antes de llegar a la
+      # pantalla: si se rompe, las tablas del modelo salen con los pipes crudos.
+      - name: Smoke del renderizado de respuestas
+        run: node scripts/smoke-markdown.mjs

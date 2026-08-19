@@ -149,6 +149,28 @@ métrica. Ahora **todo lee del mismo backtest**: gráfico, KPI y agente.
 - El KPI «Skill vs. ingenuo» muestra **n/a** en humedad de suelo: ahí el método *es* la
   persistencia, así que el 0 % era una tautología, no una falla del modelo.
 
+### Cómo se renderiza lo que escribe el agente (2026-08-19)
+
+Dos defectos que se veían como "está crudo" y en realidad eran de presentación:
+
+- **Las tablas markdown salían con los pipes y los guiones a la vista.** `inlineMd` solo
+  resolvía negritas, y la tabla es justo la forma natural en que el modelo pone
+  "real / predicho / error" — o sea, el caso MÁS común de este sistema. Nuevo
+  `app/lib/markdown.ts` (`renderMd`): párrafos, negrita, cursiva, código, listas y tablas.
+  Escapa todo el HTML de entrada primero, así el texto del modelo no puede inyectar marcado.
+  Se usa en las **cuatro** superficies (lectura inline, chat flotante, glosario y ChatWidget).
+  Cubierto por `scripts/smoke-markdown.mjs` (16 casos) en el CI.
+- **La traza era `JSON.stringify(pasos, null, 2)`**, ilegible. Nuevo componente compartido
+  `components/TrazaLegible.tsx`: línea de tiempo con un paso por punto — «Decidió qué
+  consultar», «Consultó los datos» (herramienta, ms, qué le pidió, qué le devolvió),
+  «Buscó en la web», «Redactó la respuesta». Los arreglos se cuentan en vez de volcarse
+  (`serie: 22 elementos`) y los objetos anidados se abren un nivel
+  (`resumen.maximo_real`). El JSON crudo **no desaparece**: queda a un click por paso, que
+  es la prueba final cuando algo no cuadra. Reemplaza también la traza críptica del chat.
+- **Menos redundancia**: la pregunta que manda la vista ahora pide prosa breve sin tablas,
+  porque los tres números ya están en los KPI de arriba. Lo que aporta el agente es la
+  interpretación, no volver a listar lo que se ve.
+
 ### Dónde va la respuesta del agente: en la vista, no en el chat flotante
 Se evaluó mandar la consulta al widget flotante (reusa el hilo) contra un panel inline. Gana el
 **inline**: lo que se está haciendo es comparar real contra predicho, y un panel flotante tapa

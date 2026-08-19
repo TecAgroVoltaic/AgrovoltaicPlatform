@@ -5,7 +5,9 @@
 // reales, marcador _grafico), un indicador con frases genéricas mientras espera,
 // y una traza plegable por respuesta. Persiste por agente en localStorage.
 import { useEffect, useRef, useState } from "react";
-import { jpost, inlineMd } from "@/app/lib/client";
+import { jpost } from "@/app/lib/client";
+import { renderMd } from "@/app/lib/markdown";
+import { TrazaLegible } from "@/app/components/TrazaLegible";
 import { lineChart, palette } from "@/app/lib/charts";
 import type { Traza } from "@/app/components/TraceViewer";
 
@@ -135,7 +137,7 @@ export function ChatWidget({ agent, contexto, onTraza }: {
 
         {cur.map((m, i) => (
           <div key={i} className={"chat-msg chat-" + m.rol}>
-            <div className="chat-bub" dangerouslySetInnerHTML={{ __html: inlineMd(m.texto) }} />
+            <div className="chat-bub md" dangerouslySetInnerHTML={{ __html: renderMd(m.texto) }} />
             {m.rol === "assistant" && m.traza && <MsgExtras traza={m.traza} abierto={verTraza === i} onToggle={() => setVerTraza(verTraza === i ? null : i)} />}
           </div>
         ))}
@@ -189,14 +191,8 @@ function MsgExtras({ traza, abierto, onToggle }: { traza: Traza; abierto: boolea
       </div>
       {abierto && (
         <div className="chat-traza">
-          {pasos.map((p, i) => (
-            <div key={i} className="chat-paso">
-              {p.tipo === "tool" && <><b>{p.nombre}</b> <span className="muted">{JSON.stringify(p.input)}</span> {p.error && <span className="badge-err">ERROR</span>}</>}
-              {p.tipo === "web" && <><b>web</b> <span className="muted">{p.query}</span></>}
-              {p.tipo === "modelo" && p.texto && <span className="muted">{p.texto.slice(0, 90)}</span>}
-            </div>
-          ))}
-          <div className="chat-paso muted">{u.input_tokens} in / {u.output_tokens} out · {traza.ms_total} ms{u.web_searches ? ` · ${u.web_searches} búsqueda(s) web` : ""}</div>
+          <TrazaLegible pasos={pasos} usage={u} ms={traza.ms_total}
+                        costo={(traza as any).costo?.usd_total ?? null} />
         </div>
       )}
     </>

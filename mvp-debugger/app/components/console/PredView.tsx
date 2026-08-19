@@ -111,10 +111,16 @@ export function PredView({ theme }: { theme: string }) {
   // Al agente se le manda la PREGUNTA, nunca los números: llama a su herramienta
   // con la hora exacta y las cifras salen de ahí. Si se los pasáramos en el
   // prompt sería un redactor de datos que no verificó.
+  //
+  // Se le pide prosa breve a propósito: los tres números ya están en los KPI de
+  // arriba, así que repetirlos en una tabla es ruido. Lo que aporta el agente es
+  // la INTERPRETACIÓN — por qué el método acertó o falló en ese momento.
   const preguntaAgente =
     `Evaluá la ${vari === "irradiancia" ? "irradiancia" : "humedad de suelo"} del ${fecha} `
-    + `a las ${momento} (usá bucket "${bucket}"). ¿Qué midió el sensor en ese momento, qué `
-    + `habría predicho el método con ${etiqueta(bucket)} de anticipación, y qué explica la diferencia?`;
+    + `a las ${momento} (usá bucket "${bucket}"). ¿Por qué el método acertó o falló con `
+    + `${etiqueta(bucket)} de anticipación, y qué dice eso del día? `
+    + `Respondé en 3 o 4 frases, sin tablas ni listas: los valores ya están en pantalla, `
+    + `citalos dentro del texto solo cuando hagan falta para el argumento.`;
 
   return (
     <section>
