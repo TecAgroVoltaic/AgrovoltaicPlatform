@@ -5,6 +5,7 @@
 import { useEffect, useState } from "react";
 import { jget, extraerLista, type Resp } from "@/app/lib/client";
 import { Estado } from "@/app/components/console/Estado";
+import { AnclaForecast } from "@/app/components/console/AnclaForecast";
 import { lineChart, palette } from "@/app/lib/charts";
 
 const fmt = (n: any, d = 1) => n == null || !isFinite(n) ? "—" : Number(n).toLocaleString("es-CR", { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -77,7 +78,9 @@ export function PredView({ theme }: { theme: string }) {
         </div>
       </div>
 
-      <div className="card">
+      <AnclaForecast variable={vari} />
+
+      <div className="card" style={{ marginTop: 16 }}>
         <h3>Backtest {vari === "irradiancia" ? "de irradiancia" : "de humedad de suelo"} · horario</h3>
         <p className="hint">{bt ? bt.metodo : err ? "no disponible" : "cargando…"} — contra el sensor, últimos {dias} días.</p>
         {(!chart || err) && (
@@ -101,7 +104,13 @@ export function PredView({ theme }: { theme: string }) {
             { l: "Error medio absoluto", v: fmt(metricas.mae, 1), u: unit, d: "promedio de |recon − real|" },
             { l: "Sesgo (bias)", v: (metricas.bias >= 0 ? "+" : "") + fmt(metricas.bias, 1), u: unit, d: "+ sobreestima · − subestima" },
             { l: "Error relativo", v: fmt(metricas.error_rel_pct, 1), u: "%", d: "MAE sobre el promedio real" },
-            { l: "Skill vs. ingenuo", v: (metricas.skill_pct >= 0 ? "+" : "") + fmt(metricas.skill_pct, 0), u: "%", d: "mejora sobre “igual que antes”" },
+            // En humedad de suelo el método ES la persistencia del valor, o sea
+            // exactamente el modelo ingenuo: el skill da 0 por construcción, no
+            // porque el modelo falle. Mostrar "+0%" a secas se lee como que no
+            // aporta nada, que es una conclusión falsa.
+            vari === "humedad_suelo"
+              ? { l: "Skill vs. ingenuo", v: "n/a", u: "", d: "el método ES la persistencia: no hay ingenuo distinto contra el cual medir" }
+              : { l: "Skill vs. ingenuo", v: (metricas.skill_pct >= 0 ? "+" : "") + fmt(metricas.skill_pct, 0), u: "%", d: "mejora sobre “igual que antes”" },
           ].map((k, i) => (
             <div className="kpi" key={i}><span className="lbl">{k.l}</span><div className="k">{k.v}<small>{k.u}</small></div><div className="d">{k.d}</div></div>
           ))}
@@ -124,7 +133,7 @@ export function PredView({ theme }: { theme: string }) {
         </div>
       )}
 
-      <div className="note">Para pedir un pronóstico en vivo, preguntale al asistente (abajo a la derecha): traduce el horizonte, ejecuta <span className="mono">forecast</span> y redacta — la traza muestra el input y la salida cruda.</div>
+      <div className="note">Arriba se pronostica directo contra la herramienta. Para hacerlo en lenguaje natural, preguntale al asistente (abajo a la derecha): traduce el horizonte, ejecuta <span className="mono">forecast</span> y redacta — la traza muestra el input y la salida cruda.</div>
     </section>
   );
 }

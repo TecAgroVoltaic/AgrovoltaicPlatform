@@ -157,6 +157,35 @@ def get_recent_data(now, lookback_min: float,
     return serie[(serie.index >= desde) & (serie.index < now)]  # < now: sin fuga
 
 
+def valor_medido(t, variable: str = Variable.IRRADIANCIA.value,
+                 tolerancia_min: float = 10.0) -> dict | None:
+    """Lo que el sensor MIDIO en el instante `t` (la lectura mas cercana).
+
+    Devuelve {valor, ts, desfase_seg} o None si no hay ninguna lectura dentro de
+    `tolerancia_min` (p. ej. porque `t` cae en el futuro, o en un hueco).
+
+    NO es fuga: esto se consulta DESPUES de pronosticar y jamas alimenta el
+    calculo. Existe para poder contrastar un pronostico anclado en un instante
+    historico contra la realidad — que es justo lo que hace honesto al hindcast:
+    el forecaster solo vio `< ahora`, y recien despues se mira que paso.
+    """
+    serie = cargar_serie(variable)
+    if serie.empty:
+        return None
+    t = pd.Timestamp(t)
+    t = t.tz_localize(TZ) if t.tz is None else t.tz_convert(TZ)
+    pos = serie.index.get_indexer([t], method="nearest")[0]
+    if pos < 0:
+        return None
+    ts = serie.index[pos]
+    desfase = abs((ts - t).total_seconds())
+    if desfase > tolerancia_min * 60:
+        return None
+    return {"valor": round(float(serie.iloc[pos]), 2),
+            "ts": ts.isoformat(),
+            "desfase_seg": int(desfase)}
+
+
 def peek_serie(variable: str = Variable.IRRADIANCIA.value,
                bucket: str = "D", ultimos_dias: int | None = 60) -> dict:
     """Panorama de una serie del store para el debugger (resumen + puntos a graficar).

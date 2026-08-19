@@ -197,6 +197,17 @@ def _forecast_humedad(seg: int, now=None) -> dict:
     }
 
 
+def _rango_datos(variable: str) -> dict:
+    """Desde/hasta de la serie disponible. Va en la respuesta para que quien
+    ancle un pronostico pueda ver si el instante que eligio tiene sentido, sin
+    tener que adivinarlo desde una advertencia."""
+    serie = data.cargar_serie(variable)
+    if serie.empty:
+        return {"desde": None, "hasta": None}
+    return {"desde": serie.index.min().isoformat(),
+            "hasta": serie.index.max().isoformat()}
+
+
 # Despacho por variable -> forecaster.
 _FORECASTERS = {
     Variable.IRRADIANCIA.value: _forecast_irradiancia,
@@ -212,8 +223,15 @@ def run_forecast(variable: str, horizon_seconds: int,
     horizon_seconds : horizonte en segundos (traducido por el LLM).
     horizonte_texto : frase original del horizonte; si viene, valida de forma
                       determinista la conversion (parse_horizon manda).
-    now             : instante de referencia. Por defecto = ULTIMO timestamp de la
-                      serie cacheada, NO el reloj de pared.
+    now             : INSTANTE DE REFERENCIA. Por defecto = ULTIMO timestamp de la
+                      serie cacheada, NO el reloj de pared. Pasarlo explicitamente
+                      ancla el pronostico en un momento historico (hindcast): la
+                      barrera anti-fuga de get_recent_data (`< now`) sigue
+                      valiendo, asi que el forecaster no ve nada posterior.
+
+    El dict lleva `ancla` (desde cuando se pronostico y si fue explicito) y
+    `medido` (lo que el sensor registro en el momento pronosticado, si existe).
+    Ambos son METADATOS: se calculan DESPUES del pronostico y no lo alteran.
     """
     fc = _FORECASTERS.get(variable)
     if fc is None:
@@ -222,4 +240,22 @@ def run_forecast(variable: str, horizon_seconds: int,
             f"({'|'.join(_FORECASTERS)})"
         )
     seg = _resolver_horizonte(horizon_seconds, horizonte_texto)
-    return fc(seg, now)
+    res = fc(seg, now)
+
+    # Que quede EXPLICITO en la respuesta desde donde se pronostico. Sin esto,
+    # un pronostico anclado en julio es indistinguible de uno "en vivo", que es
+    # justo la confusion que hay que evitar al mostrarlo.
+    res["ancla"] = {
+        "instante": res["ahora"],
+        "explicito": now is not None,
+        "tipo": "instante_de_referencia" if now is not None else "ultimo_dato",
+        "rango_datos": _rango_datos(variable),
+    }
+    # Lo que de verdad midio el sensor en el momento pronosticado (None si ese
+    # instante todavia no ocurrio o cae en un hueco). Permite mostrar el
+    # pronostico contra la realidad sin que el forecaster la haya visto.
+    medido = data.valor_medido(res["momento_pronosticado"], variable)
+    if medido and res.get("valor_esperado") is not None:
+        medido["error"] = round(res["valor_esperado"] - medido["valor"], 2)
+    res["medido"] = medido
+    return res

@@ -19,7 +19,10 @@ SCHEMA = {
         "Usalo cuando el usuario pregunte por una fecha PASADA (p.ej. 'cuanta irradiancia hizo el 21 "
         "de julio') o quiera PROBAR/EVALUAR el modelo contra el historico. Variables: 'irradiancia' "
         "y 'humedad_suelo'. Devuelve el valor real medido + la reconstruccion + metricas de error. "
-        "NO es una prediccion en vivo, es una evaluacion. Los datos van del 2026-05-01 al 2026-07-23."
+        "NO es una prediccion en vivo, es una evaluacion. Rango disponible: irradiancia desde el "
+        "2025-11-28 y humedad_suelo desde el 2026-05-01, ambas hasta el 2026-07-23 (la ingesta "
+        "esta congelada desde esa fecha). Si te pasas del rango, la herramienta te devuelve el "
+        "rango exacto: citalo, no lo adivines."
     ),
     "input_schema": {
         "type": "object",

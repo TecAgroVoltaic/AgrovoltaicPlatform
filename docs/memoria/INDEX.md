@@ -3,7 +3,18 @@
 Sistema de memoria jerárquico. Un tema por archivo, agrupados por carpeta. Empieza aquí
 para ubicar qué buscas; cada línea apunta al archivo de detalle.
 
-**Última actualización:** 2026-08-18 · *(**Cartago caído → la fuente del ETL es ahora una réplica
+**Última actualización:** 2026-08-19 · *(**Solo el agente predictivo, y verificado end-to-end.**
+El agente histórico quedó **bloqueado en la consola** con un flag de servidor reversible
+(`AGENTE_ANALIZADOR=on`) que corta también `/api/analizador/*` — ver [mvp-debugger](proyecto/mvp-debugger.md).
+Se probó la cadena entera contra producción tras el cambio de fuente al dump: **74 chequeos, 0 fallas**
+(`agente-pronostico/scripts/e2e.py`). Hallazgo que habría hundido la demo: el último dato es de
+**madrugada**, así que la irradiancia pronosticada daba 0 siempre → se agregó el **instante de
+referencia** (`ahora` en `/forecast`) con `medido` + `error` al lado, auditado aparte como
+reconstrucción. Además 3 defectos corregidos (prompt desactualizado, rango histórico mal, mensaje
+de "hueco" vs "fuera de rango") y la **cobertura real de la serie** documentada: 133 días, no continua.
+Detalle en [agente-pronostico](proyecto/agente-pronostico.md).)*
+
+**Anterior:** 2026-08-18 · *(**Cartago caído → la fuente del ETL es ahora una réplica
 del dump dentro de la EC2** (`agrodash-pg`, `127.0.0.1:5433`, 21,3 M filas). El ETL llevaba 9 días
 fallando en silencio: corregido, con `/salud/ingesta` que lo hace visible (hoy **503, stale**, dato
 congelado desde el 23-jul). Jonathan cerró además **6 tareas de confiabilidad** —auth de la consola
@@ -13,7 +24,7 @@ de error— y sumó un **documento de arquitectura en LaTeX** y un RUNBOOK. Veri
 [cuota-store-supabase](proyecto/cuota-store-supabase.md) (79 % del Free tier) y
 [superficie-expuesta](proyecto/superficie-expuesta.md).)*
 
-**Anterior:** 2026-08-10 · *(**Leo Cardinale validó el tratamiento de datos** —
+**Previo:** 2026-08-10 · *(**Leo Cardinale validó el tratamiento de datos** —
 doc rev LCV, ver [respuestas-leo-cardinale](decisiones/respuestas-leo-cardinale.md). Regla
 rectora nueva: **guardar el crudo en la DB y corregir en una capa de análisis** (superó 85→NULL,
 offset→0, resampleo-todo-a-5-min). Muestreo: eléctricas 5 min / radiación 15 s aparte. Temp válida
@@ -30,9 +41,9 @@ multi-variable VIVO en la EC2, fuente SC congelada 23-jul → "solo histórico".
 - [implementacion.md](proyecto/implementacion.md) — paquete `src/agrovoltaic`: diseño (cero columnas quemadas), estructura, idempotencia, bugs corregidos
 - [arquitectura-regiones.md](proyecto/arquitectura-regiones.md) — dos regiones (Cartago/AgroDash + San Carlos/Supabase), sin DB central; San Carlos está partido
 - [capa-agentes.md](proyecto/capa-agentes.md) — Comparador + Analizador; infraestructura consolidada (servicio Python aparte, batch, lee ambas DBs)
-- [agente-pronostico.md](proyecto/agente-pronostico.md) — MVP: agente LLM que pronostica irradiancia (Caja Irradiancia SC) vía clear-sky + kt*; rival estadístico; Fase 0-1 hecha + auditada (Haiku, sin fuga, 47 tests); próximo: montar en VisioneFlow (DB por URL)
+- [agente-pronostico.md](proyecto/agente-pronostico.md) — agente LLM que pronostica irradiancia + humedad de suelo vía clear-sky + kt*; **verificado e2e contra producción el 19-ago (74 chequeos, 0 fallas)**; instante de referencia para pronosticar con sol pese al congelamiento; cobertura real de la serie
 - [agente-analizador.md](proyecto/agente-analizador.md) — **NUEVO (2026-08-10):** agente Q&A sobre el histórico PV en Supabase; tools atómicas (SRP) sobre las vistas limpias; el LLM solo orquesta; MVP CLI, tools validadas contra la base
-- [mvp-debugger.md](proyecto/mvp-debugger.md) — **NUEVO (2026-08-10):** web local (Next.js) para depurar en vivo los dos agentes: visor de traza (tools+salidas+respuesta), explorador de datos read-only, tokens+costo por consulta y acumulado (`/preguntar`, `/datos/*`, `/uso`); + artifact de diseño en iteración
+- [mvp-debugger.md](proyecto/mvp-debugger.md) — web local (Next.js) para depurar en vivo los agentes; **desde el 19-ago solo muestra el predictivo** (flag `AGENTE_ANALIZADOR`): visor de traza (tools+salidas+respuesta), explorador de datos read-only, tokens+costo por consulta y acumulado (`/preguntar`, `/datos/*`, `/uso`); + artifact de diseño en iteración
 - [integracion-visioneflow.md](proyecto/integracion-visioneflow.md) — agente montándose en VisioneFlow: servicio FastAPI /forecast HECHO (53 tests) + modelos agregados + deploy preparado (runbook docs/pronostico/04); bloqueante: la EC2 no alcanza la DB AgroDash (sin Tailscale)
 - [conectividad-tailnet.md](proyecto/conectividad-tailnet.md) — malla Tailscale para acceso a datos: la EC2 (100.125.236.125) YA lee la DB viva de Cartago (100.101.177.71) por Postgres 5432, rol read-only `agrovoltaic_ro`, probado OK; pendiente: rotar la clave débil de prueba
 - [pipeline-tiempo-real.md](proyecto/pipeline-tiempo-real.md) — pipeline arquitectura A (AgroDash→ETL→Supabase store→forecaster multi-variable irradiancia+humedad); congelamiento SC 23-jul → "solo histórico"; desplegado en la EC2 con timers (~812k filas backfilleadas)

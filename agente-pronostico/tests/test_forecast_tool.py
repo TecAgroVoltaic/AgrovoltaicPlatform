@@ -234,3 +234,110 @@ def test_humidity_persistence_usa_mediana():
     val = humidity_persistence(pd.Timestamp("2026-06-30 10:20", tz=TZ), 3600,
                                get_recent=lambda now, lb: recientes)
     assert abs(val - 20000.0) < 1e-6   # mediana 20000 (la media daria 22500)
+
+
+# ── Instante de referencia (anclar el pronostico en un momento historico) ────
+# Con la ingesta congelada, el ultimo dato cae de madrugada y la irradiancia
+# pronosticada es 0 siempre. Anclar en un instante de dia devuelve un numero
+# real SIN mirar el futuro: la barrera de get_recent_data (`< now`) sigue valiendo.
+
+def _serie_larga():
+    """3 h de lecturas cada 5 min: permite anclar en el medio y comparar."""
+    idx = pd.date_range("2026-07-22 08:00", periods=37, freq="5min", tz=TZ)
+    return pd.Series([400.0 + 10 * i for i in range(37)], index=idx, name="ghi")
+
+
+def _mock_dia(monkeypatch, serie):
+    monkeypatch.setattr(forecast_tool.data, "cargar_serie", lambda *a, **k: serie)
+    monkeypatch.setattr(
+        forecast_tool.data, "get_recent_data",
+        lambda now, lb, *a: serie[serie.index < pd.Timestamp(now)],
+    )
+    monkeypatch.setattr(
+        forecast_tool, "clear_sky_ghi",
+        lambda times, **k: pd.Series([800.0] * len(pd.DatetimeIndex(times)),
+                                     index=pd.DatetimeIndex(times)),
+    )
+    monkeypatch.setattr(forecast_tool, "smart_persistence",
+                        lambda now, h, **k: (540.0, 410.0, 660.0))
+
+
+def test_ancla_por_defecto_es_el_ultimo_dato(monkeypatch):
+    serie = _serie_larga()
+    _mock_dia(monkeypatch, serie)
+    out = run_forecast("irradiancia", 3600)
+    assert out["ancla"]["tipo"] == "ultimo_dato"
+    assert out["ancla"]["explicito"] is False
+    assert out["ahora"] == serie.index.max().isoformat()
+    # El momento pronosticado cae despues del ultimo dato -> no hay con que comparar.
+    assert out["medido"] is None
+
+
+def test_ancla_explicita_pronostica_desde_ese_instante(monkeypatch):
+    serie = _serie_larga()
+    _mock_dia(monkeypatch, serie)
+    ancla = "2026-07-22 09:00"
+    out = run_forecast("irradiancia", 3600, now=ancla)
+
+    assert out["ancla"]["tipo"] == "instante_de_referencia"
+    assert out["ancla"]["explicito"] is True
+    assert out["ahora"].startswith("2026-07-22T09:00")
+    assert out["momento_pronosticado"].startswith("2026-07-22T10:00")
+    assert out["valor_esperado"] == 540.0
+    # El rango disponible viaja en la respuesta: quien ancla puede validar su eleccion.
+    assert out["ancla"]["rango_datos"]["desde"].startswith("2026-07-22T08:00")
+
+
+def test_ancla_explicita_trae_lo_que_midio_el_sensor(monkeypatch):
+    """El valor real del momento pronosticado se adjunta DESPUES: no es fuga,
+    el forecaster nunca lo vio (solo miro `< ahora`)."""
+    serie = _serie_larga()
+    _mock_dia(monkeypatch, serie)
+    out = run_forecast("irradiancia", 3600, now="2026-07-22 09:00")
+
+    real = serie.loc[pd.Timestamp("2026-07-22 10:00", tz=TZ)]
+    assert out["medido"]["valor"] == real
+    assert out["medido"]["desfase_seg"] == 0
+    assert out["medido"]["error"] == round(out["valor_esperado"] - real, 2)
+
+
+def test_ancla_no_deja_ver_el_futuro(monkeypatch):
+    """Prueba por perturbacion: corromper TODO lo posterior al ancla no puede
+    mover el pronostico. Es la misma garantia que valida el backtest."""
+    serie = _serie_larga()
+    ancla = pd.Timestamp("2026-07-22 09:00", tz=TZ)
+
+    _mock_dia(monkeypatch, serie)
+    limpio = run_forecast("irradiancia", 3600, now=str(ancla))
+
+    corrupta = serie.copy()
+    corrupta[corrupta.index >= ancla] = 99999.0     # todo el futuro, basura
+    _mock_dia(monkeypatch, corrupta)
+    sucio = run_forecast("irradiancia", 3600, now=str(ancla))
+
+    # smart_persistence esta mockeado; el kt* del contexto SI se calcula de los
+    # datos, asi que es el testigo sensible: si el futuro se colara, cambiaria.
+    kt = limpio["contexto"]["kt_estrella_reciente"]
+    assert kt is not None and kt > 0
+    assert sucio["contexto"]["kt_estrella_reciente"] == kt
+    assert sucio["contexto"]["muestras_recientes"] == limpio["contexto"]["muestras_recientes"]
+
+    # Control negativo: corromper el PASADO si tiene que mover el kt*. Sin esto,
+    # el test pasaria aunque el kt* estuviera clavado en una constante.
+    pasado_roto = serie.copy()
+    pasado_roto[pasado_roto.index < ancla] = 100.0
+    _mock_dia(monkeypatch, pasado_roto)
+    assert run_forecast("irradiancia", 3600,
+                        now=str(ancla))["contexto"]["kt_estrella_reciente"] != kt
+
+
+def test_medido_none_si_el_instante_cae_en_un_hueco(monkeypatch):
+    """Sin lectura cercana (hueco de ingesta), `medido` es None en vez de
+    inventar el punto mas parecido que haya a horas de distancia."""
+    idx = pd.DatetimeIndex(["2026-07-22 08:00", "2026-07-22 08:05",
+                            "2026-07-22 08:10", "2026-07-22 15:00"]).tz_localize(TZ)
+    serie = pd.Series([400.0, 410.0, 420.0, 700.0], index=idx, name="ghi")
+    _mock_dia(monkeypatch, serie)
+    out = run_forecast("irradiancia", 3600, now="2026-07-22 08:10")
+    assert out["momento_pronosticado"].startswith("2026-07-22T09:10")
+    assert out["medido"] is None

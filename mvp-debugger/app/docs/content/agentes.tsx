@@ -102,7 +102,7 @@ export function Pronostico() {
         <li>Cielo despejado: modelo <strong>Ineichen</strong> de pvlib con turbidez Linke climatológica.</li>
         <li>De noche (cielo despejado ≤ 20 W/m²) el valor es exactamente <IC>0.0</IC>.</li>
         <li>Banda de incertidumbre: ±1σ de kt* reciente reconstruido a GHI.</li>
-        <li>El «ahora» por defecto es el <strong>último timestamp del store</strong>, no el reloj de pared.</li>
+        <li>El «ahora» por defecto es el <strong>último timestamp del store</strong>, no el reloj de pared. Se puede <strong>anclar en otro instante</strong> (campo <IC>ahora</IC> de <IC>POST /forecast</IC>): el forecaster sigue viendo solo datos anteriores a ese momento.</li>
         <li><IC>parse_horizon("dos horas") → 7200</IC> es determinista (sin LLM) y es la fuente de verdad del horizonte.</li>
       </ul>
       <p>La humedad de suelo persiste la <strong>mediana</strong> de lecturas recientes (el suelo cambia lento y es muy autocorrelacionado); no tiene análogo de cielo despejado.</p>
@@ -114,9 +114,14 @@ export function Pronostico() {
           ["Qué es", "Desde el «ahora» hacia adelante (≤ 6 h)", "«Cómo habría predicho» una fecha pasada vs. lo medido"]        ,
           ["Dispara", <><IC>POST /forecast</IC> o la tool forecast</>, <><IC>GET /backtest</IC> o la tool backtest (solo en /chat)</>],
           ["Datos", "get_recent_data(now, 60min), barrera timestamp < now", "la MISMA serie del store, remuestreada, con .shift(1)"],
-          ["Es predicción real", "sí", "no — evalúa el método"],
+          ["Es predicción real", "sí (salvo si se ancla en el pasado)", "no — evalúa el método"],
         ]}
       />
+      <h3>Instante de referencia</h3>
+      <p>Con la ingesta congelada desde el 23-jul-2026, el último dato cae de madrugada: pronosticar «desde el último dato» da irradiancia 0 siempre, porque de noche <em>es</em> 0. Por eso <IC>POST /forecast</IC> acepta <IC>ahora</IC> (ISO): ancla el pronóstico en un instante del histórico —p. ej. con sol— y devuelve un número real. Como ese momento ya pasó, la respuesta adjunta <IC>medido</IC> con lo que registró el sensor y el error.</p>
+      <Note kind="warn">
+        <div>Un pronóstico anclado es un <b>hindcast</b>, no una predicción en vivo. La barrera anti-fuga es la misma (<IC>get_recent_data</IC> devuelve solo <IC>timestamp &lt; ahora</IC>) y el valor medido se consulta <b>después</b>, sin entrar al cálculo. Se audita en <IC>predicciones</IC> con el origen sufijado <IC>:instante-referencia</IC> para no mezclarlo con predicciones reales.</div>
+      </Note>
       <Note kind="warn">
         <div>El backtest <b>reaplica el método</b> sobre el histórico real; por eso la vista «Predicción vs Real» de la consola aclara que <b>no son predicciones en vivo</b>. Las métricas: <IC>mae</IC>, <IC>bias</IC>, <IC>error_rel_pct</IC> y <IC>skill_pct</IC> (mejora sobre el baseline «igual que antes»).</div>
       </Note>
@@ -125,7 +130,7 @@ export function Pronostico() {
       <Table
         head={["Tool", "Disponible en", "Notas"]}
         rows={[
-          [<IC>forecast</IC>, "/preguntar y /chat", "run_forecast(variable, horizon_seconds, horizonte_texto?)"],
+          [<IC>forecast</IC>, "/preguntar y /chat", "run_forecast(variable, horizon_seconds, horizonte_texto?, now?)"],
           [<IC>backtest</IC>, "solo /chat", <>Genera <IC>_grafico</IC> (Real vs Reconstrucción) para pintar inline</>],
           [<IC>web_search</IC>, "solo /chat", "Server-tool de Anthropic (máx. 3 usos), para conocimiento externo con cita"],
         ]}
@@ -136,7 +141,7 @@ export function Pronostico() {
         head={["Método · Path", "Qué hace"]}
         rows={[
           [<IC>GET /health</IC>, "Ping (abierto, sin key)"],
-          [<IC>POST /forecast</IC>, "Pronóstico directo. Hace write-back a la tabla predicciones (auditoría)"],
+          [<IC>POST /forecast</IC>, <>Pronóstico directo (opcional <IC>ahora</IC> = instante de referencia). Hace write-back a la tabla predicciones (auditoría)</>],
           [<IC>GET /backtest</IC>, "Reconstrucción honesta (variable, dias, bucket, desde/hasta)"],
           [<IC>POST /anomalias</IC>, "Detección determinista (outliers, drift, stuck, outage, fuera_rango)"],
           [<IC>GET /serie</IC>, "Peek de una serie del store para graficar"],

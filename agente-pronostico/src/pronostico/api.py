@@ -72,6 +72,13 @@ class ForecastRequest(BaseModel):
         description="Quien pide el pronostico (para el audit): 'api', "
                     "'webhook', 'visioneflow-schedule', etc.",
     )
+    ahora: str | None = Field(
+        default=None,
+        description="INSTANTE DE REFERENCIA en ISO ('2026-07-22T10:00'). Ancla el "
+                    "pronostico en un momento historico: el forecaster solo ve "
+                    "datos ANTERIORES a ese instante (misma barrera anti-fuga del "
+                    "backtest). Omitido = ultimo dato disponible.",
+    )
 
 
 class Pregunta(BaseModel):
@@ -303,11 +310,17 @@ def forecast(cuerpo: ForecastRequest) -> dict:
     try:
         t0 = time.perf_counter()
         res = run_forecast(
-            cuerpo.variable, cuerpo.horizon_seconds, cuerpo.horizonte_texto
+            cuerpo.variable, cuerpo.horizon_seconds, cuerpo.horizonte_texto,
+            now=cuerpo.ahora,
         )
         latencia_ms = int((time.perf_counter() - t0) * 1000)
         # write-back best-effort: audita cada pronostico en `predicciones`.
-        audit.registrar_prediccion(res, origen=cuerpo.origen, latencia_ms=latencia_ms)
+        # Un pronostico ANCLADO es una reconstruccion, no algo que el sistema
+        # predijo en vivo: se marca en `origen` para no contaminar el analisis
+        # predicho-vs-real con hindcasts disfrazados de predicciones.
+        origen = (f"{cuerpo.origen}:instante-referencia" if cuerpo.ahora
+                  else cuerpo.origen)
+        audit.registrar_prediccion(res, origen=origen, latencia_ms=latencia_ms)
         return res
     except ValueError as exc:  # variable u horizonte invalidos -> culpa del cliente
         raise HTTPException(

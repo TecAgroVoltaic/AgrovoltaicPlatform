@@ -117,4 +117,69 @@ herramienta con anclaje físico.
   a medida — cumple el pedido de que sea reutilizable). Falta: servicio Python + Dockerfile/compose,
   exposición nginx+API key, config del canvas, sumar Haiku al plugin. Todo en [[integracion-visioneflow]].
 
-Relacionado: [[integracion-visioneflow]], [[capa-agentes]], [[agrodash-esquema]], [[bloqueantes]], [[agrodash]].
+
+## 2026-08-19 — verificación end-to-end tras el cambio de fuente + instante de referencia
+
+Contexto: la fuente del ETL pasó de Cartago vivo a la **réplica del dump en la EC2**
+([[agrodash-local]]). Se verificó la cadena entera contra **producción**, no contra commits.
+
+### `scripts/e2e.py` — la prueba, reproducible
+Script nuevo (solo stdlib) que ejercita el servicio REAL por HTTP: salud, contrato de
+`/forecast` (2 variables × varios horizontes, banda coherente, 400/422), instante de
+referencia, write-back en `predicciones`, `/backtest`, `/serie`, `/anomalias`, y el lazo LLM
+(`/preguntar` + las dos modalidades de `/chat` + anti-invención).
+
+    BASE=http://127.0.0.1:18000 python3 scripts/e2e.py     # por el túnel a la EC2
+    SIN_LLM=1 …                                            # sin gastar tokens
+
+**Resultado (19-ago, contra la EC2): 74 chequeos · 71 OK · 3 avisos · 0 fallas.** La cadena
+fuente→ETL→store→forecaster→LLM sobrevivió el cambio de base. Los 3 avisos son conocidos:
+ingesta `stale` (outage SC) ×2 y skill 0 % en humedad (ver abajo).
+
+### El hallazgo que habría hundido la demo
+El último dato del store es del **23-jul 02:31, de madrugada**. Como el "ahora" del
+pronóstico es ese último dato, la irradiancia daba **0 W/m² siempre** (≤3 h: "es de noche")
+o **None** (≥5 h: sin kt* nocturno para persistir). Correcto, pero indemostrable.
+
+**Solución: instante de referencia.** `POST /forecast` acepta `ahora` (ISO) y `run_forecast`
+lo pasa como `now` — que ya soportaba internamente. Anclar en un momento con sol devuelve un
+número real. La respuesta suma dos metadatos:
+- **`ancla`** — `{instante, explicito, tipo: ultimo_dato|instante_de_referencia, rango_datos}`.
+  Sin esto un hindcast es indistinguible de una predicción en vivo, que es justo la confusión
+  a evitar.
+- **`medido`** — lo que registró el sensor en el momento pronosticado (+ `error`). **No es
+  fuga**: se consulta DESPUÉS y nunca alimenta el cálculo; la barrera `< now` de
+  `get_recent_data` sigue intacta (test por perturbación, con control negativo).
+
+Se audita en `predicciones` con el origen sufijado **`:instante-referencia`**: una
+reconstrucción no puede contaminar el análisis predicho-vs-real.
+
+### Tres defectos reales encontrados y corregidos
+1. **`SYSTEM_PROMPT` desactualizado** (el de `/preguntar`): decía "solo irradiancia" y
+   "datos hasta fin de junio de 2026". Ahora cubre las dos variables, explica el
+   congelamiento y por qué un pronóstico nocturno da ~0.
+2. **Rango histórico mal en el prompt del chat y en el schema de `backtest`**: decía
+   `2026-05-01` para todo, pero el backfill del 14-ago llevó la irradiancia a **2025-11-28**
+   → el agente rechazaba fechas que SÍ tenían datos.
+3. **Mensaje de error del backtest engañoso**: ante un día sin datos decía siempre "el store
+   va del X al Y", sugiriendo cobertura continua. El agente respondía *"esa fecha está fuera
+   del rango"* y acto seguido citaba un rango que la contenía. Ahora distingue **fuera de
+   rango** de **hueco interno** y sugiere los días con datos más cercanos.
+
+### Cobertura real de la serie (NO es continua)
+Días con dato por mes (canal de irradiancia elegido): nov-25 **3** · dic-25 **11** (hasta el
+día 11) · ene/feb-26 **0** · mar-26 **13** · abr-26 **28** · may-26 **31** · jun-26 **25**
+(hueco 14–18) · jul-26 **22** (falta el 3; termina el 23). Total **133 días**. Humedad de
+suelo: solo desde 2026-05-01. Elegir fechas de demo dentro de estos tramos.
+
+### Límite honesto de la humedad de suelo
+En el backtest, el método de humedad (`shift(1)` del bucket) **coincide con el baseline
+ingenuo** → skill 0 % por construcción, no por mal modelo. Es lo esperable en una variable
+lenta y muy autocorrelada. La consola ahora lo muestra como **n/a** con la explicación, en
+vez de "+0 %". El valor sigue siendo **crudo del ADC** (sin curva de calibración: sigue en
+[[bloqueantes]]) y el prompt obliga a decirlo.
+
+**Desplegado en la EC2** (rsync de `src/` + rebuild del sidecar `forecast-forecast-1`);
+respaldo del código anterior en `.rollback-src`. **128 tests** en local.
+
+Relacionado: [[integracion-visioneflow]], [[capa-agentes]], [[agrodash-esquema]], [[bloqueantes]], [[agrodash]], [[pipeline-tiempo-real]], [[mvp-debugger]].

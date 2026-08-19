@@ -100,3 +100,31 @@ Relacionado: [[agente-analizador]], [[agente-pronostico]], [[capa-agentes]], [[e
 - **Estados de error/vacío**: las vistas validaban nada y un 200 con otra forma las dejaba
   en "cargando…" para siempre. Ahora `extraerLista`/`mensajeError` + el bloque `Estado`.
 - **Verificación**: `scripts/smoke-auth.sh` (8 casos con HTTP real) corre en el CI.
+
+## 2026-08-19 — agente histórico BLOQUEADO (solo se muestra el predictivo)
+
+Pedido del usuario: esta semana la consola muestra **solo el agente de pronóstico**. El
+bloqueo es un flag de servidor, no un borrado: `AGENTE_ANALIZADOR=on` lo devuelve entero.
+
+- **Fuente única**: `app/lib/agentes.ts` (`analizadorActivo()`), leído **solo del lado
+  servidor** y bajado como prop. Nada de `NEXT_PUBLIC_*`: quedaría horneado en el bundle y
+  habría dos fuentes de verdad (build vs. proceso).
+- **Se corta la puerta, no el botón**: `/api/analizador/*` responde **503** con el mensaje
+  de cómo revertirlo. Esconder la UI no alcanza — un `fetch` a mano igual consulta la
+  Supabase PV y gasta tokens.
+- Alcance: vistas Reconciliación y Rendimiento fuera de la navegación · selector de agente
+  reemplazado por el rótulo «Pronóstico ambiental» · página suelta `/analizador` → **404** ·
+  grupo «Agente Analizador PV» fuera de `/docs` + tarjeta y enlace muertos degradados ·
+  el mini-chat del glosario (`ConceptChat`) ahora habla con el **agente activo** (antes
+  apuntaba duro a `/api/analizador/chat` y el bloqueo lo dejaba en 503).
+- **`export const dynamic = "force-dynamic"`** en `/`, `/docs` y `/analizador`: sin eso Next
+  las prerenderiza y el flag queda congelado en el momento del build.
+- **Verificación**: `scripts/smoke-agentes.sh` (12 casos, HTTP real) prueba el bloqueo **y su
+  reversibilidad**; corre en el CI junto al de auth.
+
+## 2026-08-19 — vista «Predicción vs Real»: pronóstico anclado
+
+Nuevo componente `console/AnclaForecast.tsx`: elegir un instante del histórico y pronosticar
+desde ahí, con lo que midió el sensor y el error al lado. Ver [[agente-pronostico]]. El KPI
+«Skill vs. ingenuo» ahora muestra **n/a** en humedad de suelo: ahí el método *es* la
+persistencia, así que el 0 % era una tautología, no una falla del modelo.

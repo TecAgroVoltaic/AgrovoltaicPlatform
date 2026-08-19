@@ -31,8 +31,8 @@ RESPUESTA_FALSA = {
 def _mock_run_forecast(monkeypatch, respuesta=RESPUESTA_FALSA):
     llamadas = []
 
-    def falso(variable, horizon_seconds, horizonte_texto=None):
-        llamadas.append((variable, horizon_seconds, horizonte_texto))
+    def falso(variable, horizon_seconds, horizonte_texto=None, now=None):
+        llamadas.append((variable, horizon_seconds, horizonte_texto, now))
         return respuesta
 
     monkeypatch.setattr(api, "run_forecast", falso)
@@ -58,7 +58,7 @@ def test_forecast_delega_y_devuelve_el_dict(monkeypatch):
     # Then: 200, passthrough del dict y delegacion con los 3 argumentos
     assert resp.status_code == 200
     assert resp.json() == RESPUESTA_FALSA
-    assert llamadas == [("irradiancia", 7200, "dos horas")]
+    assert llamadas == [("irradiancia", 7200, "dos horas", None)]
 
 
 def test_forecast_con_clave_correcta(monkeypatch):
@@ -118,3 +118,33 @@ def test_forecast_valida_el_horizonte_en_el_borde(monkeypatch):
     assert fuera_de_rango.status_code == 422
     assert incompleto.status_code == 422
     assert llamadas == []
+
+
+# ── Instante de referencia ──────────────────────────────────────────────────
+
+def test_forecast_pasa_el_instante_de_referencia(monkeypatch):
+    # Given: sin API key y run_forecast mockeado
+    monkeypatch.delenv(ENV_API_KEY, raising=False)
+    llamadas = _mock_run_forecast(monkeypatch)
+    # When: POST /forecast con un ancla explicita
+    cuerpo = {**CUERPO_VALIDO, "ahora": "2026-07-22T10:00:00"}
+    resp = CLIENTE.post("/forecast", json=cuerpo)
+    # Then: el ancla llega tal cual a la tool (el borde no la reinterpreta)
+    assert resp.status_code == 200
+    assert llamadas == [("irradiancia", 7200, "dos horas", "2026-07-22T10:00:00")]
+
+
+def test_forecast_anclado_se_audita_como_reconstruccion(monkeypatch):
+    """Un pronostico anclado NO es una prediccion en vivo: tiene que quedar
+    distinguible en `predicciones`, o el analisis predicho-vs-real se ensucia."""
+    monkeypatch.delenv(ENV_API_KEY, raising=False)
+    _mock_run_forecast(monkeypatch)
+    registrados = []
+    monkeypatch.setattr(api.audit, "registrar_prediccion",
+                        lambda res, origen="api", latencia_ms=None: registrados.append(origen))
+
+    CLIENTE.post("/forecast", json={**CUERPO_VALIDO, "origen": "consola"})
+    CLIENTE.post("/forecast", json={**CUERPO_VALIDO, "origen": "consola",
+                                    "ahora": "2026-07-22T10:00:00"})
+
+    assert registrados == ["consola", "consola:instante-referencia"]

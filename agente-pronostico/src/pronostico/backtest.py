@@ -25,6 +25,39 @@ def _ts(x) -> pd.Timestamp:
     return t.tz_localize(config.TZ) if t.tz is None else t.tz_convert(config.TZ)
 
 
+def _dias_con_datos(serie: pd.Series) -> pd.DatetimeIndex:
+    """Dias que SI tienen lecturas. La cobertura no es continua: hay huecos de
+    dias o meses enteros dentro del rango global."""
+    conteo = serie.resample("D").count()
+    return conteo[conteo > 0].index
+
+
+def _mensaje_sin_datos(serie, variable, disp0, disp1, lo, hi) -> str:
+    """Explica POR QUE no se pudo evaluar, distinguiendo dos casos muy distintos.
+
+    Antes decia siempre "el store va del X al Y", lo que sugiere cobertura
+    continua: pedir un dia que cae en un hueco INTERNO producia un mensaje que
+    contradecia al propio rango, y el LLM lo repetia ("esa fecha esta fuera del
+    rango" seguido del rango que la contiene).
+    """
+    base = (f"El store de {variable} va del {disp0.date()} al {disp1.date()}, "
+            f"pero la cobertura NO es continua (hay huecos).")
+    if lo is None:
+        return f"no hay suficientes datos para evaluar ese rango. {base}"
+    if lo > disp1 or (hi is not None and hi <= disp0):
+        return (f"la fecha pedida ({lo.date()}) esta FUERA del rango de datos. {base}")
+
+    dias = _dias_con_datos(serie)
+    previos = dias[dias < lo]
+    siguientes = dias[dias >= (hi if hi is not None else lo)]
+    sugerencias = [d.date().isoformat() for d in
+                   ([previos[-1]] if len(previos) else []) +
+                   ([siguientes[0]] if len(siguientes) else [])]
+    cerca = f" Dias con datos mas cercanos: {', '.join(sugerencias)}." if sugerencias else ""
+    return (f"no hay datos para {lo.date()}: cae en un HUECO de la serie (la fecha si "
+            f"esta dentro del rango global, pero ese dia no se registro). {base}{cerca}")
+
+
 def backtest(variable: str = Variable.IRRADIANCIA.value, dias: int = 7,
              bucket: str = "h", desde: str | None = None,
              hasta: str | None = None) -> dict:
@@ -36,6 +69,7 @@ def backtest(variable: str = Variable.IRRADIANCIA.value, dias: int = 7,
     serie = data.cargar_serie(variable)                 # tz-aware (hora local CR)
     disp0, disp1 = serie.index.min(), serie.index.max()
 
+    lo = hi = None                                      # limites del rango pedido
     if desde or hasta:                                  # rango historico explicito
         lo = _ts(desde) if desde else disp0
         if hasta:
@@ -51,10 +85,7 @@ def backtest(variable: str = Variable.IRRADIANCIA.value, dias: int = 7,
 
     s = sel.resample(bucket).mean().dropna()
     if len(s) < 3:
-        raise ValueError(
-            f"no hay suficientes datos para evaluar ese rango. "
-            f"El store de {variable} va del {disp0.date()} al {disp1.date()}."
-        )
+        raise ValueError(_mensaje_sin_datos(serie, variable, disp0, disp1, lo, hi))
 
     if variable == Variable.IRRADIANCIA.value:
         cs = clear_sky_ghi(s.index, **data.SITE)        # techo fisico por bucket
