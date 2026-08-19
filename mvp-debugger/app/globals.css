@@ -28,9 +28,20 @@
 }
 
 * { box-sizing:border-box; }
+/* Scrollbars con la paleta, en toda la consola. El pulgar usa `background-clip`
+   con borde transparente para quedar fino sin perder área de agarre. */
+*::-webkit-scrollbar { width:11px; height:11px; }
+*::-webkit-scrollbar-track { background:transparent; }
+*::-webkit-scrollbar-thumb { background:var(--line2); border-radius:99px;
+  border:3px solid transparent; background-clip:padding-box; }
+*::-webkit-scrollbar-thumb:hover { background:var(--muted); background-clip:padding-box; }
+*::-webkit-scrollbar-corner { background:transparent; }
 html { -webkit-text-size-adjust:100%; }
 body {
   margin:0; background:var(--ground); color:var(--ink);
+  /* Firefox. El webkit va abajo: sin esto el scroll horizontal del lienzo de
+     arquitectura salía con el gris del sistema, blanco sobre el fondo oscuro. */
+  scrollbar-width:thin; scrollbar-color:var(--line2) transparent;
   font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   font-size:14px; line-height:1.55; letter-spacing:-.003em;
 }
@@ -49,8 +60,13 @@ button, input, textarea, select { font-family:inherit; }
 @media (min-width:1300px){ body.chat-abierto .app { padding-right:580px; } }
 .side { width:230px; flex:0 0 230px; align-self:stretch; background:var(--panel);
   border-right:1px solid var(--line); position:sticky; top:0; height:100vh;
-  display:flex; flex-direction:column; gap:18px; padding:22px 16px; }
+  display:flex; flex-direction:column; gap:18px; padding:22px 16px;
+  transition:width .18s ease, flex-basis .18s ease, padding .18s ease; }
 .brand { display:flex; align-items:center; gap:10px; padding:0 6px; }
+.plegar { margin-left:auto; border:1px solid transparent; background:transparent;
+  color:var(--muted); width:26px; height:26px; border-radius:7px; cursor:pointer;
+  display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto; }
+.plegar:hover { color:var(--ink); background:var(--panel2); border-color:var(--line); }
 .brand .mark { width:22px; height:22px; flex:0 0 auto; }
 .brand b { font-size:15px; letter-spacing:-.02em; font-weight:600; }
 .brand .sub { font-size:10.5px; }
@@ -58,7 +74,9 @@ button, input, textarea, select { font-family:inherit; }
 .agent button { flex:1; border:0; background:transparent; color:var(--ink2); cursor:pointer; padding:6px 8px; border-radius:6px; font-size:12.5px; font-weight:540; letter-spacing:-.01em; }
 .agent button.on { background:var(--raise); color:var(--ink); }
 .nav { display:flex; flex-direction:column; gap:1px; }
-.navitem { width:100%; border:0; cursor:pointer; background:transparent; color:var(--ink2); text-align:left; padding:9px 12px; border-radius:8px; font-size:13.5px; font-weight:500; letter-spacing:-.01em; border-left:2px solid transparent; }
+.navitem { width:100%; border:0; cursor:pointer; background:transparent; color:var(--ink2); text-align:left; padding:9px 12px; border-radius:8px; font-size:13.5px; font-weight:500; letter-spacing:-.01em; border-left:2px solid transparent; text-decoration:none;
+  display:flex; align-items:center; gap:10px; }
+.navitem svg { flex:0 0 auto; }
 .navitem:hover { background:var(--panel2); color:var(--ink); }
 .navitem.on { background:var(--panel2); color:var(--ink); border-left-color:var(--accent); font-weight:560; }
 .navsep { height:1px; background:var(--line); margin:10px 8px; }
@@ -68,7 +86,26 @@ button, input, textarea, select { font-family:inherit; }
 .pulse.off { background:var(--crit); animation:none; }
 @keyframes pulse { 0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--good) 55%,transparent);} 70%{box-shadow:0 0 0 6px transparent;} 100%{box-shadow:0 0 0 0 transparent;} }
 @media (prefers-reduced-motion:reduce){ .pulse{animation:none;} }
-.tgl { border:1px solid var(--line); background:var(--panel2); color:var(--ink2); width:32px; height:28px; border-radius:7px; cursor:pointer; font-size:14px; }
+.tgl { border:1px solid var(--line); background:var(--panel2); color:var(--ink2); width:32px; height:28px; border-radius:7px; cursor:pointer; font-size:14px; flex:0 0 auto; }
+
+/* ── Barra lateral compacta (el estado por defecto) ───────────────────────
+   Solo iconos, en una columna de 60 px. El nombre de cada vista vive en el
+   `data-tip` que atiende ChartTooltip: se lee al pasar el mouse, sin ocupar
+   ancho permanente. `.solo-ancha` es el interruptor: todo lo textual cuelga
+   de esa clase, así el marcado es el mismo en los dos estados. */
+.side.compacta { width:60px; flex-basis:60px; padding:22px 10px; gap:14px; align-items:center; }
+.side.compacta .solo-ancha { display:none; }
+.side.compacta .brand { padding:0; justify-content:center; }
+.side.compacta .plegar { margin-left:0; }
+.side.compacta .agent { flex-direction:column; width:100%; padding:2px; }
+.side.compacta .agent button { padding:6px 0; text-align:center; font-family:var(--mono); font-size:12px; }
+.side.compacta .nav { width:100%; }
+.side.compacta .navitem { justify-content:center; padding:10px 0; gap:0; border-left:0;
+  border-right:2px solid transparent; }
+.side.compacta .navitem.on { border-right-color:var(--accent); }
+.side.compacta .navsep { width:60%; margin:8px auto; }
+.side.compacta .sidefoot { flex-direction:column; gap:10px; width:100%; justify-content:center; }
+.side.compacta .live { justify-content:center; }
 
 .content { flex:1; min-width:0; max-width:1280px; margin:0 auto; padding:30px 34px 90px; overflow-x:clip; }
 .phead { margin-bottom:6px; }
@@ -172,7 +209,7 @@ svg.chart { width:100%; height:auto; display:block; }
 /* ── Tooltip de gráficas ─────────────────────────────────────────────────── */
 svg .hit { cursor:crosshair; }
 .bar { transition:opacity .1s; } .bar:hover { opacity:.72; }
-#tip { position:fixed; z-index:60; pointer-events:none; background:var(--raise); color:var(--ink); border:1px solid var(--line2); border-radius:7px; padding:5px 10px; font-family:var(--mono); font-variant-numeric:tabular-nums; font-size:12px; white-space:nowrap; transform:translate(-50%,-128%); box-shadow:0 4px 14px #0000001f; }
+#tip { position:fixed; z-index:60; pointer-events:none; background:var(--raise); color:var(--ink); border:1px solid var(--line2); border-radius:7px; padding:5px 10px; font-family:var(--mono); font-variant-numeric:tabular-nums; font-size:12px; white-space:nowrap; max-width:min(320px,calc(100vw - 16px)); box-shadow:0 4px 14px #0000001f; }
 #tip[hidden] { display:none; }
 
 /* ── Ask (caja de pregunta) ──────────────────────────────────────────────── */
