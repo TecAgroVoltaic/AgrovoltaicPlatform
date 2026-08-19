@@ -1,8 +1,12 @@
 "use client";
 import { Page, Cards, Note, Diagram, IC, Table, Meta } from "../ui";
 import { ConceptChat } from "../ConceptChat";
+import { useAgenteDocs } from "../agenteCtx";
 
 export function Overview() {
+  // Con el agente historico bloqueado su seccion no existe: la tarjeta que
+  // apunta ahi seria un enlace muerto que devuelve a este mismo overview.
+  const soloPronostico = useAgenteDocs() === "pronostico";
   return (
     <Page
       crumb="Introducción"
@@ -45,7 +49,7 @@ export function Overview() {
         ["Sitio", "San Carlos · 10.33°N, 84.42°O"],
         ["Zona horaria", "UTC−6 (sin DST)"],
         ["LLM", "claude-haiku-4-5"],
-        ["Agentes", "2 (analizador + pronóstico)"],
+        ["Agentes", soloPronostico ? "1 activo (pronóstico)" : "2 (analizador + pronóstico)"],
         ["Web", "Next.js 14 · mvp-debugger"],
       ]} />
 
@@ -53,9 +57,12 @@ export function Overview() {
       <Cards items={[
         { id: "arquitectura", title: "Topología del sistema", desc: "Cómo viaja una pregunta de la web a la respuesta, y qué habla con qué." },
         { id: "datos-esquema", title: "La base de datos PV", desc: "Tablas crudas + vistas de corrección. El modelo «crudo en la DB, corrección en capa de análisis»." },
-        { id: "analizador", title: "Agente Analizador PV", desc: "8 herramientas SQL sobre el histórico, endpoints y el lazo LLM." },
+        ...(soloPronostico ? [] : [{ id: "analizador", title: "Agente Analizador PV", desc: "8 herramientas SQL sobre el histórico, endpoints y el lazo LLM." }]),
         { id: "pronostico", title: "Agente Pronóstico", desc: "Persistencia de kt* × cielo despejado, backtest histórico y anomalías." },
-        { id: "web-consola", title: "Vistas de la consola", desc: "Reconciliación, Predicción vs Real, Rendimiento y Costo — qué muestra cada una." },
+        { id: "web-consola", title: "Vistas de la consola",
+          desc: soloPronostico
+            ? "Predicción vs Real, Costo y Salud del sistema — qué muestra cada una."
+            : "Reconciliación, Predicción vs Real, Rendimiento y Costo — qué muestra cada una." },
         { id: "visioneflow", title: "Infra de agentes (VisioneFlow)", desc: "El modelo de flujo, los nodos y cómo se cablean los mismos endpoints como tools." },
       ]} />
 

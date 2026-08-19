@@ -1,3 +1,6 @@
+import { notFound } from "next/navigation";
+
+import { analizadorActivo } from "@/app/lib/agentes";
 import { Health } from "@/app/components/Health";
 import { Ask } from "@/app/components/Ask";
 import { Kpis } from "@/app/components/Kpis";
@@ -15,7 +18,15 @@ const EJEMPLOS = [
   "¿Va a llover mañana?",
 ];
 
+// Render dinamico: el flag de agentes se lee del ENTORNO en cada request. Sin
+// esto Next prerenderiza la pagina y congela el valor del momento del build,
+// asi que cambiar la variable no cambiaria nada hasta reconstruir.
+export const dynamic = "force-dynamic";
+
 export default function AnalizadorPage() {
+  // Herramienta suelta (no enlazada) del agente historico: si esta bloqueado,
+  // esta pagina no existe. Si no, quedaria una vista que solo sabe dar 503.
+  if (!analizadorActivo()) notFound();
   return (
     <div>
       <h1>🔆 Analizador PV · debugger</h1>

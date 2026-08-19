@@ -2,15 +2,23 @@
 // Shell de la documentación: sidebar agrupado + contenido, con navegación por hash
 // (#id-de-seccion) para deep-links, tema claro/oscuro persistido y sidebar responsive.
 import "./docs.css";
-import { useEffect, useState } from "react";
-import { GROUPS, BY_ID, ORDER, DEFAULT_ID } from "./registry";
+import { useEffect, useMemo, useState } from "react";
+import { DEFAULT_ID, grupos, indice } from "./registry";
+import { AgenteDocs } from "./agenteCtx";
 
-function hashId(): string {
-  const h = typeof window !== "undefined" ? window.location.hash.replace(/^#/, "") : "";
-  return BY_ID[h] ? h : DEFAULT_ID;
-}
+/**
+ * `analizador` = ¿esta habilitado el agente historico? Llega del servidor
+ * (app/docs/page.tsx -> lib/agentes). Con el apagado se caen sus secciones y el
+ * mini-chat del glosario habla con el agente que SI esta activo.
+ */
+export function DocsShell({ analizador = true }: { analizador?: boolean }) {
+  const GROUPS = useMemo(() => grupos(analizador), [analizador]);
+  const { orden: ORDER, porId: BY_ID } = useMemo(() => indice(GROUPS), [GROUPS]);
+  const hashId = () => {
+    const h = typeof window !== "undefined" ? window.location.hash.replace(/^#/, "") : "";
+    return BY_ID[h] ? h : DEFAULT_ID;
+  };
 
-export function DocsShell() {
   const [active, setActive] = useState(DEFAULT_ID);
   const [open, setOpen] = useState(false);
   const [theme, setTheme] = useState("");
@@ -31,7 +39,9 @@ export function DocsShell() {
     const onHash = () => setActive(hashId());
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
-  }, []);
+    // BY_ID cambia si cambian los agentes habilitados -> revalidar el hash.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [BY_ID]);
 
   // Al cambiar de sección: scroll arriba y cerrar el sidebar móvil.
   useEffect(() => {
@@ -94,7 +104,9 @@ export function DocsShell() {
 
       <main className="dx-content">
         <article className="dx-page">
-          <Comp />
+          <AgenteDocs.Provider value={analizador ? "analizador" : "pronostico"}>
+            <Comp />
+          </AgenteDocs.Provider>
           <div className="dx-nextprev">
             {prev
               ? <a className="dx-np" href={"#" + prev.id}><div className="d">← anterior</div><div className="t">{prev.title}</div></a>

@@ -11,9 +11,12 @@ import { VfPlataforma, VfAgentes } from "./content/visioneflow";
 import { Infra } from "./content/infra";
 
 export type Sec = { id: string; title: string; Comp: ComponentType };
-export type Grp = { label: string; items: Sec[] };
+// `agente` marca los grupos que documentan UN agente concreto: si ese agente
+// esta bloqueado en la consola, su documentacion tampoco se muestra (si no, la
+// doc promete una seccion que no existe).
+export type Grp = { label: string; items: Sec[]; agente?: "analizador" | "pronostico" };
 
-export const GROUPS: Grp[] = [
+const GRUPOS_TODOS: Grp[] = [
   { label: "Introducción", items: [
     { id: "overview", title: "Overview", Comp: Overview },
     { id: "glosario", title: "Glosario", Comp: Glosario },
@@ -26,10 +29,10 @@ export const GROUPS: Grp[] = [
     { id: "datos-esquema", title: "Esquema de la base", Comp: DatosEsquema },
     { id: "datos-pipeline", title: "Pipeline ETL y calidad", Comp: DatosPipeline },
   ] },
-  { label: "Agente Analizador PV", items: [
+  { label: "Agente Analizador PV", agente: "analizador", items: [
     { id: "analizador", title: "Analizador PV", Comp: Analizador },
   ] },
-  { label: "Agente Pronóstico", items: [
+  { label: "Agente Pronóstico", agente: "pronostico", items: [
     { id: "pronostico", title: "Pronóstico ambiental", Comp: Pronostico },
   ] },
   { label: "La web · mvp-debugger", items: [
@@ -46,6 +49,15 @@ export const GROUPS: Grp[] = [
   ] },
 ];
 
-export const ORDER: Sec[] = GROUPS.flatMap((g) => g.items);
-export const BY_ID: Record<string, Sec> = Object.fromEntries(ORDER.map((s) => [s.id, s]));
 export const DEFAULT_ID = "overview";
+
+/** Grupos visibles segun que agentes estan habilitados en esta consola. */
+export function grupos(analizadorActivo: boolean): Grp[] {
+  return GRUPOS_TODOS.filter((g) => analizadorActivo || g.agente !== "analizador");
+}
+
+/** Secciones en orden + indice por id, derivados de los grupos visibles. */
+export function indice(gs: Grp[]): { orden: Sec[]; porId: Record<string, Sec> } {
+  const orden = gs.flatMap((g) => g.items);
+  return { orden, porId: Object.fromEntries(orden.map((s) => [s.id, s])) };
+}

@@ -16,10 +16,19 @@ type View = "recon" | "pred" | "perf" | "costo" | "salud";
 const NAV: [View, string][] = [["recon", "Reconciliación"], ["pred", "Predicción vs Real"], ["perf", "Rendimiento"], ["costo", "Costo y uso"], ["salud", "Salud del sistema"]];
 const LABEL: Record<View, string> = { recon: "Reconciliación", pred: "Predicción vs Real", perf: "Rendimiento", costo: "Costo y uso", salud: "Salud del sistema" };
 const AGENT_OF: Partial<Record<View, string>> = { recon: "analizador", perf: "analizador", pred: "pronostico" };
+// La navegación arranca un grupo nuevo acá (vistas transversales, no de un agente).
+const SEPARADOR: View = "costo";
 
-export function Console() {
-  const [agent, setAgent] = useState("analizador");
-  const [view, setView] = useState<View>("recon");
+/**
+ * `analizador` = ¿está habilitado el agente histórico? Viene del servidor
+ * (lib/agentes) via app/page.tsx. Con él apagado la consola muestra un solo
+ * agente: se caen sus vistas, su hilo de chat y su selector, y el proxy
+ * /api/analizador/* ya responde 503 por su cuenta.
+ */
+export function Console({ analizador = true }: { analizador?: boolean }) {
+  const vistas = NAV.filter(([v]) => analizador || AGENT_OF[v] !== "analizador");
+  const [agent, setAgent] = useState(analizador ? "analizador" : "pronostico");
+  const [view, setView] = useState<View>(analizador ? "recon" : "pred");
   const [theme, setTheme] = useState("");
   const [sesion, setSesion] = useState<{ agent: string; traza: Traza }[]>([]);
   const [up, setUp] = useState(true);
@@ -68,14 +77,19 @@ export function Console() {
           </svg>
           <div><b>AgroVoltaic</b><div className="sub muted mono">consola de evaluación</div></div>
         </div>
-        <div className="agent">
-          <button className={agent === "analizador" ? "on" : ""} onClick={() => goAgent("analizador")}>Analizador</button>
-          <button className={agent === "pronostico" ? "on" : ""} onClick={() => goAgent("pronostico")}>Pronóstico</button>
-        </div>
+        {analizador ? (
+          <div className="agent">
+            <button className={agent === "analizador" ? "on" : ""} onClick={() => goAgent("analizador")}>Analizador</button>
+            <button className={agent === "pronostico" ? "on" : ""} onClick={() => goAgent("pronostico")}>Pronóstico</button>
+          </div>
+        ) : (
+          // Un solo agente: un rótulo, no un selector de una opción.
+          <div className="agent"><button className="on" disabled>Pronóstico ambiental</button></div>
+        )}
         <nav className="nav">
-          {NAV.map(([v, l], i) => (
+          {vistas.map(([v, l]) => (
             <Fragment key={v}>
-              {i === 3 && <div className="navsep" />}
+              {v === SEPARADOR && <div className="navsep" />}
               <button className={"navitem" + (view === v ? " on" : "")} onClick={() => goView(v)}>{l}</button>
             </Fragment>
           ))}

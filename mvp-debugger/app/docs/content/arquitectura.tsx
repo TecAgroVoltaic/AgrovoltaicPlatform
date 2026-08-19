@@ -1,7 +1,11 @@
 "use client";
 import { Page, Note, Diagram, IC, Table } from "../ui";
+import { useAgenteDocs } from "../agenteCtx";
 
 export function Arquitectura() {
+  // Si el analizador esta bloqueado su seccion no existe: el enlace se degrada
+  // a texto en vez de mandar al lector a una pagina que no es la que pidio.
+  const soloPronostico = useAgenteDocs() === "pronostico";
   return (
     <Page
       crumb="Arquitectura"
@@ -49,7 +53,7 @@ export function Arquitectura() {
       <h2>Las dos bases de datos (no se fusionan)</h2>
       <p>San Carlos está <strong>partido en dos</strong> a nivel de almacenamiento:</p>
       <ul>
-        <li><strong>PV eléctrico</strong> (inversor, piranómetro, temperatura de panel) → <strong>Supabase PV</strong>. Lo lee el <a href="#analizador">analizador</a>.</li>
+        <li><strong>PV eléctrico</strong> (inversor, piranómetro, temperatura de panel) → <strong>Supabase PV</strong>. Lo lee el {soloPronostico ? <strong>analizador</strong> : <a href="#analizador">analizador</a>}.</li>
         <li><strong>Ambiental / suelo</strong> (irradiancia de referencia, humedad de suelo) → <strong>AgroDash</strong> (cajas con sufijo <IC>SC</IC>). Lo lee el <a href="#pronostico">pronóstico</a>, que copia lo que necesita a un <em>store</em> propio en la Supabase de AgroVoltaic.</li>
       </ul>
       <p>No hay una DB central: son dos mundos separados. Lo único comparable entre San Carlos y Cartago son variables ambientales — el PV eléctrico no tiene contraparte en Cartago.</p>

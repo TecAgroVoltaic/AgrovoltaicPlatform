@@ -77,3 +77,8 @@ jobs:
       # buildeada, que es lo que se despliega.
       - name: Smoke del gate de acceso
         run: ./scripts/smoke-auth.sh
+      # El bloqueo del agente historico es una decision de producto con efecto
+      # en runtime (503 en /api/analizador/*): se verifica igual que el gate,
+      # con HTTP real, y se comprueba que encender el flag lo devuelve entero.
+      - name: Smoke del bloqueo de agentes
+        run: ./scripts/smoke-agentes.sh
