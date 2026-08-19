@@ -15,6 +15,12 @@ import { IconoAlerta, IconoCheck } from "@/app/components/Iconos";
 
 const RUTA = "/api/pronostico/salud/panel";
 const REFRESCO_MS = 30000;
+// Último panel leído, a nivel de módulo. La vista se desmonta al cambiar de
+// sección y se vuelve a montar al volver: sin esto, cada visita arrancaba en
+// blanco y esperaba el viaje completo. Con esto, se ve al instante lo último
+// que se supo y se refresca por detrás. Es un cache de pantalla, no de datos:
+// muere con la pestaña, y `consultado_en` dice de cuándo es lo que se muestra.
+let ultimoPanel: Panel | null = null;
 const HORAS_POR_DIA = 24;
 const MAX_DETALLE = 160;
 
@@ -85,9 +91,9 @@ function Dato({ k, v, mono = true }: { k: string; v: React.ReactNode; mono?: boo
 }
 
 export function SaludView() {
-  const [panel, setPanel] = useState<Panel | null>(null);
+  const [panel, setPanel] = useState<Panel | null>(ultimoPanel);
   const [error, setError] = useState<string | null>(null);
-  const [cargando, setCargando] = useState(true);
+  const [cargando, setCargando] = useState(ultimoPanel === null);
 
   useEffect(() => {
     let vivo = true;
@@ -97,6 +103,7 @@ export function SaludView() {
       setCargando(false);
       if (!r.ok || !r.data?.ingesta) { setError(mensajeError(r)); return; }
       setError(null);
+      ultimoPanel = r.data;
       setPanel(r.data);
     }
     cargar();
@@ -106,7 +113,9 @@ export function SaludView() {
 
   if (cargando) return <div className="card"><p className="muted">Consultando estado…</p></div>;
 
-  if (error) {
+  // Con un panel ya en pantalla, un fallo del refresco NO lo borra: se avisa y
+  // se deja lo último que sí se pudo leer, que sigue siendo información.
+  if (error && !panel) {
     return (
       <div className="card">
         <h3>Salud del sistema</h3>
@@ -131,6 +140,13 @@ export function SaludView() {
 
   return (
     <>
+      {error && (
+        <p className="arq-aviso" style={{ marginBottom: 12 }}>
+          <IconoAlerta size={14} />
+          <span>No se pudo refrescar ({error}). Lo de abajo es la última lectura buena.</span>
+        </p>
+      )}
+
       {/* El diagnóstico, antes que cualquier tabla. */}
       <div className={"card sal-diag" + (cong?.congelada ? " sal-diag-alerta" : "")}>
         <div className="sal-diag-ic">
@@ -149,7 +165,7 @@ export function SaludView() {
               {fuente?.es_snapshot && (
                 <> Y no puede entrar: la fuente es <b>{fuente.etiqueta.toLowerCase()}</b>,
                    o sea una foto fija. {corrioSinTraer
-                     ? "El ETL corrió hace un rato y terminó bien, pero leyó 0 filas — porque no hay filas nuevas que leer, no porque esté roto."
+                     ? "El ETL corrió hace un rato y terminó bien, pero leyó 0 filas: no porque esté roto, sino porque no hay filas nuevas que leer."
                      : ""}</>
               )}
             </p>

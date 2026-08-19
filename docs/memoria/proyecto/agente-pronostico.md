@@ -390,3 +390,46 @@ fuente y store lado a lado (se confunden todo el tiempo), y recién ahí las tab
 **Hallazgo abierto:** `/salud/ingesta` es público y devuelve `ultimo_error_etl.error` crudo, que
 hoy incluye un fragmento de `COPY` con un UUID y el nombre de una caja. Preexistente; suma a
 [[superficie-expuesta]]. El arreglo limpio es truncar el mensaje solo en la ruta pública.
+
+## 2026-08-19 (noche) — por qué el panel de salud tardaba, medido
+
+Reporte: «la sección de salud dura 3 segundos cargando». Medido antes de tocar nada:
+
+| Camino | Antes |
+|---|---|
+| `panel()` dentro del contenedor, caliente | 225 ms |
+| endpoint por el túnel SSH | 450 ms |
+| **primera llamada tras recrear el contenedor** | **2.080 ms** |
+
+O sea: el endpoint nunca fueron 3 s. Los 3 s son la **primera** llamada, y el contenedor se
+recrea cada 6 h (`forecast-refresh.timer`), así que el primero que abre la consola después de
+cada recreate los paga. A eso se suma, **solo en local**, `reactStrictMode: true` (React monta
+los efectos dos veces en dev, o sea dos peticiones) y la compilación de `next dev`. Nada de eso
+existe en Amplify.
+
+### Dos problemas reales que sí aparecieron
+
+**1. El mismo número pedido dos veces, y podían contradecirse.** `observabilidad._presupuesto()`
+llamaba a `gasto.usd_hoy()` una vez dentro de `limites.presupuesto_agotado()` y otra para el
+flag `medido`. Además de duplicar el viaje al store, si el store fallaba **entre las dos**, el
+panel podía mostrar un número del espejo local rotulado como medido, o un número bueno rotulado
+como no medido. Ahora se lee una sola vez y se pasa: `presupuesto_agotado(gastado_hoy=...)`,
+con centinela porque `None` es un valor legítimo («el store no respondió»), no «no me lo
+pasaron».
+
+**2. Un `count(*)` sobre 885.606 filas en el camino caliente.** La vista `v_salud_ingesta`
+resolvía `max(ts)` y `count(*)` de una pasada: 172 ms de índice recorrido entero, y **crece con
+la tabla**. Se separaron porque no cuestan ni valen lo mismo:
+- `max(ts)` **decide** el estado y sale del índice `(variable, ts)` en **0,7 ms** por variable.
+  Siempre fresco. Las variables salen del dominio, no de un `DISTINCT` (que también recorría todo).
+- `filas` es contexto para el lector, no dispara ninguna alerta. Se cachea 5 min: solo cambia
+  cuando el ETL inserta, y el ETL corre cada ~6 min.
+
+| Camino | Después |
+|---|---|
+| `panel()` dentro de la EC2, caliente | **85 ms** (era 225) |
+| endpoint por el túnel, caliente | **190 ms** (era 450) |
+
+**En la vista:** el último panel queda cacheado a nivel de módulo, así que volver a la sección
+lo muestra al instante y refresca por detrás en vez de arrancar en blanco. Y si el refresco
+falla, ya no borra lo que había: avisa y deja la última lectura buena.

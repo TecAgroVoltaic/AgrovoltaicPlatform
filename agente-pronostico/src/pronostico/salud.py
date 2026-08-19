@@ -15,6 +15,7 @@ numeros viejos y nadie se entera. El 2026-08-14 se descubrio que el ETL llevaba
 from __future__ import annotations
 
 import os
+import time
 from datetime import datetime, timezone
 
 import psycopg
@@ -38,7 +39,47 @@ HORAS_POR_DIA = 24
 
 # Lee la VISTA, no la tabla: la definicion de "frescura" vive en el esquema y
 # se puede consultar igual desde psql o el dashboard de Supabase.
-_SQL_FRESCURA = "SELECT variable, ultimo_dato, filas FROM v_salud_ingesta"
+# La vista `v_salud_ingesta` calculaba `max(ts)` y `count(*)` de una sola pasada,
+# y el conteo obliga a recorrer la tabla ENTERA: 885 mil filas hoy, 172 ms, y
+# crece para siempre. Se separan, porque no cuestan ni valen lo mismo:
+#
+#   * `max(ts)` DECIDE el estado (fresco / viejo) y sale del indice
+#     (variable, ts) en menos de 1 ms por variable. Siempre fresco.
+#   * `filas` es contexto para el lector, no dispara ninguna alerta. Se cachea:
+#     solo cambia cuando el ETL inserta, y el ETL corre cada ~6 min.
+#
+# Las variables salen del dominio, no de un DISTINCT sobre la tabla (que tambien
+# la recorria entera).
+_SQL_ULTIMO = """
+    SELECT v.variable,
+           (SELECT max(ts) FROM lecturas_ambientales_sc l WHERE l.variable = v.variable)
+      FROM unnest(%s::text[]) AS v(variable)
+"""
+_SQL_FILAS = "SELECT variable, count(*) FROM lecturas_ambientales_sc GROUP BY variable"
+
+# Cuanto vale un conteo antes de volver a pedirlo. Mas corto que el intervalo del
+# ETL no aporta nada: el numero no puede haber cambiado.
+TTL_FILAS_SEG = 300.0
+# (momento monotonico, conteos). Estado de modulo A PROPOSITO: es un cache de
+# proceso, y se pierde con el proceso, que es exactamente lo que se quiere.
+_CACHE_FILAS: tuple[float, dict] | None = None
+
+
+def reiniciar_cache_filas() -> None:
+    """Olvida el conteo cacheado. Existe para los tests y para forzar un refresco."""
+    global _CACHE_FILAS
+    _CACHE_FILAS = None
+
+
+def _conteos(conn: psycopg.Connection) -> dict:
+    """Filas por variable, cacheadas TTL_FILAS_SEG."""
+    global _CACHE_FILAS
+    ahora = time.monotonic()
+    if _CACHE_FILAS and ahora - _CACHE_FILAS[0] < TTL_FILAS_SEG:
+        return _CACHE_FILAS[1]
+    conteos = {variable: int(n) for variable, n in conn.execute(_SQL_FILAS)}
+    _CACHE_FILAS = (ahora, conteos)
+    return conteos
 
 
 def _estado(edad_h: float | None, umbral_h: float) -> str:
@@ -49,9 +90,11 @@ def _estado(edad_h: float | None, umbral_h: float) -> str:
 
 def _frescura(conn: psycopg.Connection) -> dict:
     """Ultimo dato y filas de cada variable ESPERADA (aunque no tenga ninguna)."""
-    medidas = {v: (None, 0) for v in (m.value for m in Variable)}
-    for variable, ultimo, filas in conn.execute(_SQL_FRESCURA):
-        medidas[variable] = (ultimo, filas)
+    variables = [m.value for m in Variable]
+    medidas = {v: (None, 0) for v in variables}
+    conteos = _conteos(conn)
+    for variable, ultimo in conn.execute(_SQL_ULTIMO, (variables,)):
+        medidas[variable] = (ultimo, conteos.get(variable, 0))
     return medidas
 
 

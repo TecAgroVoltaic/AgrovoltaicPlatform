@@ -98,16 +98,27 @@ LIMITADOR_LLM = LimitadorRitmo(por_minuto=LIMITE_LLM_POR_MIN)
 LIMITADOR_DATOS = LimitadorRitmo(por_minuto=LIMITE_DATOS_POR_MIN)
 
 
-def presupuesto_agotado(tope_usd: float | None = None) -> tuple[bool, float, float]:
+_SIN_LEER = object()
+
+
+def presupuesto_agotado(tope_usd: float | None = None,
+                        gastado_hoy: float | None | object = _SIN_LEER
+                        ) -> tuple[bool, float, float]:
     """(agotado, gastado_hoy, tope). Con tope 0 nunca se agota.
 
     El gasto se lee del STORE (fuente de verdad compartida entre procesos y
     resistente a que se recree el contenedor). Si el store no responde, se cae
     al acumulado local: es un limite mas debil, pero preferible a bloquear el
     servicio por un fallo de infraestructura.
+
+    `gastado_hoy` permite pasar una lectura YA HECHA (incluido None = "el store
+    no respondio"). Lo usa el panel, que necesita el mismo numero para decidir
+    si esta agotado y para decir si pudo medirlo: pedirlo dos veces duplicaba el
+    viaje y dejaba que las dos respuestas se contradijeran. El centinela existe
+    porque None es un valor legitimo, no "no me lo pasaron".
     """
     tope = PRESUPUESTO_DIARIO_USD if tope_usd is None else tope_usd
-    gastado = gasto_mod.usd_hoy()
+    gastado = gasto_mod.usd_hoy() if gastado_hoy is _SIN_LEER else gastado_hoy
     if gastado is None:                      # store inaccesible -> plan B local
         gastado = uso_mod.usd_hoy()
     return (tope > 0 and gastado >= tope), gastado, tope

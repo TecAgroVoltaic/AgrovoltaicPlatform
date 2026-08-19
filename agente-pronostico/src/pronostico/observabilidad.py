@@ -97,14 +97,20 @@ def _presupuesto() -> dict:
     """Gasto del dia contra el tope. Conserva la forma aunque falle: `medido`
     False ya significa "este numero no es confiable"."""
     try:
-        agotado, gastado, tope = limites.presupuesto_agotado()
+        # UNA sola lectura del store. Antes se pedia `usd_hoy()` dos veces (una
+        # dentro de presupuesto_agotado y otra para `medido`), lo que ademas de
+        # duplicar el viaje permitia que se CONTRADIJERAN: si el store fallaba
+        # entre las dos, el panel mostraba un numero del espejo local rotulado
+        # como medido, o al reves.
+        del_store = gasto.usd_hoy()
+        agotado, gastado, tope = limites.presupuesto_agotado(gastado_hoy=del_store)
         return {
             "gastado_hoy_usd": round(gastado, 6),
             "tope_usd": tope,
             "agotado": agotado,
             # None = el store no respondio; el panel debe poder decirlo en vez de
             # mostrar un 0 que parece "no se gasto nada".
-            "medido": gasto.usd_hoy() is not None,
+            "medido": del_store is not None,
         }
     except Exception as exc:  # noqa: BLE001
         _log.warning("no se pudo calcular el presupuesto del dia", exc_info=True)

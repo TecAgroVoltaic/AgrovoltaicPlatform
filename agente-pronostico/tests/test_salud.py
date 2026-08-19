@@ -24,16 +24,25 @@ CORRIDA_SIN_FILAS = {
 
 
 class _ConexionFalsa:
-    """Devuelve filas fijas segun que SQL se ejecute (frescura / error / corrida)."""
+    """Devuelve filas fijas segun que SQL se ejecute.
+
+    La frescura son ahora DOS consultas: el ultimo dato por variable (indice) y
+    el conteo (cacheado). `frescura` se sigue pasando como (variable, ts, filas)
+    y aca se parte, para no reescribir cada caso de prueba.
+    """
 
     def __init__(self, frescura, ultimo_error=None, ultima_corrida=None):
         self._frescura = frescura
         self._ultimo_error = ultimo_error
         self._ultima_corrida = ultima_corrida
+        self.consultas: list[str] = []
 
     def execute(self, sql, params=None):
-        if "v_salud_ingesta" in sql:
-            return iter(self._frescura)
+        self.consultas.append(sql)
+        if "max(ts)" in sql:
+            return iter([(v, ts) for v, ts, _ in self._frescura])
+        if "count(*)" in sql:
+            return iter([(v, n) for v, _, n in self._frescura])
         if "nivel = 'error'" in sql:
             return _Resultado(self._ultimo_error)
         return _Resultado(self._ultima_corrida)
@@ -54,6 +63,7 @@ class _Resultado:
 
 
 def _mockear(monkeypatch, conexion):
+    salud.reiniciar_cache_filas()            # cache de proceso: que no cruce pruebas
     monkeypatch.setattr(salud.config, "store_conninfo", lambda: "postgresql://fake")
     monkeypatch.setattr(salud.psycopg, "connect", lambda *a, **k: conexion)
 
@@ -183,3 +193,35 @@ def test_la_corrida_del_etl_muestra_cuantas_filas_trajo(monkeypatch):
 def test_frontera_del_umbral(edad_h, esperado):
     # Given/When/Then: la frontera exacta no queda librada a interpretacion
     assert salud._estado(edad_h, UMBRAL_H) == esperado
+
+
+def test_el_conteo_de_filas_se_cachea_y_el_ultimo_dato_no(monkeypatch):
+    # Given: una conexion que registra cada SQL que se le pide
+    conexion = _ConexionFalsa(frescura=[("irradiancia", AHORA, 191676),
+                                        ("humedad_suelo", AHORA, 693930)],
+                              ultima_corrida=(AHORA, CORRIDA_SIN_FILAS))
+    _mockear(monkeypatch, conexion)
+
+    # When: dos consultas seguidas del estado
+    salud.estado_ingesta()
+    conexion.consultas.clear()
+    salud.estado_ingesta()
+
+    # Then: el ultimo dato se vuelve a pedir (decide el estado, tiene que estar
+    # fresco); el conteo no (recorre la tabla entera y solo cambia si el ETL
+    # inserto, cosa que pasa cada ~6 min)
+    assert any("max(ts)" in q for q in conexion.consultas)
+    assert not any("count(*)" in q for q in conexion.consultas)
+
+
+def test_el_conteo_cacheado_no_pierde_el_valor(monkeypatch):
+    # Given/When: segunda lectura, ya con el cache caliente
+    conexion = _ConexionFalsa(frescura=[("irradiancia", AHORA, 191676),
+                                        ("humedad_suelo", AHORA, 693930)],
+                              ultima_corrida=(AHORA, CORRIDA_SIN_FILAS))
+    _mockear(monkeypatch, conexion)
+    salud.estado_ingesta()
+    r = salud.estado_ingesta()
+
+    # Then: sigue reportando el numero, no un cero
+    assert r["variables"]["irradiancia"]["filas"] == 191676
