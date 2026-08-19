@@ -510,13 +510,6 @@ svg .hit { cursor:crosshair; }
 .arq-aviso { display:flex; align-items:flex-start; gap:8px; margin:0; font-size:12px; color:var(--warn); line-height:1.45; }
 .arq-aviso svg { flex:0 0 auto; margin-top:2px; }
 
-.arq-grid { display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); }
-.arq-card { padding:14px 15px; display:flex; flex-direction:column; gap:6px; }
-.arq-card p { margin:0; font-size:12.5px; color:var(--ink2); line-height:1.45; }
-.arq-card p b { color:var(--ink); font-weight:600; }
-.arq-big { font-family:var(--mono); font-size:20px; font-weight:600; color:var(--ink); letter-spacing:-.02em; line-height:1.15; font-variant-numeric:tabular-nums; }
-.arq-card-crit { border-color:color-mix(in srgb,var(--crit) 45%,var(--line)); }
-.arq-card-crit .arq-big { color:var(--crit); }
 
 /* Modal de nodo */
 .arq-modal { border:1px solid var(--line2); border-radius:15px; padding:0; max-width:760px; width:calc(100% - 36px); background:var(--panel); color:var(--ink); box-shadow:0 24px 70px #00000033; }
@@ -530,8 +523,13 @@ svg .hit { cursor:crosshair; }
 .arq-m-body section { display:flex; flex-direction:column; gap:7px; }
 .arq-desc { margin:0; font-size:12.5px; color:var(--ink2); line-height:1.5; font-family:var(--mono); }
 .arq-li { margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:6px; }
-.arq-li li { font-size:12.5px; color:var(--ink2); line-height:1.45; padding-left:14px; position:relative; }
-.arq-li li::before { content:"·"; position:absolute; left:3px; color:var(--muted); font-weight:700; }
+.arq-li li { font-size:12.5px; color:var(--ink2); line-height:1.5; padding-left:15px; position:relative; }
+/* renderMd envuelve en <p>: sin esto el margen por defecto del navegador baja el
+   texto y deja el punto colgado arriba. */
+.arq-li li > p { margin:0; }
+.arq-li li > p + p { margin-top:6px; }
+.arq-li li::before { content:""; position:absolute; left:2px; top:.62em; width:4px; height:4px;
+  border-radius:50%; background:var(--line2); }
 .arq-li code, .arq-tbl code { font-family:var(--mono); font-size:11.5px; color:var(--ink); background:var(--panel2); border-radius:4px; padding:1px 5px; overflow-wrap:anywhere; }
 .arq-li strong { color:var(--ink); font-weight:600; }
 .arq-sindoc { flex-direction:row !important; align-items:flex-start; gap:9px !important; font-size:12.5px; color:var(--warn); line-height:1.45; }

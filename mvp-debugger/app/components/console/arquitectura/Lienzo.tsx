@@ -12,7 +12,7 @@
 import type { ReactNode } from "react";
 import type { Ficha, Grupo as GrupoNodo, NodoFijo } from "./catalogo";
 import { ANCHO, BARRERA, CAPA, CEREBRO, COL, HERRAMIENTAS, LIENZO, NODOS_FIJOS, TOOL } from "./catalogo";
-import type { Herramienta, Mapa } from "./mapa";
+import { dia, type Cobertura, type Herramienta, type Mapa } from "./mapa";
 import type { Detalle } from "./NodoModal";
 
 // Puertos de salida/entrada de las aristas troncales.
@@ -37,6 +37,19 @@ const ROTULO: Record<GrupoNodo, string> = {
 type Item = { h: Herramienta; ficha?: Ficha; y: number; centro: number; activa: boolean };
 type Grupo = { modo: string; yEncabezado: number; items: Item[] };
 
+/**
+ * Cobertura real de cada variable, para la ficha del store. Sale del mapa que
+ * publica el servicio, no del catálogo: unas fechas escritas a mano envejecen
+ * sin que nadie se entere, que es justo lo que esta vista no puede permitirse.
+ */
+function cobertura(datos: Record<string, Cobertura>): string[] {
+  return Object.entries(datos).map(([variable, c]) =>
+    c.error
+      ? `**${variable}**: no se pudo leer el rango (${c.error}).`
+      : `**${variable}**: ${(c.n ?? 0).toLocaleString("es-CR")} lecturas`
+        + ` de ${dia(c.desde)} a ${dia(c.hasta)}, en ${c.unidad || "sin unidad"}.`);
+}
+
 /** Curva horizontal suave entre dos puertos. */
 function curva(x1: number, y1: number, x2: number, y2: number): string {
   const dx = Math.max(26, Math.abs(x2 - x1) * 0.55);
@@ -46,7 +59,7 @@ function curva(x1: number, y1: number, x2: number, y2: number): string {
 /**
  * Apila las herramientas por modo, en el orden que publica el servicio.
  * Una tool que estuviera en dos modos se dibuja una sola vez, en el primero que
- * la lista — no se duplica el nodo.
+ * la lista: no se duplica el nodo.
  */
 function disponer(mapa: Mapa, modo: string): { grupos: Grupo[]; alto: number } {
   const porNombre = new Map(mapa.herramientas.map((h) => [h.nombre, h]));
@@ -228,7 +241,10 @@ export function Lienzo({ mapa, modo, onAbrir }: {
         </div>
         {CAPA.filas.slice(2).map((f) => (
           <button key={f.id} className="arq-fila" data-tip={f.ficha.hover}
-                  onClick={() => abrirFicha(f.titulo, "datos · solo lectura", f.ficha)}>
+                  onClick={() => abrirFicha(f.titulo, "datos · solo lectura", {
+                    ...f.ficha,
+                    limites: [...cobertura(mapa.datos), ...(f.ficha.limites || [])],
+                  })}>
             <span className="arq-n-t">{f.titulo}</span>
             <span className="arq-n-s">{f.sub}</span>
           </button>

@@ -1,17 +1,17 @@
 """
-Mapa de la arquitectura del agente — lo que el agente ES, servido como dato.
+Mapa de la arquitectura del agente: lo que el agente ES, servido como dato.
 
 Existe para que la consola pueda DIBUJAR el agente sin transcribirlo a mano. La
 regla que hace valido todo esto: aca no se declara nada, se DERIVA. Los nombres
 de las herramientas, sus parametros, sus rangos y en que modo vive cada una
-salen de `agent.MODOS` y de los `input_schema` reales — exactamente los mismos
+salen de `agent.MODOS` y de los `input_schema` reales, exactamente los mismos
 objetos que se le mandan al modelo. Si alguien agrega una herramienta o cambia
 un rango, el mapa cambia solo; no hay una segunda lista que mantener sincronizada.
 
 Que NO va aca:
   * el texto de los prompts (largo, y la vista no lo necesita: le alcanza con la
     intencion de cada modo, que si se escribe aca en una frase);
-  * la prosa del "por que" de cada herramienta — eso vive en el front, porque es
+  * la prosa del "por que" de cada herramienta, que vive en el front porque es
     redaccion para un lector humano, no estructura verificable.
 
 Responsabilidad unica: armar el dict. Servirlo por HTTP es de api.py.
@@ -62,7 +62,7 @@ def _catalogo_herramientas() -> list[dict]:
     """Union de los esquemas de todos los modos, deduplicada por nombre.
 
     Cada entrada lleva su `input_schema` COMPLETO (el mismo que ve el modelo) y
-    la lista de modos donde esta disponible — de ahi sale que `backtest` aparezca
+    la lista de modos donde esta disponible. De ahi sale que `backtest` aparezca
     marcada como exclusiva de `analisis` sin que nadie lo escriba.
     """
     catalogo: dict[str, dict] = {}
