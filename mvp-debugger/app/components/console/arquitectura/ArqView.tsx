@@ -125,7 +125,12 @@ export function ArqView() {
       </div>
 
       <div className="card arq-marco" ref={marco}>
-        <Lienzo mapa={mapa} modo={modo} onAbrir={setDetalle} />
+        {/* El scroll horizontal vive SOLO acá dentro: con la leyenda dentro del
+            scroller, al desplazarse el lienzo la leyenda se iba con él y se
+            cortaba por la izquierda. */}
+        <div className="arq-scroll">
+          <Lienzo mapa={mapa} modo={modo} onAbrir={setDetalle} />
+        </div>
         <div className="arq-leyenda">
           <span><i style={{ background: "var(--ceil)" }} /> entrada / servidor</span>
           <span><i style={{ background: "var(--warn)" }} /> puerta de acceso</span>

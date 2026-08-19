@@ -95,7 +95,9 @@ button, input, textarea, select { font-family:inherit; }
    de esa clase, así el marcado es el mismo en los dos estados. */
 .side.compacta { width:60px; flex-basis:60px; padding:22px 10px; gap:14px; align-items:center; }
 .side.compacta .solo-ancha { display:none; }
-.side.compacta .brand { padding:0; justify-content:center; }
+/* En 60 px no entran el logo y el botón uno al lado del otro (22 + 26 + gap
+   contra 40 px útiles): se apilan. */
+.side.compacta .brand { padding:0; flex-direction:column; gap:8px; }
 .side.compacta .plegar { margin-left:0; }
 .side.compacta .agent { flex-direction:column; width:100%; padding:2px; }
 .side.compacta .agent button { padding:6px 0; text-align:center; font-family:var(--mono); font-size:12px; }
@@ -446,10 +448,13 @@ svg .hit { cursor:crosshair; }
 .arq-cap { flex:1 1 320px; min-width:260px; margin:0; font-size:12.5px; color:var(--muted); line-height:1.5; }
 .arq-cap b { color:var(--ink); font-weight:600; }
 
-.arq-marco { padding:0; overflow-x:auto; background:var(--panel);
+.arq-marco { padding:0; background:var(--panel); overflow:hidden; }
+.arq-marco:fullscreen { display:flex; flex-direction:column; justify-content:center; border-radius:0; }
+/* El scroll y la trama de puntos van en el scroller, no en la tarjeta: así los
+   puntos acompañan al lienzo al desplazarse y la leyenda se queda quieta. */
+.arq-scroll { overflow-x:auto;
   background-image:radial-gradient(var(--line2) .9px, transparent .9px);
   background-size:22px 22px; background-position:-1px -1px; }
-.arq-marco:fullscreen { display:flex; flex-direction:column; justify-content:center; border-radius:0; }
 .arq-lienzo { position:relative; width:1140px; margin:0 auto; flex:0 0 auto; }
 .arq-edges { position:absolute; inset:0; width:1140px; height:100%; pointer-events:none; }
 .arq-edges path { fill:none; stroke:var(--line2); stroke-width:1.5; }
@@ -497,7 +502,7 @@ svg .hit { cursor:crosshair; }
 .arq-b-s { font-size:10.5px; color:var(--ink2); line-height:1.35; }
 .arq-b-s code { font-family:var(--mono); color:var(--ink); }
 
-.arq-leyenda { display:flex; flex-wrap:wrap; gap:14px; padding:11px 16px; border-top:1px solid var(--line); font-size:11.5px; color:var(--muted); background:var(--panel); }
+.arq-leyenda { display:flex; flex-wrap:wrap; align-items:center; gap:10px 14px; padding:11px 16px; border-top:1px solid var(--line); font-size:11.5px; color:var(--muted); background:var(--panel); }
 .arq-leyenda span { display:inline-flex; align-items:center; gap:6px; }
 .arq-leyenda i { width:11px; height:11px; border-radius:3px; display:block; }
 .arq-ayuda { margin-left:auto; color:var(--ink2); }
