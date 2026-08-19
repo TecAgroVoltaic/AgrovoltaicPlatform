@@ -1,139 +1,200 @@
 "use client";
-// Predicción vs Real: BACKTEST honesto (reconstrucción del método sobre el
-// histórico real, vía /api/pronostico/backtest) + la traza de un forecast en vivo.
-// Deja claro que el agente no predice de forma continua.
-import { useEffect, useState } from "react";
-import { jget, extraerLista, type Resp } from "@/app/lib/client";
+// Predicción vs Real — una sola fecha manda sobre TODA la vista.
+//
+// Diseño: se elige día, momento y anticipación, y de ahí sale todo lo demás — la
+// curva medido-vs-predicho, los tres números de ese momento y la lectura del
+// agente. Antes había dos relojes independientes (una ventana de N días para el
+// backtest y un instante suelto para el pronóstico anclado) que además hablaban
+// en granularidades distintas: el gráfico en promedios horarios y los KPI en
+// lecturas instantáneas. Los dos números eran ciertos y aun así se contradecían
+// en pantalla, que es lo peor que puede pasar en una vista de validación.
+//
+// Ahora hay UNA sola fuente: el backtest del día a la resolución elegida. El
+// gráfico, los KPI y el agente leen exactamente los mismos valores.
+//
+// Todo esto es RECONSTRUCCIÓN sobre datos ya medidos, no predicción en vivo. Se
+// dice una vez, en una etiqueta, no en tres párrafos.
+import { useEffect, useMemo, useState } from "react";
+import { jget, mensajeError, type Resp } from "@/app/lib/client";
 import { Estado } from "@/app/components/console/Estado";
-import { AnclaForecast } from "@/app/components/console/AnclaForecast";
+import { PuntoEvaluado } from "@/app/components/console/PuntoEvaluado";
+import { LecturaAgente } from "@/app/components/console/LecturaAgente";
 import { lineChart, palette } from "@/app/lib/charts";
 
-const fmt = (n: any, d = 1) => n == null || !isFinite(n) ? "—" : Number(n).toLocaleString("es-CR", { minimumFractionDigits: d, maximumFractionDigits: d });
+const VARIABLES: [string, string][] = [
+  ["irradiancia", "Irradiancia"], ["humedad_suelo", "Humedad de suelo"],
+];
+// La anticipación ES la resolución del backtest: reconstruir un bucket = predecir
+// ese bucket con el anterior. Que sean el mismo control evita el desfase entre
+// "lo que veo" y "lo que se predijo".
+const ANTICIPACIONES: [string, string][] = [
+  ["15min", "15 min"], ["30min", "30 min"], ["h", "1 hora"],
+];
+const DIAS_REFERENCIA = 7;      // ventana del dato agregado de contexto
+const MS_POR_DIA = 86400000;
+
+const fmt = (n: any, d = 1) =>
+  n == null || !isFinite(n) ? "—" : Number(n).toLocaleString("es-CR",
+    { minimumFractionDigits: d, maximumFractionDigits: d });
+
+const diaSiguiente = (f: string) =>
+  new Date(new Date(`${f}T00:00:00`).getTime() + MS_POR_DIA).toISOString().slice(0, 10);
+
+const etiqueta = (s: string) => ANTICIPACIONES.find(([b]) => b === s)?.[1] || s;
 
 export function PredView({ theme }: { theme: string }) {
   const [vari, setVari] = useState("irradiancia");
-  const [dias, setDias] = useState(7);
-  const [bt, setBt] = useState<any>(null);
-  const [err, setErr] = useState<string | null>(null);
-  const [intento, setIntento] = useState(0);
+  const [fecha, setFecha] = useState("");
+  const [momento, setMomento] = useState("");        // "HH:MM"
+  const [bucket, setBucket] = useState("h");
 
+  const [rango, setRango] = useState<{ desde: string; hasta: string } | null>(null);
+  const [dia, setDia] = useState<any>(null);
+  const [errDia, setErrDia] = useState<string | null>(null);
+  const [ref, setRef] = useState<any>(null);         // métricas de los últimos N días
+
+  const unidad = vari === "irradiancia" ? "W/m²" : "crudo";
+  const dec = vari === "irradiancia" ? 1 : 0;
+
+  // 1. Rango disponible -> día por defecto: el último COMPLETO (el del último
+  //    dato viene cortado a media madrugada y no se ve nada).
   useEffect(() => {
-    setBt(null); setErr(null);
-    jget(`/api/pronostico/backtest?variable=${vari}&dias=${dias}&bucket=h`).then((r: Resp) => {
-      // No alcanza con r.ok: un 200 con otra forma hacia que pts.map() lanzara
-      // en pleno render y la vista quedara en blanco.
-      const { lista, error } = extraerLista(r, "puntos");
-      if (error) { setErr(error); return; }
-      setBt({ ...r.data, puntos: lista });
-    }).catch((e) => setErr(String(e?.message || e)));
-  }, [vari, dias, intento]);
+    setDia(null); setErrDia(null);
+    jget(`/api/pronostico/serie?variable=${vari}&bucket=D&ultimos_dias=9999`).then((r: Resp) => {
+      const resumen = r.ok ? (r.data as any)?.resumen : null;
+      if (!resumen?.hasta) { setRango(null); return; }
+      setRango({ desde: resumen.desde.slice(0, 10), hasta: resumen.hasta.slice(0, 10) });
+      const ultimo = new Date(resumen.hasta.slice(0, 10) + "T00:00:00");
+      setFecha(new Date(ultimo.getTime() - MS_POR_DIA).toISOString().slice(0, 10));
+    });
+    jget(`/api/pronostico/backtest?variable=${vari}&dias=${DIAS_REFERENCIA}&bucket=h`)
+      .then((r: Resp) => setRef(r.ok ? (r.data as any)?.metricas : null));
+  }, [vari]);
 
-  const unit = vari === "irradiancia" ? "W/m²" : "crudo";
-  const dec = vari === "irradiancia" ? 0 : 0;
-  let chart = "", metricas: any = null, det: any[] = [];
-  if (bt) {
+  // 2. El día elegido a la resolución elegida: única fuente de la vista.
+  useEffect(() => {
+    if (!fecha) return;
+    setDia(null); setErrDia(null);
+    jget(`/api/pronostico/backtest?variable=${vari}&desde=${fecha}`
+         + `&hasta=${diaSiguiente(fecha)}&bucket=${bucket}`)
+      .then((r: Resp) => {
+        if (!r.ok) { setErrDia(mensajeError(r)); return; }
+        const pts = (r.data as any)?.puntos;
+        if (!Array.isArray(pts) || !pts.length) { setErrDia("ese día no devolvió puntos"); return; }
+        setDia(r.data);
+        const etiquetas = pts.map((p: any) => p.t.slice(11, 16));
+        // Se elige entre los momentos que SÍ existen: no hay selección inválida.
+        setMomento((m) => (etiquetas.includes(m) ? m : etiquetas[Math.floor(etiquetas.length / 2)]));
+      });
+  }, [vari, fecha, bucket]);
+
+  const momentos: string[] = useMemo(
+    () => (dia?.puntos || []).map((p: any) => p.t.slice(11, 16)), [dia]);
+  const idx = momentos.indexOf(momento);
+  const punto = idx >= 0 ? dia.puntos[idx] : null;
+
+  const chart = useMemo(() => {
+    if (!dia?.puntos?.length) return "";
+    void theme;                                      // recomputar al cambiar tema
     const P = palette();
-    const pts = (bt.puntos || []) as any[];
-    const x = pts.map((p) => p.t.slice(5).replace(" ", " "));
-    const series: any[] = [
-      { points: pts.map((p) => p.real), color: P.real, area: true, width: 2.4, name: "Real (medido)" },
-      { points: pts.map((p) => p.pred), color: P.pred, dash: true, width: 2.2, name: "Reconstrucción" },
-    ];
-    if (pts[0]?.cs != null) series.push({ points: pts.map((p) => p.cs), color: P.ceil, width: 1.4, name: "Cielo despejado" });
-    // theme referenciado para recomputar al cambiar tema
-    void theme;
-    chart = lineChart(series, { x, height: 340, yfmt: (v) => fmt(v, 0), unit, tipfmt: (v) => fmt(v, dec) });
-    metricas = bt.metricas;
-    det = pts.map((p) => ({ t: p.t.slice(5), real: p.real, pred: p.pred, e: p.pred - p.real }))
-      .sort((a, b) => Math.abs(b.e) - Math.abs(a.e)).slice(0, 14);
-  }
+    const pts = dia.puntos as any[];
+    return lineChart([
+      { points: pts.map((p) => p.real), color: P.real, area: true, width: 2.4, name: "Medido" },
+      { points: pts.map((p) => p.pred), color: P.pred, dash: true, width: 2.2, name: "Predicho" },
+    ], {
+      x: momentos, height: 300, unit: unidad,
+      yfmt: (v) => fmt(v, 0), tipfmt: (v) => fmt(v, dec),
+      marca: idx >= 0 ? { i: idx, label: momento } : null,
+    });
+  }, [dia, momentos, idx, momento, theme, unidad, dec]);
 
-  const P = typeof window !== "undefined" ? palette() : ({} as any);
+  // Al agente se le manda la PREGUNTA, nunca los números: llama a su herramienta
+  // con la hora exacta y las cifras salen de ahí. Si se los pasáramos en el
+  // prompt sería un redactor de datos que no verificó.
+  const preguntaAgente =
+    `Evaluá la ${vari === "irradiancia" ? "irradiancia" : "humedad de suelo"} del ${fecha} `
+    + `a las ${momento} (usá bucket "${bucket}"). ¿Qué midió el sensor en ese momento, qué `
+    + `habría predicho el método con ${etiqueta(bucket)} de anticipación, y qué explica la diferencia?`;
 
   return (
     <section>
-      <div className="phead">
-        <h1>Predicción vs Real</h1>
-        <p>Qué tan cerca estuvo el método del modelo de lo que de verdad midió el sensor.</p>
-      </div>
-
-      <div className="banner">
-        <div><b>Esto es un backtest, no predicciones en vivo.</b> El agente no pronostica de forma continua: predice solo cuando se le llama. Esta curva <b>reaplica el método</b> (persistencia del índice de claridad kt*) sobre el histórico real del store para evaluarlo. Una evaluación con predicciones reales usa la tabla de auditoría <span className="mono">predicciones</span>.</div>
+      <div className="phead phead-row">
+        <div>
+          <h1>Predicción vs Real</h1>
+          <p>Elegí un momento: lo que midió el sensor contra lo que el modelo habría predicho.</p>
+        </div>
+        <span className="pill pill-modo"
+              title="Reconstrucción: se reaplica el método sobre datos ya medidos. No son predicciones que el agente hizo en vivo — esas se auditan en la tabla `predicciones`.">
+          modo backtest
+        </span>
       </div>
 
       <div className="controls">
-        <div className="ctl"><span className="lbl">Variable</span>
+        <div className="ctl">
+          <span className="lbl">Variable</span>
           <div className="chips">
-            {[["irradiancia", "Irradiancia"], ["humedad_suelo", "Humedad de suelo"]].map(([v, l]) => (
-              <button key={v} className={"chip" + (vari === v ? " on" : "")} onClick={() => setVari(v)}>{l}</button>
+            {VARIABLES.map(([v, l]) => (
+              <button key={v} className={"chip" + (vari === v ? " on" : "")}
+                      onClick={() => setVari(v)}>{l}</button>
             ))}
           </div>
         </div>
-        <div className="ctl"><span className="lbl">Ventana</span>
+        <div className="ctl">
+          <span className="lbl">Fecha</span>
+          <input className="input input-sm" type="date" value={fecha}
+                 min={rango?.desde} max={rango?.hasta}
+                 onChange={(e) => setFecha(e.target.value)} />
+        </div>
+        <div className="ctl">
+          <span className="lbl">Momento</span>
+          <select className="input input-sm" value={momento} disabled={!momentos.length}
+                  onChange={(e) => setMomento(e.target.value)}>
+            {momentos.map((m) => <option key={m} value={m}>{m}</option>)}
+          </select>
+        </div>
+        <div className="ctl">
+          <span className="lbl">Anticipación</span>
           <div className="chips">
-            {[3, 7, 14].map((d) => (
-              <button key={d} className={"chip" + (dias === d ? " on" : "")} onClick={() => setDias(d)}>{d} días</button>
+            {ANTICIPACIONES.map(([b, l]) => (
+              <button key={b} className={"chip" + (bucket === b ? " on" : "")}
+                      onClick={() => setBucket(b)}>{l}</button>
             ))}
           </div>
         </div>
       </div>
 
-      <AnclaForecast variable={vari} />
-
-      <div className="card" style={{ marginTop: 16 }}>
-        <h3>Backtest {vari === "irradiancia" ? "de irradiancia" : "de humedad de suelo"} · horario</h3>
-        <p className="hint">{bt ? bt.metodo : err ? "no disponible" : "cargando…"} — contra el sensor, últimos {dias} días.</p>
-        {(!chart || err) && (
-          <Estado cargando={!bt && !err} error={err} vacio={!!bt && !chart}
-                  que="el backtest" pista="Probá una ventana más larga."
-                  onReintentar={() => setIntento((i) => i + 1)} />
+      <div className="card">
+        {(!chart || errDia) && (
+          <Estado cargando={!dia && !errDia} error={errDia} vacio={!!dia && !chart}
+                  que="ese día" pista="La serie tiene huecos: probá otra fecha."
+                  onReintentar={() => setFecha((f) => f)} />
         )}
-        {chart && !err && <>
-          <figure dangerouslySetInnerHTML={{ __html: chart }} />
-          <div className="legend">
-            <span><span className="sw" style={{ background: P.real }} />Real (medido)</span>
-            <span><span className="sw" style={{ background: P.pred }} />Reconstrucción del método</span>
-            {bt.puntos?.[0]?.cs != null && <span><span className="sw" style={{ background: P.ceil }} />Cielo despejado (techo)</span>}
-          </div>
-        </>}
+        {chart && !errDia && (
+          <>
+            <figure dangerouslySetInnerHTML={{ __html: chart }} />
+            <div className="legend">
+              <span><span className="sw" style={{ background: "var(--real)" }} />Medido</span>
+              <span><span className="sw" style={{ background: "var(--pred)" }} />Predicho</span>
+              <span className="muted">{fecha} · hora local (UTC−6)</span>
+            </div>
+          </>
+        )}
       </div>
 
-      {metricas && (
-        <div className="grid g4" style={{ marginTop: 16 }}>
-          {[
-            { l: "Error medio absoluto", v: fmt(metricas.mae, 1), u: unit, d: "promedio de |recon − real|" },
-            { l: "Sesgo (bias)", v: (metricas.bias >= 0 ? "+" : "") + fmt(metricas.bias, 1), u: unit, d: "+ sobreestima · − subestima" },
-            { l: "Error relativo", v: fmt(metricas.error_rel_pct, 1), u: "%", d: "MAE sobre el promedio real" },
-            // En humedad de suelo el método ES la persistencia del valor, o sea
-            // exactamente el modelo ingenuo: el skill da 0 por construcción, no
-            // porque el modelo falle. Mostrar "+0%" a secas se lee como que no
-            // aporta nada, que es una conclusión falsa.
-            vari === "humedad_suelo"
-              ? { l: "Skill vs. ingenuo", v: "n/a", u: "", d: "el método ES la persistencia: no hay ingenuo distinto contra el cual medir" }
-              : { l: "Skill vs. ingenuo", v: (metricas.skill_pct >= 0 ? "+" : "") + fmt(metricas.skill_pct, 0), u: "%", d: "mejora sobre “igual que antes”" },
-          ].map((k, i) => (
-            <div className="kpi" key={i}><span className="lbl">{k.l}</span><div className="k">{k.v}<small>{k.u}</small></div><div className="d">{k.d}</div></div>
-          ))}
-        </div>
-      )}
+      {punto && <PuntoEvaluado punto={punto} unidad={unidad} dec={dec} anticipacion={etiqueta(bucket)} />}
 
-      {det.length > 0 && (
-        <div className="card" style={{ marginTop: 16 }}>
-          <h3>Desglose · mayores desvíos</h3>
-          <p className="hint">Dónde el método se alejó más de lo medido.</p>
-          <div className="scroll">
-            <table className="data">
-              <thead><tr><th className="lead">momento</th><th>real {unit}</th><th>reconstruido</th><th>error</th></tr></thead>
-              <tbody>{det.map((r, i) => (
-                <tr key={i}><td className="lead">{r.t}</td><td>{fmt(r.real, dec)}</td><td>{fmt(r.pred, dec)}</td>
-                  <td style={{ color: r.e >= 0 ? "var(--pred)" : "var(--crit)" }}>{r.e >= 0 ? "+" : ""}{fmt(r.e, dec)}</td></tr>
-              ))}</tbody>
-            </table>
-          </div>
-        </div>
-      )}
+      {punto && <LecturaAgente pregunta={preguntaAgente}
+                               contexto={`Predicción vs Real · ${vari} · ${fecha} ${momento}`} />}
 
-      <div className="note">Arriba se pronostica directo contra la herramienta. Para hacerlo en lenguaje natural, preguntale al asistente (abajo a la derecha): traduce el horizonte, ejecuta <span className="mono">forecast</span> y redacta — la traza muestra el input y la salida cruda.</div>
+      <div className="pie-metricas">
+        <span><b>Ese día:</b> error medio {fmt(dia?.metricas?.mae, 1)} {unidad} · sesgo {fmt(dia?.metricas?.bias, 1)} · {dia?.n ?? "—"} puntos</span>
+        <span>
+          <b>Últimos {DIAS_REFERENCIA} días:</b> error medio {fmt(ref?.mae, 1)} {unidad}
+          {vari === "irradiancia"
+            ? <> · mejora sobre el modelo ingenuo {fmt(ref?.skill_pct, 0)} %</>
+            : <> · sin mejora medible: acá el método <em>es</em> la persistencia</>}
+        </span>
+      </div>
     </section>
   );
 }

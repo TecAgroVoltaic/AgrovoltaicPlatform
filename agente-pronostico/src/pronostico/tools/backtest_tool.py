@@ -45,6 +45,15 @@ SCHEMA = {
                 "enum": ["15min", "30min", "h", "D"],
                 "description": "Cadencia de la evaluacion. Default 'h' (por hora), ideal para un dia.",
             },
+            "hora": {
+                "type": "string",
+                "description": (
+                    "Hora concreta del dia a mirar, formato 'HH:MM' (p.ej. '12:00'). Si el "
+                    "usuario pregunta por un momento puntual, PASALA: el resultado trae el "
+                    "valor real y el reconstruido de esa hora exacta. Sin esto solo tenes "
+                    "metricas del periodo y NO podes hablar de valores puntuales."
+                ),
+            },
         },
         "required": ["variable", "desde"],
         "additionalProperties": False,
@@ -52,19 +61,58 @@ SCHEMA = {
 }
 
 
-def run(variable: str, desde: str, hasta: str | None = None, bucket: str = "h") -> dict:
+# Con mas puntos que esto, la serie completa deja de ser barata en tokens y se
+# manda solo el resumen (extremos + la hora pedida).
+_MAX_PUNTOS_AL_LLM = 32
+
+
+def _punto(pts: list[dict], etiqueta, hora: str | None) -> dict | None:
+    """El punto de una hora concreta ('12:00'), o None si esa hora no esta."""
+    if not hora:
+        return None
+    for p in pts:
+        if p["t"].endswith(hora):
+            return {"t": etiqueta(p["t"]), "real": p["real"], "reconstruido": p["pred"],
+                    "error": round(p["pred"] - p["real"], 2)}
+    return None
+
+
+def run(variable: str, desde: str, hasta: str | None = None, bucket: str = "h",
+        hora: str | None = None) -> dict:
     r = bt_mod.backtest(variable, bucket=bucket, desde=desde, hasta=hasta)
     pts = r["puntos"]
     # etiquetas: hora del dia (HH:MM) si es intradia; fecha (MM-DD) si es diario.
     etiqueta = (lambda t: t[5:]) if bucket == "D" else (lambda t: t[-5:])
     unidad = UNIDAD[variable]
+
+    # Sin valores en la salida, el LLM se quedaba SOLO con metricas agregadas y
+    # describia la curva de memoria (se le observo inventar picos de 600-700
+    # W/m2 en un dia cuyo maximo real fue 358). El grafico no lo ve —se le quita
+    # por tokens—, asi que los numeros tienen que viajar aca.
+    maximo = max(pts, key=lambda p: p["real"])
+    resumen = {
+        "maximo_real": {"t": etiqueta(maximo["t"]), "valor": maximo["real"]},
+        "promedio_real": round(sum(p["real"] for p in pts) / len(pts), 2),
+    }
+    punto = _punto(pts, etiqueta, hora)
+    if hora and punto is None:
+        resumen["aviso_hora"] = (f"no hay dato para las {hora} en ese periodo; "
+                                 f"horas disponibles: {etiqueta(pts[0]['t'])}"
+                                 f"-{etiqueta(pts[-1]['t'])}")
+    serie = ([{"t": etiqueta(p["t"]), "real": p["real"], "reconstruido": p["pred"]}
+              for p in pts] if len(pts) <= _MAX_PUNTOS_AL_LLM else None)
+
     return {
         "variable": variable,
+        "unidad": unidad,
         "periodo": {"desde": desde, "hasta": hasta},
         "bucket": bucket,
         "metodo": r["metodo"],
         "n": r["n"],
         "metricas": r["metricas"],
+        "resumen": resumen,
+        "punto_consultado": punto,
+        "serie": serie,
         "_grafico": {
             "tipo": "linea",
             "titulo": f"Backtest {variable} · real vs reconstruido",
@@ -76,5 +124,9 @@ def run(variable: str, desde: str, hasta: str | None = None, bucket: str = "h") 
             ],
         },
         "nota": r["nota"] + " Reporta el valor REAL medido y que tan bien lo habria "
-                "predicho el metodo (usa las metricas); aclara que es una reconstruccion.",
+                "predicho el metodo (usa las metricas); aclara que es una reconstruccion. "
+                "IMPORTANTE: usa SOLO los numeros de esta salida ('serie', 'punto_consultado', "
+                "'resumen', 'metricas'). Si 'serie' viene en null no tenes los valores hora a "
+                "hora: NO describas la forma de la curva ni des magnitudes aproximadas — "
+                "limitate a las metricas, o volve a llamar acotando el periodo.",
     }

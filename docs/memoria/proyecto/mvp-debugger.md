@@ -122,9 +122,35 @@ bloqueo es un flag de servidor, no un borrado: `AGENTE_ANALIZADOR=on` lo devuelv
 - **Verificación**: `scripts/smoke-agentes.sh` (12 casos, HTTP real) prueba el bloqueo **y su
   reversibilidad**; corre en el CI junto al de auth.
 
-## 2026-08-19 — vista «Predicción vs Real»: pronóstico anclado
+## 2026-08-19 — «Predicción vs Real» rediseñada: una sola fuente
 
-Nuevo componente `console/AnclaForecast.tsx`: elegir un instante del histórico y pronosticar
-desde ahí, con lo que midió el sensor y el error al lado. Ver [[agente-pronostico]]. El KPI
-«Skill vs. ingenuo» ahora muestra **n/a** en humedad de suelo: ahí el método *es* la
-persistencia, así que el 0 % era una tautología, no una falla del modelo.
+La vista pasó a girar sobre **un solo momento**: se elige fecha, momento y anticipación, y de
+ahí salen el gráfico, los tres números y la lectura del agente.
+
+**El error que se corrigió (y por qué importa):** había dos relojes independientes —una
+ventana de N días para el backtest y un instante suelto para el pronóstico anclado— y encima
+hablaban en granularidades distintas. A las 12:00 del 22-jul el gráfico marcaba **358 W/m²**
+(promedio de la hora) y el KPI **166** (lectura instantánea de las 12:02). Los dos ciertos: esa
+hora fue de 237 a 449 W/m². Pero en una vista cuyo propósito es *validar de un vistazo*, dos
+números que no cuadran destruyen la confianza más rápido de lo que la construye cualquier
+métrica. Ahora **todo lee del mismo backtest**: gráfico, KPI y agente.
+
+- **La anticipación ES la resolución** (`bucket` 15min/30min/h): reconstruir un bucket = predecirlo
+  con el anterior. Un solo control en vez de dos que se contradecían. Efecto secundario útil para
+  la demo: el error medio del 22-jul cae de **32 → 14 W/m²** al pasar de 1 h a 15 min.
+- `console/PuntoEvaluado.tsx` (3 KPI: midió / predijo / error) y `console/LecturaAgente.tsx`.
+- `lineChart` acepta `marca`: guía vertical en el momento elegido.
+- **Menos texto**: el banner de tres líneas sobre el backtest es ahora una etiqueta
+  «modo backtest» con el detalle en el `title`. Fuera la tabla de mayores desvíos, la serie de
+  cielo despejado y las notas al pie; las métricas agregadas quedan en una línea.
+- `AnclaForecast.tsx` **eliminado**: su rol se absorbió. El pronóstico anclado sigue vivo en la
+  API (`ahora` en `POST /forecast`), pero **ya no se muestra en esta vista** — volvería a meter
+  una segunda granularidad. Ver [[agente-pronostico]].
+- El KPI «Skill vs. ingenuo» muestra **n/a** en humedad de suelo: ahí el método *es* la
+  persistencia, así que el 0 % era una tautología, no una falla del modelo.
+
+### Dónde va la respuesta del agente: en la vista, no en el chat flotante
+Se evaluó mandar la consulta al widget flotante (reusa el hilo) contra un panel inline. Gana el
+**inline**: lo que se está haciendo es comparar real contra predicho, y un panel flotante tapa
+justo los números que se quieren contrastar. No duplica el chat — es un turno único, sin
+historial ni persistencia, contra el mismo `POST /chat`. El widget flotante sigue para conversar.
