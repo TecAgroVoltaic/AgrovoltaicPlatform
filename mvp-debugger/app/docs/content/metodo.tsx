@@ -43,7 +43,7 @@ export function Metodo() {
       <Formula nota={<>GHI = irradiancia global horizontal · kt* = índice de cielo despejado · GHI<sub>cs</sub> = irradiancia que habría con el cielo perfectamente limpio. Fuente: <IC>physics.py</IC>.</>}>
         GHI<sub>medida</sub>(t) = kt*(t) × GHI<sub>cs</sub>(t)
       </Formula>
-      <p><strong>Por qué se pronostica kt* y no la GHI.</strong> La GHI mezcla dos cosas de naturaleza opuesta: la parábola solar del día —que ya conocemos con precisión de segundos— y las nubes, que son lo único realmente incierto. Pronosticar GHI directo obliga al modelo a adivinar algo que no hace falta adivinar, y encima cambia rápido: a las 6 de la mañana la irradiancia se multiplica en una hora, así que «lo mismo que hace un rato» es una predicción pésima aunque el cielo no se haya movido un centímetro.</p>
+      <p><strong>Por qué se pronostica kt* y no la GHI.</strong> La GHI mezcla dos cosas de naturaleza opuesta: la parábola solar del día (que ya conocemos con precisión de segundos) y las nubes, que son lo único realmente incierto. Pronosticar GHI directo obliga al modelo a adivinar algo que no hace falta adivinar, y encima cambia rápido: a las 6 de la mañana la irradiancia se multiplica en una hora, así que «lo mismo que hace un rato» es una predicción pésima aunque el cielo no se haya movido un centímetro.</p>
       <p>Al dividir por el techo de cielo despejado queda kt*: una señal acotada (típicamente 0–1,2), suave y aproximadamente estacionaria en la escala de una hora. Sobre eso <em>sí</em> tiene sentido persistir. Y al reconstruir, la geometría solar del futuro entra gratis: el pronóstico sube si el instante objetivo cae más cerca del mediodía y baja si cae al atardecer, sin que las nubes hayan cambiado. Eso es exactamente lo que la persistencia ingenua no sabe hacer.</p>
 
       <h2>El techo: cielo despejado con Ineichen</h2>
@@ -56,7 +56,7 @@ export function Metodo() {
         <div><b>Conocer el techo del futuro NO es fuga.</b> El cielo despejado es astronómico: depende de dónde está el sol, no de ningún dato medido. Calcularlo en <IC>now + h</IC> es tan lícito como saber a qué hora amanece mañana. La fuga sería usar una <em>medición</em> posterior a <IC>now</IC>, y eso lo corta la barrera de <IC>get_recent_data</IC>.</div>
       </Note>
 
-      <h2>kt* — el índice de cielo despejado</h2>
+      <h2>kt*: el índice de cielo despejado</h2>
       <Formula nota={<>Definido <b>solo</b> donde GHI<sub>cs</sub>(t) &gt; <IC>UMBRAL_CS</IC> = 20 W/m². Fuente: <IC>physics.clear_sky_index</IC>.</>}>
         kt*(t) = máx( 0 , GHI<sub>medida</sub>(t) / GHI<sub>cs</sub>(t) )
       </Formula>
@@ -76,8 +76,8 @@ export function Metodo() {
         kt*<sub>pred</sub> = mediana(K)  si |K| ≥ 3 ,  si no NaN<br />
         GHI<sub>pred</sub>(now + h) = kt*<sub>pred</sub> × GHI<sub>cs</sub>(now + h)
       </Formula>
-      <p><strong>Mediana, no media.</strong> Es una decisión, no un detalle: la media tiene punto de ruptura 0 —un solo valor atípico la mueve tanto como se quiera—, mientras que la mediana aguanta hasta un 50 % de datos corruptos. En la última hora basta un reflejo, un realce por borde de nube o una lectura mala para inflar el promedio; con la mediana ese punto no arrastra el pronóstico.</p>
-      <p><strong>MIN_MUESTRAS y el «no sé».</strong> Con menos de 3 kt* útiles la estimación queda a merced de una o dos lecturas, así que el forecaster devuelve <IC>NaN</IC> y la herramienta lo traduce a <IC>valor_esperado: null</IC> más una advertencia con el conteo. Es deliberado: preferimos decir «no sé» a fabricar un número. Ojo con qué se cuenta: son kt* <em>diurnos útiles</em>, no lecturas crudas — una ventana que cae sobre el atardecer puede tener 12 lecturas y 0 kt*.</p>
+      <p><strong>Mediana, no media.</strong> Es una decisión, no un detalle: la media tiene punto de ruptura 0 (un solo valor atípico la mueve tanto como se quiera), mientras que la mediana aguanta hasta un 50 % de datos corruptos. En la última hora basta un reflejo, un realce por borde de nube o una lectura mala para inflar el promedio; con la mediana ese punto no arrastra el pronóstico.</p>
+      <p><strong>MIN_MUESTRAS y el «no sé».</strong> Con menos de 3 kt* útiles la estimación queda a merced de una o dos lecturas, así que el forecaster devuelve <IC>NaN</IC> y la herramienta lo traduce a <IC>valor_esperado: null</IC> más una advertencia con el conteo. Es deliberado: preferimos decir «no sé» a fabricar un número. Ojo con qué se cuenta: son kt* <em>diurnos útiles</em>, no lecturas crudas. Una ventana que cae sobre el atardecer puede tener 12 lecturas y 0 kt*.</p>
       <p><strong>De noche.</strong> <IC>forecast_tool</IC> evalúa <IC>es_noche = GHI_cs(now + h) ≤ 20</IC>; si se cumple, el valor y los dos extremos de la banda son exactamente <IC>0.0</IC>. Ese caso se distingue del anterior: de noche el 0 es la respuesta correcta; de día sin datos la respuesta es <IC>None</IC>.</p>
       <p>El rival de referencia es la persistencia ingenua, <IC>GHI_pred(now + h) = última GHI medida antes de now</IC>: ignora que el sol se mueve y por eso se degrada tanto en horizontes largos y cerca del amanecer y el atardecer.</p>
 
@@ -94,7 +94,7 @@ export function Metodo() {
       </ul>
 
       <h2>La banda de incertidumbre</h2>
-      <p>Es ±1σ de <strong>kt*</strong> —no de la GHI— reexpandido con el techo del instante objetivo (<IC>forecasters/uncertainty.py</IC>).</p>
+      <p>Es ±1σ de <strong>kt*</strong>, no de la GHI, reexpandido con el techo del instante objetivo (<IC>forecasters/uncertainty.py</IC>).</p>
       <Formula nota={<>σ = desviación <b>poblacional</b> (<IC>ddof=0</IC>) de los kt* del lookback; vale 0 si hay una sola muestra. cs<sub>target</sub> = GHI<sub>cs</sub>(now + h).</>}>
         σ = desv(K)<br />
         bajo = máx( 0 , (kt*<sub>pred</sub> − σ) × cs<sub>target</sub> )<br />
@@ -138,7 +138,7 @@ export function Metodo() {
           [<IC>skill_pct</IC>, <span className="mono">(1 − mae / mae_ingenuo) × 100</span>, <>Mejora sobre el baseline «igual que la franja anterior». &gt; 0 = le gana; 0 = empata; &lt; 0 = es peor. Vale <IC>0.0</IC> si <IC>mae_ingenuo</IC> es 0.</>],
         ]}
       />
-      <p>El skill es la métrica que importa: un MAE de 30 W/m² no dice nada por sí solo —depende del sitio y del día—, mientras que «cuánto le gana al modelo ingenuo» sí compara métodos sobre el mismo problema.</p>
+      <p>El skill es la métrica que importa: un MAE de 30 W/m² no dice nada por sí solo (depende del sitio y del día), mientras que «cuánto le gana al modelo ingenuo» sí compara métodos sobre el mismo problema.</p>
       <Note>
         <div><b>Detalle del <IC>error_rel_pct</IC>.</b> La media del denominador incluye las franjas nocturnas (real ≈ 0, pred = 0), que la empujan hacia abajo y por lo tanto <b>inflan</b> el porcentaje. Conviene leerlo junto al MAE crudo, no en su lugar.</div>
       </Note>

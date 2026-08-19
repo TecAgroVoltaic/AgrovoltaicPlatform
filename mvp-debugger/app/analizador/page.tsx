@@ -43,7 +43,7 @@ export default function AnalizadorPage() {
       <Uso servicio="analizador" />
 
       <h2>KPIs (estado actual, todo el histórico)</h2>
-      <p className="muted small">Llama cada tool con período abierto — números para cruzar contra las respuestas.</p>
+      <p className="muted small">Llama cada tool con período abierto: números para cruzar contra las respuestas.</p>
       <Kpis />
 
       <h2>Runner manual de tools</h2>

@@ -18,7 +18,7 @@ export function Analizador() {
       ]} />
 
       <h2>El lazo del agente</h2>
-      <p>Clase <IC>Analizador</IC> (<IC>agent/agent.py</IC>): tool-use manual con el SDK de Anthropic (no el tool-runner beta) para control total y no filtrar el razonamiento interno. El agente se construye de forma <strong>perezosa</strong> en el primer <IC>/preguntar</IC> o <IC>/chat</IC> — así <IC>/health</IC> y <IC>/tool</IC> no dependen de la <IC>ANTHROPIC_API_KEY</IC>.</p>
+      <p>Clase <IC>Analizador</IC> (<IC>agent/agent.py</IC>): tool-use manual con el SDK de Anthropic (no el tool-runner beta) para control total y no filtrar el razonamiento interno. El agente se construye de forma <strong>perezosa</strong> en el primer <IC>/preguntar</IC> o <IC>/chat</IC>: así <IC>/health</IC> y <IC>/tool</IC> no dependen de la <IC>ANTHROPIC_API_KEY</IC>.</p>
       <p>La <strong>barrera anti-invención</strong> es estructural + de prompt: el modelo no tiene acceso a la DB (toda cifra pasa por el <IC>DISPATCH</IC> de tools) y el system prompt ordena «NUNCA calcules ni inventes números». La comparación PV1 vs PV2 no necesita tool dedicada: <IC>performance_ratio</IC>, <IC>energia_por_arreglo</IC> y <IC>temperatura_por_arreglo</IC> ya devuelven ambos arreglos en una sola llamada.</p>
 
       <h2>Herramientas (8)</h2>
@@ -125,11 +125,11 @@ export function Pronostico() {
           ["Qué es", "Desde el «ahora» hacia adelante (≤ 6 h)", "«Cómo habría predicho» una fecha pasada vs. lo medido"]        ,
           ["Dispara", <><IC>POST /forecast</IC> o la tool forecast</>, <><IC>GET /backtest</IC> o la tool backtest (solo en /chat)</>],
           ["Datos", "get_recent_data(now, 60min), barrera timestamp < now", "la MISMA serie del store, remuestreada, con .shift(1)"],
-          ["Es predicción real", "sí (salvo si se ancla en el pasado)", "no — evalúa el método"],
+          ["Es predicción real", "sí (salvo si se ancla en el pasado)", "no: evalúa el método"],
         ]}
       />
       <h3>Instante de referencia</h3>
-      <p>Con la ingesta congelada desde el 23-jul-2026, el último dato cae de madrugada: pronosticar «desde el último dato» da irradiancia 0 siempre, porque de noche <em>es</em> 0. Por eso <IC>POST /forecast</IC> acepta <IC>ahora</IC> (ISO): ancla el pronóstico en un instante del histórico —p. ej. con sol— y devuelve un número real. Como ese momento ya pasó, la respuesta adjunta <IC>medido</IC> con lo que registró el sensor y el error.</p>
+      <p>Con la ingesta congelada desde el 23-jul-2026, el último dato cae de madrugada: pronosticar «desde el último dato» da irradiancia 0 siempre, porque de noche <em>es</em> 0. Por eso <IC>POST /forecast</IC> acepta <IC>ahora</IC> (ISO): ancla el pronóstico en un instante del histórico (p. ej. con sol) y devuelve un número real. Como ese momento ya pasó, la respuesta adjunta <IC>medido</IC> con lo que registró el sensor y el error.</p>
       <Note kind="warn">
         <div>Un pronóstico anclado es un <b>hindcast</b>, no una predicción en vivo. La barrera anti-fuga es la misma (<IC>get_recent_data</IC> devuelve solo <IC>timestamp &lt; ahora</IC>) y el valor medido se consulta <b>después</b>, sin entrar al cálculo. Se audita en <IC>predicciones</IC> con el origen sufijado <IC>:instante-referencia</IC> para no mezclarlo con predicciones reales.</div>
       </Note>
@@ -173,7 +173,7 @@ export function Pronostico() {
         ]}
       />
       <Note>
-        <div>El forecaster <b>no toca</b> la tabla fotovoltaica del analizador — convive con ella sin fusionarse. Lee de un caché parquet; solo <IC>cargar_serie(forzar=True)</IC> golpea la DB. <b>NASA POWER no se usa</b> en el código (es solo referencia paralela para los gaps largos).</div>
+        <div>El forecaster <b>no toca</b> la tabla fotovoltaica del analizador: convive con ella sin fusionarse. Lee de un caché parquet; solo <IC>cargar_serie(forzar=True)</IC> golpea la DB. <b>NASA POWER no se usa</b> en el código (es solo referencia paralela para los gaps largos).</div>
       </Note>
     </Page>
   );

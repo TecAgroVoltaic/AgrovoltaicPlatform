@@ -6,7 +6,7 @@
 // de Next corre en el runtime Edge, donde los modulos de Node no existen.
 //
 // La cookie NO guarda datos del usuario: es `<expiracion>.<hmac>`. El servidor
-// no necesita estado — si la firma valida y no vencio, la sesion es buena.
+// no necesita estado: si la firma valida y no vencio, la sesion es buena.
 
 const CODIFICADOR = new TextEncoder();
 

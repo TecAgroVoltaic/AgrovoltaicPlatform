@@ -1,5 +1,5 @@
 "use client";
-// Iconos de la consola. SVG inline, trazo de 1.7, 16px — NO emojis: la paleta de
+// Iconos de la consola. SVG inline, trazo de 1.7, 16px. NO emojis: la paleta de
 // la consola es sobria y un emoji rompe la tipografía y el color a la vez.
 //
 // Existen para distinguir de un vistazo QUIÉN hizo cada cosa: el algoritmo
@@ -169,6 +169,16 @@ export function IconoPanel({ size = 16, className }: P) {
     <svg {...base(size)} className={className}>
       <rect x="3" y="4" width="18" height="16" rx="2" />
       <path d="M9.5 4v16" />
+    </svg>
+  );
+}
+
+/** Minimizar el chat. Era una raya suelta como glifo: dependía de la fuente y se
+    leía como puntuación. */
+export function IconoMinimizar({ size = 16, className }: P) {
+  return (
+    <svg {...base(size)} className={className}>
+      <path d="M6 12h12" />
     </svg>
   );
 }

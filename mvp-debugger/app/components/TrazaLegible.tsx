@@ -3,7 +3,7 @@
 // entrada y qué le devolvió.
 //
 // Por qué existe: la traza era `JSON.stringify(pasos, null, 2)`. Eso sirve para
-// depurar un bug, no para lo que la traza tiene que demostrar acá — que el
+// depurar un bug, no para lo que la traza tiene que demostrar acá: que el
 // número que ves salió de un algoritmo determinista y no de la cabeza del
 // modelo. Si para verificarlo hay que leer 200 líneas de JSON, nadie lo
 // verifica.

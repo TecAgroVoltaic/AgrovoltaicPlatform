@@ -44,7 +44,7 @@ export function whToKwh(wh: any): string {
   return (n / 1000).toLocaleString("es-CR", { maximumFractionDigits: 1 }) + " kWh";
 }
 
-// Markdown minimo (negrita + saltos) — suficiente para leer la respuesta del
+// Markdown minimo (negrita + saltos): suficiente para leer la respuesta del
 // agente en un debugger, sin sumar una libreria.
 export function inlineMd(texto: string): string {
   const esc = texto

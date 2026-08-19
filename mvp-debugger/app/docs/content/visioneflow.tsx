@@ -22,7 +22,7 @@ export function VfPlataforma() {
       <h2>Modelo de datos: nodos + edges</h2>
       <p>Un flujo se persiste en formato <strong>ReactFlow</strong> dentro de <IC>agent.flowData = {"{ nodes, edges, flowVariables?, timezone? }"}</IC>.</p>
       <ul>
-        <li><strong>Almacenado:</strong> cada nodo es <IC>{"{ id, type, position, data: { label, config: {…} } }"}</IC> — la config del usuario va anidada bajo <IC>data.config</IC>.</li>
+        <li><strong>Almacenado:</strong> cada nodo es <IC>{"{ id, type, position, data: { label, config: {…} } }"}</IC>. La config del usuario va anidada bajo <IC>data.config</IC>.</li>
         <li><strong>Runtime:</strong> al ejecutar, el Backend <strong>aplana</strong> <IC>data.config</IC> dentro de <IC>data</IC>, así los handlers leen <IC>node.data.provider</IC>, <IC>node.data.url</IC>, etc. (con lectura defensiva de ambas formas).</li>
       </ul>
 
@@ -109,7 +109,7 @@ export function VfAgentes() {
         ]}
       />
       <Note kind="good">
-        <div><b>Por qué merge y no recrear.</b> Así se agregaron <IC>backtest</IC> (al Agent) y <IC>tendencia</IC> (al Analyzer) sin tocar el resto del flujo. Los secretos entran por <IC>flow-mcp/.env</IC> con placeholders <IC>PEGAR_&lt;KEY&gt;</IC> que se resuelven desde el entorno — nunca por el contexto del asistente. La autenticación es NextAuth por credenciales; las keys se redactan siempre.</div>
+        <div><b>Por qué merge y no recrear.</b> Así se agregaron <IC>backtest</IC> (al Agent) y <IC>tendencia</IC> (al Analyzer) sin tocar el resto del flujo. Los secretos entran por <IC>flow-mcp/.env</IC> con placeholders <IC>PEGAR_&lt;KEY&gt;</IC> que se resuelven desde el entorno, nunca por el contexto del asistente. La autenticación es NextAuth por credenciales; las keys se redactan siempre.</div>
       </Note>
     </Page>
   );

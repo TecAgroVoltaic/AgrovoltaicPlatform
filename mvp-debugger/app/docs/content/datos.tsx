@@ -6,7 +6,7 @@ export function DatosFuentes() {
     <Page
       crumb="Datos · Supabase PV"
       title="Fuentes físicas y geometría"
-      lead="De qué sensores salen los datos crudos y cuál es la geometría real del sistema — el dato que desbloquea calibrar la irradiancia y calcular el Performance Ratio."
+      lead="De qué sensores salen los datos crudos y cuál es la geometría real del sistema, el dato que desbloquea calibrar la irradiancia y calcular el Performance Ratio."
     >
       <h2>Tres fuentes físicas</h2>
       <p>Los CSV crudos combinan lecturas de tres fuentes que muestrean a intervalos distintos y a veces se intercalan mal en un mismo archivo.</p>
@@ -19,7 +19,7 @@ export function DatosFuentes() {
         ]}
       />
       <Note kind="warn">
-        <div>La «celda calibrada» es un <b>nombre comercial</b> del sensor analógico — <b>no</b> viene ya escalado a W/m². Leo Cardinale confirmó que no se hizo ajuste. Por eso la irradiancia se calibra por modelo de cielo despejado, no con una constante guardada.</div>
+        <div>La «celda calibrada» es un <b>nombre comercial</b> del sensor analógico: <b>no</b> viene ya escalado a W/m². Leo Cardinale confirmó que no se hizo ajuste. Por eso la irradiancia se calibra por modelo de cielo despejado, no con una constante guardada.</div>
       </Note>
 
       <h2>Geometría del sistema</h2>
@@ -42,7 +42,7 @@ export function DatosFuentes() {
       <p>El total de 2840 Wp explica por qué los picos de «26,5 MW» en el crudo son físicamente imposibles: el sistema es de ~1–2 kW por string.</p>
 
       <Note kind="good">
-        <div><b>Validación física del PR.</b> Con POA solo-frontal el arreglo vertical daba PR{">"}1 (imposible → es bifacial). Modelando la bifacialidad (dos planos, φ≈0,80), <b>ambos arreglos convergen a PR ≈ 0,62</b> (PV1=0,622 · PV2=0,626) — prueba de que comparten paneles, inversor y sitio.</div>
+        <div><b>Validación física del PR.</b> Con POA solo-frontal el arreglo vertical daba PR{">"}1 (imposible → es bifacial). Modelando la bifacialidad (dos planos, φ≈0,80), <b>ambos arreglos convergen a PR ≈ 0,62</b> (PV1=0,622 · PV2=0,626), prueba de que comparten paneles, inversor y sitio.</div>
       </Note>
     </Page>
   );
@@ -56,7 +56,7 @@ export function DatosEsquema() {
       lead={<>El modelo vigente de la Supabase PV: dos tablas crudas + una capa de vistas que corrige y calibra sin destruir el dato original.</>}
     >
       <Note kind="crit">
-        <div><b>Importante.</b> La tabla ancha <IC>monitoreo_agrovoltaic</IC> (modelo v1) <b>fue dropeada el 2026-08-10</b> junto con sus vistas <IC>v_inversor/v_irradiancia/v_temperatura</IC>. El modelo vivo son las dos tablas crudas + vistas que se describen abajo. El doc <IC>columnas-supabase.md</IC> describe el esquema viejo — la fuente de verdad es <IC>sql/schema.sql</IC>.</div>
+        <div><b>Importante.</b> La tabla ancha <IC>monitoreo_agrovoltaic</IC> (modelo v1) <b>fue dropeada el 2026-08-10</b> junto con sus vistas <IC>v_inversor/v_irradiancia/v_temperatura</IC>. El modelo vivo son las dos tablas crudas + vistas que se describen abajo. El doc <IC>columnas-supabase.md</IC> describe el esquema viejo. La fuente de verdad es <IC>sql/schema.sql</IC>.</div>
       </Note>
 
       <h2>Regla rectora: crudo en la DB, corrección en capa de análisis</h2>
@@ -64,7 +64,7 @@ export function DatosEsquema() {
 
       <h2>Tablas crudas</h2>
       <p>Ambas con PK <IC>timestamp</IC> (TIMESTAMPTZ) y medidas en <IC>DOUBLE PRECISION</IC>. Cada fila lleva metadata de trazabilidad: <IC>n_muestras</IC>, <IC>intervalo_original_seg</IC>, <IC>fuente_archivo</IC>.</p>
-      <h3><IC>monitoreo_sc_electrico</IC> — 1 fila = ventana de 5 min</h3>
+      <h3><IC>monitoreo_sc_electrico</IC>: 1 fila = ventana de 5 min</h3>
       <Table
         head={["Columna", "Significado (crudo)"]}
         rows={[
@@ -78,7 +78,7 @@ export function DatosEsquema() {
           [<IC>temp_inclinado · temp_vertical</IC>, "Temperatura de panel PV1 / PV2 (DS18B20)"],
         ]}
       />
-      <h3><IC>radiacion_sc_15s</IC> — 1 fila = ventana de 15 s (base aparte)</h3>
+      <h3><IC>radiacion_sc_15s</IC>: 1 fila = ventana de 15 s (base aparte)</h3>
       <Table
         head={["Columna", "Significado (crudo)"]}
         rows={[
@@ -168,7 +168,7 @@ export function DatosPipeline() {
           ["7", "Duplicados y fragmentos (N)", "2 duplicados exactos por MD5; fragmentos diminutos de 86–87 bytes"],
         ]}
       />
-      <p>Extra: typos en headers — <IC>Energì</IC> (acento grave) en 72 archivos, <IC>POTencia</IC> en 2, <IC>Corriente PV2[A]</IC> sin espacio en 5.</p>
+      <p>Extra: typos en headers. <IC>Energì</IC> (acento grave) en 72 archivos, <IC>POTencia</IC> en 2, <IC>Corriente PV2[A]</IC> sin espacio en 5.</p>
 
       <h2>Decisiones de datos (Leo Cardinale, 2026-08-10)</h2>
       <Table

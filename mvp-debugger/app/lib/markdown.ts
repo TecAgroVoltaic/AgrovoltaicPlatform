@@ -3,12 +3,12 @@
 // código, listas y TABLAS.
 //
 // Por qué existe: `inlineMd` solo resolvía negritas, así que cuando el agente
-// respondía con una tabla —cosa que hace seguido, porque es la forma natural de
-// poner "real / predicho / error"— la vista mostraba los pipes y los guiones
+// respondía con una tabla (cosa que hace seguido, porque es la forma natural de
+// poner "real / predicho / error"), la vista mostraba los pipes y los guiones
 // crudos. Se veía roto sin estarlo.
 //
 // Por qué a mano y no una librería: el debugger no tiene dependencias de UI a
-// propósito, y esto es un subconjunto acotado — no hace falta un parser
+// propósito, y esto es un subconjunto acotado: no hace falta un parser
 // CommonMark para renderizar lo que escribe un LLM al que además se le pide que
 // sea breve.
 //

@@ -3,7 +3,7 @@
 //
 // Bloqueo del agente historico: se aplica ACA, no solo escondiendo botones. La
 // UI se puede saltar con un fetch a mano, y cada request al analizador consulta
-// la Supabase PV y —en /preguntar y /chat— gasta tokens del LLM. Esconder el
+// la Supabase PV y (en /preguntar y /chat) gasta tokens del LLM. Esconder el
 // boton no es bloquear; cortar la puerta si.
 import { NextResponse } from "next/server";
 

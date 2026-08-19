@@ -16,7 +16,7 @@
 //
 // Orden: (1) lo que calculó la herramienta, en cifras; (2) el análisis del
 // agente; (3) cómo llegó ahí. Y un sello que compara las cifras que recibió el
-// agente con las que dibuja el gráfico — si no coinciden, está hablando de otros
+// agente con las que dibuja el gráfico: si no coinciden, está hablando de otros
 // datos y hay que verlo.
 //
 // Al agente se le manda la PREGUNTA, nunca los números: pasárselos en el prompt
@@ -157,8 +157,8 @@ export function LecturaAgente({ pregunta, contexto, esperado }: {
         <div>
           <h3>Lectura del agente</h3>
           <p className="hint">
-            Acá se pide la predicción. El número lo produce una herramienta determinista —abajo se
-            ve cuál y con qué parámetros—, pero el agente <b>lo asume como propio</b>: lo justifica
+            Acá se pide la predicción. El número lo produce una herramienta determinista (abajo se
+            ve cuál y con qué parámetros), pero el agente <b>lo asume como propio</b>: lo justifica
             y lo critica.
           </p>
         </div>

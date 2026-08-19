@@ -1,7 +1,7 @@
 "use client";
 // Mini-chat del glosario: le pide al agente ACTIVO que explique un concepto,
 // con chips de arranque y repreguntas (conversación multi-turno). Pega a
-// /api/<agente>/chat, la misma tool que usa el widget flotante — nunca inventa,
+// /api/<agente>/chat, la misma tool que usa el widget flotante: nunca inventa,
 // puede usar sus herramientas y buscar en la web para dar contexto.
 //
 // El agente NO está fijo: si el analizador está bloqueado en esta consola, la
@@ -60,7 +60,7 @@ export function ConceptChat() {
     <div className="dx-ask">
       <p className="dx-ask-sub">
         Tocá un concepto o escribí tu pregunta. Responde el{" "}
-        <strong>{agente === "analizador" ? "Analizador PV" : "agente de Pronóstico"}</strong> — el mismo agente
+        <strong>{agente === "analizador" ? "Analizador PV" : "agente de Pronóstico"}</strong>, el mismo agente
         de la consola: no inventa, y puede consultar los datos del sistema o buscar en la web para dar contexto.
         Podés repreguntar para profundizar.
       </p>

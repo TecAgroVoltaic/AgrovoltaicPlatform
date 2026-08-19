@@ -1,6 +1,6 @@
 "use client";
 // Primitivas de presentación para la sección de documentación. Sin estado propio;
-// la navegación se hace por hash (#id-de-seccion) — los enlaces son <a href="#id">
+// la navegación se hace por hash (#id-de-seccion): los enlaces son <a href="#id">
 // y el shell (DocsShell) escucha `hashchange` para cambiar la página activa.
 import type { ReactNode } from "react";
 

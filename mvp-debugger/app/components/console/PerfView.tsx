@@ -79,7 +79,7 @@ export function PerfView({ theme }: { theme: string }) {
     <section>
       <div className="phead">
         <h1>Rendimiento del sistema</h1>
-        <p>Generación, irradiancia y eficiencia por arreglo — PV1 inclinado vs PV2 vertical (bifacial). Datos vivos de la Supabase PV.</p>
+        <p>Generación, irradiancia y eficiencia por arreglo: PV1 inclinado vs PV2 vertical (bifacial). Datos vivos de la Supabase PV.</p>
       </div>
 
       {errKpi ? (

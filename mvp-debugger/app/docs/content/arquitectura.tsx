@@ -13,7 +13,7 @@ export function Arquitectura() {
       lead="Qué corre dónde, quién habla con quién y cómo viaja una pregunta desde la interfaz hasta un número verificable."
     >
       <h2>El patrón: cerebro vs. manos</h2>
-      <p>Todo el sistema se apoya en una separación deliberada. El <strong>LLM (cerebro)</strong> entiende la pregunta, decide qué herramientas llamar y redacta la respuesta — pero <strong>nunca calcula ni inventa un número</strong>. Las <strong>herramientas (manos)</strong> son funciones Python que hacen SQL de solo-lectura o física sobre datos medidos, y son la única fuente de cifras.</p>
+      <p>Todo el sistema se apoya en una separación deliberada. El <strong>LLM (cerebro)</strong> entiende la pregunta, decide qué herramientas llamar y redacta la respuesta, pero <strong>nunca calcula ni inventa un número</strong>. Las <strong>herramientas (manos)</strong> son funciones Python que hacen SQL de solo-lectura o física sobre datos medidos, y son la única fuente de cifras.</p>
       <p>Esa separación se repite en dos superficies: el <strong>mvp-debugger</strong> (donde el cerebro es el propio agente Python) y <strong>VisioneFlow</strong> (donde el cerebro es un nodo <IC>aiAgent</IC> y las manos son nodos <IC>httpRequestTool</IC> que llaman a los mismos endpoints).</p>
 
       <h2>Componentes</h2>
@@ -56,7 +56,7 @@ export function Arquitectura() {
         <li><strong>PV eléctrico</strong> (inversor, piranómetro, temperatura de panel) → <strong>Supabase PV</strong>. Lo lee el {soloPronostico ? <strong>analizador</strong> : <a href="#analizador">analizador</a>}.</li>
         <li><strong>Ambiental / suelo</strong> (irradiancia de referencia, humedad de suelo) → <strong>AgroDash</strong> (cajas con sufijo <IC>SC</IC>). Lo lee el <a href="#pronostico">pronóstico</a>, que copia lo que necesita a un <em>store</em> propio en la Supabase de AgroVoltaic.</li>
       </ul>
-      <p>No hay una DB central: son dos mundos separados. Lo único comparable entre San Carlos y Cartago son variables ambientales — el PV eléctrico no tiene contraparte en Cartago.</p>
+      <p>No hay una DB central: son dos mundos separados. Lo único comparable entre San Carlos y Cartago son variables ambientales: el PV eléctrico no tiene contraparte en Cartago.</p>
 
       <h2>Producción vs. local</h2>
       <Table

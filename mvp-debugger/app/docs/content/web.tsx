@@ -74,7 +74,7 @@ export function WebConsola() {
       <h2>2 · Predicción vs Real</h2>
       <p>La vista del pronóstico. Pinta un <strong>backtest</strong> (<IC>/api/pronostico/backtest?variable=&dias=&bucket=h</IC>) con tres series: Real (medido), Reconstrucción del método y Cielo despejado (techo). Controles: variable (irradiancia / humedad de suelo) y ventana (3/7/14 días). Debajo, KPIs de error (MAE, sesgo, error relativo, skill) y el desglose de mayores desvíos.</p>
       <Note kind="warn">
-        <div>El banner lo deja explícito: <b>es un backtest, no predicciones en vivo</b>. El agente no pronostica de forma continua — predice solo cuando se le llama.</div>
+        <div>El banner lo deja explícito: <b>es un backtest, no predicciones en vivo</b>. El agente no pronostica de forma continua: predice solo cuando se le llama.</div>
       </Note>
 
       <h2>3 · Rendimiento</h2>
@@ -84,7 +84,7 @@ export function WebConsola() {
       </Note>
 
       <h2>4 · Costo y uso</h2>
-      <p>Cuánto cuesta operar el agente. El <strong>acumulado real</strong> (<IC>GET /uso</IC>, persistido: tokens, USD, nº consultas) y el <strong>gasto de la sesión</strong> — cada pregunta que hacés suma su costo, con gráfico acumulado, split entrada/salida y proyección. Tarifa del modelo <IC>claude-haiku-4-5</IC> ($1 in / $5 out por millón de tokens).</p>
+      <p>Cuánto cuesta operar el agente. El <strong>acumulado real</strong> (<IC>GET /uso</IC>, persistido: tokens, USD, nº consultas) y el <strong>gasto de la sesión</strong>: cada pregunta que hacés suma su costo, con gráfico acumulado, split entrada/salida y proyección. Tarifa del modelo <IC>claude-haiku-4-5</IC> ($1 in / $5 out por millón de tokens).</p>
     </Page>
   );
 }
@@ -100,7 +100,7 @@ export function WebChat() {
       <p><IC>components/chat/ChatWidget.tsx</IC>: un bubble abajo-derecha que se expande a un panel. <strong>Hilos separados por agente</strong> (no se mezclan), persistidos en <IC>localStorage</IC>. Manda el historial de texto limpio + el contexto de la vista actual a <IC>/api/{"<agente>"}/chat</IC>, y renderiza:</p>
       <ul>
         <li>La respuesta (con markdown mínimo: negritas).</li>
-        <li><strong>Gráficos inline</strong> de datos reales — cuando una tool devolvió el marcador <IC>_grafico</IC>, se pinta como SVG (sin librerías, <IC>app/lib/charts.ts</IC>).</li>
+        <li><strong>Gráficos inline</strong> de datos reales: cuando una tool devolvió el marcador <IC>_grafico</IC>, se pinta como SVG (sin librerías, <IC>app/lib/charts.ts</IC>).</li>
         <li>Un indicador con frases genéricas mientras espera, y una <strong>traza plegable</strong> por respuesta (tools usadas, búsquedas web, costo).</li>
       </ul>
 
@@ -123,7 +123,7 @@ export function WebChat() {
         head={["Componente", "Qué hace"]}
         rows={[
           [<IC>Ask</IC>, "Caja de pregunta → POST /preguntar → traza completa (turno LLM, tools, respuesta, costo)"],
-          [<IC>ToolRunner</IC>, "Ejecuta una tool atómica directo (sin LLM) con los params que quieras — POST /tool/{nombre}"],
+          [<IC>ToolRunner</IC>, "Ejecuta una tool atómica directo (sin LLM) con los params que quieras: POST /tool/{nombre}"],
           [<IC>DataExplorer</IC>, "Cobertura, filas crudas y series graficadas de cada relación de la Supabase PV"],
           [<IC>Kpis</IC>, "Llama las tools con período abierto: estado actual del sistema"],
           [<IC>PronosticoPanel</IC>, "Series del store (irradiancia + humedad) con resumen/sparkline + detección de anomalías"],

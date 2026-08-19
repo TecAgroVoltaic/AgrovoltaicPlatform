@@ -57,7 +57,7 @@ export function ReconView() {
     <section>
       <div className="phead">
         <h1>Reconciliación · modelo contra base de datos</h1>
-        <p>Preguntale al asistente (abajo a la derecha): cada número de su respuesta sale de una tool SQL sobre la base — la traza muestra el cálculo exacto (no inventa). Acá abajo están los datos crudos para cruzar a mano.</p>
+        <p>Preguntale al asistente (abajo a la derecha): cada número de su respuesta sale de una tool SQL sobre la base. La traza muestra el cálculo exacto (no inventa). Acá abajo están los datos crudos para cruzar a mano.</p>
       </div>
 
       <div className="card" style={{ marginTop: 22 }}>

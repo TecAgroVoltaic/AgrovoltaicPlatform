@@ -8,7 +8,7 @@ export function Infra() {
       title="Despliegue: local, EC2 y ruteo"
       lead="Cómo se levanta todo en local con un comando, y cómo viven los dos agentes como sidecars detrás de nginx en la EC2 de VisioneFlow."
     >
-      <h2>Local — un solo comando</h2>
+      <h2>Local: un solo comando</h2>
       <p><IC>mvp-debugger/dev.sh</IC> levanta los tres procesos en <IC>127.0.0.1</IC> con el venv de <IC>agente-pronostico/.venv</IC>, y cierra todo con Ctrl-C.</p>
       <Table
         head={["Proceso", "Bind", "Comando"]}
@@ -20,7 +20,7 @@ export function Infra() {
       />
       <p>La <IC>ANTHROPIC_API_KEY</IC> se exporta desde <IC>agente-pronostico/.env</IC> (no se imprime) y la heredan ambos procesos. En local los servicios corren <strong>sin</strong> API key. Los servicios leen las DBs en solo-lectura.</p>
 
-      <h2>Producción — EC2 (VisioneFlow «Agent-Runtime»)</h2>
+      <h2>Producción: EC2 (VisioneFlow «Agent-Runtime»)</h2>
       <Meta items={[
         ["Host", "52.1.28.77 (ec2-user)"],
         ["Dominio", "api.flow.visione-edge.com"],

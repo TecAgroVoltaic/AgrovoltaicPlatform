@@ -5,6 +5,7 @@
 // reales, marcador _grafico), un indicador con frases genéricas mientras espera,
 // y una traza plegable por respuesta. Persiste por agente en localStorage.
 import { useEffect, useRef, useState } from "react";
+import { IconoMinimizar } from "@/app/components/Iconos";
 import { jpost } from "@/app/lib/client";
 import { renderMd } from "@/app/lib/markdown";
 import { TrazaLegible } from "@/app/components/TrazaLegible";
@@ -119,7 +120,9 @@ export function ChatWidget({ agent, contexto, onTraza }: {
         </div>
         <div className="chat-headbtns">
           <button className="chat-icon" onClick={limpiar} title="Limpiar conversación" aria-label="Limpiar">↺</button>
-          <button className="chat-icon" onClick={() => setAbierto(false)} title="Minimizar" aria-label="Cerrar">—</button>
+          <button className="chat-icon" onClick={() => setAbierto(false)} title="Minimizar" aria-label="Minimizar">
+            <IconoMinimizar size={15} />
+          </button>
         </div>
       </div>
 

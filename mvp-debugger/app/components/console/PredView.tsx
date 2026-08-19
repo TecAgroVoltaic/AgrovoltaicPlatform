@@ -1,9 +1,9 @@
 "use client";
-// Predicción vs Real — una sola fecha manda sobre TODA la vista.
+// Predicción vs Real: una sola fecha manda sobre TODA la vista.
 //
-// Diseño: se elige día, momento y anticipación, y de ahí sale todo lo demás — la
+// Diseño: se elige día, momento y anticipación, y de ahí sale todo lo demás (la
 // curva medido-vs-predicho, los tres números de ese momento y la lectura del
-// agente. Antes había dos relojes independientes (una ventana de N días para el
+// agente). Antes había dos relojes independientes (una ventana de N días para el
 // backtest y un instante suelto para el pronóstico anclado) que además hablaban
 // en granularidades distintas: el gráfico en promedios horarios y los KPI en
 // lecturas instantáneas. Los dos números eran ciertos y aun así se contradecían
@@ -120,7 +120,7 @@ export function PredView({ theme }: { theme: string }) {
     const P = palette();
     const pts = dia.puntos as any[];
     // El gráfico muestra el TERRENO: lo que midió el sensor y el máximo físico
-    // posible. Sin el techo no se puede leer nada — un medido de 33 W/m² no dice
+    // posible. Sin el techo no se puede leer nada: un medido de 33 W/m² no dice
     // si el día estuvo tapado o si simplemente era temprano.
     const series: any[] = [
       { points: pts.map((p) => p.real), color: P.real, area: true, width: 2.4, name: "Medido" },
@@ -148,7 +148,7 @@ export function PredView({ theme }: { theme: string }) {
     + `del ${fecha} a las ${momento} con ${etiqueta(bucket)} de anticipación `
     + `(usá bucket "${bucket}"). No describas las cifras, que ya están a la vista: `
     + `justificá por qué te dio ese valor, juzgá con honestidad qué tan bueno fue `
-    + `—en escala, no en impresión— y decí qué limitación tuya lo explica. `
+    + `(en escala, no en impresión) y decí qué limitación tuya lo explica. `
     + `Si te equivocaste, empezá por ahí. 3 o 4 frases, sin tablas ni listas.`;
 
   return (
@@ -159,7 +159,7 @@ export function PredView({ theme }: { theme: string }) {
           <p>Elegí un momento: lo que midió el sensor contra lo que el modelo habría predicho.</p>
         </div>
         <span className="pill pill-modo"
-              title="Reconstrucción: se reaplica el método sobre datos ya medidos. No son predicciones que el agente hizo en vivo — esas se auditan en la tabla `predicciones`.">
+              title="Reconstrucción: se reaplica el método sobre datos ya medidos. No son predicciones que el agente hizo en vivo: esas se auditan en la tabla `predicciones`.">
           modo backtest
         </span>
       </div>
