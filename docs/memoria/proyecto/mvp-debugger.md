@@ -135,6 +135,16 @@ hora fue de 237 a 449 W/m². Pero en una vista cuyo propósito es *validar de un
 números que no cuadran destruyen la confianza más rápido de lo que la construye cualquier
 métrica. Ahora **todo lee del mismo backtest**: gráfico, KPI y agente.
 
+- **El techo de cielo despejado volvió al gráfico** (2026-08-19, tras quitarlo por error al
+  simplificar). No era decoración: sin esa referencia un medido de 33 W/m² no dice si el día
+  estuvo tapado o si simplemente era temprano. Además es lo que hace interpretable el método,
+  porque kt* = medido / techo es justo la señal que el forecaster persiste. El KPI del momento
+  elegido ahora muestra **«7 % del techo de cielo despejado (505 W/m²)»** en vez de un genérico
+  "valor real de esa franja". En humedad de suelo no hay techo y la vista cae al texto genérico.
+- **Procedencia de la curva predicha, dicha en la vista.** Al no estar escrito, es razonable
+  suponer que hay un LLM analizando cada franja. No lo hay: las tres curvas salen de **una sola
+  llamada determinista** a `/backtest` (~20 ms, pandas + pvlib), y el agente recién interviene al
+  pulsar Analizar. Ahora lo dice una nota bajo el gráfico.
 - **La anticipación ES la resolución** (`bucket` 15min/30min/h): reconstruir un bucket = predecirlo
   con el anterior. Un solo control en vez de dos que se contradecían. Efecto secundario útil para
   la demo: el error medio del 22-jul cae de **32 → 14 W/m²** al pasar de 1 h a 15 min.

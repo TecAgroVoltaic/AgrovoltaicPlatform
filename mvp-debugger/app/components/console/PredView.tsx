@@ -93,15 +93,25 @@ export function PredView({ theme }: { theme: string }) {
   const idx = momentos.indexOf(momento);
   const punto = idx >= 0 ? dia.puntos[idx] : null;
 
+  const hayTecho = !!dia?.puntos?.[0] && dia.puntos[0].cs != null;
+
   const chart = useMemo(() => {
     if (!dia?.puntos?.length) return "";
     void theme;                                      // recomputar al cambiar tema
     const P = palette();
     const pts = dia.puntos as any[];
-    return lineChart([
+    const series: any[] = [
       { points: pts.map((p) => p.real), color: P.real, area: true, width: 2.4, name: "Medido" },
       { points: pts.map((p) => p.pred), color: P.pred, dash: true, width: 2.2, name: "Predicho" },
-    ], {
+    ];
+    // Techo de cielo despejado: es el máximo físico posible con el sol donde
+    // está. Sin esa referencia no se puede leer nada — un medido de 33 W/m² no
+    // dice si el día estuvo nublado o si simplemente era temprano.
+    if (pts[0].cs != null) {
+      series.push({ points: pts.map((p) => p.cs), color: P.ceil, width: 1.4,
+                    name: "Techo (cielo despejado)" });
+    }
+    return lineChart(series, {
       x: momentos, height: 300, unit: unidad,
       yfmt: (v) => fmt(v, 0), tipfmt: (v) => fmt(v, dec),
       marca: idx >= 0 ? { i: idx, label: momento } : null,
@@ -181,8 +191,19 @@ export function PredView({ theme }: { theme: string }) {
             <div className="legend">
               <span><span className="sw" style={{ background: "var(--real)" }} />Medido</span>
               <span><span className="sw" style={{ background: "var(--pred)" }} />Predicho</span>
+              {hayTecho && (
+                <span title="Máximo físico posible con el sol en esa posición y cielo sin nubes. La razón medido/techo es el índice de claridad kt*.">
+                  <span className="sw" style={{ background: "var(--ceil)" }} />Techo (cielo despejado)
+                </span>
+              )}
               <span className="muted">{fecha} · hora local (UTC−6)</span>
             </div>
+            <p className="note">
+              La curva predicha <b>no la calcula el agente</b>: sale de una sola llamada al
+              algoritmo (<span className="mono">backtest</span>, ~20 ms, sin modelo de lenguaje),
+              que reconstruye franja por franja qué habría predicho el método viendo solo datos
+              anteriores. El agente entra recién al pulsar <b>Analizar</b>.
+            </p>
           </>
         )}
       </div>
