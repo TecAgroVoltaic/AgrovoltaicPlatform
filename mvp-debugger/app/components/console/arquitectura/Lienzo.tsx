@@ -18,6 +18,13 @@ import type { Detalle } from "./NodoModal";
 // Puertos de salida/entrada de las aristas troncales.
 const PUERTO_CEREBRO = { x: CEREBRO.x + CEREBRO.w, y: CEREBRO.y + 125 };
 const PUERTO_PUERTA = { x: COL.puerta, y: 185 };
+// Fondo de todo lo que tiene posición fija. El lienzo termina justo debajo del
+// contenido: sin esto quedaba una franja muerta al pie.
+const FONDO_FIJO = Math.max(
+  ...NODOS_FIJOS.map((n) => n.y + n.h),
+  CEREBRO.y + CEREBRO.h,
+  CAPA.y + CAPA.h,
+);
 
 const ROTULO: Record<GrupoNodo, string> = {
   entrada: "entrada · consola",
@@ -67,8 +74,8 @@ function disponer(mapa: Mapa, modo: string): { grupos: Grupo[]; alto: number } {
   }
 
   const ultimo = grupos.at(-1)?.items.at(-1);
-  const fondo = ultimo ? ultimo.y + TOOL.h : TOOL.y0;
-  return { grupos, alto: Math.max(LIENZO.hMin, fondo + 180) };
+  const fondoTools = ultimo ? ultimo.y + TOOL.h : TOOL.y0;
+  return { grupos, alto: Math.max(fondoTools, FONDO_FIJO) + LIENZO.margenInferior };
 }
 
 function Nodo({ id, clase, x, y, w, h, titulo, sub, tip, activo, onAbrir, extra }: {
@@ -97,7 +104,6 @@ export function Lienzo({ mapa, modo, onAbrir }: {
   onAbrir: (d: Detalle) => void;
 }) {
   const { grupos, alto } = disponer(mapa, modo);
-  const yRetorno = alto - 80;
   const webActiva = mapa.web_search.modos.includes(modo);
 
   // ── Aristas ──────────────────────────────────────────────────────────────
@@ -120,11 +126,6 @@ export function Lienzo({ mapa, modo, onAbrir }: {
   }
   aristas.push({ d: `M 432 ${CEREBRO.y + CEREBRO.h} L 432 344`, activa: webActiva, clase: "punteada" });
   aristas.push({ d: `M 1007 474 L 1007 ${CAPA.y + CAPA.h}`, activa: true });
-  aristas.push({
-    d: `M 330 ${CEREBRO.y + CEREBRO.h} C 300 ${yRetorno - 140}, 300 ${yRetorno}, 190 ${yRetorno} `
-      + `L 130 ${yRetorno} C 102 ${yRetorno}, 102 ${yRetorno - 24}, 102 138`,
-    activa: true, clase: "retorno",
-  });
 
   const abrirFicha = (titulo: string, clase: string, ficha: Ficha) =>
     onAbrir({ titulo, clase, ficha });
@@ -233,10 +234,6 @@ export function Lienzo({ mapa, modo, onAbrir }: {
           </button>
         ))}
       </div>
-
-      <span className="arq-retlbl" style={{ top: yRetorno - 10 }}>
-        respuesta + traza · pasos, tokens, US$
-      </span>
     </div>
   );
 }

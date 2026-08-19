@@ -419,7 +419,6 @@ svg .hit { cursor:crosshair; }
 .arq-edges path.viva { stroke:var(--accent); opacity:.7; }
 .arq-edges path.muerta { opacity:.18; stroke-dasharray:5 5; }
 .arq-edges path.punteada { stroke-dasharray:4 4; }
-.arq-edges path.retorno { stroke:var(--line2); stroke-dasharray:3 5; opacity:.45; }
 .arq-lane { position:absolute; top:16px; font-family:var(--mono); font-size:9.5px; text-transform:uppercase; letter-spacing:.12em; color:var(--muted); }
 
 .arq-nodo { position:absolute; text-align:left; font:inherit; cursor:pointer; background:var(--raise); border:1px solid var(--line2); border-radius:10px; padding:9px 11px; display:flex; flex-direction:column; gap:2px; transition:border-color .16s, transform .16s, opacity .2s; }
@@ -460,7 +459,6 @@ svg .hit { cursor:crosshair; }
 .arq-b-t { font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:.1em; color:var(--crit); font-weight:600; }
 .arq-b-s { font-size:10.5px; color:var(--ink2); line-height:1.35; }
 .arq-b-s code { font-family:var(--mono); color:var(--ink); }
-.arq-retlbl { position:absolute; left:196px; font-family:var(--mono); font-size:10px; color:var(--muted); background:var(--panel); padding:0 6px; }
 
 .arq-leyenda { display:flex; flex-wrap:wrap; gap:14px; padding:11px 16px; border-top:1px solid var(--line); font-size:11.5px; color:var(--muted); background:var(--panel); }
 .arq-leyenda span { display:inline-flex; align-items:center; gap:6px; }

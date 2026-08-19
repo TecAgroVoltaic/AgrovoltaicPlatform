@@ -137,7 +137,7 @@ export const HERRAMIENTAS: Record<string, Ficha> = {
 };
 
 // ── Geometría del lienzo ───────────────────────────────────────────────────
-export const LIENZO = { w: 1140, hMin: 700 };
+export const LIENZO = { w: 1140, margenInferior: 34 };
 export const COL = { entrada: 16, puerta: 200, cerebro: 316, tool: 596, dato: 890 };
 export const ANCHO = { entrada: 168, puerta: 96, cerebro: 232, tool: 246, dato: 234 };
 /** Alto, separación y arranque de la pila de herramientas. */
