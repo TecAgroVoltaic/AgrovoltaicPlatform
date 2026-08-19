@@ -190,7 +190,8 @@ export function PredView({ theme }: { theme: string }) {
       {punto && <PuntoEvaluado punto={punto} unidad={unidad} dec={dec} anticipacion={etiqueta(bucket)} />}
 
       {punto && <LecturaAgente pregunta={preguntaAgente}
-                               contexto={`Predicción vs Real · ${vari} · ${fecha} ${momento}`} />}
+                               contexto={`Predicción vs Real · ${vari} · ${fecha} ${momento}`}
+                               esperado={{ real: punto.real, pred: punto.pred }} />}
 
       <div className="pie-metricas">
         <span><b>Ese día:</b> error medio {fmt(dia?.metricas?.mae, 1)} {unidad} · sesgo {fmt(dia?.metricas?.bias, 1)} · {dia?.n ?? "—"} puntos</span>

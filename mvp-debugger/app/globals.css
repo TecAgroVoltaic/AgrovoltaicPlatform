@@ -304,9 +304,38 @@ svg .hit { cursor:crosshair; }
 .lectura-head h3 { margin:0; }
 .lectura-head .hint { margin:4px 0 0; }
 .lectura-head .btn { flex:none; }
-.lectura-espera { margin-top:14px; }
+.lectura-espera { display:flex; align-items:center; gap:10px; font-size:12.5px; color:var(--muted); }
+
+/* ── Bloques de la lectura: algoritmo vs agente ──────────────────────────────
+   El punto de la tarjeta es que se VEA la separación — un algoritmo determinista
+   produce los números, el modelo los explica. Por eso cada bloque tiene su
+   icono, su color de acento y su borde: no es decoración, es la tesis. */
+.bloq { border:1px solid var(--line); border-radius:10px; padding:14px 16px; background:var(--panel2); }
+.bloq-h { display:flex; align-items:center; gap:9px; flex-wrap:wrap; }
+.bloq-ic { display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:7px; flex:none; }
+.bloq-ic-algo   { background:color-mix(in srgb, var(--accent) 16%, transparent); color:var(--accent); }
+.bloq-ic-agente { background:color-mix(in srgb, var(--pred) 18%, transparent); color:var(--pred); }
+.bloq-t { font-size:12.5px; font-weight:600; color:var(--ink); }
+.bloq-algo   { border-left:2px solid var(--accent); }
+.bloq-agente { border-left:2px solid var(--pred); }
+.bloq-metodo { margin:9px 0 0; font-size:11.5px; color:var(--muted); font-family:var(--mono); }
+.bloq-ctx { margin:11px 0 0; font-size:11.5px; color:var(--muted); font-family:var(--mono); }
+.bloq-agente .md { margin-top:11px; }
+.bloq-check { display:inline-flex; align-items:center; gap:5px; font-size:11px; font-family:var(--mono); padding:2px 8px; border-radius:11px; border:1px solid var(--line2); margin-left:auto; }
+.bloq-check.ok  { color:var(--good); border-color:color-mix(in srgb, var(--good) 40%, var(--line)); }
+.bloq-check.mal { color:var(--crit); border-color:color-mix(in srgb, var(--crit) 40%, var(--line)); }
+
+/* Los tres números que devolvió el algoritmo. */
+.valores { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
+.valor { flex:1 1 130px; background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:10px 12px; }
+.valor-acento { border-color:color-mix(in srgb, var(--accent) 35%, var(--line)); }
+.valor-l { display:block; font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); }
+.valor-n { display:block; margin-top:4px; font-size:19px; font-weight:600; letter-spacing:-.02em; font-family:var(--mono); font-variant-numeric:tabular-nums; color:var(--ink); }
+.valor-n small { font-size:11px; color:var(--muted); font-weight:500; margin-left:4px; font-family:system-ui; }
+
 .lectura-txt { margin-top:16px; }
-.lectura-pie { display:flex; align-items:center; gap:12px; margin-top:16px; padding-top:12px; border-top:1px solid var(--line); flex-wrap:wrap; }
+.lectura { display:flex; flex-direction:column; gap:14px; }
+.lectura-pie { display:flex; align-items:center; gap:12px; padding-top:12px; border-top:1px solid var(--line); flex-wrap:wrap; margin:0; }
 
 /* ── Markdown de las respuestas del agente ───────────────────────────────────
    El modelo escribe tablas y listas; sin estilos se veian los pipes crudos. */
@@ -329,12 +358,18 @@ svg .hit { cursor:crosshair; }
    Linea de tiempo con un punto por paso. El JSON crudo queda a un click. */
 .tz { margin-top:14px; }
 .tz-lista { list-style:none; margin:0; padding:0; }
-.tz-paso { position:relative; padding:0 0 16px 22px; }
-.tz-paso:not(:last-child)::before { content:""; position:absolute; left:4.5px; top:14px; bottom:0; width:1px; background:var(--line2); }
-.tz-punto { position:absolute; left:0; top:5px; width:10px; height:10px; border-radius:50%; border:2px solid var(--ground); }
-.tz-punto-tool   { background:var(--accent); }
-.tz-punto-modelo { background:var(--line2); }
-.tz-punto-web    { background:var(--ceil); }
+.tz-paso { position:relative; padding:0 0 18px 34px; min-height:22px; }
+.tz-paso:not(:last-child)::before { content:""; position:absolute; left:11px; top:24px; bottom:0; width:1px; background:var(--line2); }
+.tz-badge { position:absolute; left:0; top:0; width:22px; height:22px; border-radius:7px; display:inline-flex; align-items:center; justify-content:center; border:1px solid var(--line); background:var(--panel2); }
+.tz-badge-tool   { color:var(--accent); border-color:color-mix(in srgb, var(--accent) 35%, var(--line)); }
+.tz-badge-modelo { color:var(--ceil); }
+.tz-badge-texto  { color:var(--pred); }
+.tz-badge-web    { color:var(--ceil); }
+.tz-badge-err    { color:var(--crit); border-color:color-mix(in srgb, var(--crit) 40%, var(--line)); }
+.tz-metodo { margin-top:5px; font-size:11.5px; color:var(--muted); font-family:var(--mono); }
+.tz-chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:4px; }
+.tz-chip { font-family:var(--mono); font-size:11px; background:var(--panel); border:1px solid var(--line); border-radius:5px; padding:2px 7px; color:var(--ink2); }
+.tz-chip b { color:var(--muted); font-weight:500; margin-right:5px; }
 .tz-cuerpo { min-width:0; }
 .tz-cab { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 .tz-tipo { font-size:12.5px; font-weight:600; color:var(--ink); }

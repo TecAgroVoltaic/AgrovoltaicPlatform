@@ -160,13 +160,27 @@ Dos defectos que se veían como "está crudo" y en realidad eran de presentació
   Escapa todo el HTML de entrada primero, así el texto del modelo no puede inyectar marcado.
   Se usa en las **cuatro** superficies (lectura inline, chat flotante, glosario y ChatWidget).
   Cubierto por `scripts/smoke-markdown.mjs` (16 casos) en el CI.
+- **La tarjeta no mostraba la tesis del proyecto.** Era «botón + texto», y lo que hay que ver
+  es la SEPARACIÓN: *el agente no predice, predice un algoritmo determinista*; el modelo elige
+  cuál llamar, con qué parámetros, y explica lo que devuelve. Ahora la tarjeta va en ese orden:
+  **(1) lo que devolvió el algoritmo** —herramienta, método, los tres números en grande y el
+  contexto del día—, **(2) lo que dijo el agente**, **(3) cómo llegó ahí**. Cada bloque con su
+  icono y color de acento (`bloq-algo` ámbar, `bloq-agente` violeta).
+- **Verificación cruzada**: los valores que recibió el agente se comparan con los que muestra el
+  gráfico y sale un sello «coincide con el gráfico». Es la prueba de que la explicación habla de
+  los mismos datos que estás mirando — y si el modelo consultara otra resolución, se vería.
+- **Iconos propios** (`components/Iconos.tsx`, SVG inline, nunca emojis: rompen la tipografía y
+  la paleta). Sirven para distinguir de un vistazo quién actuó: engranaje = algoritmo,
+  destellos = el modelo eligiendo, bocadillo = redacción, globo = web.
 - **La traza era `JSON.stringify(pasos, null, 2)`**, ilegible. Nuevo componente compartido
   `components/TrazaLegible.tsx`: línea de tiempo con un paso por punto — «Decidió qué
   consultar», «Consultó los datos» (herramienta, ms, qué le pidió, qué le devolvió),
   «Buscó en la web», «Redactó la respuesta». Los arreglos se cuentan en vez de volcarse
   (`serie: 22 elementos`) y los objetos anidados se abren un nivel
-  (`resumen.maximo_real`). El JSON crudo **no desaparece**: queda a un click por paso, que
-  es la prueba final cuando algo no cuadra. Reemplaza también la traza críptica del chat.
+  (`resumen.maximo_real`). Los parámetros van como **chips** y la salida se muestra **por
+  relevancia**, no completa: volcar los doce campos —incluidos los que solo repiten la entrada—
+  era el problema viejo con más pasos. Lo que no entra queda en «ver salida completa (+N
+  campos)», que sigue siendo la prueba final. Reemplaza también la traza críptica del chat.
 - **Menos redundancia**: la pregunta que manda la vista ahora pide prosa breve sin tablas,
   porque los tres números ya están en los KPI de arriba. Lo que aporta el agente es la
   interpretación, no volver a listar lo que se ve.
