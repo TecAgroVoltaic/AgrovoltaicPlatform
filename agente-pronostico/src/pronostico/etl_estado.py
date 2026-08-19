@@ -37,7 +37,12 @@ _SQL_ULTIMO_ERROR = """
 
 
 def edad_horas(ts: datetime | None, ahora: datetime) -> float | None:
-    """Antiguedad en horas de un instante. None si no hay instante."""
+    """Antiguedad en horas de un instante. None si no hay instante.
+
+    Publica y unica: `salud` (que ya depende de este modulo) mide con ella la
+    frescura de cada variable. Todas las edades del mismo reporte tienen que
+    redondear igual, o dos numeros del mismo panel se contradicen.
+    """
     return None if ts is None else round((ahora - ts).total_seconds() / 3600, 2)
 
 

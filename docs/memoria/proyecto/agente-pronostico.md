@@ -358,3 +358,35 @@ receta para contar doble al refactorizar; hay una prueba que lo fija.
 El JSON local queda como **espejo**: si el store no responde, `/uso` cae a él y lo **declara**
 en un campo `fuente` (`store` / `espejo-local`). Un número más chico de lo real sin su
 procedencia al lado es peor que no tenerlo.
+
+## 2026-08-19 (noche) — el panel de salud dice de dónde vienen los datos
+
+El panel mostraba «ETL corrió hace 11 min» y la ingesta en `stale`, sin explicar por qué esas
+dos cosas conviven. Faltaba el hecho central: **la fuente es una réplica de un dump**, así que
+el ETL puede correr verde para siempre y no entrar una sola fila.
+
+Módulos nuevos:
+- **`fuente.py`** — identidad legible del origen, derivada de `config.conninfo()`. Clasifica por
+  host: loopback → `replica_dump` (`es_snapshot: true`), hosts conocidos de la tailnet →
+  `base_viva` / `replica_remota`, cualquier otro → `desconocido` con `es_snapshot: null`.
+  **Falla hacia «no sé», nunca hacia una afirmación falsa**, y viaja el `criterio` en texto
+  porque es una inferencia, no algo que la base declare. Solo host, puerto y base: nunca
+  usuario, clave ni la URL entera (hay una prueba que serializa el dict y lo verifica).
+- **`etl_estado.py`** — última corrida con `ok`, `filas_leidas`, `filas_insertadas`, duración y
+  desglose por variable, más `etl_fallando` (true cuando el último error es **posterior** a la
+  última corrida completa, que es el caso que engaña: la fuente cae, el ETL revienta antes de
+  registrar la corrida, y la última «verde» queda vieja).
+
+La distinción que ordena todo: **«corrió bien» y «trajo datos» son cosas distintas.** Hoy
+`ok: true` con `insertadas: 0`, y el panel ahora lo dice con esas palabras.
+
+`/salud/panel` dejó de responder 503 por infraestructura: degrada bloque a bloque y el de
+`fuente` sobrevive, que es justo cuando más hace falta saber a qué base se apuntaba.
+
+**La vista** (`SaludView.tsx`) se reordenó alrededor de eso: arriba un diagnóstico que se lee
+como titular («No entran datos nuevos desde hace 27,5 días» + por qué no pueden entrar), después
+fuente y store lado a lado (se confunden todo el tiempo), y recién ahí las tablas.
+
+**Hallazgo abierto:** `/salud/ingesta` es público y devuelve `ultimo_error_etl.error` crudo, que
+hoy incluye un fragmento de `COPY` con un UUID y el nombre de una caja. Preexistente; suma a
+[[superficie-expuesta]]. El arreglo limpio es truncar el mensaje solo en la ruta pública.

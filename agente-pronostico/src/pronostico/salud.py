@@ -41,10 +41,6 @@ HORAS_POR_DIA = 24
 _SQL_FRESCURA = "SELECT variable, ultimo_dato, filas FROM v_salud_ingesta"
 
 
-def _edad_horas(ts: datetime | None, ahora: datetime) -> float | None:
-    return None if ts is None else round((ahora - ts).total_seconds() / 3600, 2)
-
-
 def _estado(edad_h: float | None, umbral_h: float) -> str:
     if edad_h is None:
         return ESTADO_SIN_DATOS
@@ -62,7 +58,7 @@ def _frescura(conn: psycopg.Connection) -> dict:
 def _por_variable(medidas: dict, ahora: datetime, umbral_h: float) -> dict:
     salida = {}
     for variable, (ultimo, filas) in medidas.items():
-        edad_h = _edad_horas(ultimo, ahora)
+        edad_h = etl_estado.edad_horas(ultimo, ahora)
         salida[variable] = {
             "ultimo_dato": ultimo.isoformat() if ultimo else None,
             "edad_horas": edad_h,
@@ -84,7 +80,7 @@ def _congelamiento(medidas: dict, ahora: datetime, umbral_h: float) -> dict:
     if not ultimos:
         return {"congelada": True, "desde": None, "dias": None}
     mas_reciente = max(ultimos)
-    edad_h = _edad_horas(mas_reciente, ahora) or 0.0
+    edad_h = etl_estado.edad_horas(mas_reciente, ahora)
     return {
         "congelada": edad_h > umbral_h,
         "desde": mas_reciente.isoformat(),

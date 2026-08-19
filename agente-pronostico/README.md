@@ -143,7 +143,7 @@ python -m pronostico.etl --full --variable irradiancia  # backfill de una sola v
 |---|---|---|
 | `GET /health` | ping | no |
 | `GET /salud/ingesta` | antigüedad de los datos; **503** si están viejos | no |
-| `GET /salud/panel` | ingesta + errores + gasto del día + última predicción | sí |
+| `GET /salud/panel` | qué fuente se lee + ingesta + ETL + errores + gasto del día | sí |
 | `POST /forecast` | pronóstico a un horizonte | sí |
 | `POST /anomalias` | detección determinista de anomalías | sí |
 | `POST /preguntar` · `/chat` | el lazo del LLM completo, con traza | sí |
@@ -151,6 +151,12 @@ python -m pronostico.etl --full --variable irradiancia  # backfill de una sola v
 
 `/health` y `/salud/ingesta` quedan abiertos a propósito: son para monitoreo automático
 y no exponen datos de la serie.
+
+`/salud/panel` responde **200 siempre** que el proceso esté vivo: cada bloque degrada con
+su propio `error` en vez de tumbar la respuesta, porque es la vista que hay que poder
+mirar justo cuando algo se rompió. Su bloque `fuente` dice de qué base se está leyendo
+(hoy la **réplica del dump**, no la base viva de Cartago) y si es un snapshot — sin
+usuario ni contraseña: de la cadena de conexión solo salen host, puerto y base.
 
 ### Frenos de consumo
 
