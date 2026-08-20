@@ -216,6 +216,9 @@ export function LecturaAgente({ pregunta, contexto, esperado, modo = "analisis",
     setUsage(r.data?.usage || null);
     setMs(r.data?.ms_total ?? null);
     setCosto(r.data?.costo?.usd_total ?? null);
+    // Recién ACÁ, con la respuesta del agente ya en la mano, se consulta lo que
+    // midió el sensor. El orden no depende de que alguien apriete un botón.
+    if (ciego) await revelarMedido();
   }
 
   const res = resultados(pasos);
@@ -302,21 +305,16 @@ export function LecturaAgente({ pregunta, contexto, esperado, modo = "analisis",
       {/* La REVELACIÓN. La hace la consola, no el agente: él ya se comprometió y
           no puede volver atrás. Por eso el veredicto se calcula acá, con el
           número que él dio y el que registró el sensor, y no se le pregunta. */}
-      {ciego && respuesta && revelar && (
-        <section className={"bloq bloq-revelar" + (typeof revelado === "object" && revelado ? " abierto" : "")}>
+      {ciego && respuesta && revelar && (revelado || errRevelar) && (
+        <section className="bloq bloq-revelar">
           {typeof revelado === "object" && revelado ? (
             <Veredicto pred={primero?.pred ?? null} real={revelado.real}
                        unidad={revelar.unidad} dec={revelar.dec ?? 1} />
           ) : (
-            <div className="revelar-cerrado">
-              <p className="hint">
-                Ya se comprometió. Lo que midió el sensor todavía no se consultó.
-                {errRevelar && <b style={{ color: "var(--crit)" }}> {errRevelar}</b>}
-              </p>
-              <button className="btn" onClick={revelarMedido} disabled={revelado === "cargando"}>
-                {revelado === "cargando" ? "Consultando…" : "Revelar lo que midió"}
-              </button>
-            </div>
+            <p className="hint">
+              {errRevelar ? <>No se pudo consultar lo que midió el sensor: {errRevelar}</>
+                          : "Consultando lo que midió el sensor…"}
+            </p>
           )}
         </section>
       )}
