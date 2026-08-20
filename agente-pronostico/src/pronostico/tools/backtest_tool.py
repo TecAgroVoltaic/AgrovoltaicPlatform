@@ -113,6 +113,7 @@ def _punto(pts: list[dict], etiqueta, hora: str | None,
             previo = pts[i - 1]
             techo_previo = previo.get("cs")
             punto["momento_anterior"] = {"t": etiqueta(previo["t"]), "real": previo["real"]}
+            # OJO: es el insumo del metodo, NO lo que el metodo copio. Ver la nota.
             if techo_previo:
                 punto["momento_anterior"]["pct_del_techo_que_paso"] = round(
                     previo["real"] / float(techo_previo) * 100, 1)
@@ -157,6 +158,8 @@ def run(variable: str, desde: str, hasta: str | None = None, bucket: str = "h",
         "bucket": bucket,
         "metodo": r["metodo"],
         "n": r["n"],
+        "anticipacion_seg": r.get("anticipacion_seg"),
+        "peso_lo_reciente": r.get("peso_lo_reciente"),
         "metricas": r["metricas"],
         "resumen": resumen,
         "punto_consultado": punto,
@@ -179,8 +182,11 @@ def run(variable: str, desde: str, hasta: str | None = None, bucket: str = "h",
                 "limitate a las metricas, o volve a llamar acotando el periodo. "
                 "COMO SE LEE 'pct_del_techo_que_paso': es cuanta luz dejaron pasar las nubes "
                 "sobre el maximo posible. Cerca de 100 = cielo despejado; cerca de 0 = cielo "
-                "CERRADO. Un 5 % es un dia tapado, no uno claro. La prediccion se hizo "
-                "persistiendo el porcentaje de 'momento_anterior', no el de este momento. "
+                "CERRADO. Un 5 % es un dia tapado, no uno claro. La prediccion NO copio el "
+                "porcentaje de 'momento_anterior': tomo cuanto se APARTABA ese momento de lo "
+                "tipico de su hora, contrajo esa diferencia segun 'peso_lo_reciente' y la "
+                "llevo a lo tipico de la hora evaluada. Por eso pred y 'momento_anterior' "
+                "pueden diferir bastante aunque el cielo no haya cambiado. "
                 "Y cita las razones tal como vienen: si dice 1.6 veces, es 1.6, no 'casi dos "
                 "veces y media'.",
     }

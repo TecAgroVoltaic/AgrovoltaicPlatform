@@ -213,7 +213,8 @@ def test_el_modo_prediccion_no_expone_backtest():
     from pronostico.agent.agent import MODOS
     nombres = [e["name"] for e in MODOS["prediccion"]["schemas"]]
     assert "backtest" not in nombres
-    assert set(nombres) == {"diagnosticar_condiciones", "contexto_historico", "predecir"}
+    assert set(nombres) == {"diagnosticar_condiciones", "contexto_historico",
+                            "riesgo_de_nubes", "predecir"}
     # Y el modo de análisis sí la conserva: ahí ver el resultado es el objetivo.
     assert "backtest" in [e["name"] for e in MODOS["analisis"]["schemas"]]
 
@@ -267,3 +268,44 @@ def test_el_contexto_historico_no_toca_el_dia_objetivo(monkeypatch):
     assert not (_claves(c) & _CLAVES_PROHIBIDAS)
     objetivo = c["instante_a_pronosticar"][:10]
     assert all(d["fecha"] < objetivo for d in c["misma_hora_dias_previos"])
+
+
+# ── `riesgo_de_nubes`: la tool nueva, bajo el mismo contrato ─────────────────
+def test_riesgo_de_nubes_no_devuelve_el_valor_medido():
+    """Entra al modo ciego, asi que le aplica el MISMO contrato que a `predecir`:
+    nada de lo que devuelva puede venir del instante objetivo."""
+    from pronostico.tools import riesgo_tool
+
+    salida = riesgo_tool.run("irradiancia", "2026-07-22T14:00", 10800)
+    encontradas = _claves(salida) & _CLAVES_PROHIBIDAS
+    assert not encontradas, f"filtra claves del resultado: {encontradas}"
+
+
+def test_el_riesgo_solo_mira_antes_del_corte():
+    """La ventana del regimen se ancla en el CORTE, no en el instante objetivo.
+
+    Es el defecto que tenia la primera version: medir la turbulencia "alrededor
+    del momento a pronosticar" son datos posteriores al corte, o sea justo la
+    fuga que el sistema entero evita.
+    """
+    import pandas as pd
+
+    from pronostico.tools import riesgo_tool
+
+    salida = riesgo_tool.run("irradiancia", "2026-07-22T14:00", 10800)
+    visible = pd.Timestamp(salida["datos_visibles_hasta"])
+    objetivo = pd.Timestamp(salida["instante"])
+    assert visible < objetivo
+    assert (objetivo - visible) == pd.Timedelta(seconds=10800)
+
+
+def test_el_riesgo_declara_que_es_frecuencia_y_no_prevision():
+    """La distincion que hace honesta a esta tool: dice cada cuanto pasa, no si
+    va a pasar. Si algun dia se presentara como prevision, estaria prometiendo
+    una certeza que los datos no respaldan (correlacion 0,08 a 6 h)."""
+    from pronostico.tools import riesgo_tool
+
+    salida = riesgo_tool.run("irradiancia", "2026-07-22T14:00", 10800)
+    assert "FRECUENCIA, no prevision" in salida["nota"]
+    prob = salida["frecuencia_historica_a_esta_hora"]
+    assert prob is None or set(prob) >= {"pct_se_tapa", "pct_se_abre", "direccion_dominante"}

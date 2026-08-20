@@ -157,13 +157,56 @@ def get_recent_data(now, lookback_min: float,
     return serie[(serie.index >= desde) & (serie.index < now)]  # < now: sin fuga
 
 
+_SQL_RANGO = """
+    SELECT min(ts), max(ts), count(*)
+    FROM lecturas_ambientales_sc
+    WHERE variable = %s
+"""
+
+
+def _rango_desde_store(variable: str) -> dict | None:
+    """Los tres numeros del rango con un agregado SQL. None si el store no responde.
+
+    Falla hacia None a proposito: quien llama tiene un camino alternativo (cargar
+    la serie), y este atajo nunca debe ser el motivo de que el rango no exista.
+    """
+    try:
+        with psycopg.connect(config.store_conninfo(), autocommit=True) as conn:
+            fila = conn.execute(_SQL_RANGO, (variable,)).fetchone()
+    except Exception:
+        return None
+    if not fila:
+        return None
+    desde, hasta, n = fila
+    if not n:
+        return {"desde": None, "hasta": None, "n": 0}
+    return {"desde": pd.Timestamp(desde).tz_convert(TZ).isoformat(),
+            "hasta": pd.Timestamp(hasta).tz_convert(TZ).isoformat(),
+            "n": int(n)}
+
+
 def rango_datos(variable: str = Variable.IRRADIANCIA.value) -> dict:
-    """Desde/hasta de la serie disponible de `variable`.
+    """Desde/hasta/cuantas de la serie disponible de `variable`.
 
     Fuente UNICA del rango: lo consumen el `forecast` (para que quien ancle un
-    pronostico vea si el instante elegido tiene sentido, sin adivinarlo desde una
-    advertencia) y el mapa de arquitectura. Serie vacia -> ambos en None.
+    pronostico vea si el instante elegido tiene sentido) y el mapa de arquitectura.
+
+    Atajo importante: si la serie NO esta ni en memoria ni en el parquet, se le
+    piden los tres numeros al store con un agregado en vez de descargarla entera.
+    Bajarse 694.000 filas para calcular min/max/count hacia que la vista de
+    arquitectura tardara 5 segundos cada vez que se recreaba el contenedor, que no
+    tiene volumen y por eso pierde el cache cada 6 h.
+
+    El atajo se toma SOLO en ese caso. Si los datos ya estan disponibles localmente
+    se pasa por `cargar_serie`, que es barato y ademas es el punto que las pruebas
+    sustituyen: saltearlo haria que un test con una serie armada a mano terminara
+    consultando la base de verdad.
     """
+    if _SERIES.get(variable) is None and not _parquet(variable).exists():
+        rango = _rango_desde_store(variable)
+        if rango is not None:
+            return rango
+
     serie = cargar_serie(variable)
     if serie.empty:
         return {"desde": None, "hasta": None, "n": 0}

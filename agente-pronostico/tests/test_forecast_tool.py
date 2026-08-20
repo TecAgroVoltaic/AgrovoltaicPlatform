@@ -9,11 +9,30 @@ import json
 import math
 
 import pandas as pd
+import pytest
 
 from pronostico.tools import forecast_tool
 from pronostico.tools.forecast_tool import FORECAST_TOOL_SCHEMA, run_forecast
 
 TZ = "America/Costa_Rica"
+
+
+def _mock_forecaster(monkeypatch, valor, bajo, alto, kt_reciente=0.625, n=12):
+    """Fija la salida del forecaster fisico para probar el CONTRATO de la tool.
+
+    La tool ya no llama a `smart_persistence` sino a `pronostico_detallado`, que
+    devuelve el numero JUNTO con su explicacion. Se mockea entero a proposito: una
+    sola fuente para el valor y para lo que se dice de el, que era el punto del
+    cambio (antes el contexto se recalculaba aparte y podia describir otra cosa).
+    """
+    monkeypatch.setattr(forecast_tool, "pronostico_detallado",
+                        lambda now, h, **k: {
+                            "valor": valor, "bajo": bajo, "alto": alto,
+                            "origen_banda": "cuantiles-historicos", "n": n,
+                            "peso": 0.52, "kt_persistido": 0.5, "centro": -0.02,
+                            "kt_reciente": kt_reciente,
+                            "kt_tipico_ahora": 0.48, "kt_tipico_objetivo": 0.44,
+                        })
 
 
 def test_schema_claves():
@@ -47,9 +66,8 @@ def test_run_forecast_dict_de_dia(monkeypatch):
         lambda times, **k: pd.Series([800.0] * len(pd.DatetimeIndex(times)),
                                      index=pd.DatetimeIndex(times)),
     )
-    # forecaster fijo: valor y banda conocidos.
-    monkeypatch.setattr(forecast_tool, "smart_persistence",
-                        lambda now, h, **k: (540.0, 410.0, 660.0))
+    # forecaster fijo: valor, banda y explicacion conocidos.
+    _mock_forecaster(monkeypatch, valor=540.0, bajo=410.0, alto=660.0, kt_reciente=0.625)
 
     out = run_forecast("irradiancia", 7200)
 
@@ -60,13 +78,14 @@ def test_run_forecast_dict_de_dia(monkeypatch):
     assert out["unidad"] == "W/m2"
     assert out["horizonte_segundos"] == 7200
     assert out["valor_esperado"] == 540.0
-    assert set(out["banda"]) == {"bajo", "alto", "nivel"}
+    assert set(out["banda"]) == {"bajo", "alto", "nivel", "origen"}
     assert out["banda"]["bajo"] == 410.0 and out["banda"]["alto"] == 660.0
-    assert {"kt_estrella_reciente", "cielo_despejado_en_el_momento",
+    assert {"pct_del_techo_reciente", "pct_del_techo_tipico_en_el_objetivo",
+            "peso_de_lo_reciente", "cielo_despejado_en_el_momento",
             "es_de_noche", "nota"} <= set(out["contexto"])
     assert out["contexto"]["es_de_noche"] is False
-    # kt* reciente = 500/800 = 0.625.
-    assert out["contexto"]["kt_estrella_reciente"] == 0.625
+    # En PORCENTAJE del techo, que no se puede leer al reves: 0.625 -> 62.5 %.
+    assert out["contexto"]["pct_del_techo_reciente"] == 62.5
     # debe ser JSON-serializable.
     json.dumps(out, ensure_ascii=False)
 
@@ -84,8 +103,7 @@ def test_run_forecast_de_noche(monkeypatch):
         lambda times, **k: pd.Series([1.0] * len(pd.DatetimeIndex(times)),
                                      index=pd.DatetimeIndex(times)),
     )
-    monkeypatch.setattr(forecast_tool, "smart_persistence",
-                        lambda now, h, **k: (5.0, 0.0, 10.0))
+    _mock_forecaster(monkeypatch, valor=5.0, bajo=0.0, alto=10.0)
 
     out = run_forecast("irradiancia", 3600)
     assert out["contexto"]["es_de_noche"] is True
@@ -106,8 +124,7 @@ def test_run_forecast_valida_horizonte_texto(monkeypatch):
         lambda times, **k: pd.Series([800.0] * len(pd.DatetimeIndex(times)),
                                      index=pd.DatetimeIndex(times)),
     )
-    monkeypatch.setattr(forecast_tool, "smart_persistence",
-                        lambda now, h, **k: (540.0, 410.0, 660.0))
+    _mock_forecaster(monkeypatch, valor=540.0, bajo=410.0, alto=660.0)
     # El LLM manda 3600 (mal), pero dijo "dos horas" -> el deterministico corrige a 7200.
     out = run_forecast("irradiancia", 3600, horizonte_texto="dos horas")
     assert out["horizonte_segundos"] == 7200
@@ -138,7 +155,7 @@ def test_horizonte_texto_multiple_no_pisa_al_llm():
 def test_contexto_kt_none_si_muestras_insuficientes(monkeypatch):
     """Coherencia: si no hay muestras suficientes, el contexto NO reporta kt*.
 
-    valor_esperado sera None (+ advertencia); kt_estrella_reciente debe ser None
+    valor_esperado sera None (+ advertencia)
     tambien, no un kt* calculado con 2 lecturas que el forecaster rechazo.
     """
     idx = pd.date_range("2026-06-30 11:00", periods=2, freq="5min", tz=TZ)
@@ -151,27 +168,68 @@ def test_contexto_kt_none_si_muestras_insuficientes(monkeypatch):
                                      index=pd.DatetimeIndex(times)),
     )
     # Con 2 muestras el forecaster real devuelve NaN; lo forzamos para el test.
-    monkeypatch.setattr(forecast_tool, "smart_persistence",
-                        lambda now, h, **k: (float("nan"),) * 3)
+    _mock_forecaster(monkeypatch, valor=float("nan"), bajo=float("nan"),
+                     alto=float("nan"), n=2)
     out = run_forecast("irradiancia", 3600,
                        now=pd.Timestamp("2026-06-30 11:20", tz=TZ))
     assert out["valor_esperado"] is None
     assert out["contexto"]["advertencia"] is not None
-    assert out["contexto"]["kt_estrella_reciente"] is None
     assert out["contexto"]["muestras_recientes"] == 2
 
 
-def test_smart_persistence_usa_mediana():
-    """La mediana ignora un outlier reciente; la media no."""
+# ── Perillas del resumen de la ventana ───────────────────────────────────────
+# Se aisla el estimador del sitio: `clima_fn` devuelve un tipico FIJO y `peso=1`
+# apaga la contraccion, asi lo unico que queda a prueba es como se resume la
+# ventana. Sin esa inyeccion la prueba dependeria de la climatologia real del
+# parquet, que cambia cuando entran datos.
+_SIN_CLIMA = lambda *a, **k: 0.5
+# Acepta **k porque se usa en los dos lugares: como `clear_sky_fn` (solo `times`)
+# y en lugar de `clear_sky_ghi`, que recibe la geografia del sitio.
+_CS_PLANO = lambda times, **k: pd.Series([800.0] * len(pd.DatetimeIndex(times)),
+                                         index=pd.DatetimeIndex(times))
+
+
+def _predecir(estadistico):
     from pronostico.forecasters.persistence import smart_persistence
     idx = pd.date_range("2026-06-30 10:00", periods=4, freq="5min", tz=TZ)
-    # kt* = [0.5, 0.5, 0.5, 1.0] -> mediana 0.5 (la media daria 0.625).
+    # kt* = [0.5, 0.5, 0.5, 1.0]: mediana 0.5, media 0.625, ultimo 1.0.
     recientes = pd.Series([400.0, 400.0, 400.0, 800.0], index=idx, name="ghi")
-    cs = lambda times: pd.Series([800.0] * len(pd.DatetimeIndex(times)),
-                                 index=pd.DatetimeIndex(times))
-    pred = smart_persistence(pd.Timestamp("2026-06-30 10:20", tz=TZ), 3600,
-                             get_recent=lambda now, lb: recientes, clear_sky_fn=cs)
-    assert abs(pred - 400.0) < 1e-6   # 0.5 * 800 (la media daria 500)
+    return smart_persistence(pd.Timestamp("2026-06-30 10:20", tz=TZ), 3600,
+                             get_recent=lambda now, lb: recientes,
+                             clear_sky_fn=_CS_PLANO, estadistico=estadistico,
+                             peso=1.0, clima_fn=_SIN_CLIMA, centrar=False)
+
+
+def test_estadistico_mediana_ignora_el_outlier():
+    # Given/When/Then: 0.5 x 800. La media daria 500.
+    assert abs(_predecir("mediana") - 400.0) < 1e-6
+
+
+def test_estadistico_media_incorpora_el_outlier():
+    # Given/When/Then: 0.625 x 800
+    assert abs(_predecir("media") - 500.0) < 1e-6
+
+
+def test_estadistico_ultimo_es_el_mas_reactivo():
+    # Given/When/Then: 1.0 x 800
+    assert abs(_predecir("ultimo") - 800.0) < 1e-6
+
+
+def test_el_default_es_ewma_y_pesa_lo_reciente():
+    """El default cambio de 'mediana de 60 min' a EWMA, y no es cosmetico.
+
+    La mediana de una hora coloca la estimacion ~30 min en el pasado; a horizontes
+    cortos eso casi duplica el rezago efectivo (RMSE a 30 min: 169 -> 155 W/m2
+    medido sobre 78 dias). La EWMA queda ENTRE la mediana y el ultimo: sigue el
+    cambio sin colgarse de una sola lectura.
+    """
+    ewma = _predecir("ewma")
+    assert _predecir("mediana") < ewma < _predecir("ultimo")
+
+
+def test_estadistico_invalido_falla_explicito():
+    with pytest.raises(ValueError, match="estadistico invalido"):
+        _predecir("promedio_movil_exponencial_ponderado")
 
 
 # ── Humedad de suelo ─────────────────────────────────────────────────────────
@@ -199,7 +257,7 @@ def test_run_forecast_humedad_dict(monkeypatch):
     assert out["banda"]["bajo"] == 20000.0 and out["banda"]["alto"] == 21000.0
     # La humedad NO usa cielo despejado: no debe haber kt* ni es_de_noche.
     assert "es_de_noche" not in out["contexto"]
-    assert "kt_estrella_reciente" not in out["contexto"]
+    assert "pct_del_techo_reciente" not in out["contexto"]
     json.dumps(out, ensure_ascii=False)
 
 
@@ -258,8 +316,29 @@ def _mock_dia(monkeypatch, serie):
         lambda times, **k: pd.Series([800.0] * len(pd.DatetimeIndex(times)),
                                      index=pd.DatetimeIndex(times)),
     )
-    monkeypatch.setattr(forecast_tool, "smart_persistence",
-                        lambda now, h, **k: (540.0, 410.0, 660.0))
+    _mock_forecaster(monkeypatch, valor=540.0, bajo=410.0, alto=660.0)
+
+
+def _mock_dia_sin_mockear_el_forecaster(monkeypatch, serie):
+    """Igual que `_mock_dia` pero deja correr el forecaster DE VERDAD.
+
+    Hace falta para la prueba anti-fuga: si el numero viniera de un mock, no habria
+    testigo sensible y el test pasaria aunque el futuro se colara. Se inyectan el
+    cielo despejado y la climatologia (constantes) y `peso=1` para que el unico
+    insumo variable sea la ventana de datos.
+    """
+    from pronostico.forecasters import persistence
+    monkeypatch.setattr(forecast_tool.data, "cargar_serie", lambda *a, **k: serie)
+    monkeypatch.setattr(
+        forecast_tool.data, "get_recent_data",
+        lambda now, lb, *a: serie[serie.index < pd.Timestamp(now)],
+    )
+    monkeypatch.setattr(forecast_tool, "clear_sky_ghi", _CS_PLANO)
+    real = persistence.pronostico_detallado
+    monkeypatch.setattr(
+        forecast_tool, "pronostico_detallado",
+        lambda now, h, **k: real(now, h, clear_sky_fn=_CS_PLANO, clima_fn=_SIN_CLIMA,
+                                 peso=1.0, con_banda=False, centrar=False, **k))
 
 
 def test_ancla_por_defecto_es_el_ultimo_dato(monkeypatch):
@@ -303,32 +382,36 @@ def test_ancla_explicita_trae_lo_que_midio_el_sensor(monkeypatch):
 
 def test_ancla_no_deja_ver_el_futuro(monkeypatch):
     """Prueba por perturbacion: corromper TODO lo posterior al ancla no puede
-    mover el pronostico. Es la misma garantia que valida el backtest."""
+    mover el pronostico. Es la misma garantia que valida el backtest.
+
+    El forecaster corre de verdad (ver el helper): el testigo es el VALOR, que es
+    lo unico que se calcula de los datos. Con el forecaster mockeado el test
+    pasaria siempre y no probaria nada.
+    """
     serie = _serie_larga()
     ancla = pd.Timestamp("2026-07-22 09:00", tz=TZ)
 
-    _mock_dia(monkeypatch, serie)
+    _mock_dia_sin_mockear_el_forecaster(monkeypatch, serie)
     limpio = run_forecast("irradiancia", 3600, now=str(ancla))
 
     corrupta = serie.copy()
     corrupta[corrupta.index >= ancla] = 99999.0     # todo el futuro, basura
-    _mock_dia(monkeypatch, corrupta)
+    _mock_dia_sin_mockear_el_forecaster(monkeypatch, corrupta)
     sucio = run_forecast("irradiancia", 3600, now=str(ancla))
 
-    # smart_persistence esta mockeado; el kt* del contexto SI se calcula de los
-    # datos, asi que es el testigo sensible: si el futuro se colara, cambiaria.
-    kt = limpio["contexto"]["kt_estrella_reciente"]
-    assert kt is not None and kt > 0
-    assert sucio["contexto"]["kt_estrella_reciente"] == kt
+    assert limpio["valor_esperado"] is not None and limpio["valor_esperado"] > 0
+    assert sucio["valor_esperado"] == limpio["valor_esperado"]
+    assert (sucio["contexto"]["pct_del_techo_reciente"]
+            == limpio["contexto"]["pct_del_techo_reciente"])
     assert sucio["contexto"]["muestras_recientes"] == limpio["contexto"]["muestras_recientes"]
 
-    # Control negativo: corromper el PASADO si tiene que mover el kt*. Sin esto,
-    # el test pasaria aunque el kt* estuviera clavado en una constante.
+    # Control negativo: corromper el PASADO si tiene que mover el valor. Sin esto,
+    # el test pasaria aunque el pronostico estuviera clavado en una constante.
     pasado_roto = serie.copy()
     pasado_roto[pasado_roto.index < ancla] = 100.0
-    _mock_dia(monkeypatch, pasado_roto)
+    _mock_dia_sin_mockear_el_forecaster(monkeypatch, pasado_roto)
     assert run_forecast("irradiancia", 3600,
-                        now=str(ancla))["contexto"]["kt_estrella_reciente"] != kt
+                        now=str(ancla))["valor_esperado"] != limpio["valor_esperado"]
 
 
 def test_medido_none_si_el_instante_cae_en_un_hueco(monkeypatch):
@@ -341,3 +424,46 @@ def test_medido_none_si_el_instante_cae_en_un_hueco(monkeypatch):
     out = run_forecast("irradiancia", 3600, now="2026-07-22 08:10")
     assert out["momento_pronosticado"].startswith("2026-07-22T09:10")
     assert out["medido"] is None
+
+
+# ── El rango no debe costar una descarga completa ────────────────────────────
+def test_el_rango_no_descarga_la_serie_entera(monkeypatch, tmp_path):
+    """El defecto que esto cierra: `/arquitectura` solo quiere desde/hasta/cuantas,
+    y para eso se bajaba la serie completa del store. Con 694.000 filas de humedad
+    eso son ~5 s, y se pagaba cada 6 h porque el contenedor no tiene volumen y
+    pierde el cache al recrearse.
+    """
+    from pronostico import data as data_mod
+
+    # Given: ni cache en memoria ni parquet en disco (contenedor recien creado)
+    monkeypatch.setattr(data_mod, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(data_mod, "_SERIES", {})
+    descargas = []
+    monkeypatch.setattr(data_mod, "_descargar_desde_store",
+                        lambda *a, **k: descargas.append(1))
+    monkeypatch.setattr(data_mod, "_rango_desde_store",
+                        lambda v: {"desde": "2026-05-01T00:00:00-06:00",
+                                   "hasta": "2026-07-23T02:31:00-06:00", "n": 191676})
+
+    # When
+    r = data_mod.rango_datos("humedad_suelo")
+
+    # Then: se respondio con el agregado y NO se bajo un solo dato
+    assert r["n"] == 191676
+    assert not descargas, "se descargo la serie para calcular tres numeros"
+
+
+def test_si_el_store_no_responde_el_rango_cae_a_la_serie(monkeypatch, tmp_path):
+    """El atajo nunca puede ser el motivo de que el rango no exista."""
+    from pronostico import data as data_mod
+
+    # Given: store mudo, pero la serie disponible por otra via
+    idx = pd.date_range("2026-07-22 08:00", periods=5, freq="5min", tz=TZ)
+    serie = pd.Series([1.0] * 5, index=idx, name="irradiancia")
+    monkeypatch.setattr(data_mod, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(data_mod, "_SERIES", {})
+    monkeypatch.setattr(data_mod, "_rango_desde_store", lambda v: None)
+    monkeypatch.setattr(data_mod, "cargar_serie", lambda *a, **k: serie)
+
+    # When/Then
+    assert data_mod.rango_datos("irradiancia")["n"] == 5

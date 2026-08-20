@@ -433,3 +433,224 @@ la tabla**. Se separaron porque no cuestan ni valen lo mismo:
 **En la vista:** el último panel queda cacheado a nivel de módulo, así que volver a la sección
 lo muestra al instante y refresca por detrás en vez de arrancar en blanco. Y si el refresco
 falla, ya no borra lo que había: avisa y deja la última lectura buena.
+
+## 2026-08-19 (noche): el pronóstico de irradiancia estaba sesgado, y la causa no era desconocida
+
+**Reporte:** «cada vez que hago pruebas el valor predicho está muy lejos del real,
+por causa desconocida». Medido sobre los 78 días de la serie cacheada (2026-05-01 a
+2026-07-23, 19.731 lecturas): no era un desajuste, eran **tres omisiones
+estructurales del método**, todas medibles y reproducibles con
+`agente-pronostico/scripts/calibrar.py`.
+
+### Lo que se descartó primero, para no gastar tiempo ahí
+
+| Sospecha | Veredicto | Evidencia |
+|---|---|---|
+| Timezone / fase del clear-sky | sano | pico medido mediana 11,73 h vs clear-sky 11,62 h |
+| Altitud (600 m) | **no era el problema** | a 170 m el techo empeora; Open-Meteo reporta 629 m en esa celda |
+| Modelo Ineichen | sano | días claros con elevación > 30°: p95 de kt\* entre 0,97 y 1,04 |
+| Calibración del sensor | sana | offset nocturno −0,3 W/m², pico 1.147, envolvente coherente |
+
+### Los tres defectos reales
+
+1. **El método ignoraba el ciclo diurno de nubosidad.** kt\* medio por hora local:
+   0,44 (6 h) → 0,58 (11 h) → **0,35 (16 h)**: convección tropical de tarde,
+   sistemática y estable. Persistir la mañana hacia la tarde daba, a 3 h de
+   anticipación, **−27 % de sesgo a las 11 h y +37 % a las 16 h**. No era
+   dispersión: era sesgo con signo predecible por la hora.
+2. **La persistencia no se amortiguaba.** Autocorrelación de kt\*: 0,90 (5 min) ·
+   0,52 (1 h) · 0,31 (3 h) · **0,13 (6 h)**. A 6 h se conservaba el 100 % de la
+   anomalía cuando solo el 13 % estaba justificado.
+3. **La banda mentía y no crecía con el horizonte.** Cobertura empírica de la
+   banda ±1σ (debería rondar 68 %): **43 % a 30 min y 25 % a 6 h**, con el ancho
+   clavado en ~150 W/m² mientras el RMSE real iba de 154 a 229.
+
+Dos hallazgos más, de estructura: **el backtest evaluaba un método distinto del que
+predecía** (`backtest._kt_a_persistir` vs `persistence.smart_persistence`, con
+juegos de perillas diferentes, y `damping` existía solo en el camino que NO
+predice), y **`kt_max` es cosmética** (moverla entre 1,2 y 2,0 cambia el error menos
+de 0,5 W/m², pero `diagnostico.TEORIA` se la presentaba al agente como una decisión
+relevante).
+
+### Qué se hizo
+
+Módulos nuevos, una idea por archivo:
+
+- **`forecasters/climatologia.py`**: qué es normal en este sitio a esta hora y a
+  este horizonte. Ventana móvil de 30 días por hora del día, definida como
+  Σ(medida)/Σ(techo) para que sea comparable con el kt\* por franja del backtest.
+  Corte llevado al inicio del día (`normalize()`): **más estricto que `< now`**, el
+  día en curso no entra en «lo típico».
+- **`forecasters/estimador.py`**: **única fuente de verdad del método**, escalar y
+  vectorizada. Lo comparten el forecaster en vivo y el backtest, y hay un test que
+  los obliga a coincidir.
+- **`physics.mezcla_convexa`**: `clima_objetivo + peso × (reciente − clima_reciente)`.
+  Dos correcciones separables: el **ajuste diurno** (los dos climas) y la
+  **contracción** (el peso).
+- **`forecasters/uncertainty.banda_empirica`**: cuantiles 16/50/84 del error real
+  del método a ese horizonte. El 50 corrige el punto (contraer hacia un promedio,
+  en un sitio donde lo normal es estar tapado, corre el pronóstico hacia arriba).
+
+Tres decisiones que vale registrar:
+
+- **El peso se DERIVA, no se declara**: es la autocorrelación medida al lag pedido.
+  Mismo criterio que `arquitectura.py`; si el sitio cambia, el número se mueve solo.
+- **Rampa en vez de umbral.** Contraer no conviene siempre: a 30 min cuesta ~10 W/m²
+  de MAE y apenas mejora el sesgo; a 6 h gana en todo. El cruce cae cerca de las 2 h,
+  y el peso se interpola entre 1 h y 3 h en vez de saltar (un corte duro haría que
+  7199 s y 7201 s dieran pronósticos distintos por un segundo de diferencia).
+  **Los dos límites salen de 78 días y NO son constantes de la física.**
+- **Calibración offline, con partición fija, congelada en el código.** El agente no
+  elige nada mirando el error al predecir. Misma línea que al borrar
+  `comparar_configuraciones`.
+
+### Resultado, fuera de muestra (`scripts/calibrar.py`)
+
+Segunda mitad de la serie, con climatología día por día como corre en producción:
+
+| Horizonte | MAE antes → ahora | RMSE antes → ahora | Sesgo antes → ahora | Cobertura antes → ahora |
+|---|---|---|---|---|
+| 30 min | 101,3 → **97,1** | 153,7 → **144,8** | −7,5 → −7,1 | 43 % → **73 %** |
+| 1 h | 113,8 → **111,4** | 167,5 → **160,9** | −12,1 → −12,8 | 40 % → **75 %** |
+| 2 h | 138,3 → **131,5** | 199,2 → **176,9** | −23,2 → −12,1 | 34 % → **76 %** |
+| 3 h | 157,8 → 158,6 | 221,9 → **203,0** | −38,3 → **−6,1** | 30 % → **68 %** |
+| 6 h | 160,5 → **153,7** | 228,8 → **202,8** | −54,5 → **−4,1** | 25 % → **65 %** |
+
+Amplitud del sesgo a lo largo del día (3 h de anticipación): **64 puntos → 24**.
+
+**Límite conocido, medido y no tapado:** a las 16 h queda −19 % de sesgo, que en
+W/m² son −19 sobre un real medio de 101 (el error absoluto más chico del día; el
+MAE de esa hora bajó de 71 a 42). El criterio de aceptación se deja como estaba en
+vez de aflojarlo: cambiarlo después de ver el resultado es el error que el arnés
+existe para evitar. Y el error relativo se queda en 35-45 % aunque todo salga bien:
+**ese es el techo del sitio** (kt\* mediano 0,44), no del código.
+
+### El addon opcional: modelos numéricos (`forecasters/nwp.py`)
+
+Pedido explícito: probarlo **sin depender de él**. Apagado por defecto
+(`NWP_HABILITADO`); si Open-Meteo no responde, todo sigue igual.
+
+Lo que se midió antes de construirlo:
+
+- `shortwave_radiation` del modelo: correlación 0,23 en kt\* y **+93 W/m² de sesgo**.
+  El modelo global no resuelve la nubosidad convectiva local.
+- **API de satélite: devuelve `nan` para estas coordenadas.** SARAH3, Himawari y MTG
+  no cubren Centroamérica, y Open-Meteo **no ha integrado GOES** todavía.
+- **`cloud_cover` SÍ tiene señal**: correlación −0,33 y monótona (0-25 % de nubes →
+  kt\* 0,72; 75-100 % → 0,46). Es lo que se usa.
+- **Cinco modelos, no uno**: ninguno solo pasa de R² 0,13 (icon 0,129 · gem 0,121 ·
+  meteofrance 0,125 · ecmwf 0,119 · gfs 0,076); juntos llegan a **0,25** fuera de
+  muestra. Sale gratis.
+
+Con el peso de mezcla derivado por mínimos cuadrados **a resolución nativa** (por
+hora le quitaba al método propio su ventaja de corto plazo) y la misma rampa:
+
+| Horizonte | peso modelos | MAE sin → con | RMSE sin → con |
+|---|---|---|---|
+| ≤ 1 h | 0,00 | sin cambio | sin cambio |
+| 2 h | 0,27 | 131,5 → 132,5 | 176,9 → **175,5** |
+| 3 h | 0,60 | 158,6 → **155,8** | 203,0 → **199,6** |
+| 6 h | 0,86 | 153,7 → **141,1** | 202,8 → **187,7** |
+
+**Pendiente que vale la pena:** NSRDB de NREL (PSM v4, GOES Full Disc) da GHI
+satelital a 4 km / 30 min **desde 1998 y sí cubre Costa Rica**, gratis con registro.
+No sirve para pronosticar (es histórico), pero resolvería el límite de fondo de la
+climatología: hoy se arma con 78 días y no cubre un ciclo estacional. También
+serviría para validar el sensor de forma independiente.
+
+**Pruebas: 236** (`test_climatologia.py` 15, `test_nwp.py` 12, más las de siempre).
+La anti-fuga se extendió a las dos superficies nuevas (climatología y calibración
+del addon), con control negativo en las dos.
+
+## 2026-08-19 (noche): riesgo de nubes, cuantificar lo que no se puede anticipar
+
+Planteo del usuario: saber si hay nubes, o la probabilidad de que haya, debería
+tener impacto grande en el agente. Antes de construir la tool medí si el dato
+existe y si es predecible, porque una "probabilidad de nubes" que solo repita la
+climatología no aporta nada que el método ya no use.
+
+### Lo que dijeron los datos (78 días, mitad reservada)
+
+**La hora más nublada no es la más peligrosa.** A las 16 h el cielo está tapado
+(65 % bloqueado) pero **estable**, y eso el método lo maneja. A las 10-11 h está
+más despejado (44 %) pero es cuando **más se mueve** (22 % de saltos bruscos). Son
+dos fenómenos que se venían tratando como uno.
+
+**El error se concentra en los cambios, pero solo a horizonte corto.** A 1 h, el
+28 % del tiempo produce el **52 % del error** (MAE 58 → 280 W/m², casi 5×). A 3 h
+eso se aplana (39 % → 43 %), porque ahí el método ya se apoya en la climatología.
+
+**El error es asimétrico y la dirección es predecible por hora.**
+
+| | MAE | Sesgo | Relativo |
+|---|---|---|---|
+| Se tapó (entró nube) | 184 | **+181** sobre-estima | 84 % |
+| Se abrió (salió sol) | 233 | **−233** sub-estima | 48 % |
+
+Mañana (6-10 h) el riesgo dominante es que **se abra** (20 % vs 10 %); tarde
+(11-15 h), que **se tape** (23 % vs 12 %). Es el ciclo convectivo del sitio.
+
+**Y el hallazgo que decidió el diseño: anticipar el cambio no se puede.** La
+turbulencia reciente predice la futura con r = 0,24 (1 h), 0,17 (3 h) y **0,08
+(6 h)**, y la nubosidad de los modelos numéricos no predice el cambio en absoluto
+(r ≈ 0). Una tool que dijera "probabilidad de nube" para mover el valor central
+estaría vendiendo una certeza que los datos no respaldan.
+
+### Lo que sí funciona: la banda estaba mal calibrada por régimen
+
+| A 1 hora | Antes (banda única) | Ahora (por régimen) |
+|---|---|---|
+| cielo calmo | 83 % (demasiado ancha) | **77 %** |
+| medio | 74 % | 71 % |
+| turbulento | **64 %** (demasiado angosta) | **69 %** |
+| ancho medio | 307 W/m² | **289 W/m²** |
+
+La dispersión cae de **19 puntos a 8**, con banda más angosta. A 3 h no cambia
+nada, exactamente como predecía la medición de predictibilidad. Eso es coherencia
+entre el diagnóstico y el resultado, no casualidad.
+
+### Qué se construyó
+
+- **`forecasters/riesgo.py`**: régimen actual (terciles **derivados del sitio**,
+  no umbrales quemados), frecuencia de cambio fuerte por hora **separada por
+  dirección**, y la lectura de qué implica. `clasificar_serie` vectorizada porque
+  la escalar hacía inviable el backtest.
+- **`tools/riesgo_tool.py`**: `riesgo_de_nubes`, en los **dos modos**. Entra al
+  modo ciego, así que le aplica el mismo contrato que a `predecir`: no puede
+  devolver nada del instante objetivo, y hay una prueba recursiva que lo verifica.
+- **La banda se condiciona al régimen** (`cuantiles_error(..., regimen=)`), con
+  respaldo a la banda global si un régimen no junta muestras.
+
+**Defecto real encontrado y corregido durante el trabajo:** la primera versión de
+`regimen_actual` medía la ventana alrededor del **instante objetivo** en vez del
+corte. Con la tool eso habría leído datos posteriores al corte, o sea la fuga que
+todo el sistema evita. Ahora la firma toma un solo instante (el corte) para que no
+haya forma de confundirlos, y hay una prueba por perturbación que lo fija. Además
+`climatologia._marco` devolvía un índice numérico cuando no había historia, y
+comparar eso contra una fecha reventaba: se le puso un `DatetimeIndex` vacío
+tz-aware.
+
+**249 tests.** La vista de arquitectura tomó la tool nueva sola, sin tocarla: eso
+es lo que se ganó al derivar el mapa de `agent.MODOS` en vez de declararlo.
+
+## 2026-08-19 (noche): el registro del agente, los ejemplos literales se copian
+
+Reporte del usuario: «siempre dice lo mismo, y muy informal: *me equivoqué feo*».
+
+**Causa exacta**, en `agent/prompts.py`: la frase estaba escrita literal en el
+prompt como ejemplo (`--"predije 95 W/m2", "me pase por 62", "erre feo"--`). Los
+ejemplos entrecomillados en un system prompt no se leen como "algo así": se copian
+tal cual. Informalidad y repetición no eran dos problemas, eran uno.
+
+Se quitaron todos los ejemplos de SALIDA entrecomillados y se reemplazaron por una
+descripción del registro (profesional y sobrio) más una instrucción explícita de
+redactar cada respuesta sin plantilla. Se conservó intacta la **apropiación** (la
+predicción es del agente) y la **autocrítica**, que fueron decisiones previas del
+usuario: lo que cambió es el registro, no de quién es el número.
+
+**Segundo defecto, encontrado al verificar contra el modelo real:** decía *"medí
+32,8 W/m²"*. El agente no mide, mide el sensor; la regla de apropiación se le fue
+de rango. Se agregó la distinción explícita, y en la verificación siguiente pasó a
+decir *"el sensor registró"*.
+
+Verificado con llamadas reales a Haiku, no solo por lectura del archivo.

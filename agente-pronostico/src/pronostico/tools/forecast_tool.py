@@ -17,8 +17,8 @@ import pandas as pd
 
 from pronostico import config, data
 from pronostico.domain import UNIDAD, Variable
-from pronostico.physics import clear_sky_ghi, clear_sky_index
-from pronostico.forecasters.persistence import smart_persistence, MIN_MUESTRAS
+from pronostico.physics import clear_sky_ghi
+from pronostico.forecasters.persistence import pronostico_detallado, MIN_MUESTRAS
 from pronostico.forecasters.humidity import humidity_persistence
 from pronostico.nlu.horizon import parse_horizon
 
@@ -97,9 +97,28 @@ def _resolver_horizonte(horizon_seconds, horizonte_texto) -> int:
     return max(_MIN_SEG, min(_MAX_SEG, seg))
 
 
+def _aporte_modelos(r: dict) -> dict | None:
+    """Que aportaron los modelos numericos externos, si es que se usaron.
+
+    None cuando el addon esta apagado o no tenia dato: asi el agente distingue
+    "no consulte modelos" de "los consulte y coincidian", que no es lo mismo a la
+    hora de declarar confianza."""
+    if not r.get("peso_modelo") or r.get("kt_modelo") is None:
+        return None
+    return {
+        "pct_del_techo_que_proponen": round(float(r["kt_modelo"]) * 100, 1),
+        "cuanto_pesaron": round(float(r["peso_modelo"]), 2),
+        "nota": ("segunda opinion de modelos numericos externos (nubosidad "
+                 "pronosticada, traducida a claridad con la historia del sitio). "
+                 "Pesan mas cuanto mas lejos esta el horizonte, porque ahi los "
+                 "datos del propio sensor ya casi no informan."),
+    }
+
+
 def _forecast_irradiancia(seg: int, now=None) -> dict:
-    """Pronostico de irradiancia (GHI): persistencia inteligente de kt* + geometria
-    solar del futuro. De noche el valor es 0; de dia sin datos recientes, None."""
+    """Pronostico de irradiancia (GHI): persistencia de la anomalia de kt* respecto
+    de lo normal a esa hora + geometria solar del futuro. De noche el valor es 0;
+    de dia sin datos recientes, None."""
     serie = data.cargar_serie()
     now = serie.index.max() if now is None else pd.Timestamp(now)
     if now.tz is None:
@@ -110,32 +129,27 @@ def _forecast_irradiancia(seg: int, now=None) -> dict:
     cs_target = float(clear_sky_ghi(pd.DatetimeIndex([t_target]), **data.SITE).iloc[0])
     es_noche = cs_target <= config.UMBRAL_CS
 
-    # kt* reciente (MEDIANA) + nº de lecturas utiles, para el contexto.
-    recientes = data.get_recent_data(now, _LOOKBACK_MIN)
-    kt_bar = float("nan")
-    n_muestras = 0
-    if not recientes.empty:
-        cs_rec = clear_sky_ghi(recientes.index, **data.SITE)
-        kt = clear_sky_index(recientes, cs_rec, config.UMBRAL_CS)
-        n_muestras = int(len(kt))
-        if n_muestras >= MIN_MUESTRAS:
-            kt_bar = float(kt.median())
-
-    # El pronostico fisico (valor + banda). El LLM jamas toca este numero.
-    pred, lo, hi = smart_persistence(now, seg, lookback_min=_LOOKBACK_MIN,
-                                     retornar_banda=True)
+    # El pronostico fisico (valor + banda + por que). El LLM jamas toca estos
+    # numeros. Una sola llamada: antes se recalculaba el kt* aparte para el
+    # contexto y podia describir algo distinto de lo que se habia pronosticado.
+    r = pronostico_detallado(now, seg, lookback_min=_LOOKBACK_MIN)
 
     advertencia = None
     if es_noche:
         valor, banda_lo, banda_hi = 0.0, 0.0, 0.0
-    elif not math.isfinite(pred):
+    elif not math.isfinite(r["valor"]):
         valor = banda_lo = banda_hi = None
-        advertencia = (f"datos recientes insuficientes ({n_muestras} lecturas utiles "
+        advertencia = (f"datos recientes insuficientes ({r['n']} lecturas utiles "
                        f"en la ultima hora) para un pronostico confiable")
     else:
-        valor = round(pred, 1)
-        banda_lo = round(max(0.0, lo), 1)
-        banda_hi = round(hi, 1)
+        valor = round(r["valor"], 1)
+        banda_lo = round(max(0.0, r["bajo"]), 1)
+        banda_hi = round(r["alto"], 1)
+
+    def _pct(x):
+        """kt* como PORCENTAJE del techo. El nombre no se puede leer al reves:
+        cerca de 100 = cielo despejado, cerca de 0 = cielo cerrado."""
+        return None if x is None else round(float(x) * 100, 1)
 
     return {
         "variable": Variable.IRRADIANCIA.value,
@@ -144,14 +158,24 @@ def _forecast_irradiancia(seg: int, now=None) -> dict:
         "horizonte_segundos": int(seg),
         "momento_pronosticado": t_target.isoformat(),
         "valor_esperado": valor,
-        "banda": {"bajo": banda_lo, "alto": banda_hi, "nivel": "±1σ"},
+        "banda": {"bajo": banda_lo, "alto": banda_hi, "nivel": "16-84 %",
+                  "origen": r["origen_banda"]},
         "contexto": {
-            "kt_estrella_reciente": round(kt_bar, 3) if math.isfinite(kt_bar) else None,
-            "muestras_recientes": n_muestras,
+            "pct_del_techo_reciente": _pct(r["kt_reciente"]),
+            "pct_del_techo_tipico_ahora": _pct(r["kt_tipico_ahora"]),
+            "pct_del_techo_tipico_en_el_objetivo": _pct(r["kt_tipico_objetivo"]),
+            "pct_del_techo_pronosticado": _pct(r["kt_persistido"]),
+            "peso_de_lo_reciente": (None if r["peso"] is None else round(r["peso"], 2)),
+            "modelos_del_tiempo": _aporte_modelos(r),
+            "muestras_recientes": r["n"],
             "cielo_despejado_en_el_momento": round(cs_target, 1),
             "es_de_noche": bool(es_noche),
             "advertencia": advertencia,
-            "nota": "sitio muy nuboso; variabilidad intra-hora alta",
+            "nota": ("sitio muy nuboso; variabilidad intra-hora alta. El pronostico "
+                     "NO persiste el porcentaje reciente tal cual: persiste cuanto se "
+                     "aparta de lo TIPICO de esa hora, y lo contrae segun "
+                     "`peso_de_lo_reciente` (1 = lo reciente vale entero; cerca de 0 = "
+                     "a este horizonte ya casi no informa y manda lo tipico)."),
         },
     }
 

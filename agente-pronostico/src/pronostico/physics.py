@@ -52,3 +52,35 @@ def reconstruct_ghi(ktstar, ghi_cs):
     incorporada.
     """
     return ktstar * ghi_cs
+
+
+def mezcla_convexa(reciente, clima_reciente, clima_objetivo, peso):
+    """kt* a persistir = clima_objetivo + peso x (reciente - clima_reciente).
+
+    Escalares o Series. Aplica DOS correcciones independientes a la persistencia,
+    y conviene verlas por separado porque arreglan cosas distintas:
+
+    1. AJUSTE DIURNO (los dos climas). Lo que persiste no es el kt* crudo sino la
+       ANOMALIA respecto de lo normal a esa hora, transplantada a lo normal de la
+       hora objetivo. Sin esto, persistir la manana hacia la tarde ignora que en
+       San Carlos las tardes se cierran por conveccion: kt* medio 0,58 a las 11 h
+       y 0,35 a las 16 h. Medido, ese solo defecto producia +52 % de sesgo a las
+       16 h y -21 % a las 11 h, a 3 h de anticipacion.
+
+    2. CONTRACCION (el peso). Persistir supone que la nubosidad de AHORA sigue
+       valiendo dentro de h, y eso solo vale mientras kt* siga correlacionado
+       consigo mismo. Medido: 0,90 (5 min) -> 0,52 (1 h) -> 0,31 (3 h) -> 0,13
+       (6 h). A 6 h la persistencia pura conserva el 100 % de la anomalia cuando
+       solo un 13 % esta justificado, y sale un pronostico sobre-disperso. El
+       peso que minimiza el error cuadratico es justamente esa correlacion; es el
+       estandar de referencia del pronostico solar, no una heuristica local.
+
+    Casos limite:
+      peso = 1 y clima_reciente == clima_objetivo -> persistencia pura (el
+        comportamiento historico, byte por byte)
+      peso = 0 -> climatologia pura (no se le cree nada a lo reciente)
+
+    El peso y los climas se DERIVAN de la serie en `forecasters.climatologia`, no
+    se declaran.
+    """
+    return clima_objetivo + peso * (reciente - clima_reciente)

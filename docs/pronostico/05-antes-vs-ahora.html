@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pronóstico de irradiancia · antes y ahora</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,600&family=Source+Sans+3:wght@400;600&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+:root {
+  --ground: #f7f6f2;  --surface: #ffffff;  --linea: #e2e0d8;
+  --tinta: #14181f;   --suave: #5a6472;
+  --acento: #1d4e6f;  --sol: #b5720f;
+  --bien: #1a7048;    --mal: #a8323b;     --bien-bg: #e6f2eb;  --mal-bg: #f8e8e9;
+  --sombra: 0 1px 2px rgba(20,24,31,.05), 0 8px 24px -12px rgba(20,24,31,.12);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #101319; --surface: #171b23; --linea: #262c37;
+    --tinta: #e9e7e1;  --suave: #99a2b0;
+    --acento: #7fb6d9; --sol: #e0a13f;
+    --bien: #57c48c;   --mal: #e8737c;    --bien-bg: #163024;  --mal-bg: #331b1f;
+    --sombra: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #101319; --surface: #171b23; --linea: #262c37;
+  --tinta: #e9e7e1;  --suave: #99a2b0;
+  --acento: #7fb6d9; --sol: #e0a13f;
+  --bien: #57c48c;   --mal: #e8737c;    --bien-bg: #163024;  --mal-bg: #331b1f;
+  --sombra: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--ground); color: var(--tinta);
+  font-family: "Source Sans 3", ui-sans-serif, system-ui, sans-serif;
+  font-size: 16.5px; line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+.hoja { max-width: 60rem; margin: 0 auto; padding: 3.5rem 1.5rem 5rem; }
+.ojo {
+  font: 600 .72rem/1 "Source Sans 3", sans-serif; letter-spacing: .13em;
+  text-transform: uppercase; color: var(--acento); margin: 0 0 .9rem;
+}
+h1 {
+  font-family: Newsreader, Georgia, serif; font-weight: 600;
+  font-size: clamp(2rem, 5vw, 2.9rem); line-height: 1.12; margin: 0 0 .8rem;
+  text-wrap: balance; letter-spacing: -.015em;
+}
+h2 {
+  font-family: Newsreader, Georgia, serif; font-weight: 600;
+  font-size: 1.5rem; line-height: 1.25; margin: 3.5rem 0 .5rem;
+  text-wrap: balance;
+}
+h2 + .sub { margin-top: 0; }
+.entrada { font-size: 1.12rem; color: var(--suave); max-width: 42rem; margin: 0 0 .4rem; }
+.sub { color: var(--suave); max-width: 46rem; margin: .3rem 0 1.4rem; }
+.meta {
+  font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: .78rem;
+  color: var(--suave); border-top: 1px solid var(--linea); padding-top: 1rem;
+  margin-top: 2rem; display: flex; flex-wrap: wrap; gap: .4rem 1.6rem;
+}
+.destacados { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); margin: 2.2rem 0 .5rem; }
+.tarjeta { background: var(--surface); border: 1px solid var(--linea); border-radius: 4px; padding: 1.15rem 1.25rem; box-shadow: var(--sombra); }
+.tarjeta .rot { font-size: .8rem; color: var(--suave); margin: 0 0 .35rem; }
+.tarjeta .val { font-family: "IBM Plex Mono", monospace; font-size: 1.85rem; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.tarjeta .pie { font-size: .82rem; color: var(--suave); margin-top: .35rem; }
+.scroll { overflow-x: auto; border: 1px solid var(--linea); border-radius: 4px; background: var(--surface); box-shadow: var(--sombra); }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+caption { caption-side: top; text-align: left; padding: 1rem 1.1rem .35rem; font-size: .9rem; color: var(--suave); }
+th, td { padding: .58rem .7rem; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--linea); }
+thead th { font-size: .74rem; letter-spacing: .06em; text-transform: uppercase; color: var(--suave); font-weight: 600; border-bottom: 1px solid var(--tinta); }
+thead tr:first-child th { border-bottom: none; padding-bottom: .1rem; text-align: center; }
+tbody th[scope="row"] { text-align: left; font-weight: 600; }
+tbody tr:last-child td, tbody tr:last-child th { border-bottom: none; }
+td.num { font-family: "IBM Plex Mono", monospace; font-size: .93rem; }
+td.fuerte { font-weight: 600; color: var(--acento); }
+td.addon { color: var(--sol); font-weight: 600; }
+.sep { border-left: 1px solid var(--linea); }
+.d { font-size: .84rem; font-weight: 600; }
+.d.bien { color: var(--bien); } .d.mal { color: var(--mal); } .d.igual { color: var(--suave); }
+.chip { display: inline-block; padding: .1rem .5rem; border-radius: 999px; font-size: .82rem; font-weight: 600; }
+.chip.bien { background: var(--bien-bg); color: var(--bien); }
+.chip.mal { background: var(--mal-bg); color: var(--mal); }
+figure { margin: 1.2rem 0 0; background: var(--surface); border: 1px solid var(--linea); border-radius: 4px; padding: 1.1rem; box-shadow: var(--sombra); overflow-x: auto; }
+svg { display: block; min-width: 34rem; }
+.grid { stroke: var(--linea); stroke-width: 1; }
+.cero { stroke: var(--tinta); stroke-width: 1.25; }
+.eje { fill: var(--suave); font: 400 11px "IBM Plex Mono", monospace; }
+.la { fill: none; stroke: var(--mal); stroke-width: 2.25; }
+.ln { fill: none; stroke: var(--acento); stroke-width: 2.25; }
+.pa { fill: var(--mal); } .pn { fill: var(--acento); }
+.leyenda { display: flex; gap: 1.4rem; flex-wrap: wrap; font-size: .87rem; color: var(--suave); margin-top: .8rem; }
+.leyenda i { display: inline-block; width: .8rem; height: .8rem; border-radius: 2px; margin-right: .4rem; vertical-align: -1px; }
+.nota { border-left: 3px solid var(--sol); background: var(--surface); padding: 1rem 1.2rem; margin: 1.6rem 0; border-radius: 0 4px 4px 0; }
+.nota p { margin: 0 0 .6rem; } .nota p:last-child { margin-bottom: 0; }
+.nota strong { color: var(--sol); }
+dl.glosa { display: grid; grid-template-columns: max-content 1fr; gap: .5rem 1.2rem; margin: 1.2rem 0 0; }
+dl.glosa dt { font-weight: 600; font-family: "IBM Plex Mono", monospace; font-size: .88rem; }
+dl.glosa dd { margin: 0; color: var(--suave); }
+@media (max-width: 34rem) { dl.glosa { grid-template-columns: 1fr; gap: .1rem .5rem; } dl.glosa dd { margin-bottom: .7rem; } }
+</style>
+</head>
+<body>
+<main class="hoja">
+
+  <p class="ojo">Agente de pronóstico · San Carlos</p>
+  <h1>Cuánto se equivocaba, cuánto se equivoca</h1>
+  <p class="entrada">
+    Comparación del método anterior contra el actual, medida sobre la mitad de la
+    serie que el método <strong>nunca vio</strong>. Todo lo de abajo sale de
+    <code>scripts/calibrar.py</code> y se puede volver a correr.
+  </p>
+
+  <section class="destacados">
+    <div class="tarjeta">
+      <p class="rot">Error típico a 3 horas</p>
+      <p class="val">159 <span style="font-size:1rem;font-weight:400;color:var(--suave)">W/m²</span></p>
+      <p class="pie">47 % del valor medio (339 W/m²)</p>
+    </div>
+    <div class="tarjeta">
+      <p class="rot">Inclinación a 6 horas</p>
+      <p class="val">-4 <span style="font-size:1rem;font-weight:400;color:var(--suave)">W/m²</span></p>
+      <p class="pie">antes -55: predecía de menos, siempre</p>
+    </div>
+    <div class="tarjeta">
+      <p class="rot">Margen que cumple</p>
+      <p class="val">67 <span style="font-size:1rem;font-weight:400;color:var(--suave)">%</span></p>
+      <p class="pie">antes 30 %: la banda prometía y no cumplía</p>
+    </div>
+    <div class="tarjeta">
+      <p class="rot">Sesgo según la hora</p>
+      <p class="val">25 <span style="font-size:1rem;font-weight:400;color:var(--suave)">pts</span></p>
+      <p class="pie">antes 64 pts de diferencia entre mañana y tarde</p>
+    </div>
+  </section>
+
+  <h2>Antes y ahora, horizonte por horizonte</h2>
+  <p class="sub">
+    Cada fila es una anticipación distinta: cuánto antes se pide el pronóstico.
+    La última columna muestra qué agrega el addon de modelos del tiempo, que está
+    apagado por defecto.
+  </p>
+  <div class="scroll">
+  <table>
+    <caption>Valores en W/m². Menos es mejor en las tres primeras métricas.</caption>
+    <thead>
+      <tr>
+        <th></th>
+        <th colspan="3">Error típico (MAE)</th>
+        <th colspan="3" class="sep">Errores grandes (RMSE)</th>
+        <th colspan="2" class="sep">Inclinación</th>
+        <th class="sep">Relativo</th>
+        <th>Con addon</th>
+      </tr>
+      <tr>
+        <th scope="col">Anticipación</th>
+        <th scope="col">antes</th><th scope="col">ahora</th><th scope="col"></th>
+        <th scope="col" class="sep">antes</th><th scope="col">ahora</th><th scope="col"></th>
+        <th scope="col" class="sep">antes</th><th scope="col">ahora</th>
+        <th scope="col" class="sep">ahora</th>
+        <th scope="col">MAE</th>
+      </tr>
+    </thead>
+    <tbody>
+    <tr>
+      <th scope="row">30 minutos</th>
+      <td class="num">101</td>
+      <td class="num fuerte">97</td>
+      <td class="num"><span class="d bien">-4 %</span></td>
+      <td class="num sep">154</td>
+      <td class="num fuerte">145</td>
+      <td class="num"><span class="d bien">-6 %</span></td>
+      <td class="num sep">-8</td>
+      <td class="num fuerte">-7</td>
+      <td class="num sep">32 %</td>
+      <td class="num addon">97</td>
+    </tr>
+    <tr>
+      <th scope="row">1 hora</th>
+      <td class="num">114</td>
+      <td class="num fuerte">111</td>
+      <td class="num"><span class="d bien">-2 %</span></td>
+      <td class="num sep">167</td>
+      <td class="num fuerte">161</td>
+      <td class="num"><span class="d bien">-4 %</span></td>
+      <td class="num sep">-12</td>
+      <td class="num fuerte">-13</td>
+      <td class="num sep">36 %</td>
+      <td class="num addon">111</td>
+    </tr>
+    <tr>
+      <th scope="row">2 horas</th>
+      <td class="num">138</td>
+      <td class="num fuerte">132</td>
+      <td class="num"><span class="d bien">-5 %</span></td>
+      <td class="num sep">199</td>
+      <td class="num fuerte">177</td>
+      <td class="num"><span class="d bien">-11 %</span></td>
+      <td class="num sep">-23</td>
+      <td class="num fuerte">-12</td>
+      <td class="num sep">40 %</td>
+      <td class="num addon">133</td>
+    </tr>
+    <tr>
+      <th scope="row">3 horas</th>
+      <td class="num">158</td>
+      <td class="num fuerte">159</td>
+      <td class="num"><span class="d mal">+1 %</span></td>
+      <td class="num sep">222</td>
+      <td class="num fuerte">203</td>
+      <td class="num"><span class="d bien">-9 %</span></td>
+      <td class="num sep">-38</td>
+      <td class="num fuerte">-6</td>
+      <td class="num sep">47 %</td>
+      <td class="num addon">156</td>
+    </tr>
+    <tr>
+      <th scope="row">6 horas</th>
+      <td class="num">160</td>
+      <td class="num fuerte">154</td>
+      <td class="num"><span class="d bien">-4 %</span></td>
+      <td class="num sep">229</td>
+      <td class="num fuerte">203</td>
+      <td class="num"><span class="d bien">-11 %</span></td>
+      <td class="num sep">-55</td>
+      <td class="num fuerte">-4</td>
+      <td class="num sep">53 %</td>
+      <td class="num addon">141</td>
+    </tr></tbody>
+  </table>
+  </div>
+
+  <h2>El margen de error</h2>
+  <p class="sub">
+    El pronóstico no da un número solo: da un rango. La pregunta que importa no es
+    qué tan ancho es, sino <strong>cuántas veces la realidad cae adentro</strong>.
+    Debería rondar el 68 %.
+  </p>
+  <div class="scroll">
+  <table>
+    <caption>El margen anterior era estrecho y no se cumplía. El de ahora es honesto: más ancho donde el problema es más difícil.</caption>
+    <thead>
+      <tr>
+        <th scope="col">Anticipación</th>
+        <th scope="col">margen antes</th>
+        <th scope="col">margen ahora</th>
+        <th scope="col" class="sep">se cumplía</th>
+        <th scope="col">se cumple</th>
+      </tr>
+    </thead>
+    <tbody>
+    <tr>
+      <th scope="row">30 minutos</th>
+      <td class="num">&plusmn;73</td>
+      <td class="num fuerte">&plusmn;120</td>
+      <td class="num sep"><span class="chip mal">43 %</span></td>
+      <td class="num"><span class="chip bien">70 %</span></td>
+    </tr>
+    <tr>
+      <th scope="row">1 hora</th>
+      <td class="num">&plusmn;75</td>
+      <td class="num fuerte">&plusmn;144</td>
+      <td class="num sep"><span class="chip mal">40 %</span></td>
+      <td class="num"><span class="chip bien">73 %</span></td>
+    </tr>
+    <tr>
+      <th scope="row">2 horas</th>
+      <td class="num">&plusmn;77</td>
+      <td class="num fuerte">&plusmn;172</td>
+      <td class="num sep"><span class="chip mal">34 %</span></td>
+      <td class="num"><span class="chip bien">72 %</span></td>
+    </tr>
+    <tr>
+      <th scope="row">3 horas</th>
+      <td class="num">&plusmn;77</td>
+      <td class="num fuerte">&plusmn;200</td>
+      <td class="num sep"><span class="chip mal">30 %</span></td>
+      <td class="num"><span class="chip bien">67 %</span></td>
+    </tr>
+    <tr>
+      <th scope="row">6 horas</th>
+      <td class="num">&plusmn;62</td>
+      <td class="num fuerte">&plusmn;189</td>
+      <td class="num sep"><span class="chip mal">25 %</span></td>
+      <td class="num"><span class="chip bien">66 %</span></td>
+    </tr></tbody>
+  </table>
+  </div>
+
+  <h2>El defecto principal, y su arreglo</h2>
+  <p class="sub">
+    El método viejo no sabía que acá las mañanas son claras y las tardes se cierran.
+    Predecía de menos a media mañana y de más a media tarde, con 3 horas de
+    anticipación. No era mala suerte: era un error con signo predecible según la hora.
+  </p>
+  <figure>
+    <svg viewBox="0 0 720 300" role="img" aria-label="Sesgo por hora del día, antes y ahora">
+      <line x1="48" y1="260.0" x2="704" y2="260.0" class="grid"/><text x="40" y="264.0" class="eje" text-anchor="end">-60 %</text><line x1="48" y1="201.0" x2="704" y2="201.0" class="grid"/><text x="40" y="205.0" class="eje" text-anchor="end">-30 %</text><line x1="48" y1="142.0" x2="704" y2="142.0" class="cero"/><text x="40" y="146.0" class="eje" text-anchor="end">+0 %</text><line x1="48" y1="83.0" x2="704" y2="83.0" class="grid"/><text x="40" y="87.0" class="eje" text-anchor="end">+30 %</text><line x1="48" y1="24.0" x2="704" y2="24.0" class="grid"/><text x="40" y="28.0" class="eje" text-anchor="end">+60 %</text>
+      <path d="M48.0,138.1 L120.9,191.7 L193.8,195.7 L266.7,194.7 L339.6,178.5 L412.4,152.3 L485.3,114.3 L558.2,110.8 L631.1,70.0 L704.0,124.3" class="la"/>
+      <path d="M48.0,130.7 L120.9,131.6 L193.8,141.0 L266.7,140.6 L339.6,146.0 L412.4,153.2 L485.3,143.5 L558.2,162.0 L631.1,179.5 L704.0,152.2" class="ln"/>
+      <circle cx="48.0" cy="138.1" r="3.5" class="pa"/><circle cx="48.0" cy="130.7" r="3.5" class="pn"/><circle cx="120.9" cy="191.7" r="3.5" class="pa"/><circle cx="120.9" cy="131.6" r="3.5" class="pn"/><circle cx="193.8" cy="195.7" r="3.5" class="pa"/><circle cx="193.8" cy="141.0" r="3.5" class="pn"/><circle cx="266.7" cy="194.7" r="3.5" class="pa"/><circle cx="266.7" cy="140.6" r="3.5" class="pn"/><circle cx="339.6" cy="178.5" r="3.5" class="pa"/><circle cx="339.6" cy="146.0" r="3.5" class="pn"/><circle cx="412.4" cy="152.3" r="3.5" class="pa"/><circle cx="412.4" cy="153.2" r="3.5" class="pn"/><circle cx="485.3" cy="114.3" r="3.5" class="pa"/><circle cx="485.3" cy="143.5" r="3.5" class="pn"/><circle cx="558.2" cy="110.8" r="3.5" class="pa"/><circle cx="558.2" cy="162.0" r="3.5" class="pn"/><circle cx="631.1" cy="70.0" r="3.5" class="pa"/><circle cx="631.1" cy="179.5" r="3.5" class="pn"/><circle cx="704.0" cy="124.3" r="3.5" class="pa"/><circle cx="704.0" cy="152.2" r="3.5" class="pn"/>
+      <text x="48.0" y="286" class="eje" text-anchor="middle">8</text><text x="120.9" y="286" class="eje" text-anchor="middle">9</text><text x="193.8" y="286" class="eje" text-anchor="middle">10</text><text x="266.7" y="286" class="eje" text-anchor="middle">11</text><text x="339.6" y="286" class="eje" text-anchor="middle">12</text><text x="412.4" y="286" class="eje" text-anchor="middle">13</text><text x="485.3" y="286" class="eje" text-anchor="middle">14</text><text x="558.2" y="286" class="eje" text-anchor="middle">15</text><text x="631.1" y="286" class="eje" text-anchor="middle">16</text><text x="704.0" y="286" class="eje" text-anchor="middle">17</text>
+      <text x="376" y="299" class="eje" text-anchor="middle">hora del día que se pronostica</text>
+    </svg>
+    <div class="leyenda">
+      <span><i style="background:var(--mal)"></i>antes · se desviaba hasta 37 %</span>
+      <span><i style="background:var(--acento)"></i>ahora · como mucho 19 %</span>
+      <span>la línea gruesa del centro es el cero: dar en el clavo</span>
+    </div>
+  </figure>
+
+  <h2>Cómo leer esto</h2>
+  <dl class="glosa">
+    <dt>Error típico</dt>
+    <dd>Qué tan lejos cae el número, en promedio. Es la respuesta directa a «se equivoca mucho».</dd>
+    <dt>Errores grandes</dt>
+    <dd>Lo mismo pero castigando los papelones. Si baja, es que dejó de mandarse macanas gordas.</dd>
+    <dt>Inclinación</dt>
+    <dd>Si se equivoca siempre para el mismo lado. Un número negativo grande significa que predecía de menos casi siempre, y eso arrastra todo lo que se calcule encima.</dd>
+    <dt>Margen</dt>
+    <dd>El rango que acompaña al pronóstico, y qué porcentaje de las veces la realidad cae adentro.</dd>
+  </dl>
+
+  <div class="nota">
+    <p><strong>Lo que no cambió, y hay que decirlo.</strong> El error relativo se
+    queda entre 35 y 45 %. Ese es el techo del sitio, no del código: San Carlos deja
+    pasar la mitad de la luz posible y la nubosidad cambia rápido. Bajar de ahí no
+    depende del método, depende de que entre información sobre nubes que la serie
+    del sensor no contiene.</p>
+    <p><strong>Lo que sí puede mejorar.</strong> El addon de modelos del tiempo ya
+    da 8 % menos error a 6 horas. Y la climatología
+    hoy se arma con 21.108 lecturas de menos de tres meses:
+    todavía no cubre un ciclo estacional entero.</p>
+  </div>
+
+  <p class="meta">
+    <span>Serie 2026-05-01 a 2026-07-23</span>
+    <span>21.108 lecturas</span>
+    <span>Evaluado desde 2026-06-11</span>
+    <span>Generado por scripts/calibrar.py</span>
+  </p>
+
+</main>
+</body>
+</html>

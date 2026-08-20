@@ -24,6 +24,7 @@ import pandas as pd
 
 from pronostico import config, data
 from pronostico.domain import Variable
+from pronostico.forecasters import climatologia
 from pronostico.physics import clear_sky_ghi, clear_sky_index
 
 # Un salto de kt* de esta magnitud entre lecturas consecutivas es una nube
@@ -39,13 +40,31 @@ _SIGMA_ESTABLE, _SIGMA_VARIABLE = 0.05, 0.15
 # hipotesis antes de predecir, en vez de probar y quedarse con lo que salio bien.
 TEORIA = {
     "supuesto_del_metodo": (
-        "se persiste el indice de cielo despejado kt* (que fraccion del maximo "
-        "posible dejan pasar las nubes) y se lo reexpande con la geometria solar "
-        "del instante objetivo. El supuesto es que la nubosidad cambia mas lento "
-        "que el sol; cuando se rompe, el pronostico falla."
+        "no se persiste el kt* tal cual (que fraccion del maximo posible dejan "
+        "pasar las nubes): se persiste cuanto se APARTA de lo tipico de esa hora, "
+        "y se lo transplanta a lo tipico de la hora objetivo. Despues se re-expande "
+        "con la geometria solar del instante pronosticado. Dos supuestos, entonces: "
+        "que la nubosidad cambia mas lento que el sol, y que el sitio tiene un "
+        "ciclo diurno estable. Cuando alguno se rompe, el pronostico falla."
+    ),
+    "por_que_lo_tipico_de_la_hora": (
+        "en San Carlos las mananas son mas claras que las tardes (conveccion "
+        "tropical): el kt* medio va de 0,58 a las 11 h a 0,35 a las 16 h. "
+        "Persistir la manana hacia la tarde, sin corregir por eso, sobre-estimaba "
+        "un 37 % a las 15 h y un 52 % a las 16 h, y sub-estimaba un 21 % a las "
+        "11 h. No era mala suerte: era un sesgo con signo predecible por la hora."
+    ),
+    "peso": (
+        "cuanto vale todavia lo reciente DENTRO del horizonte. Se deriva de cuanto "
+        "se parece el cielo a si mismo a ese lag: medido aca, 0,65 a 30 min, 0,52 "
+        "a 1 h, 0,31 a 3 h y 0,13 a 6 h. O sea: a 6 h lo que se ve ahora casi no "
+        "informa, y creerle entero produce un pronostico sobre-disparado (muy alto "
+        "si ahora esta claro, muy bajo si ahora esta cerrado). El valor derivado es "
+        "casi siempre el correcto; cambiarlo pide un argumento sobre HOY, no una "
+        "corazonada."
     ),
     "lookback_min": (
-        "cuantos minutos hacia atras se miran para estimar el kt* a persistir. "
+        "cuantos minutos hacia atras se miran para estimar el estado del cielo. "
         "Ventana CORTA = sigue de cerca el estado actual, util cuando el cielo "
         "viene cambiando y lo ultimo es lo mas informativo; pero con pocas "
         "muestras una lectura rara pesa mucho. Ventana LARGA = estimacion mas "
@@ -53,16 +72,19 @@ TEORIA = {
         "cambio real de regimen."
     ),
     "estadistico": (
-        "como se resume la ventana. 'mediana' ignora un valor atipico (un reflejo, "
-        "un hueco). 'media' lo incorpora. 'ultimo' es lo mas reactivo: solo mira la "
-        "lectura mas reciente, razonable si el cielo viene virando en una direccion "
-        "clara y peligroso si hay parpadeo."
+        "como se resume la ventana. Por defecto 'ewma': pondera por antiguedad, "
+        "asi lo de hace 5 min pesa mas que lo de hace 50. 'mediana' ignora un valor "
+        "atipico (un reflejo, un hueco) pero coloca la estimacion ~30 min en el "
+        "pasado. 'media' incorpora el atipico. 'ultimo' es lo mas reactivo: "
+        "razonable si el cielo viene virando en una direccion clara, peligroso si "
+        "hay parpadeo."
     ),
     "kt_max": (
-        "tope superior de kt*. El realce por nubes (luz reflejada en los bordes de "
-        "un cumulo) produce kt* > 1, visto hasta 3.09 en este sitio. Persistir ese "
-        "pico proyecta un valor imposible al instante objetivo. Topar en ~1.2 lo "
-        "evita sin recortar dias genuinamente despejados."
+        "tope superior de kt*, contra el realce por nubes (luz reflejada en los "
+        "bordes de un cumulo), que llego a 3,09 en este sitio. MEDIDO sobre el "
+        "metodo actual: moverlo entre 1,2 y 2,0 cambia el error menos de "
+        "0,5 W/m2. La ponderacion por antiguedad y la contraccion ya se comen esos "
+        "picos. No armes una hipotesis alrededor de esta perilla."
     ),
     "advertencia": (
         "estas son hipotesis fisicas, no reglas garantizadas. Elegi la "
@@ -174,6 +196,24 @@ def condiciones(variable: str = Variable.IRRADIANCIA.value,
             "nota": ("el techo es astronomico. Si sube mucho en el horizonte "
                      "(tipico al amanecer), un mismo kt* se traduce en un salto "
                      "grande de W/m2 y el error absoluto se amplifica."),
+        }
+
+        # Lo TIPICO de la hora objetivo. `contexto_historico` da los dias
+        # anteriores; esto da el ciclo diurno del sitio, que es contra lo que el
+        # metodo mide la anomalia. Sin este numero el agente ve como viene el
+        # cielo pero no contra que compararlo dentro del mismo dia.
+        tip_obj = climatologia.kt_tipico(ahora, variable, corte)
+        tip_corte = climatologia.kt_tipico(corte, variable, corte)
+        salida["lo_tipico_de_esta_hora"] = {
+            "pct_en_el_objetivo": None if tip_obj is None else round(tip_obj * 100, 1),
+            "pct_en_el_corte": None if tip_corte is None else round(tip_corte * 100, 1),
+            "peso_de_lo_reciente": round(
+                climatologia.peso_persistencia(int(horizonte_seg), variable, corte), 2),
+            "nota": ("el metodo persiste cuanto se APARTA la claridad actual de lo "
+                     "tipico de su hora, y lo lleva a lo tipico de la hora objetivo, "
+                     "contraido por `peso_de_lo_reciente`. Si lo tipico baja del corte "
+                     "al objetivo (tarde) el pronostico baja aunque las nubes no "
+                     "cambien, y al reves de manana."),
         }
     else:
         salida["valor_previo"] = {

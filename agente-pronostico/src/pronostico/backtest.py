@@ -14,52 +14,27 @@ import pandas as pd
 
 from pronostico import config, data
 from pronostico.domain import Variable
+from pronostico.forecasters import climatologia, estimador
 from pronostico.physics import clear_sky_ghi
 
-_BUCKETS = {"15min", "30min", "h", "D"}
-_ESTADISTICOS = {"mediana", "media", "ultimo"}
-# Minimo de franjas pasadas antes de que la climatologia expansiva signifique algo.
-_MIN_CLIMATOLOGIA = 3
+_BUCKETS = {"15min": "15min", "30min": "30min", "h": "1h", "D": "1D"}
+_ESTADISTICOS = set(estimador.ESTADISTICOS)
 
 
-def _agregar(previos: pd.Series, ventanas: int, estadistico: str) -> pd.Series:
-    """Agrega las `ventanas` franjas anteriores con el estadistico pedido.
-
-    `previos` ya viene desplazada (shift(1)): contiene, para cada franja, lo que
-    se sabia ANTES de ella. Por eso el rolling no introduce fuga.
-    """
-    if ventanas <= 1 or estadistico == "ultimo":
-        return previos
-    roll = previos.rolling(ventanas, min_periods=1)
-    return roll.median() if estadistico == "mediana" else roll.mean()
-
-
-def _kt_a_persistir(kt: pd.Series, ventanas: int, estadistico: str,
-                    damping: float) -> pd.Series:
-    """El kt* que el metodo lleva al futuro, con las perillas aplicadas.
-
-    El `damping` mezcla lo reciente con la climatologia del periodo. Esa
-    climatologia es una mediana EXPANSIVA del pasado (`shift(1).expanding()`):
-    usar la mediana de todo el periodo seria mirar el futuro, aunque fuera solo
-    un promedio.
-    """
-    base = _agregar(kt.shift(1), ventanas, estadistico)
-    if damping >= 1.0:
-        return base
-    clima = kt.shift(1).expanding(min_periods=_MIN_CLIMATOLOGIA).median()
-    # Donde todavia no hay climatologia (arranque del periodo) manda lo reciente.
-    return (damping * base + (1 - damping) * clima).fillna(base)
-
-
-def _describir(ventanas: int, estadistico: str, damping: float,
-               kt_max: float | None) -> str:
+def _describir(estadistico: str, peso: float | None, kt_max: float | None,
+               ajuste_diurno: bool, peso_usado: float | None) -> str:
     """Nombre legible del metodo CON su configuracion: si el agente cambia una
     perilla, tiene que verse en la respuesta y no quedar como el mismo metodo."""
-    partes = ["persistencia del indice de cielo despejado kt* x techo de cielo despejado"]
-    if ventanas > 1:
-        partes.append(f"{estadistico} de las ultimas {ventanas} franjas")
-    if damping < 1.0:
-        partes.append(f"amortiguado hacia la climatologia (damping {damping:g})")
+    partes = ["persistencia de la anomalia de kt* x techo de cielo despejado"]
+    if ajuste_diurno:
+        partes.append("ajustada al kt* tipico de la hora objetivo")
+    else:
+        partes.append("SIN ajuste diurno")
+    if peso_usado is not None:
+        origen = "elegido" if peso is not None else "derivado de la autocorrelacion"
+        partes.append(f"peso {peso_usado:.2f} ({origen})")
+    if estadistico != estimador.POR_DEFECTO:
+        partes.append(f"resumen por {estadistico}")
     if kt_max is not None:
         partes.append(f"kt* topado en {kt_max:g}")
     return "; ".join(partes)
@@ -106,38 +81,40 @@ def _mensaje_sin_datos(serie, variable, disp0, disp1, lo, hi) -> str:
 
 def backtest(variable: str = Variable.IRRADIANCIA.value, dias: int = 7,
              bucket: str = "h", desde: str | None = None,
-             hasta: str | None = None, ventanas: int = 1,
-             estadistico: str = "mediana", damping: float = 1.0,
-             kt_max: float | None = None) -> dict:
+             hasta: str | None = None,
+             estadistico: str = estimador.POR_DEFECTO,
+             peso: float | None = None, kt_max: float | None = None,
+             ajuste_diurno: bool = True) -> dict:
     """Reconstruye pred vs real. Por defecto los ultimos `dias`; si se pasa `desde`
     (y opcional `hasta`), evalua ESE rango historico. Cadencia `bucket`.
 
-    Las cuatro ultimas son las PERILLAS del metodo. Sus valores por defecto
-    reproducen exactamente el comportamiento historico, asi que no cambian nada
-    salvo que se pidan:
+    La ANTICIPACION del backtest es el propio `bucket`: cada franja se pronostica
+    desde la anterior. Por eso `bucket` no es solo una resolucion de dibujo, es el
+    horizonte que se esta evaluando, y de ahi sale el peso que el metodo le da a
+    lo reciente.
 
-      ventanas     cuantas franjas anteriores se agregan para estimar el kt* a
-                   persistir. 1 = solo la anterior. Mas ventanas = mas estable
-                   frente a una nube suelta, mas lento para reaccionar.
-      estadistico  como se agregan esas ventanas: 'mediana' (robusta a un valor
-                   raro), 'media' o 'ultimo' (la mas reactiva).
-      damping      cuanto se le cree a lo reciente, de 0 a 1. Con 1 se persiste
-                   tal cual; con menos, el kt* se acerca a la climatologia del
-                   propio periodo (mediana expansiva del PASADO, sin fuga). Es la
-                   perilla clasica contra el sobre-disparo de la persistencia a
-                   horizontes largos.
-      kt_max       tope superior de kt*. El realce por nubes produce kt* > 1
-                   (visto hasta 3,09), y persistir ese pico dispara el error.
+    El metodo lo aplica `forecasters.estimador`, EL MISMO que corre al predecir en
+    vivo. Antes habia dos implementaciones distintas (esta agregaba franjas con
+    `ventanas`/`damping`; la de produccion tomaba la mediana de 60 min), asi que
+    el agente razonaba con la teoria de un metodo y se lo evaluaba con otro. Las
+    perillas de aca son ahora las mismas de alla:
+
+      estadistico    como se resume lo reciente ('ewma' por defecto).
+      peso           cuanto se le cree a lo reciente, de 0 a 1. None = derivado de
+                     la autocorrelacion de kt* a este horizonte (lo recomendado).
+      kt_max         tope superior de kt*. Medido: mueve el MAE menos de
+                     0,5 W/m2. Se conserva por completitud, no porque decida algo.
+      ajuste_diurno  si la anomalia se transplanta al kt* tipico de la hora
+                     objetivo. False reproduce el metodo viejo y solo sirve para
+                     comparar (ver scripts/calibrar.py).
     """
     if bucket not in _BUCKETS:
         raise ValueError(f"bucket invalido: {bucket!r} ({', '.join(sorted(_BUCKETS))})")
     if estadistico not in _ESTADISTICOS:
         raise ValueError(f"estadistico invalido: {estadistico!r} "
                          f"({', '.join(sorted(_ESTADISTICOS))})")
-    if not 0.0 <= damping <= 1.0:
-        raise ValueError(f"damping fuera de [0,1]: {damping!r}")
-    if ventanas < 1:
-        raise ValueError(f"ventanas debe ser >= 1: {ventanas!r}")
+    if peso is not None and not 0.0 <= peso <= 1.0:
+        raise ValueError(f"peso fuera de [0,1]: {peso!r}")
 
     serie = data.cargar_serie(variable)                 # tz-aware (hora local CR)
     disp0, disp1 = serie.index.min(), serie.index.max()
@@ -156,9 +133,17 @@ def backtest(variable: str = Variable.IRRADIANCIA.value, dias: int = 7,
         corte = disp1 - pd.Timedelta(days=int(dias))
         sel = serie[serie.index >= corte]
 
-    s = sel.resample(bucket).mean().dropna()
-    if len(s) < 3:
+    # SIN dropna: la rejilla tiene que quedar REGULAR para que `shift(1)` signifique
+    # "la franja anterior" y no "la anterior que casualmente tuvo datos". Con un
+    # hueco de dias en el medio, lo segundo compara franjas separadas por semanas.
+    # Los NaN se descartan recien al alinear (real, pred, naive) mas abajo.
+    s = sel.resample(bucket).mean()
+    if int(s.notna().sum()) < 3:
         raise ValueError(_mensaje_sin_datos(serie, variable, disp0, disp1, lo, hi))
+
+    horizonte_seg = int(pd.Timedelta(_BUCKETS[bucket]).total_seconds())
+    corte_datos = sel.index.min() if not sel.empty else disp0
+    peso_usado = None
 
     if variable == Variable.IRRADIANCIA.value:
         # El techo se PROMEDIA dentro de la franja, igual que la medida. Antes se
@@ -174,15 +159,25 @@ def backtest(variable: str = Variable.IRRADIANCIA.value, dias: int = 7,
         cs = cs_nativo.resample(bucket).mean().reindex(s.index)
         um = config.UMBRAL_CS
         kt = (s / cs).where(cs > um)                    # kt* (NaN de noche)
-        if kt_max is not None:
-            kt = kt.clip(upper=kt_max)
-        kt_usado = _kt_a_persistir(kt, ventanas, estadistico, damping)
-        pred = kt_usado * cs                            # persistencia de kt*
+        peso_usado = (peso if peso is not None
+                      else climatologia.peso_persistencia(horizonte_seg, variable,
+                                                          corte_datos))
+        # shift(1): lo que se sabia ANTES de la franja. El estimador ya devuelve
+        # "el kt* que llevaria a t + horizonte"; correrlo una franja lo ancla en la
+        # que se esta evaluando. Ahi esta la barrera anti-fuga del backtest.
+        kt_usado = estimador.kt_a_persistir_serie(
+            kt, horizonte_seg, variable=variable, antes_de=corte_datos,
+            estadistico=estadistico, peso=peso, kt_max=kt_max,
+            ajuste_diurno=ajuste_diurno).shift(1)
+        pred = kt_usado * cs                            # de vuelta a W/m2
         pred = pred.where(cs >= um, 0.0)                # de noche -> 0
-        metodo = _describir(ventanas, estadistico, damping, kt_max)
+        metodo = _describir(estadistico, peso, kt_max, ajuste_diurno, peso_usado)
     else:
         cs = None
-        pred = _agregar(s.shift(1), ventanas, estadistico)   # persistencia del valor
+        # El suelo no tiene techo ni ciclo diurno propio: se persiste el valor.
+        pred = estimador.kt_a_persistir_serie(
+            s, horizonte_seg, variable=variable, antes_de=corte_datos,
+            estadistico=estadistico, peso=peso, ajuste_diurno=False).shift(1)
         metodo = "persistencia del valor (el suelo cambia lento)"
 
     naive = s.shift(1)                                   # baseline ingenuo = valor previo
@@ -213,6 +208,8 @@ def backtest(variable: str = Variable.IRRADIANCIA.value, dias: int = 7,
     return {
         "variable": variable, "bucket": bucket, "dias": int(dias), "metodo": metodo,
         "n": int(len(df)),
+        "anticipacion_seg": horizonte_seg,
+        "peso_lo_reciente": None if peso_usado is None else round(float(peso_usado), 3),
         "metricas": {
             "mae": round(mae, 2), "bias": round(bias, 2),
             "error_rel_pct": round(mae / avg * 100, 1) if avg else None,

@@ -114,6 +114,31 @@ export const HERRAMIENTAS: Record<string, Ficha> = {
     archivo: "src/pronostico/tools/diagnostico_tool.py",
   },
 
+  riesgo_de_nubes: {
+    resumen: "cuánto confiar en el número, y de qué lado puede fallar",
+    hover: "En qué régimen viene el cielo y con qué frecuencia cambia fuerte a esa hora, separado por dirección. No predice si va a haber nubes.",
+    hace: "Responde «cuánto puedo confiar en esto», que **no es lo mismo** que «va a haber nubes». Anticipar la nube no se puede: medido sobre 78 días, la turbulencia reciente predice la futura con correlación 0,24 a 1 h y 0,08 a 6 h, y la nubosidad de los modelos numéricos no predice el cambio en absoluto. Cuantificar el riesgo sí se puede, y es lo que hace: alimenta la banda y la confianza declarada, nunca el valor central.",
+    devuelve: [
+      "`estado_actual {turbulencia, regimen, n}`: calmo / medio / turbulento, con umbrales derivados del propio sitio",
+      "`frecuencia_historica_a_esta_hora {pct_se_tapa, pct_se_abre, direccion_dominante}`",
+      "`asimetria_del_error`: si se tapa el número queda alto (+180 W/m² a 1 h); si se abre, bajo (−230)",
+      "`como_leerlo` y `como_declarar_confianza`: cómo convertirlo en un juicio",
+      "`datos_visibles_hasta`: el corte, siempre anterior al instante",
+    ],
+    limites: [
+      "**Es frecuencia histórica, no previsión.** Dice cada cuánto pasa a esa hora, no si va a pasar hoy. La salida lo declara para que no se lea al revés.",
+      "La ventana del régimen se ancla en el **corte**, no en el instante objetivo. Medirla alrededor del objetivo sería mirar datos posteriores al corte.",
+      "Sirve sobre todo hasta 1 o 2 h. A 3 h o más el estado actual ya casi no informa y solo queda la hora del día; la salida lo avisa.",
+      "Sin historia suficiente devuelve `null`, no una etiqueta inventada: decir «turbulento» sin referencia contra qué compararlo no significa nada.",
+    ],
+    pruebas: [
+      "`test_la_ventana_se_ancla_en_el_corte_no_en_el_objetivo`: prueba por perturbación",
+      "`test_riesgo_de_nubes_no_devuelve_el_valor_medido`: mismo contrato ciego que `predecir`",
+      "`test_la_banda_es_mas_angosta_con_el_cielo_quieto`",
+    ],
+    archivo: "src/pronostico/tools/riesgo_tool.py",
+  },
+
   predecir: {
     resumen: "se compromete con un número · hipótesis obligatoria",
     hover: "Pronostica un instante histórico con la configuración que el agente elija, sin ver el resultado. La hipótesis es obligatoria.",

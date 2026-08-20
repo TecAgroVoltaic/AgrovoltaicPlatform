@@ -339,13 +339,25 @@ def serie(variable: str = Query(Variable.IRRADIANCIA.value),
          dependencies=[Depends(_verificar_api_key), Depends(_frenar_datos)])
 def backtest(variable: str = Query(Variable.IRRADIANCIA.value),
              dias: int = Query(7), bucket: str = Query("h"),
-             desde: str | None = Query(None), hasta: str | None = Query(None)) -> dict:
+             desde: str | None = Query(None), hasta: str | None = Query(None),
+             estadistico: str = Query("ewma"),
+             peso: float | None = Query(None),
+             kt_max: float | None = Query(None),
+             ajuste_diurno: bool = Query(True)) -> dict:
     """Backtest HONESTO del metodo (reconstruccion sobre el historico) vs. lo medido.
 
     Por defecto los ultimos `dias`; con `desde`/`hasta` evalua ese rango. NO son
-    predicciones en vivo (esas viven en `predicciones`); es evaluacion del metodo."""
+    predicciones en vivo (esas viven en `predicciones`); es evaluacion del metodo.
+
+    Las cuatro ultimas son las PERILLAS del metodo, las MISMAS que usa el
+    forecaster en vivo. Antes `backtest.backtest` aceptaba perillas que ningun
+    cliente podia pasar: codigo muerto que hacia creer que la evaluacion era
+    configurable cuando no lo era. `ajuste_diurno=false` reproduce el metodo
+    anterior a la correccion del sesgo por hora, para poder compararlos."""
     try:
-        return backtest_mod.backtest(variable, dias, bucket, desde, hasta)
+        return backtest_mod.backtest(variable, dias, bucket, desde, hasta,
+                                     estadistico=estadistico, peso=peso,
+                                     kt_max=kt_max, ajuste_diurno=ajuste_diurno)
     except (ValueError, KeyError) as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)

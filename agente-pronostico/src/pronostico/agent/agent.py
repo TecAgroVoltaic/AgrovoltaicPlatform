@@ -21,6 +21,7 @@ from pronostico.tools.diagnostico_tool import (
     SCHEMA_CONDICIONES, SCHEMA_HISTORICO, run_condiciones, run_historico,
 )
 from pronostico.tools.predecir_tool import SCHEMA as PREDECIR_SCHEMA, run as run_predecir
+from pronostico.tools.riesgo_tool import SCHEMA as RIESGO_SCHEMA, run as run_riesgo
 from pronostico.tools.forecast_tool import FORECAST_TOOL_SCHEMA, run_forecast
 
 # Web search del lado servidor (Anthropic la ejecuta). max_uses acota el gasto.
@@ -33,6 +34,7 @@ _TOOLS = {
     "diagnosticar_condiciones": run_condiciones,
     "contexto_historico": run_historico,
     "predecir": run_predecir,
+    "riesgo_de_nubes": run_riesgo,
 }
 
 # Juegos de herramientas por MODO. El modo `prediccion` deja fuera `backtest` a
@@ -43,12 +45,13 @@ _TOOLS = {
 MODOS = {
     "analisis": {
         "system": CHAT_SYSTEM,
-        "schemas": [FORECAST_TOOL_SCHEMA, BACKTEST_SCHEMA],
+        "schemas": [FORECAST_TOOL_SCHEMA, BACKTEST_SCHEMA, RIESGO_SCHEMA],
         "web": True,
     },
     "prediccion": {
         "system": PREDICCION_SYSTEM,
-        "schemas": [SCHEMA_CONDICIONES, SCHEMA_HISTORICO, PREDECIR_SCHEMA],
+        "schemas": [SCHEMA_CONDICIONES, SCHEMA_HISTORICO, RIESGO_SCHEMA,
+                    PREDECIR_SCHEMA],
         "web": False,
     },
 }

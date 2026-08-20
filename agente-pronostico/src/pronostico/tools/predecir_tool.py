@@ -24,8 +24,8 @@ import pandas as pd
 from pronostico import config, data
 from pronostico.domain import UNIDAD, Variable
 from pronostico.forecasters.humidity import humidity_persistence
-from pronostico.forecasters.persistence import smart_persistence, MIN_MUESTRAS
-from pronostico.physics import clear_sky_ghi, clear_sky_index
+from pronostico.forecasters.persistence import pronostico_detallado, MIN_MUESTRAS
+from pronostico.physics import clear_sky_ghi
 
 SCHEMA = {
     "name": "predecir",
@@ -62,15 +62,29 @@ SCHEMA = {
                                 "muestras; larga = estable pero lenta ante un cambio real."),
             },
             "estadistico": {
-                "type": "string", "enum": ["mediana", "media", "ultimo"],
-                "description": ("Como se resume la ventana. Por defecto 'mediana' (robusta). "
-                                "'ultimo' es lo mas reactivo."),
+                "type": "string", "enum": ["ewma", "mediana", "media", "ultimo"],
+                "description": ("Como se resume la ventana. Por defecto 'ewma' (pondera por "
+                                "antiguedad: lo mas reciente pesa mas). 'mediana' ignora una "
+                                "lectura atipica; 'ultimo' es lo mas reactivo."),
+            },
+            "peso": {
+                "type": "number", "minimum": 0, "maximum": 1,
+                "description": (
+                    "Cuanto se le cree a lo reciente, de 0 a 1. Sin pasarlo se DERIVA de "
+                    "cuanto se parece el cielo a si mismo a este horizonte (medido: 0,65 a "
+                    "30 min, 0,52 a 1 h, 0,31 a 3 h, 0,13 a 6 h), y eso es casi siempre lo "
+                    "correcto. Subilo solo si tenes un argumento para que HOY lo reciente "
+                    "valga mas de lo habitual (cielo parejo, sin frentes a la vista); "
+                    "bajalo si el cielo viene errático y conviene apoyarse en lo tipico. "
+                    "Con 1 se persiste tal cual; con 0 se predice lo tipico de esa hora."
+                ),
             },
             "kt_max": {
                 "type": "number", "minimum": 0.5, "maximum": 3,
-                "description": ("Tope al indice de cielo despejado. El realce por nubes lo "
-                                "empuja arriba de 1 y persistir ese pico dispara el error. "
-                                "Sin tope por defecto."),
+                "description": ("Tope al indice de cielo despejado, contra el realce por "
+                                "nubes. MEDIDO: mover este tope entre 1,2 y 2,0 cambia el "
+                                "error menos de 0,5 W/m2. Existe por completitud; no armes "
+                                "una hipotesis alrededor de el."),
             },
         },
         "required": ["variable", "instante", "horizonte_seg", "hipotesis"],
@@ -78,7 +92,7 @@ SCHEMA = {
     },
 }
 
-_DEFECTOS = {"lookback_min": 60, "estadistico": "mediana", "kt_max": None}
+_DEFECTOS = {"lookback_min": 60, "estadistico": "ewma", "kt_max": None, "peso": None}
 
 
 def _ancla(instante: str, horizonte_seg: int) -> pd.Timestamp:
@@ -89,11 +103,12 @@ def _ancla(instante: str, horizonte_seg: int) -> pd.Timestamp:
 
 
 def run(variable: str, instante: str, horizonte_seg: int, hipotesis: str,
-        lookback_min: float = 60, estadistico: str = "mediana",
-        kt_max: float | None = None) -> dict:
+        lookback_min: float = 60, estadistico: str = "ewma",
+        kt_max: float | None = None, peso: float | None = None) -> dict:
     ahora = _ancla(instante, horizonte_seg)
     objetivo = ahora + pd.Timedelta(seconds=horizonte_seg)
-    usada = {"lookback_min": lookback_min, "estadistico": estadistico, "kt_max": kt_max}
+    usada = {"lookback_min": lookback_min, "estadistico": estadistico,
+             "kt_max": kt_max, "peso": peso}
 
     salida = {
         "variable": variable,
@@ -113,9 +128,10 @@ def run(variable: str, instante: str, horizonte_seg: int, hipotesis: str,
         # El suelo no tiene analogo de cielo despejado: solo aplica la ventana.
         pred, lo, hi = humidity_persistence(ahora, horizonte_seg,
                                             lookback_min=lookback_min, retornar_banda=True)
-        if estadistico != "mediana" or kt_max is not None:
+        if estadistico != "ewma" or kt_max is not None or peso is not None:
             salida["aviso"] = ("en humedad de suelo solo aplica `lookback_min`: no hay kt* "
-                               "que topar ni alternativa al resumen por mediana")
+                               "que topar, ni climatologia horaria que pesar, ni "
+                               "alternativa al resumen por mediana")
         salida["valor_esperado"] = None if not math.isfinite(pred) else round(pred, 1)
         salida["banda"] = ({"bajo": None, "alto": None} if not math.isfinite(pred)
                            else {"bajo": round(lo, 1), "alto": round(hi, 1), "nivel": "±1σ"})
@@ -123,33 +139,33 @@ def run(variable: str, instante: str, horizonte_seg: int, hipotesis: str,
 
     cs_obj = float(clear_sky_ghi(pd.DatetimeIndex([objetivo]), **data.SITE).iloc[0])
     es_noche = cs_obj <= config.UMBRAL_CS
-    recientes = data.get_recent_data(ahora, lookback_min)
-    n_utiles = 0
-    kt_usado = None
-    if not recientes.empty:
-        kt = clear_sky_index(recientes, clear_sky_ghi(recientes.index, **data.SITE),
-                             config.UMBRAL_CS)
-        n_utiles = int(len(kt))
 
-    pred, lo, hi = smart_persistence(ahora, horizonte_seg, lookback_min=lookback_min,
-                                     retornar_banda=True, estadistico=estadistico,
-                                     kt_max=kt_max)
+    r = pronostico_detallado(ahora, horizonte_seg, lookback_min=lookback_min,
+                             estadistico=estadistico, kt_max=kt_max, peso=peso)
     if es_noche:
         salida["valor_esperado"] = 0.0
-        salida["banda"] = {"bajo": 0.0, "alto": 0.0, "nivel": "±1σ"}
-    elif not math.isfinite(pred):
+        salida["banda"] = {"bajo": 0.0, "alto": 0.0, "nivel": "16-84 %"}
+    elif not math.isfinite(r["valor"]):
         salida["valor_esperado"] = None
         salida["banda"] = {"bajo": None, "alto": None}
-        salida["advertencia"] = (f"solo {n_utiles} lecturas utiles en la ventana "
+        salida["advertencia"] = (f"solo {r['n']} lecturas utiles en la ventana "
                                  f"(minimo {MIN_MUESTRAS}): no alcanza para pronosticar")
     else:
-        salida["valor_esperado"] = round(pred, 1)
-        salida["banda"] = {"bajo": round(max(0.0, lo), 1), "alto": round(hi, 1), "nivel": "±1σ"}
-        kt_usado = round(pred / cs_obj * 100, 1) if cs_obj > 0 else None
+        salida["valor_esperado"] = round(r["valor"], 1)
+        salida["banda"] = {"bajo": round(max(0.0, r["bajo"]), 1),
+                           "alto": round(r["alto"], 1), "nivel": "16-84 %",
+                           "origen": r["origen_banda"]}
+
+    def _pct(x):
+        return None if x is None else round(float(x) * 100, 1)
 
     salida["contexto"] = {
-        "muestras_en_la_ventana": n_utiles,
-        "pct_del_techo_persistido": kt_usado,
+        "muestras_en_la_ventana": r["n"],
+        "pct_del_techo_reciente": _pct(r["kt_reciente"]),
+        "pct_del_techo_tipico_ahora": _pct(r["kt_tipico_ahora"]),
+        "pct_del_techo_tipico_en_el_objetivo": _pct(r["kt_tipico_objetivo"]),
+        "pct_del_techo_pronosticado": _pct(r["kt_persistido"]),
+        "peso_de_lo_reciente": (None if r["peso"] is None else round(r["peso"], 2)),
         "techo_en_el_objetivo": round(cs_obj, 1),
         "es_de_noche": bool(es_noche),
     }
