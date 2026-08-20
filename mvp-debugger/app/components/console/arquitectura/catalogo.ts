@@ -35,7 +35,7 @@ export const HERRAMIENTAS: Record<string, Ficha> = {
   forecast: {
     resumen: "pronostica a futuro desde el último dato",
     hover: "Pronostica irradiancia o humedad de suelo a un horizonte de hasta 6 horas, anclado en el último dato disponible.",
-    hace: "El puente entre el modelo y los números en el modo análisis. Despacha por variable al forecaster que corresponde y arma el resultado: valor esperado, banda de incertidumbre y contexto para redactar.",
+    hace: "El puente entre el modelo y los números en el modo «con la respuesta». Despacha por variable al forecaster que corresponde y arma el resultado: valor esperado, banda de incertidumbre y contexto para redactar.",
     devuelve: [
       "`valor_esperado`: el número, redondeado a un decimal",
       "`banda {bajo, alto, nivel:±1σ}`: incertidumbre por variabilidad reciente de nubes",
@@ -66,13 +66,13 @@ export const HERRAMIENTAS: Record<string, Ficha> = {
       "`_grafico`: payload para el widget; **se le quita al modelo** antes de mandárselo, para no pagar esos tokens",
     ],
     limites: [
-      "**Queda fuera del modo predicción.** Es la única herramienta que trae el valor medido: con ella a mano el agente podría «predecir» sabiendo la respuesta.",
+      "**Queda fuera del modo «a ciegas».** Es la única herramienta que trae el valor medido: con ella a mano el agente podría «predecir» sabiendo la respuesta.",
       "Si te pasás del rango disponible, devuelve el rango exacto para que el modelo lo cite en vez de adivinarlo.",
       "El techo de cielo despejado se promedia en resolución nativa antes de agrupar. Evaluado en el borde del bucket daba 0 para el bucket diario, con un *skill* negativo sin sentido.",
     ],
     pruebas: [
       "`tests/test_backtest_mensajes.py`: 18 pruebas",
-      "`test_el_modo_prediccion_no_expone_backtest`: verifica que no esté en el juego de predicción",
+      "`test_el_modo_a_ciegas_no_expone_backtest`: verifica que no esté en el juego de `a_ciegas`",
     ],
     archivo: "src/pronostico/tools/backtest_tool.py",
   },
@@ -184,10 +184,10 @@ export type NodoFijo = {
 export const NODOS_FIJOS: NodoFijo[] = [
   {
     id: "e-consola", grupo: "entrada", x: COL.entrada, y: 70, w: ANCHO.entrada, h: 62,
-    titulo: "Consola", sub: "Predicción vs Real · botón «Analizar»",
+    titulo: "Consola", sub: "Predicción vs Real · dos modos",
     ficha: {
-      hover: "El botón «Analizar» manda una pregunta puntual sobre el momento que estás viendo. Un solo turno, sin hilo.",
-      hace: "La vista elige fecha, momento y anticipación, y dibuja lo medido contra el techo de cielo despejado. Al pulsar «Analizar» manda la **pregunta** al agente, nunca los números. Pasárselos lo convertiría en un redactor de datos que no verificó.",
+      hover: "Manda una pregunta puntual sobre el momento que estás viendo, en el modo que elijas. Un solo turno, sin hilo.",
+      hace: "La vista elige fecha, momento y anticipación, y dibuja lo medido contra el techo de cielo despejado. El botón manda la **pregunta** al agente, nunca los números. Pasárselos lo convertiría en un redactor de datos que no verificó.",
       puntos: [
         "Un turno por lectura: no reusa ni ensucia el hilo del chat flotante.",
         "La tarjeta compara después lo que recibió el agente contra lo que dibuja el gráfico; si no coincide, lo marca.",
@@ -243,7 +243,7 @@ export const NODOS_FIJOS: NodoFijo[] = [
       hover: "La ejecuta Anthropic del lado servidor, no nuestro código. Para conocimiento externo, nunca para conseguir un dato del sitio.",
       hace: "Es la única herramienta que sale de la casa, y la única que no corre en nuestro proceso. Sirve para conocimiento general (qué es el índice de cielo despejado, qué dice la literatura sobre un método), no para conseguir un número de San Carlos.",
       limites: [
-        "Queda fuera del modo predicción: ahí no hay nada externo que consultar, y sí una tentación de buscar el dato.",
+        "Queda fuera del modo «a ciegas»: ahí no hay nada externo que consultar, y sí una tentación de buscar el dato.",
         "Los pasos de búsqueda quedan en la traza como `tipo: web`.",
       ],
       archivo: "src/pronostico/agent/agent.py · WEB_SEARCH",

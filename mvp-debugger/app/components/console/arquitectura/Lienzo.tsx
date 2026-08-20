@@ -14,6 +14,7 @@ import type { Ficha, Grupo as GrupoNodo, NodoFijo } from "./catalogo";
 import { ANCHO, BARRERA, CAPA, CEREBRO, COL, HERRAMIENTAS, LIENZO, NODOS_FIJOS, TOOL } from "./catalogo";
 import { dia, type Cobertura, type Herramienta, type Mapa } from "./mapa";
 import type { Detalle } from "./NodoModal";
+import { etiquetaModo } from "@/app/components/console/modos";
 
 // Puertos de salida/entrada de las aristas troncales.
 const PUERTO_CEREBRO = { x: CEREBRO.x + CEREBRO.w, y: CEREBRO.y + 125 };
@@ -192,7 +193,7 @@ export function Lienzo({ mapa, modo, onAbrir }: {
           <li>Devuelve la <b>traza</b>: cada paso, tokens y US$</li>
         </ul>
         <span className="arq-cer-m">
-          <span>modo activo</span><span>{modo}</span>
+          <span>modo activo</span><span>{etiquetaModo(modo)}</span>
         </span>
       </button>
 
@@ -201,7 +202,7 @@ export function Lienzo({ mapa, modo, onAbrir }: {
         <span key={g.modo}
               className={`arq-grp arq-grp-${g.modo}` + (g.items.some((i) => i.activa) ? "" : " apagado")}
               style={{ left: COL.tool, top: g.yEncabezado }}>
-          <i /> Modo {g.modo}
+          <i /> Modo {etiquetaModo(g.modo)}
         </span>
       ))}
       {grupos.flatMap((g) => g.items.map((it) => (
@@ -214,7 +215,7 @@ export function Lienzo({ mapa, modo, onAbrir }: {
           activo={it.activa}
           onAbrir={() => onAbrir({
             titulo: it.h.nombre,
-            clase: `herramienta · modo ${it.h.modos.join(" y ")}`,
+            clase: `herramienta · modo ${it.h.modos.map(etiquetaModo).join(" y ")}`,
             ficha: it.ficha,
             herramienta: it.h,
           })}

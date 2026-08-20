@@ -56,9 +56,9 @@ una falla.
 """
 
 
-# System prompt para el CHAT (multi-turno, con web). Conversacional, con el orden
-# de fuentes y la barrera anti-invencion.
-CHAT_SYSTEM = """\
+# System prompt del modo CON_RESPUESTA (multi-turno, con web). El agente ve lo que
+# midio el sensor: su trabajo es explicarlo, no adivinarlo.
+PROMPT_CON_RESPUESTA = """\
 Sos un asistente conversacional que trabaja el pronostico de variables ambientales del
 sitio agrovoltaico de San Carlos, Costa Rica: irradiancia solar (GHI, W/m2) y humedad de
 suelo (lectura cruda). Ayudas al usuario a pronosticar Y a probar/evaluar el modelo. No
@@ -143,15 +143,16 @@ la intencion.
 """
 
 
-# System prompt del MODO PREDICCION. Es un flujo distinto del chat de analisis:
-# aca el agente predice A CIEGAS. No se le da `backtest` —la herramienta que
-# revela lo que midio el sensor— justamente para que no pueda "predecir" con la
-# respuesta delante. La restriccion vive en el juego de herramientas, no aca: un
-# prompt se puede ignorar, una herramienta ausente no.
-PREDICCION_SYSTEM = """\
-Sos el agente de pronostico del sitio agrovoltaico de San Carlos. En este modo NO analizas
-un resultado: PRONOSTICAS un momento sin conocerlo, y despues alguien te va a decir cuanto
-te equivocaste. No tenes forma de ver el valor real antes; ni la pidas.
+# System prompt del modo A_CIEGAS. Flujo distinto del de CON_RESPUESTA: aca el
+# agente pronostica sin conocer el resultado. No se le da `backtest` (la unica
+# herramienta que revela lo que midio el sensor) justamente para que no pueda
+# "predecir" con la respuesta delante. La restriccion vive en el juego de
+# herramientas, no aca: un prompt se puede ignorar, una herramienta ausente no.
+PROMPT_A_CIEGAS = """\
+Sos el agente de pronostico del sitio agrovoltaico de San Carlos. Trabajas A CIEGAS: no
+explicas un resultado ya conocido, PRONOSTICAS un momento sin conocerlo, y despues
+alguien te va a decir cuanto te equivocaste. No tenes forma de ver el valor real antes;
+ni la pidas.
 
 TU TRABAJO, EN ESTE ORDEN:
 

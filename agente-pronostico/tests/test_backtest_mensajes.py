@@ -205,18 +205,18 @@ def test_la_claridad_va_en_porcentaje_y_con_el_momento_anterior(monkeypatch):
     assert "pct_del_techo_que_paso" in anterior
 
 
-# ── El modo predicción no puede ver la respuesta ────────────────────────────
+# ── El modo a ciegas no puede ver la respuesta ──────────────────────────────
 
-def test_el_modo_prediccion_no_expone_backtest():
+def test_el_modo_a_ciegas_no_expone_backtest():
     """La garantía no es el prompt: es que la herramienta que revela lo medido
     NO está en el juego. Un prompt se puede ignorar; una tool ausente, no."""
-    from pronostico.agent.agent import MODOS
-    nombres = [e["name"] for e in MODOS["prediccion"]["schemas"]]
+    from pronostico.agent.agent import A_CIEGAS, CON_RESPUESTA, MODOS
+    nombres = [e["name"] for e in MODOS[A_CIEGAS]["schemas"]]
     assert "backtest" not in nombres
     assert set(nombres) == {"diagnosticar_condiciones", "contexto_historico",
                             "riesgo_de_nubes", "predecir"}
-    # Y el modo de análisis sí la conserva: ahí ver el resultado es el objetivo.
-    assert "backtest" in [e["name"] for e in MODOS["analisis"]["schemas"]]
+    # Y `con_respuesta` sí la conserva: ahí ver el resultado es el objetivo.
+    assert "backtest" in [e["name"] for e in MODOS[CON_RESPUESTA]["schemas"]]
 
 
 # Claves que revelarian el resultado. Se buscan como CLAVES y no en el texto

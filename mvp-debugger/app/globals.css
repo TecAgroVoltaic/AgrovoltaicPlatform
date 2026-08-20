@@ -476,8 +476,8 @@ svg .hit { cursor:crosshair; }
 .arq-puerta { border-left:3px solid var(--warn); }
 .arq-servidor { border-left:3px solid var(--ceil); border-style:dashed; }
 .arq-dato { border-left:3px solid var(--muted); }
-.arq-tool-analisis { border-left:3px solid var(--pred); }
-.arq-tool-prediccion { border-left:3px solid var(--real); }
+.arq-tool-con_respuesta { border-left:3px solid var(--pred); }
+.arq-tool-a_ciegas { border-left:3px solid var(--real); }
 .arq-cerebro { border-left:3px solid var(--accent); padding:13px 14px; gap:9px; }
 .arq-cer-h { display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
 .arq-chip { font-family:var(--mono); font-size:10px; color:var(--accent); border:1px solid color-mix(in srgb,var(--accent) 40%,transparent); border-radius:99px; padding:1px 7px; white-space:nowrap; }
@@ -490,8 +490,8 @@ svg .hit { cursor:crosshair; }
 
 .arq-grp { position:absolute; font-family:var(--mono); font-size:9.5px; text-transform:uppercase; letter-spacing:.11em; display:flex; align-items:center; gap:7px; }
 .arq-grp i { width:16px; height:2px; border-radius:2px; display:block; }
-.arq-grp-analisis { color:var(--pred); } .arq-grp-analisis i { background:var(--pred); }
-.arq-grp-prediccion { color:var(--real); } .arq-grp-prediccion i { background:var(--real); }
+.arq-grp-con_respuesta { color:var(--pred); } .arq-grp-con_respuesta i { background:var(--pred); }
+.arq-grp-a_ciegas { color:var(--real); } .arq-grp-a_ciegas i { background:var(--real); }
 .arq-grp.apagado { opacity:.32; }
 
 .arq-capa { position:absolute; border:1px solid var(--line2); border-radius:12px; background:color-mix(in srgb,var(--raise) 62%,transparent); display:flex; flex-direction:column; gap:8px; padding:11px; }

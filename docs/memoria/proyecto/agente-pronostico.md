@@ -261,10 +261,10 @@ Perillas (en el forecaster REAL, no en el backtest): `lookback_min`, `estadistic
 (mediana/media/último) y `kt_max` (tope al realce por nubes).
 
 ### La garantía no es el prompt: es el juego de herramientas
-`chat()` acepta un **modo**. En `prediccion` las herramientas son las tres de arriba y
-**`backtest` no está** — es la única que revela lo medido. Un prompt se puede ignorar; una
-herramienta ausente no se puede llamar. `analisis` (el modo por defecto) la conserva, porque
-ahí ver el resultado *es* el objetivo. Cubierto por tests que verifican el juego de cada modo
+`chat()` acepta un **modo**. En `a_ciegas` las herramientas son las tres de arriba y
+**`backtest` no está**: es la única que revela lo medido. Un prompt se puede ignorar; una
+herramienta ausente no se puede llamar. `con_respuesta` (el modo por defecto) la conserva,
+porque ahí ver el resultado *es* el objetivo. Cubierto por tests que verifican el juego de cada modo
 y que ni `predecir` ni los diagnósticos devuelven claves del resultado en ningún nivel.
 
 ### Verificado en producción
@@ -275,7 +275,7 @@ resultado. Frente a los 78,1 de la configuración por defecto, su razonamiento l
 valor real (32,8).
 
 **Pendiente:** cablear el flujo de dos fases en la consola (el agente predice a ciegas, la
-consola revela y puntúa). Hoy funciona por `/chat` con `modo=prediccion`.
+consola revela y puntúa). Hoy funciona por `/chat` con `modo=a_ciegas`.
 
 Relacionado: [[integracion-visioneflow]], [[capa-agentes]], [[agrodash-esquema]], [[bloqueantes]], [[agrodash]], [[pipeline-tiempo-real]], [[mvp-debugger]].
 
@@ -290,7 +290,7 @@ frenos y cobertura de datos. Lo consume la vista de arquitectura de la consola (
 pertenencia a cada modo salen de `agent.MODOS` y de los esquemas reales — los mismos objetos
 que se le mandan al modelo. No hay una segunda lista que mantener sincronizada, así que la vista
 no puede quedar desfasada del código. Que `backtest` aparezca marcada como exclusiva de
-`analisis` no lo escribió nadie: se deduce de dónde está.
+`con_respuesta` no lo escribió nadie: se deduce de dónde está.
 
 Tres decisiones que valen la pena:
 - **El horizonte se lee del esquema**, no de `_MIN_SEG`/`_MAX_SEG`. Si alguna vez discreparan,
@@ -313,7 +313,7 @@ su bloque, y el 401 sin clave. **159 tests en total.**
 **Desplegado en la EC2** (rsync de `src/` y `scripts/` + rebuild de `forecast-forecast-1`;
 respaldo en `.rollback-src`). **e2e contra producción: 72 chequeos, 0 fallas**, 3 avisos
 conocidos (ingesta congelada desde el 2026-07-23, skill 0 % de humedad por construcción). El
-bloque 6 del e2e es nuevo y verifica desde afuera que el modo predicción no publique `backtest`
+bloque 6 del e2e es nuevo y verifica desde afuera que el modo `a_ciegas` no publique `backtest`
 ni búsqueda web.
 
 ## 2026-08-19 (noche) — el acumulado de `/uso` vivía en un lugar efímero
@@ -654,3 +654,37 @@ de rango. Se agregó la distinción explícita, y en la verificación siguiente 
 decir *"el sensor registró"*.
 
 Verificado con llamadas reales a Haiku, no solo por lectura del archivo.
+
+## 2026-08-19 — Un solo nombre por cosa: los modos se llaman `con_respuesta` y `a_ciegas`
+
+La misma cosa tenía cuatro nombres y nadie podía saber cuáles eran lo mismo. El servicio decía
+`analisis` / `prediccion`; el chip de la consola decía «modo backtest» / «predicción a ciegas»;
+el botón decía «Analizar» / «Predecir a ciegas»; el código decía `ciego`. Y «modo backtest» era
+directamente falso: el endpoint `/backtest` dibuja el gráfico en **los dos** modos, así que ese
+nombre no distinguía nada.
+
+**El eje real es uno solo: qué puede ver el agente.** De ahí salen los dos nombres, y se usan
+idénticos en el servicio, en el mapa de arquitectura y en la consola:
+
+| modo | ve lo medido | herramientas | para qué sirve |
+|---|---|---|---|
+| `con_respuesta` | sí | `forecast`, `backtest`, `riesgo_de_nubes` + web | juzgar el método después del hecho |
+| `a_ciegas` | no | `diagnosticar_condiciones`, `contexto_historico`, `riesgo_de_nubes`, `predecir` | pronosticar de verdad |
+
+`backtest` vuelve a ser lo que siempre fue: **una herramienta y un endpoint**, nunca un modo.
+
+**Dos arreglos de fondo que aparecieron al renombrar:**
+
+1. **`MODOS.get(modo) or MODOS["analisis"]` era una fuga.** Un typo en el nombre del modo no
+   fallaba: caía al modo **permisivo**, o sea que quien pedía pronosticar a ciegas recibía el
+   juego **con** `backtest`. Ahora `api.py` valida con `Literal[...]` (un modo inválido es 422)
+   y el respaldo de `agent.chat` cae al **restrictivo**. Dos pruebas nuevas lo fijan.
+2. **Un solo lugar donde se escriben las etiquetas.** `mvp-debugger/app/components/console/modos.ts`
+   es dueño del vocabulario del frontend (id, etiqueta, verbo del botón, ayuda del chip) y lo leen
+   `PredView`, `LecturaAgente`, `ArqView` y `Lienzo`. Los ids son los mismos strings que
+   `agent.MODOS`, así que no hay traducción que mantener.
+
+Los prompts pasaron a llamarse `PROMPT_CON_RESPUESTA` y `PROMPT_A_CIEGAS` (antes `CHAT_SYSTEM` y
+`PREDICCION_SYSTEM`, que tampoco decían el eje).
+
+Relacionado: [[mvp-debugger]].

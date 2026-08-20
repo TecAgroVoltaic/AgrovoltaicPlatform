@@ -19,7 +19,7 @@ from pronostico.domain import Variable
 
 CLIENTE = TestClient(app)
 
-# Claves del RESULTADO que el modo prediccion no puede llegar a ver por ninguna
+# Claves del RESULTADO que el modo a_ciegas no puede llegar a ver por ninguna
 # via. Espejo de la regla que ya cuidan los tests de `predecir`.
 _PROHIBIDAS = {"medido", "error", "real"}
 
@@ -53,22 +53,22 @@ def test_cada_modo_lista_su_juego_real(mapa):
         assert mapa["modos"][nombre]["web_search"] is bool(perfil["web"])
 
 
-def test_el_modo_prediccion_no_publica_backtest_ni_web(mapa):
+def test_el_modo_a_ciegas_no_publica_backtest_ni_web(mapa):
     # Given: el modo donde el agente no puede conocer la respuesta
-    prediccion = mapa["modos"]["prediccion"]
+    prediccion = mapa["modos"][agente_mod.A_CIEGAS]
     # When/Then: backtest (la unica que revela lo medido) no esta, y la busqueda
     # web tampoco. Es la misma garantia que blinda test_backtest_mensajes, vista
     # desde el lado del mapa: si alguien la rompiera, la vista lo mostraria.
     assert "backtest" not in prediccion["herramientas"]
     assert prediccion["web_search"] is False
-    assert "prediccion" not in mapa["web_search"]["modos"]
+    assert agente_mod.A_CIEGAS not in mapa["web_search"]["modos"]
 
 
-def test_backtest_queda_marcada_como_exclusiva_de_analisis(mapa):
+def test_backtest_queda_marcada_como_exclusiva_de_con_respuesta(mapa):
     # Given: el catalogo deduplicado
     backtest = next(h for h in mapa["herramientas"] if h["nombre"] == "backtest")
     # Then: la pertenencia a modos se deriva, no se declara
-    assert backtest["modos"] == ["analisis"]
+    assert backtest["modos"] == [agente_mod.CON_RESPUESTA]
 
 
 def test_cada_herramienta_trae_su_contrato_completo(mapa):
@@ -90,9 +90,9 @@ def test_la_hipotesis_de_predecir_sigue_siendo_obligatoria(mapa):
     assert "hipotesis" in predecir["input_schema"]["required"]
 
 
-def test_ninguna_herramienta_de_prediccion_pide_el_resultado(mapa):
+def test_ninguna_herramienta_de_a_ciegas_pide_el_resultado(mapa):
     # Given: las herramientas del modo ciego
-    del_modo = set(mapa["modos"]["prediccion"]["herramientas"])
+    del_modo = set(mapa["modos"][agente_mod.A_CIEGAS]["herramientas"])
     # When/Then: ninguna acepta un parametro que sea el valor a predecir
     for h in mapa["herramientas"]:
         if h["nombre"] in del_modo:

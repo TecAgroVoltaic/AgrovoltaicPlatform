@@ -14,6 +14,7 @@ from __future__ import annotations
 import logging
 import os
 import time
+from typing import Literal
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
@@ -98,10 +99,13 @@ class ChatBody(BaseModel):
 
     mensajes: list[ChatMsg]
     contexto: str | None = None
-    modo: str = Field(
-        default="analisis",
-        description="'analisis' (herramientas de evaluacion, incluye backtest) o "
-                    "'prediccion' (diagnostico + prediccion a ciegas, SIN backtest).",
+    modo: Literal["con_respuesta", "a_ciegas"] = Field(
+        default="con_respuesta",
+        description="Que puede ver el agente. 'con_respuesta': ve lo que midio el "
+                    "sensor (incluye `backtest`), sirve para juzgar el metodo. "
+                    "'a_ciegas': NO lo ve (sin `backtest` ni web), pronostica de "
+                    "verdad. Un valor invalido es 422, nunca una caida silenciosa "
+                    "al modo permisivo.",
     )
 
 

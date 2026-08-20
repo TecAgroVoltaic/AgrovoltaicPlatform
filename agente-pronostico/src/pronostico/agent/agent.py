@@ -15,7 +15,8 @@ import time
 import anthropic
 
 from pronostico import config, costos
-from pronostico.agent.prompts import CHAT_SYSTEM, PREDICCION_SYSTEM, SYSTEM_PROMPT
+from pronostico.agent.prompts import (PROMPT_A_CIEGAS, PROMPT_CON_RESPUESTA,
+                                      SYSTEM_PROMPT)
 from pronostico.tools.backtest_tool import SCHEMA as BACKTEST_SCHEMA, run as run_backtest
 from pronostico.tools.diagnostico_tool import (
     SCHEMA_CONDICIONES, SCHEMA_HISTORICO, run_condiciones, run_historico,
@@ -37,19 +38,30 @@ _TOOLS = {
     "riesgo_de_nubes": run_riesgo,
 }
 
-# Juegos de herramientas por MODO. El modo `prediccion` deja fuera `backtest` a
-# proposito: es la unica herramienta que revela lo que midio el sensor, y con
-# ella a mano el agente podria "predecir" sabiendo la respuesta. Restringir el
-# juego es la unica garantia real — un prompt se puede ignorar, una herramienta
-# que no esta en la lista no se puede llamar.
+# Juegos de herramientas por MODO.
+#
+# Los dos modos se distinguen por UNA sola cosa, y de ahi salen sus nombres:
+# si el agente puede ver lo que midio el sensor. Todo lo demas (que preguntas
+# admite, que prompt lleva, si tiene web) es consecuencia de eso.
+#
+#   CON_RESPUESTA: lo ve. Sirve para juzgar el metodo despues del hecho.
+#   A_CIEGAS:      no lo ve. Sirve para pronosticar de verdad.
+#
+# `a_ciegas` deja fuera `backtest` a proposito: es la unica herramienta que
+# revela lo medido, y con ella a mano el agente podria "predecir" sabiendo la
+# respuesta. Restringir el juego es la unica garantia real: un prompt se puede
+# ignorar, una herramienta que no esta en la lista no se puede llamar.
+CON_RESPUESTA = "con_respuesta"
+A_CIEGAS = "a_ciegas"
+
 MODOS = {
-    "analisis": {
-        "system": CHAT_SYSTEM,
+    CON_RESPUESTA: {
+        "system": PROMPT_CON_RESPUESTA,
         "schemas": [FORECAST_TOOL_SCHEMA, BACKTEST_SCHEMA, RIESGO_SCHEMA],
         "web": True,
     },
-    "prediccion": {
-        "system": PREDICCION_SYSTEM,
+    A_CIEGAS: {
+        "system": PROMPT_A_CIEGAS,
         "schemas": [SCHEMA_CONDICIONES, SCHEMA_HISTORICO, RIESGO_SCHEMA,
                     PREDECIR_SCHEMA],
         "web": False,
@@ -152,7 +164,7 @@ class ForecastAgent:
         return self.conversar(pregunta)["respuesta"]
 
     def chat(self, mensajes: list[dict], contexto: str | None = None,
-             modo: str = "analisis") -> dict:
+             modo: str = CON_RESPUESTA) -> dict:
         """Turno de CHAT multi-turno del forecaster. `mensajes` = historial de texto
         limpio [{rol, texto}] (el ultimo es del usuario). Devuelve {respuesta, pasos,
         usage, costo}. Mismo diseno que el analizador: historial solo-texto (barato y
@@ -173,7 +185,11 @@ class ForecastAgent:
             ms[-1]["content"] = f"[Contexto de la vista: {contexto}]\n\n{ms[-1]['content']}"
         ms = ms[-16:]
 
-        perfil = MODOS.get(modo) or MODOS["analisis"]
+        # Ante un modo desconocido se cae al RESTRICTIVO, nunca al permisivo:
+        # un typo no puede terminar entregandole `backtest` a quien pidio
+        # pronosticar a ciegas. La validacion dura vive en `api.py`; esto es la
+        # red de abajo.
+        perfil = MODOS.get(modo) or MODOS[A_CIEGAS]
         system = [{"type": "text", "text": perfil["system"],
                    "cache_control": {"type": "ephemeral"}}]
         client_tools = [dict(e) for e in perfil["schemas"]]

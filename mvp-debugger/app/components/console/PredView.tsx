@@ -19,6 +19,7 @@ import { jget, mensajeError, type Resp } from "@/app/lib/client";
 import { Estado } from "@/app/components/console/Estado";
 import { LecturaAgente } from "@/app/components/console/LecturaAgente";
 import { lineChart, palette } from "@/app/lib/charts";
+import { A_CIEGAS, CON_RESPUESTA, MODO } from "@/app/components/console/modos";
 
 const VARIABLES: [string, string][] = [
   ["irradiancia", "Irradiancia"], ["humedad_suelo", "Humedad de suelo"],
@@ -48,13 +49,14 @@ export function PredView({ theme }: { theme: string }) {
   const [fecha, setFecha] = useState("");
   const [momento, setMomento] = useState("");        // "HH:MM"
   const [bucket, setBucket] = useState("h");
-  // Dos modos que responden preguntas distintas:
-  //   backtest : ¿qué tan bueno es el MÉTODO? El agente ve el resultado y lo juzga.
-  //   ciego    : ¿el agente predice bien SIN saber la respuesta? Se compromete
-  //              primero y la consola revela después.
-  // No es un matiz de presentación: en `ciego` el servicio le quita `backtest`
-  // del juego de herramientas, que es la única que revela lo medido.
-  const [ciego, setCiego] = useState(false);
+  // Los dos modos se distinguen por UNA sola cosa, y de ahí salen sus nombres:
+  // si el agente puede ver lo que midió el sensor.
+  //   con la respuesta : lo ve. ¿Qué tan bueno es el MÉTODO? Lo juzga después del hecho.
+  //   a ciegas         : no lo ve. ¿Predice bien sin saber? Se compromete primero.
+  // No es un matiz de presentación: en `a_ciegas` el servicio le quita `backtest`
+  // del juego de herramientas, que es la única que revela lo medido. Mismos dos
+  // nombres en el backend (`agent.MODOS`), en el mapa de arquitectura y acá.
+  const [aCiegas, setACiegas] = useState(false);
 
   const [rango, setRango] = useState<{ desde: string; hasta: string } | null>(null);
   const [dia, setDia] = useState<any>(null);
@@ -132,7 +134,7 @@ export function PredView({ theme }: { theme: string }) {
     // El gráfico muestra el TERRENO: lo que midió el sensor y el máximo físico
     // posible. Sin el techo no se puede leer nada: un medido de 33 W/m² no dice
     // si el día estuvo tapado o si simplemente era temprano.
-    // El gráfico SIEMPRE va entero, en los dos modos. Cortarlo en el modo ciego
+    // El gráfico SIEMPRE va entero, en los dos modos. Cortarlo a ciegas
     // fue un intento de "que no se vea la respuesta" que no protege nada: la
     // garantía de que el agente no la ve es que el servicio no le publica la
     // herramienta que la revela, y eso pasa del lado del servidor. Mutilar el
@@ -166,7 +168,7 @@ export function PredView({ theme }: { theme: string }) {
     + `(en escala, no en impresión) y decí qué limitación tuya lo explica. `
     + `Si te equivocaste, empezá por ahí. 3 o 4 frases, sin tablas ni listas.`;
 
-  // En modo ciego se le pide COMPROMETERSE, no analizar. El horizonte en
+  // A ciegas se le pide COMPROMETERSE, no explicar. El horizonte en
   // segundos es explícito para que no tenga que deducirlo, y se le prohíbe pedir
   // el resultado: aunque la herramienta no exista, el intento ensuciaría la traza.
   const preguntaCiega =
@@ -197,14 +199,13 @@ export function PredView({ theme }: { theme: string }) {
           <p>Elegí un momento: lo que midió el sensor contra lo que el modelo habría predicho.</p>
         </div>
         <div className="chips chips-modo">
-          <button className={"chip" + (!ciego ? " on" : "")} onClick={() => setCiego(false)}
-                  title="Reconstrucción: se reaplica el método sobre datos ya medidos y el agente juzga el resultado. Sirve para evaluar el MÉTODO.">
-            modo backtest
-          </button>
-          <button className={"chip" + (ciego ? " on" : "")} onClick={() => setCiego(true)}
-                  title="El agente predice sin acceso a lo medido: el servicio le quita `backtest` del juego de herramientas. La consola revela el resultado después.">
-            predicción a ciegas
-          </button>
+          {([MODO.con_respuesta, MODO.a_ciegas] as const).map((m) => (
+            <button key={m.id} title={m.ayuda}
+                    className={"chip" + ((m.id === A_CIEGAS) === aCiegas ? " on" : "")}
+                    onClick={() => setACiegas(m.id === A_CIEGAS)}>
+              {m.etiqueta}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -275,16 +276,16 @@ export function PredView({ theme }: { theme: string }) {
 
       {punto && (
         <LecturaAgente
-          key={ciego ? "ciego" : "analisis"}
-          pregunta={ciego ? preguntaCiega : preguntaAgente}
-          modo={ciego ? "prediccion" : "analisis"}
-          // OJO: el contexto viaja dentro del mensaje del usuario. En modo ciego
+          key={aCiegas ? A_CIEGAS : CON_RESPUESTA}
+          pregunta={aCiegas ? preguntaCiega : preguntaAgente}
+          modo={aCiegas ? A_CIEGAS : CON_RESPUESTA}
+          // OJO: el contexto viaja dentro del mensaje del usuario. A ciegas
           // NO puede llevar el valor medido, ni el error, ni nada derivado.
           contexto={`Predicción vs Real · ${vari} · ${fecha} ${momento}`}
-          esperado={ciego ? null : { real: punto.real, pred: punto.pred }}
+          esperado={aCiegas ? null : { real: punto.real, pred: punto.pred }}
           // El corte: se predice `momento` con `bucket` de anticipación, así que
           // los datos visibles terminan justo esa anticipación antes.
-          revelar={ciego ? { variable: vari, ahora: corteISO,
+          revelar={aCiegas ? { variable: vari, ahora: corteISO,
                              horizonte_seg: SEGUNDOS[bucket], unidad, dec } : null} />
       )}
     </section>
