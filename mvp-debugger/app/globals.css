@@ -569,26 +569,39 @@ svg .hit { cursor:crosshair; }
 .sal-dato > span:last-child { font-size:13px; color:var(--ink); overflow-wrap:anywhere; }
 
 /* ── Predicción a ciegas: interruptor de modo y revelación ──────────────────
-   La revelación es un momento con peso: el agente ya se comprometió y no puede
-   volver atrás. Por eso ocupa su propio bloque en vez de aparecer entre las
-   demás fichas, y el veredicto se colorea por error RELATIVO, que es lo único
-   comparable entre un mediodía y un amanecer. */
+   Todo el bloque va en UNA línea. Es un dato de tres cifras, no un informe: con
+   tarjetas grandes el mismo número aparecía tres veces en pantalla (en el texto
+   del agente, en la ficha de la herramienta y en el veredicto) y eso no informa,
+   ocupa. El color va por error RELATIVO, que es lo único comparable entre un
+   mediodía y un atardecer. */
 .chips-modo { flex:none; margin-top:2px; }
 
 .bloq-revelar { border-color:color-mix(in srgb, var(--real) 34%, var(--line));
-                background:color-mix(in srgb, var(--real) 4%, transparent); }
-.revelar-cerrado { display:flex; gap:16px; align-items:center; justify-content:space-between;
+                background:color-mix(in srgb, var(--real) 4%, transparent);
+                padding:12px 14px; }
+.revelar-cerrado { display:flex; gap:14px; align-items:center; justify-content:space-between;
                    flex-wrap:wrap; }
-.revelar-cerrado b { display:block; margin-bottom:2px; }
-.revelar-cerrado .hint { margin:0; max-width:46ch; }
-.bloq-ic-real { background:color-mix(in srgb, var(--real) 18%, transparent); color:var(--real); }
+.revelar-cerrado .hint { margin:0; }
 
-.ficha-ok    { border-color:color-mix(in srgb, var(--good) 45%, var(--line));
-               background:color-mix(in srgb, var(--good) 7%, var(--panel)); }
-.ficha-ok .ficha-v    { color:var(--good); }
-.ficha-medio { border-color:color-mix(in srgb, var(--warn) 45%, var(--line));
-               background:color-mix(in srgb, var(--warn) 7%, var(--panel)); }
-.ficha-medio .ficha-v { color:var(--warn); }
-.ficha-mal   { border-color:color-mix(in srgb, var(--crit) 45%, var(--line));
-               background:color-mix(in srgb, var(--crit) 7%, var(--panel)); }
-.ficha-mal .ficha-v   { color:var(--crit); }
+.veredicto { display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+.v-ic { display:inline-flex; width:22px; height:22px; border-radius:6px; flex:none;
+        align-items:center; justify-content:center;
+        background:color-mix(in srgb, var(--real) 18%, transparent); color:var(--real); }
+.v-par { display:flex; align-items:baseline; gap:7px; }
+.v-par i { font-style:normal; font-size:10px; text-transform:uppercase; letter-spacing:.05em;
+           color:var(--muted); }
+.v-par b { font-family:var(--mono); font-variant-numeric:tabular-nums; font-size:19px;
+           font-weight:600; letter-spacing:-.02em; color:var(--ink); }
+.v-vs { color:var(--muted); font-size:11px; }
+.v-err { margin-left:auto; display:flex; align-items:baseline; gap:8px; padding:4px 11px;
+         border-radius:999px; border:1px solid var(--line); background:var(--panel);
+         font-family:var(--mono); font-variant-numeric:tabular-nums; font-size:14px;
+         font-weight:600; }
+.v-err em { font-style:normal; font-size:11.5px; opacity:.85; }
+.v-err.ok    { border-color:color-mix(in srgb, var(--good) 45%, var(--line)); color:var(--good);
+               background:color-mix(in srgb, var(--good) 8%, var(--panel)); }
+.v-err.medio { border-color:color-mix(in srgb, var(--warn) 45%, var(--line)); color:var(--warn);
+               background:color-mix(in srgb, var(--warn) 8%, var(--panel)); }
+.v-err.mal   { border-color:color-mix(in srgb, var(--crit) 45%, var(--line)); color:var(--crit);
+               background:color-mix(in srgb, var(--crit) 8%, var(--panel)); }
+@media (max-width:620px) { .v-err { margin-left:0; } }

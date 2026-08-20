@@ -53,35 +53,18 @@ function Veredicto({ pred, real, unidad, dec }: {
   const rel = real !== 0 ? Math.abs(error) / Math.abs(real) * 100 : null;
   // Los cortes son de lectura, no de física: separan "sirve", "sirve con
   // reparos" y "no sirve para decidir nada" a ojo de quien mira la pantalla.
-  const clase = rel == null ? "" : rel <= 15 ? " ficha-ok" : rel <= 40 ? " ficha-medio" : " ficha-mal";
+  const clase = rel == null ? "" : rel <= 15 ? " ok" : rel <= 40 ? " medio" : " mal";
   return (
-    <>
-      <header className="bloq-h">
-        <span className="bloq-ic bloq-ic-real"><IconoCheck size={15} /></span>
-        <span className="bloq-t">Lo que midió el sensor</span>
-        <span className="muted small">revelado por la consola, después de la predicción</span>
-      </header>
-      <div className="fichas">
-        <div className="ficha ficha-acento">
-          <span className="ficha-l">Predijo a ciegas</span>
-          <span className="ficha-v">{fmt(pred, dec)}<small>{unidad}</small></span>
-        </div>
-        <div className="ficha">
-          <span className="ficha-l">Midió el sensor</span>
-          <span className="ficha-v">{fmt(real, dec)}<small>{unidad}</small></span>
-        </div>
-        <div className={"ficha" + clase}>
-          <span className="ficha-l">Se equivocó en</span>
-          <span className="ficha-v">{(error > 0 ? "+" : "") + fmt(error, dec)}<small>{unidad}</small></span>
-        </div>
-        {rel != null && (
-          <div className={"ficha" + clase}>
-            <span className="ficha-l">Error relativo</span>
-            <span className="ficha-v">{fmt(rel, 0)}<small>%</small></span>
-          </div>
-        )}
-      </div>
-    </>
+    <div className="veredicto">
+      <span className="v-ic"><IconoCheck size={14} /></span>
+      <span className="v-par"><i>predijo</i><b>{fmt(pred, dec)}</b></span>
+      <span className="v-vs">vs</span>
+      <span className="v-par"><i>midió el sensor</i><b>{fmt(real, dec)}</b></span>
+      <span className={"v-err" + clase}>
+        {(error > 0 ? "+" : "") + fmt(error, dec)} {unidad}
+        {rel != null && <em>{fmt(rel, 0)} %</em>}
+      </span>
+    </div>
   );
 }
 
@@ -254,9 +237,8 @@ export function LecturaAgente({ pregunta, contexto, esperado, modo = "analisis",
           <h3>{ciego ? "El agente predice a ciegas" : "Lectura del agente"}</h3>
           <p className="hint">
             {ciego ? (<>
-              El agente <b>no tiene forma de ver</b> lo que midió el sensor: en este modo el
-              servicio le quita del juego la única herramienta que lo revela. Diagnostica, se
-              compromete con un número y declara su confianza. Recién después revelás el resultado.
+              El agente <b>no puede ver</b> lo que midió el sensor: el servicio le quita del juego
+              la única herramienta que lo revela. Se compromete primero; el resultado se revela después.
             </>) : (<>
               Acá se pide la predicción. El número lo produce una herramienta determinista (abajo se
               ve cuál y con qué parámetros), pero el agente <b>lo asume como propio</b>: lo justifica
@@ -280,7 +262,7 @@ export function LecturaAgente({ pregunta, contexto, esperado, modo = "analisis",
         </div>
       )}
 
-      {res.map((r, i) => (
+      {!ciego && res.map((r, i) => (
         <section className="bloq bloq-algo" key={i}>
           <header className="bloq-h">
             <span className="bloq-ic bloq-ic-algo"><IconoAlgoritmo size={15} /></span>
@@ -327,16 +309,12 @@ export function LecturaAgente({ pregunta, contexto, esperado, modo = "analisis",
                        unidad={revelar.unidad} dec={revelar.dec ?? 1} />
           ) : (
             <div className="revelar-cerrado">
-              <div>
-                <b>El agente ya se comprometió.</b>
-                <p className="hint">
-                  Su número no puede cambiar. Lo que midió el sensor todavía no se consultó:
-                  al revelarlo, la consola lo pide aparte y calcula el error.
-                </p>
-                {errRevelar && <p className="hint" style={{ color: "var(--crit)" }}>{errRevelar}</p>}
-              </div>
+              <p className="hint">
+                Ya se comprometió. Lo que midió el sensor todavía no se consultó.
+                {errRevelar && <b style={{ color: "var(--crit)" }}> {errRevelar}</b>}
+              </p>
               <button className="btn" onClick={revelarMedido} disabled={revelado === "cargando"}>
-                {revelado === "cargando" ? "Consultando el sensor…" : "Revelar lo que midió el sensor"}
+                {revelado === "cargando" ? "Consultando…" : "Revelar lo que midió"}
               </button>
             </div>
           )}

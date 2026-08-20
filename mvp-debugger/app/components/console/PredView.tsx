@@ -132,13 +132,13 @@ export function PredView({ theme }: { theme: string }) {
     // El gráfico muestra el TERRENO: lo que midió el sensor y el máximo físico
     // posible. Sin el techo no se puede leer nada: un medido de 33 W/m² no dice
     // si el día estuvo tapado o si simplemente era temprano.
-    // En modo ciego la curva medida se corta en el instante elegido: mostrar lo
-    // que viene después arruinaría la demostración aunque el agente no lo vea.
-    // El techo sí se dibuja entero: es astronómico, se conoce de antemano y no
-    // dice nada de las nubes.
-    const medido = pts.map((p, i) => (ciego && idx >= 0 && i > idx ? null : p.real));
+    // El gráfico SIEMPRE va entero, en los dos modos. Cortarlo en el modo ciego
+    // fue un intento de "que no se vea la respuesta" que no protege nada: la
+    // garantía de que el agente no la ve es que el servicio no le publica la
+    // herramienta que la revela, y eso pasa del lado del servidor. Mutilar el
+    // gráfico solo le saca a quien presenta la forma de leer el día.
     const series: any[] = [
-      { points: medido, color: P.real, area: true, width: 2.4, name: "Medido" },
+      { points: pts.map((p) => p.real), color: P.real, area: true, width: 2.4, name: "Medido" },
     ];
     if (pts[0].cs != null) {
       series.push({ points: pts.map((p) => p.cs), color: P.ceil, width: 1.4,
@@ -149,7 +149,7 @@ export function PredView({ theme }: { theme: string }) {
       yfmt: (v) => fmt(v, 0), tipfmt: (v) => fmt(v, dec),
       marca: idx >= 0 ? { i: idx, label: momento } : null,
     });
-  }, [dia, momentos, idx, momento, theme, unidad, dec, ciego]);
+  }, [dia, momentos, idx, momento, theme, unidad, dec]);
 
   // Al agente se le manda la PREGUNTA, nunca los números: llama a su herramienta
   // con la hora exacta y las cifras salen de ahí. Si se los pasáramos en el
