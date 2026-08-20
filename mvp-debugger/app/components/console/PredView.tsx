@@ -30,6 +30,9 @@ const ANTICIPACIONES: [string, string][] = [
   ["15min", "15 min"], ["30min", "30 min"], ["h", "1 hora"],
 ];
 const MS_POR_DIA = 86400000;
+// La anticipación en segundos, para pedírsela al agente sin que tenga que
+// deducirla del texto (`predecir` la exige como entero).
+const SEGUNDOS: Record<string, number> = { "15min": 900, "30min": 1800, h: 3600 };
 
 const fmt = (n: any, d = 1) =>
   n == null || !isFinite(n) ? "—" : Number(n).toLocaleString("es-CR",
@@ -45,6 +48,13 @@ export function PredView({ theme }: { theme: string }) {
   const [fecha, setFecha] = useState("");
   const [momento, setMomento] = useState("");        // "HH:MM"
   const [bucket, setBucket] = useState("h");
+  // Dos modos que responden preguntas distintas:
+  //   backtest : ¿qué tan bueno es el MÉTODO? El agente ve el resultado y lo juzga.
+  //   ciego    : ¿el agente predice bien SIN saber la respuesta? Se compromete
+  //              primero y la consola revela después.
+  // No es un matiz de presentación: en `ciego` el servicio le quita `backtest`
+  // del juego de herramientas, que es la única que revela lo medido.
+  const [ciego, setCiego] = useState(false);
 
   const [rango, setRango] = useState<{ desde: string; hasta: string } | null>(null);
   const [dia, setDia] = useState<any>(null);
@@ -122,8 +132,13 @@ export function PredView({ theme }: { theme: string }) {
     // El gráfico muestra el TERRENO: lo que midió el sensor y el máximo físico
     // posible. Sin el techo no se puede leer nada: un medido de 33 W/m² no dice
     // si el día estuvo tapado o si simplemente era temprano.
+    // En modo ciego la curva medida se corta en el instante elegido: mostrar lo
+    // que viene después arruinaría la demostración aunque el agente no lo vea.
+    // El techo sí se dibuja entero: es astronómico, se conoce de antemano y no
+    // dice nada de las nubes.
+    const medido = pts.map((p, i) => (ciego && idx >= 0 && i > idx ? null : p.real));
     const series: any[] = [
-      { points: pts.map((p) => p.real), color: P.real, area: true, width: 2.4, name: "Medido" },
+      { points: medido, color: P.real, area: true, width: 2.4, name: "Medido" },
     ];
     if (pts[0].cs != null) {
       series.push({ points: pts.map((p) => p.cs), color: P.ceil, width: 1.4,
@@ -134,7 +149,7 @@ export function PredView({ theme }: { theme: string }) {
       yfmt: (v) => fmt(v, 0), tipfmt: (v) => fmt(v, dec),
       marca: idx >= 0 ? { i: idx, label: momento } : null,
     });
-  }, [dia, momentos, idx, momento, theme, unidad, dec]);
+  }, [dia, momentos, idx, momento, theme, unidad, dec, ciego]);
 
   // Al agente se le manda la PREGUNTA, nunca los números: llama a su herramienta
   // con la hora exacta y las cifras salen de ahí. Si se los pasáramos en el
@@ -151,6 +166,29 @@ export function PredView({ theme }: { theme: string }) {
     + `(en escala, no en impresión) y decí qué limitación tuya lo explica. `
     + `Si te equivocaste, empezá por ahí. 3 o 4 frases, sin tablas ni listas.`;
 
+  // En modo ciego se le pide COMPROMETERSE, no analizar. El horizonte en
+  // segundos es explícito para que no tenga que deducirlo, y se le prohíbe pedir
+  // el resultado: aunque la herramienta no exista, el intento ensuciaría la traza.
+  const preguntaCiega =
+    `Predecí la ${vari === "irradiancia" ? "irradiancia" : "humedad de suelo"} `
+    + `del ${fecha} a las ${momento} (hora local), con ${etiqueta(bucket)} de anticipación `
+    + `(${SEGUNDOS[bucket]} segundos). Diagnosticá primero, medí el riesgo de nubes, `
+    + `y recién ahí comprometete con un número y su banda. Declará tu confianza y decí `
+    + `de qué lado podría fallar. No vas a poder ver lo que midió el sensor: no lo pidas. `
+    + `3 o 4 frases, sin tablas ni listas.`;
+
+  // Instante en que el agente "se para" para predecir: el momento elegido menos
+  // la anticipación. Se arma en hora local sin zona, que es como lo interpreta el
+  // servicio (America/Costa_Rica).
+  const corteISO = useMemo(() => {
+    if (!fecha || !momento) return "";
+    const t = new Date(`${fecha}T${momento}:00`).getTime() - SEGUNDOS[bucket] * 1000;
+    const d = new Date(t);
+    const p2 = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`
+         + `T${p2(d.getHours())}:${p2(d.getMinutes())}:00`;
+  }, [fecha, momento, bucket]);
+
   return (
     <section className="vista">
       <div className="phead phead-row">
@@ -158,10 +196,16 @@ export function PredView({ theme }: { theme: string }) {
           <h1>Predicción vs Real</h1>
           <p>Elegí un momento: lo que midió el sensor contra lo que el modelo habría predicho.</p>
         </div>
-        <span className="pill pill-modo"
-              title="Reconstrucción: se reaplica el método sobre datos ya medidos. No son predicciones que el agente hizo en vivo: esas se auditan en la tabla `predicciones`.">
-          modo backtest
-        </span>
+        <div className="chips chips-modo">
+          <button className={"chip" + (!ciego ? " on" : "")} onClick={() => setCiego(false)}
+                  title="Reconstrucción: se reaplica el método sobre datos ya medidos y el agente juzga el resultado. Sirve para evaluar el MÉTODO.">
+            modo backtest
+          </button>
+          <button className={"chip" + (ciego ? " on" : "")} onClick={() => setCiego(true)}
+                  title="El agente predice sin acceso a lo medido: el servicio le quita `backtest` del juego de herramientas. La consola revela el resultado después.">
+            predicción a ciegas
+          </button>
+        </div>
       </div>
 
       <div className="controls">
@@ -229,9 +273,20 @@ export function PredView({ theme }: { theme: string }) {
         )}
       </div>
 
-      {punto && <LecturaAgente pregunta={preguntaAgente}
-                               contexto={`Predicción vs Real · ${vari} · ${fecha} ${momento}`}
-                               esperado={{ real: punto.real, pred: punto.pred }} />}
+      {punto && (
+        <LecturaAgente
+          key={ciego ? "ciego" : "analisis"}
+          pregunta={ciego ? preguntaCiega : preguntaAgente}
+          modo={ciego ? "prediccion" : "analisis"}
+          // OJO: el contexto viaja dentro del mensaje del usuario. En modo ciego
+          // NO puede llevar el valor medido, ni el error, ni nada derivado.
+          contexto={`Predicción vs Real · ${vari} · ${fecha} ${momento}`}
+          esperado={ciego ? null : { real: punto.real, pred: punto.pred }}
+          // El corte: se predice `momento` con `bucket` de anticipación, así que
+          // los datos visibles terminan justo esa anticipación antes.
+          revelar={ciego ? { variable: vari, ahora: corteISO,
+                             horizonte_seg: SEGUNDOS[bucket], unidad, dec } : null} />
+      )}
     </section>
   );
 }

@@ -31,6 +31,60 @@ import {
 
 type Paso = any;
 
+/**
+ * El puntaje del pronóstico a ciegas. Lo calcula la CONSOLA, no el agente.
+ *
+ * El error absoluto solo no alcanza para juzgar: 45 W/m² es excelente a mediodía
+ * y catastrófico al amanecer. Por eso va siempre acompañado del relativo, que es
+ * lo que hace comparable un momento con otro.
+ */
+function Veredicto({ pred, real, unidad, dec }: {
+  pred: number | null; real: number; unidad: string; dec: number;
+}) {
+  if (pred == null) {
+    return (
+      <p className="hint">
+        El agente no llegó a comprometerse con un número (suele pasar si no hay lecturas
+        suficientes en la ventana previa). El sensor registró <b>{fmt(real, dec)} {unidad}</b>.
+      </p>
+    );
+  }
+  const error = pred - real;
+  const rel = real !== 0 ? Math.abs(error) / Math.abs(real) * 100 : null;
+  // Los cortes son de lectura, no de física: separan "sirve", "sirve con
+  // reparos" y "no sirve para decidir nada" a ojo de quien mira la pantalla.
+  const clase = rel == null ? "" : rel <= 15 ? " ficha-ok" : rel <= 40 ? " ficha-medio" : " ficha-mal";
+  return (
+    <>
+      <header className="bloq-h">
+        <span className="bloq-ic bloq-ic-real"><IconoCheck size={15} /></span>
+        <span className="bloq-t">Lo que midió el sensor</span>
+        <span className="muted small">revelado por la consola, después de la predicción</span>
+      </header>
+      <div className="fichas">
+        <div className="ficha ficha-acento">
+          <span className="ficha-l">Predijo a ciegas</span>
+          <span className="ficha-v">{fmt(pred, dec)}<small>{unidad}</small></span>
+        </div>
+        <div className="ficha">
+          <span className="ficha-l">Midió el sensor</span>
+          <span className="ficha-v">{fmt(real, dec)}<small>{unidad}</small></span>
+        </div>
+        <div className={"ficha" + clase}>
+          <span className="ficha-l">Se equivocó en</span>
+          <span className="ficha-v">{(error > 0 ? "+" : "") + fmt(error, dec)}<small>{unidad}</small></span>
+        </div>
+        {rel != null && (
+          <div className={"ficha" + clase}>
+            <span className="ficha-l">Error relativo</span>
+            <span className="ficha-v">{fmt(rel, 0)}<small>%</small></span>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
 const TOLERANCIA = 0.05;      // los dos lados vienen redondeados a 2 decimales
 
 const fmt = (n: any, d = 1) =>
@@ -109,11 +163,30 @@ function resultados(pasos: Paso[]): Resultado[] {
   return salida;
 }
 
-export function LecturaAgente({ pregunta, contexto, esperado }: {
+export function LecturaAgente({ pregunta, contexto, esperado, modo = "analisis", revelar }: {
   pregunta: string;
   contexto: string;
   /** Valores que dibuja el gráfico, para la verificación cruzada. */
   esperado?: { real: number; pred: number } | null;
+  /**
+   * `prediccion` = A CIEGAS. No es un matiz de redacción: en ese modo el
+   * servicio le quita `backtest` del juego de herramientas, que es la única que
+   * revela lo medido. La garantía es la herramienta ausente, no el prompt.
+   */
+  modo?: "analisis" | "prediccion";
+  /**
+   * Qué pedir para revelar lo medido, DESPUÉS de que el agente se comprometió.
+   *
+   * Es una consulta aparte que hace LA CONSOLA, no un dato que se le pase al
+   * agente: si le llegara, su justificación sería una racionalización. Que sea
+   * una llamada separada además lo hace demostrable desde la pestaña de red.
+   *
+   * Se pide el valor del INSTANTE, no el promedio de la franja: el agente
+   * predijo un instante, y compararlo contra una media horaria sería medir el
+   * error contra otra cantidad (en el 22-jul 13:00 son 315,4 vs 307,5).
+   */
+  revelar?: { variable: string; ahora: string; horizonte_seg: number;
+              unidad: string; dec?: number } | null;
 }) {
   const [respuesta, setRespuesta] = useState("");
   const [pasos, setPasos] = useState<Paso[]>([]);
@@ -123,13 +196,35 @@ export function LecturaAgente({ pregunta, contexto, esperado }: {
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [verTraza, setVerTraza] = useState(false);
+  const [revelado, setRevelado] = useState<{ real: number } | "cargando" | null>(null);
+  const [errRevelar, setErrRevelar] = useState<string | null>(null);
+  const ciego = modo === "prediccion";
+
+  /** La consulta de revelación. La hace la consola, y recién cuando se la pide. */
+  async function revelarMedido() {
+    if (!revelar) return;
+    setRevelado("cargando"); setErrRevelar(null);
+    const r = await jpost<any>("/api/pronostico/forecast", {
+      variable: revelar.variable, horizon_seconds: revelar.horizonte_seg,
+      ahora: revelar.ahora,
+    });
+    const medido = (r.data as any)?.medido;
+    if (!r.ok || !medido) {
+      setRevelado(null);
+      setErrRevelar(!r.ok ? ((r.data as any)?.detail || `error ${r.status}`)
+                          : "el sensor no registró nada en ese instante");
+      return;
+    }
+    setRevelado({ real: medido.valor });
+  }
 
   async function analizar() {
     setCargando(true); setError(null); setRespuesta(""); setPasos([]); setVerTraza(false);
+    setRevelado(null); setErrRevelar(null);
     // Un solo turno: no es una conversación, es una lectura puntual. Por eso no
     // reusa el hilo del widget flotante (ni lo ensucia).
     const r = await jpost<any>("/api/pronostico/chat", {
-      mensajes: [{ rol: "user", texto: pregunta }], contexto,
+      mensajes: [{ rol: "user", texto: pregunta }], contexto, modo,
     });
     setCargando(false);
     if (!r.ok) { setError((r.data as any)?.detail || (r.data as any)?.error || `error ${r.status}`); return; }
@@ -144,9 +239,10 @@ export function LecturaAgente({ pregunta, contexto, esperado }: {
   const herramientas = pasos.filter((p) => p.tipo === "tool").map((p) => p.nombre);
   const webs = pasos.filter((p) => p.tipo === "web").length;
 
-  // ¿El agente vio los mismos números que dibuja el gráfico?
+  // ¿El agente vio los mismos números que dibuja el gráfico? En modo ciego no
+  // aplica: el agente NO vio lo medido, y ese es justamente el punto.
   const primero = res[0];
-  const coincide = primero && esperado && primero.real != null && primero.pred != null
+  const coincide = !ciego && primero && esperado && primero.real != null && primero.pred != null
     ? Math.abs(primero.real - esperado.real) <= TOLERANCIA
       && Math.abs(primero.pred - esperado.pred) <= TOLERANCIA
     : null;
@@ -155,15 +251,23 @@ export function LecturaAgente({ pregunta, contexto, esperado }: {
     <div className="card lectura">
       <div className="lectura-head">
         <div>
-          <h3>Lectura del agente</h3>
+          <h3>{ciego ? "El agente predice a ciegas" : "Lectura del agente"}</h3>
           <p className="hint">
-            Acá se pide la predicción. El número lo produce una herramienta determinista (abajo se
-            ve cuál y con qué parámetros), pero el agente <b>lo asume como propio</b>: lo justifica
-            y lo critica.
+            {ciego ? (<>
+              El agente <b>no tiene forma de ver</b> lo que midió el sensor: en este modo el
+              servicio le quita del juego la única herramienta que lo revela. Diagnostica, se
+              compromete con un número y declara su confianza. Recién después revelás el resultado.
+            </>) : (<>
+              Acá se pide la predicción. El número lo produce una herramienta determinista (abajo se
+              ve cuál y con qué parámetros), pero el agente <b>lo asume como propio</b>: lo justifica
+              y lo critica.
+            </>)}
           </p>
         </div>
         <button className="btn" onClick={analizar} disabled={cargando}>
-          {cargando ? "Analizando…" : respuesta ? "Volver a analizar" : "Analizar"}
+          {cargando ? (ciego ? "Prediciendo…" : "Analizando…")
+                    : respuesta ? "Volver a intentar"
+                    : ciego ? "Predecir a ciegas" : "Analizar"}
         </button>
       </div>
 
@@ -171,7 +275,8 @@ export function LecturaAgente({ pregunta, contexto, esperado }: {
       {cargando && !respuesta && (
         <div className="lectura-espera">
           <span className="chat-dots"><i /><i /><i /></span>
-          Eligiendo el algoritmo, ejecutándolo y redactando…
+          {ciego ? "Diagnosticando el cielo, midiendo el riesgo y comprometiéndose…"
+                 : "Eligiendo el algoritmo, ejecutándolo y redactando…"}
         </div>
       )}
 
@@ -209,6 +314,32 @@ export function LecturaAgente({ pregunta, contexto, esperado }: {
             <span className="bloq-t">Lo que dijo el agente</span>
           </header>
           <div className="md" dangerouslySetInnerHTML={{ __html: renderMd(respuesta) }} />
+        </section>
+      )}
+
+      {/* La REVELACIÓN. La hace la consola, no el agente: él ya se comprometió y
+          no puede volver atrás. Por eso el veredicto se calcula acá, con el
+          número que él dio y el que registró el sensor, y no se le pregunta. */}
+      {ciego && respuesta && revelar && (
+        <section className={"bloq bloq-revelar" + (typeof revelado === "object" && revelado ? " abierto" : "")}>
+          {typeof revelado === "object" && revelado ? (
+            <Veredicto pred={primero?.pred ?? null} real={revelado.real}
+                       unidad={revelar.unidad} dec={revelar.dec ?? 1} />
+          ) : (
+            <div className="revelar-cerrado">
+              <div>
+                <b>El agente ya se comprometió.</b>
+                <p className="hint">
+                  Su número no puede cambiar. Lo que midió el sensor todavía no se consultó:
+                  al revelarlo, la consola lo pide aparte y calcula el error.
+                </p>
+                {errRevelar && <p className="hint" style={{ color: "var(--crit)" }}>{errRevelar}</p>}
+              </div>
+              <button className="btn" onClick={revelarMedido} disabled={revelado === "cargando"}>
+                {revelado === "cargando" ? "Consultando el sensor…" : "Revelar lo que midió el sensor"}
+              </button>
+            </div>
+          )}
         </section>
       )}
 

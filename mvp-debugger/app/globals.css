@@ -567,3 +567,28 @@ svg .hit { cursor:crosshair; }
 .sal-rejilla { display:grid; gap:9px 20px; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); margin-top:6px; }
 .sal-dato { display:flex; flex-direction:column; gap:2px; min-width:0; }
 .sal-dato > span:last-child { font-size:13px; color:var(--ink); overflow-wrap:anywhere; }
+
+/* ── Predicción a ciegas: interruptor de modo y revelación ──────────────────
+   La revelación es un momento con peso: el agente ya se comprometió y no puede
+   volver atrás. Por eso ocupa su propio bloque en vez de aparecer entre las
+   demás fichas, y el veredicto se colorea por error RELATIVO, que es lo único
+   comparable entre un mediodía y un amanecer. */
+.chips-modo { flex:none; margin-top:2px; }
+
+.bloq-revelar { border-color:color-mix(in srgb, var(--real) 34%, var(--line));
+                background:color-mix(in srgb, var(--real) 4%, transparent); }
+.revelar-cerrado { display:flex; gap:16px; align-items:center; justify-content:space-between;
+                   flex-wrap:wrap; }
+.revelar-cerrado b { display:block; margin-bottom:2px; }
+.revelar-cerrado .hint { margin:0; max-width:46ch; }
+.bloq-ic-real { background:color-mix(in srgb, var(--real) 18%, transparent); color:var(--real); }
+
+.ficha-ok    { border-color:color-mix(in srgb, var(--good) 45%, var(--line));
+               background:color-mix(in srgb, var(--good) 7%, var(--panel)); }
+.ficha-ok .ficha-v    { color:var(--good); }
+.ficha-medio { border-color:color-mix(in srgb, var(--warn) 45%, var(--line));
+               background:color-mix(in srgb, var(--warn) 7%, var(--panel)); }
+.ficha-medio .ficha-v { color:var(--warn); }
+.ficha-mal   { border-color:color-mix(in srgb, var(--crit) 45%, var(--line));
+               background:color-mix(in srgb, var(--crit) 7%, var(--panel)); }
+.ficha-mal .ficha-v   { color:var(--crit); }
