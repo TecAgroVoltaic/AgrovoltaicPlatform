@@ -99,11 +99,11 @@ class ChatBody(BaseModel):
 
     mensajes: list[ChatMsg]
     contexto: str | None = None
-    modo: Literal["con_respuesta", "a_ciegas"] = Field(
-        default="con_respuesta",
-        description="Que puede ver el agente. 'con_respuesta': ve lo que midio el "
+    modo: Literal["medicion_visible", "medicion_oculta"] = Field(
+        default="medicion_visible",
+        description="Que puede ver el agente. 'medicion_visible': ve lo que midio el "
                     "sensor (incluye `backtest`), sirve para juzgar el metodo. "
-                    "'a_ciegas': NO lo ve (sin `backtest` ni web), pronostica de "
+                    "'medicion_oculta': NO lo ve (sin `backtest` ni web), pronostica de "
                     "verdad. Un valor invalido es 422, nunca una caida silenciosa "
                     "al modo permisivo.",
     )

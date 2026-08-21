@@ -19,7 +19,7 @@ import { jget, mensajeError, type Resp } from "@/app/lib/client";
 import { Estado } from "@/app/components/console/Estado";
 import { LecturaAgente } from "@/app/components/console/LecturaAgente";
 import { lineChart, palette } from "@/app/lib/charts";
-import { A_CIEGAS, CON_RESPUESTA, MODO } from "@/app/components/console/modos";
+import { MEDICION_OCULTA, MEDICION_VISIBLE, MODO } from "@/app/components/console/modos";
 
 const VARIABLES: [string, string][] = [
   ["irradiancia", "Irradiancia"], ["humedad_suelo", "Humedad de suelo"],
@@ -51,12 +51,12 @@ export function PredView({ theme }: { theme: string }) {
   const [bucket, setBucket] = useState("h");
   // Los dos modos se distinguen por UNA sola cosa, y de ahí salen sus nombres:
   // si el agente puede ver lo que midió el sensor.
-  //   con la respuesta : lo ve. ¿Qué tan bueno es el MÉTODO? Lo juzga después del hecho.
-  //   a ciegas         : no lo ve. ¿Predice bien sin saber? Se compromete primero.
-  // No es un matiz de presentación: en `a_ciegas` el servicio le quita `backtest`
+  //   medición visible : la ve. ¿Qué tan bueno es el MÉTODO? Lo juzga después del hecho.
+  //   medición oculta  : no la ve. ¿Predice bien sin saberla? Se compromete primero.
+  // No es un matiz de presentación: en `medicion_oculta` el servicio le quita `backtest`
   // del juego de herramientas, que es la única que revela lo medido. Mismos dos
   // nombres en el backend (`agent.MODOS`), en el mapa de arquitectura y acá.
-  const [aCiegas, setACiegas] = useState(false);
+  const [oculta, setOculta] = useState(false);
 
   const [rango, setRango] = useState<{ desde: string; hasta: string } | null>(null);
   const [dia, setDia] = useState<any>(null);
@@ -134,7 +134,7 @@ export function PredView({ theme }: { theme: string }) {
     // El gráfico muestra el TERRENO: lo que midió el sensor y el máximo físico
     // posible. Sin el techo no se puede leer nada: un medido de 33 W/m² no dice
     // si el día estuvo tapado o si simplemente era temprano.
-    // El gráfico SIEMPRE va entero, en los dos modos. Cortarlo a ciegas
+    // El gráfico SIEMPRE va entero, en los dos modos. Cortarlo con la medición oculta
     // fue un intento de "que no se vea la respuesta" que no protege nada: la
     // garantía de que el agente no la ve es que el servicio no le publica la
     // herramienta que la revela, y eso pasa del lado del servidor. Mutilar el
@@ -168,10 +168,10 @@ export function PredView({ theme }: { theme: string }) {
     + `(en escala, no en impresión) y decí qué limitación tuya lo explica. `
     + `Si te equivocaste, empezá por ahí. 3 o 4 frases, sin tablas ni listas.`;
 
-  // A ciegas se le pide COMPROMETERSE, no explicar. El horizonte en
+  // Con la medición oculta se le pide COMPROMETERSE, no explicar. El horizonte en
   // segundos es explícito para que no tenga que deducirlo, y se le prohíbe pedir
   // el resultado: aunque la herramienta no exista, el intento ensuciaría la traza.
-  const preguntaCiega =
+  const preguntaOculta =
     `Predecí la ${vari === "irradiancia" ? "irradiancia" : "humedad de suelo"} `
     + `del ${fecha} a las ${momento} (hora local), con ${etiqueta(bucket)} de anticipación `
     + `(${SEGUNDOS[bucket]} segundos). Diagnosticá primero, medí el riesgo de nubes, `
@@ -199,10 +199,10 @@ export function PredView({ theme }: { theme: string }) {
           <p>Elegí un momento: lo que midió el sensor contra lo que el modelo habría predicho.</p>
         </div>
         <div className="chips chips-modo">
-          {([MODO.con_respuesta, MODO.a_ciegas] as const).map((m) => (
+          {([MODO.medicion_visible, MODO.medicion_oculta] as const).map((m) => (
             <button key={m.id} title={m.ayuda}
-                    className={"chip" + ((m.id === A_CIEGAS) === aCiegas ? " on" : "")}
-                    onClick={() => setACiegas(m.id === A_CIEGAS)}>
+                    className={"chip" + ((m.id === MEDICION_OCULTA) === oculta ? " on" : "")}
+                    onClick={() => setOculta(m.id === MEDICION_OCULTA)}>
               {m.etiqueta}
             </button>
           ))}
@@ -276,16 +276,16 @@ export function PredView({ theme }: { theme: string }) {
 
       {punto && (
         <LecturaAgente
-          key={aCiegas ? A_CIEGAS : CON_RESPUESTA}
-          pregunta={aCiegas ? preguntaCiega : preguntaAgente}
-          modo={aCiegas ? A_CIEGAS : CON_RESPUESTA}
-          // OJO: el contexto viaja dentro del mensaje del usuario. A ciegas
+          key={oculta ? MEDICION_OCULTA : MEDICION_VISIBLE}
+          pregunta={oculta ? preguntaOculta : preguntaAgente}
+          modo={oculta ? MEDICION_OCULTA : MEDICION_VISIBLE}
+          // OJO: el contexto viaja dentro del mensaje del usuario. Con la medición oculta
           // NO puede llevar el valor medido, ni el error, ni nada derivado.
           contexto={`Predicción vs Real · ${vari} · ${fecha} ${momento}`}
-          esperado={aCiegas ? null : { real: punto.real, pred: punto.pred }}
+          esperado={oculta ? null : { real: punto.real, pred: punto.pred }}
           // El corte: se predice `momento` con `bucket` de anticipación, así que
           // los datos visibles terminan justo esa anticipación antes.
-          revelar={aCiegas ? { variable: vari, ahora: corteISO,
+          revelar={oculta ? { variable: vari, ahora: corteISO,
                              horizonte_seg: SEGUNDOS[bucket], unidad, dec } : null} />
       )}
     </section>

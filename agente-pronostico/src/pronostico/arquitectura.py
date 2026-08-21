@@ -30,11 +30,11 @@ HISTORIAL_MENSAJES = 16
 # se puede derivar de una estructura, y exponer el prompt entero seria ruido.
 # El nombre del modo dice la diferencia; esto la explica.
 OBJETIVO_MODO = {
-    _agente.CON_RESPUESTA: (
+    _agente.MEDICION_VISIBLE: (
         "El agente VE lo que midio el sensor. Sirve para juzgar el metodo "
         "despues del hecho: su trabajo es interpretar el resultado, no adivinarlo."
     ),
-    _agente.A_CIEGAS: (
+    _agente.MEDICION_OCULTA: (
         "El agente NO ve lo que midio el sensor. Pronostica de verdad. El juego "
         "de herramientas deja fuera la unica que lo revela, asi que la garantia "
         "no depende de que el modelo obedezca el prompt."
@@ -64,7 +64,7 @@ def _catalogo_herramientas() -> list[dict]:
 
     Cada entrada lleva su `input_schema` COMPLETO (el mismo que ve el modelo) y
     la lista de modos donde esta disponible. De ahi sale que `backtest` aparezca
-    marcada como exclusiva de `con_respuesta` sin que nadie lo escriba.
+    marcada como exclusiva de `medicion_visible` sin que nadie lo escriba.
     """
     catalogo: dict[str, dict] = {}
     for nombre_modo, perfil in _agente.MODOS.items():

@@ -16,21 +16,21 @@ import { Lienzo } from "./Lienzo";
 import { NodoModal, type Detalle } from "./NodoModal";
 import type { Mapa } from "./mapa";
 
-import { A_CIEGAS, CON_RESPUESTA, MODO } from "@/app/components/console/modos";
+import { MEDICION_OCULTA, MEDICION_VISIBLE, MODO } from "@/app/components/console/modos";
 
 const RUTA = "/api/pronostico/arquitectura";
 
 // Qué gana el lector al cambiar de modo. Es el momento de la presentación: la
 // garantía del sistema no es una promesa del prompt, es una herramienta ausente.
 const LEYENDA: Record<string, string> = {
-  [CON_RESPUESTA]: "El agente ve lo que midió el sensor: su trabajo es explicarlo, no adivinarlo.",
-  [A_CIEGAS]: "Sin `backtest` ni búsqueda web, no hay forma de ver el resultado antes de comprometerse.",
+  [MEDICION_VISIBLE]: "El agente ve lo que midió el sensor: su trabajo es explicarlo, no adivinarlo.",
+  [MEDICION_OCULTA]: "Sin `backtest` ni búsqueda web, no hay forma de ver el resultado antes de comprometerse.",
 };
 
 export function ArqView() {
   const [mapa, setMapa] = useState<Mapa | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [modo, setModo] = useState<string>(CON_RESPUESTA);
+  const [modo, setModo] = useState<string>(MEDICION_VISIBLE);
   const [detalle, setDetalle] = useState<Detalle | null>(null);
   const marco = useRef<HTMLDivElement>(null);
 
@@ -41,7 +41,7 @@ export function ArqView() {
       if (!r.ok || !r.data?.modos) { setError(mensajeError(r)); return; }
       setMapa(r.data);
       // El modo inicial es el primero que publica el servicio, no uno fijo.
-      setModo(Object.keys(r.data.modos)[0] || CON_RESPUESTA);
+      setModo(Object.keys(r.data.modos)[0] || MEDICION_VISIBLE);
     });
     return () => { vivo = false; };
   }, []);
@@ -122,8 +122,8 @@ export function ArqView() {
           <span><i style={{ background: "var(--ceil)" }} /> entrada / servidor</span>
           <span><i style={{ background: "var(--warn)" }} /> puerta de acceso</span>
           <span><i style={{ background: "var(--accent)" }} /> el modelo</span>
-          <span><i style={{ background: "var(--pred)" }} /> herramienta {MODO.con_respuesta.etiqueta}</span>
-          <span><i style={{ background: "var(--real)" }} /> herramienta {MODO.a_ciegas.etiqueta}</span>
+          <span><i style={{ background: "var(--pred)" }} /> herramienta {MODO.medicion_visible.etiqueta}</span>
+          <span><i style={{ background: "var(--real)" }} /> herramienta {MODO.medicion_oculta.etiqueta}</span>
           <span><i style={{ background: "var(--muted)" }} /> cálculo y datos</span>
           <span className="arq-ayuda">Pasá el mouse para el resumen · hacé clic para el detalle</span>
         </div>

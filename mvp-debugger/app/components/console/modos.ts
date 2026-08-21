@@ -8,35 +8,40 @@
  * directamente falso, porque el endpoint `/backtest` dibuja el gráfico en LOS
  * DOS modos.
  *
- * Ahora hay un solo eje, y de él salen los dos nombres: **qué puede ver el
- * agente**. Los identificadores son idénticos a los de `agent.MODOS` en el
- * servicio, y las etiquetas se escriben acá una sola vez.
+ * Hay un solo eje, y de él salen los dos nombres: **si el agente puede ver la
+ * medición del sensor**. Los identificadores son idénticos a los de
+ * `agent.MODOS` en el servicio, y las etiquetas se escriben acá una sola vez.
+ *
+ * Sobre por qué «medición visible/oculta» y no «con la respuesta / a ciegas»,
+ * que fue el par anterior: aquel era informal para una vista que se muestra
+ * fuera del equipo, y «a ciegas» sugiere que falta el dato. La medición existe
+ * siempre; lo único que cambia es si el agente la ve.
  */
 export const MODO = {
-  con_respuesta: {
-    id: "con_respuesta",
-    etiqueta: "con la respuesta",
+  medicion_visible: {
+    id: "medicion_visible",
+    etiqueta: "Medición visible",
     /** Qué hace el agente en este modo, en un verbo. Va en el botón. */
-    verbo: "Juzgar con la respuesta",
-    gerundio: "Juzgando…",
+    verbo: "Evaluar",
+    gerundio: "Evaluando…",
     ayuda: "El agente VE lo que midió el sensor y lo juzga. Sirve para evaluar el "
          + "método, no para demostrar que predice.",
   },
-  a_ciegas: {
-    id: "a_ciegas",
-    etiqueta: "a ciegas",
-    verbo: "Predecir a ciegas",
+  medicion_oculta: {
+    id: "medicion_oculta",
+    etiqueta: "Medición oculta",
+    verbo: "Predecir",
     gerundio: "Prediciendo…",
     ayuda: "El agente NO ve lo que midió el sensor: el servicio le quita `backtest` "
-         + "del juego de herramientas. La consola lo consulta después, ya con la "
-         + "respuesta del agente en la mano.",
+         + "del juego de herramientas. La consola consulta el sensor después, ya con "
+         + "el pronóstico del agente en la mano.",
   },
 } as const;
 
 export type IdModo = keyof typeof MODO;
 
-export const CON_RESPUESTA: IdModo = "con_respuesta";
-export const A_CIEGAS: IdModo = "a_ciegas";
+export const MEDICION_VISIBLE: IdModo = "medicion_visible";
+export const MEDICION_OCULTA: IdModo = "medicion_oculta";
 
 /**
  * Etiqueta legible de un modo que llega del servicio. Tolera un id desconocido

@@ -64,9 +64,9 @@ export function WebConsola() {
     <Page
       crumb="La web · mvp-debugger"
       title="Vistas de la consola"
-      lead="Qué muestra cada una de las cuatro secciones de la consola (ruta /), y de qué endpoint sale cada dato."
+      lead="Qué muestra cada sección de la consola (ruta /), y de qué endpoint sale cada dato."
     >
-      <p>La consola (<IC>components/console/Console.tsx</IC>) es un shell con barra lateral: selector de agente (Analizador / Pronóstico), navegación de 4 vistas, indicador de salud de la DB (ping a <IC>/health</IC> cada 15 s) y toggle de tema. Abajo a la derecha, el chat flotante.</p>
+      <p>La consola (<IC>components/console/Console.tsx</IC>) es un shell con barra lateral: selector de agente (Analizador / Pronóstico), navegación de 7 vistas en dos grupos (las de cada agente y las transversales), indicador de salud de la DB (ping a <IC>/health</IC> cada 15 s) y toggle de tema. Abajo a la derecha, el chat flotante.</p>
 
       <h2>1 · Reconciliación</h2>
       <p>La vista por defecto del analizador. Muestra los <strong>datos crudos en vivo</strong> (tabla <IC>electrico_corregido</IC>: timestamp, potencias PV1/PV2/AC, temperaturas) buscables y con «cargar más», más tres tarjetas de <strong>cobertura</strong> (eléctrica, radiación 15 s, performance). La idea: preguntale al chat y cruzá cada número de su respuesta contra estos datos. Sale de <IC>/api/analizador/datos/muestra</IC> y <IC>/datos/tablas</IC>.</p>
@@ -83,8 +83,17 @@ export function WebConsola() {
         <div>Honestidad sobre la cadencia variable: el gráfico de «potencia» es <b>potencia media por bucket</b> (robusta al muestreo que cambia de 2 s a 5 min); la energía real en kWh vive en el KPI.</div>
       </Note>
 
-      <h2>4 · Costo y uso</h2>
+      <h2>4 · Arquitectura del agente</h2>
+      <p>El agente de pronóstico dibujado como grafo, leído en vivo de <IC>GET /arquitectura</IC>: sus herramientas con el <IC>input_schema</IC> completo, los frenos y el interruptor de <strong>modo</strong>. Los dos modos se distinguen por una sola cosa: si el agente puede ver la medición del sensor. Con <strong>medición visible</strong> conserva <IC>backtest</IC> y juzga el método; con <strong>medición oculta</strong> el servicio se la quita, que es la única garantía real de que predice sin conocer el resultado. Cada nodo abre una ficha con «Qué hace» y «En qué ayuda».</p>
+
+      <h2>5 · Base de datos</h2>
+      <p>Qué se le hizo al crudo. El recorrido en cinco actos con el dato a la vista en cada paso, partido por la línea que separa lo que se decide <strong>al cargar</strong> (irreversible) de lo que se decide <strong>al consultar</strong> (una vista SQL, reescribible). Debajo, once tratamientos numerados como en el documento que revisó Leo Cardinale. Es un corte fechado, no una lectura viva: el servicio del pronóstico no lee las tablas fotovoltaicas.</p>
+
+      <h2>6 · Costo y uso</h2>
       <p>Cuánto cuesta operar el agente. El <strong>acumulado real</strong> (<IC>GET /uso</IC>, persistido: tokens, USD, nº consultas) y el <strong>gasto de la sesión</strong>: cada pregunta que hacés suma su costo, con gráfico acumulado, split entrada/salida y proyección. Tarifa del modelo <IC>claude-haiku-4-5</IC> ($1 in / $5 out por millón de tokens).</p>
+
+      <h2>7 · Salud del sistema</h2>
+      <p>Diagnóstico del servicio y de la cobertura de datos: qué variables tiene el store, hasta cuándo llegan, cuál fue la última predicción guardada y si algo dejó de responder.</p>
     </Page>
   );
 }

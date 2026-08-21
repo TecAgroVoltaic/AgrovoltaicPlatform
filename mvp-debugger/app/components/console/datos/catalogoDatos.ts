@@ -1,4 +1,4 @@
-// Catálogo de la vista «Los datos»: la PROSA y la GEOMETRÍA del recorrido ETL.
+// Catálogo de la vista «Base de datos»: la PROSA y la GEOMETRÍA del recorrido ETL.
 //
 // Diferencia importante con `arquitectura/catalogo.ts`: aquella vista se dibuja
 // con lo que el servicio publica en vivo, así que no puede mentir. Esta NO tiene

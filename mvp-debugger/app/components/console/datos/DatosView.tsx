@@ -1,5 +1,6 @@
 "use client";
-// «Los datos»: qué se le hizo al crudo, en once líneas.
+// «Base de datos»: qué se le hizo al crudo antes de guardarlo, y qué se le
+// sigue haciendo cada vez que se consulta.
 //
 // Es la contraparte de la vista de arquitectura. Aquella cuenta cómo razona el
 // agente; esta, de dónde salen los números sobre los que razona.
@@ -31,7 +32,7 @@ export function DatosView() {
   return (
     <section className="vista">
       <div className="phead">
-        <h1>Los datos</h1>
+        <h1>Base de datos</h1>
         <p>
           El recorrido completo, con el dato a la vista en cada paso. Abajo, un punto
           por tratamiento, numerados como en el documento que revisó Leo Cardinale.

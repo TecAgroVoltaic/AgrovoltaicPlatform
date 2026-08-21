@@ -261,9 +261,9 @@ Perillas (en el forecaster REAL, no en el backtest): `lookback_min`, `estadistic
 (mediana/media/último) y `kt_max` (tope al realce por nubes).
 
 ### La garantía no es el prompt: es el juego de herramientas
-`chat()` acepta un **modo**. En `a_ciegas` las herramientas son las tres de arriba y
+`chat()` acepta un **modo**. En `medicion_oculta` las herramientas son las tres de arriba y
 **`backtest` no está**: es la única que revela lo medido. Un prompt se puede ignorar; una
-herramienta ausente no se puede llamar. `con_respuesta` (el modo por defecto) la conserva,
+herramienta ausente no se puede llamar. `medicion_visible` (el modo por defecto) la conserva,
 porque ahí ver el resultado *es* el objetivo. Cubierto por tests que verifican el juego de cada modo
 y que ni `predecir` ni los diagnósticos devuelven claves del resultado en ningún nivel.
 
@@ -275,7 +275,7 @@ resultado. Frente a los 78,1 de la configuración por defecto, su razonamiento l
 valor real (32,8).
 
 **Pendiente:** cablear el flujo de dos fases en la consola (el agente predice a ciegas, la
-consola revela y puntúa). Hoy funciona por `/chat` con `modo=a_ciegas`.
+consola revela y puntúa). Hoy funciona por `/chat` con `modo=medicion_oculta`.
 
 Relacionado: [[integracion-visioneflow]], [[capa-agentes]], [[agrodash-esquema]], [[bloqueantes]], [[agrodash]], [[pipeline-tiempo-real]], [[mvp-debugger]].
 
@@ -290,7 +290,7 @@ frenos y cobertura de datos. Lo consume la vista de arquitectura de la consola (
 pertenencia a cada modo salen de `agent.MODOS` y de los esquemas reales — los mismos objetos
 que se le mandan al modelo. No hay una segunda lista que mantener sincronizada, así que la vista
 no puede quedar desfasada del código. Que `backtest` aparezca marcada como exclusiva de
-`con_respuesta` no lo escribió nadie: se deduce de dónde está.
+`medicion_visible` no lo escribió nadie: se deduce de dónde está.
 
 Tres decisiones que valen la pena:
 - **El horizonte se lee del esquema**, no de `_MIN_SEG`/`_MAX_SEG`. Si alguna vez discreparan,
@@ -313,7 +313,7 @@ su bloque, y el 401 sin clave. **159 tests en total.**
 **Desplegado en la EC2** (rsync de `src/` y `scripts/` + rebuild de `forecast-forecast-1`;
 respaldo en `.rollback-src`). **e2e contra producción: 72 chequeos, 0 fallas**, 3 avisos
 conocidos (ingesta congelada desde el 2026-07-23, skill 0 % de humedad por construcción). El
-bloque 6 del e2e es nuevo y verifica desde afuera que el modo `a_ciegas` no publique `backtest`
+bloque 6 del e2e es nuevo y verifica desde afuera que el modo `medicion_oculta` no publique `backtest`
 ni búsqueda web.
 
 ## 2026-08-19 (noche) — el acumulado de `/uso` vivía en un lugar efímero
@@ -655,7 +655,7 @@ decir *"el sensor registró"*.
 
 Verificado con llamadas reales a Haiku, no solo por lectura del archivo.
 
-## 2026-08-19 — Un solo nombre por cosa: los modos se llaman `con_respuesta` y `a_ciegas`
+## 2026-08-19 — Un solo nombre por cosa: los modos se llaman `medicion_visible` y `medicion_oculta`
 
 La misma cosa tenía cuatro nombres y nadie podía saber cuáles eran lo mismo. El servicio decía
 `analisis` / `prediccion`; el chip de la consola decía «modo backtest» / «predicción a ciegas»;
@@ -668,8 +668,8 @@ idénticos en el servicio, en el mapa de arquitectura y en la consola:
 
 | modo | ve lo medido | herramientas | para qué sirve |
 |---|---|---|---|
-| `con_respuesta` | sí | `forecast`, `backtest`, `riesgo_de_nubes` + web | juzgar el método después del hecho |
-| `a_ciegas` | no | `diagnosticar_condiciones`, `contexto_historico`, `riesgo_de_nubes`, `predecir` | pronosticar de verdad |
+| `medicion_visible` | sí | `forecast`, `backtest`, `riesgo_de_nubes` + web | juzgar el método después del hecho |
+| `medicion_oculta` | no | `diagnosticar_condiciones`, `contexto_historico`, `riesgo_de_nubes`, `predecir` | pronosticar de verdad |
 
 `backtest` vuelve a ser lo que siempre fue: **una herramienta y un endpoint**, nunca un modo.
 
@@ -686,5 +686,29 @@ idénticos en el servicio, en el mapa de arquitectura y en la consola:
 
 Los prompts pasaron a llamarse `PROMPT_CON_RESPUESTA` y `PROMPT_A_CIEGAS` (antes `CHAT_SYSTEM` y
 `PREDICCION_SYSTEM`, que tampoco decían el eje).
+
+Relacionado: [[mvp-debugger]].
+
+## 2026-08-20 — Los modos se llaman `medicion_visible` y `medicion_oculta`
+
+Segundo (y último) renombre. El par anterior, «con la respuesta» / «a ciegas», era **informal
+para una vista que se muestra fuera del equipo**, y «a ciegas» además sugiere que falta el dato.
+La medición existe siempre; lo único que cambia es si el agente la ve, y eso es exactamente lo
+que los nombres nuevos dicen.
+
+| modo | ve la medición | herramientas | para qué |
+|---|---|---|---|
+| `medicion_visible` | sí | `forecast`, `backtest`, `riesgo_de_nubes` + web | evaluar el método |
+| `medicion_oculta` | no | `diagnosticar_condiciones`, `contexto_historico`, `riesgo_de_nubes`, `predecir` | pronosticar de verdad |
+
+Etiquetas: **«Medición visible»** / **«Medición oculta»**. Botones: **«Evaluar»** / **«Predecir»**
+(antes «Juzgar con la respuesta» / «Predecir a ciegas»). Los prompts pasaron a
+`PROMPT_MEDICION_VISIBLE` y `PROMPT_MEDICION_OCULTA`.
+
+Barrido completo, que es lo que pidió Izack: servicio (`agent.py`, `api.py`, `prompts.py`,
+`arquitectura.py`), pruebas, consola (`modos.ts` y los cuatro componentes que lo leen), clases CSS
+del grafo, fichas del catálogo y documentación. **Desplegado y verificado en producción:** el mapa
+publica los dos nombres nuevos y `a_ciegas`, `con_respuesta` y `prediccion` responden **422**, no
+una caída silenciosa al modo permisivo.
 
 Relacionado: [[mvp-debugger]].

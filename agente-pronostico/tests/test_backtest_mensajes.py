@@ -205,18 +205,18 @@ def test_la_claridad_va_en_porcentaje_y_con_el_momento_anterior(monkeypatch):
     assert "pct_del_techo_que_paso" in anterior
 
 
-# ── El modo a ciegas no puede ver la respuesta ──────────────────────────────
+# ── El modo `medicion_oculta` no puede ver la medicion ──────────────────────
 
-def test_el_modo_a_ciegas_no_expone_backtest():
+def test_el_modo_medicion_oculta_no_expone_backtest():
     """La garantía no es el prompt: es que la herramienta que revela lo medido
     NO está en el juego. Un prompt se puede ignorar; una tool ausente, no."""
-    from pronostico.agent.agent import A_CIEGAS, CON_RESPUESTA, MODOS
-    nombres = [e["name"] for e in MODOS[A_CIEGAS]["schemas"]]
+    from pronostico.agent.agent import MEDICION_OCULTA, MEDICION_VISIBLE, MODOS
+    nombres = [e["name"] for e in MODOS[MEDICION_OCULTA]["schemas"]]
     assert "backtest" not in nombres
     assert set(nombres) == {"diagnosticar_condiciones", "contexto_historico",
                             "riesgo_de_nubes", "predecir"}
-    # Y `con_respuesta` sí la conserva: ahí ver el resultado es el objetivo.
-    assert "backtest" in [e["name"] for e in MODOS[CON_RESPUESTA]["schemas"]]
+    # Y `medicion_visible` sí la conserva: ahí ver el resultado es el objetivo.
+    assert "backtest" in [e["name"] for e in MODOS[MEDICION_VISIBLE]["schemas"]]
 
 
 # Claves que revelarian el resultado. Se buscan como CLAVES y no en el texto
@@ -272,7 +272,7 @@ def test_el_contexto_historico_no_toca_el_dia_objetivo(monkeypatch):
 
 # ── `riesgo_de_nubes`: la tool nueva, bajo el mismo contrato ─────────────────
 def test_riesgo_de_nubes_no_devuelve_el_valor_medido():
-    """Entra al modo ciego, asi que le aplica el MISMO contrato que a `predecir`:
+    """Entra al modo `medicion_oculta`, asi que le aplica el MISMO contrato que a `predecir`:
     nada de lo que devuelva puede venir del instante objetivo."""
     from pronostico.tools import riesgo_tool
 

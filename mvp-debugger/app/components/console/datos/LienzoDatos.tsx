@@ -1,5 +1,5 @@
 "use client";
-// El recorrido del dato, en cinco actos.
+// El recorrido del dato hasta la base, en cinco actos.
 //
 // Dos versiones anteriores y qué falló en cada una:
 //

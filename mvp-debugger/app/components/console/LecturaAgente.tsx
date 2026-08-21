@@ -28,12 +28,12 @@ import { TrazaLegible } from "@/app/components/TrazaLegible";
 import {
   IconoAlerta, IconoAlgoritmo, IconoCheck, IconoTexto,
 } from "@/app/components/Iconos";
-import { A_CIEGAS, CON_RESPUESTA, MODO, type IdModo } from "@/app/components/console/modos";
+import { MEDICION_OCULTA, MEDICION_VISIBLE, MODO, type IdModo } from "@/app/components/console/modos";
 
 type Paso = any;
 
 /**
- * El puntaje del pronóstico a ciegas. Lo calcula la CONSOLA, no el agente.
+ * El puntaje del pronóstico con la medición oculta. Lo calcula la CONSOLA, no el agente.
  *
  * El error absoluto solo no alcanza para juzgar: 45 W/m² es excelente a mediodía
  * y catastrófico al amanecer. Por eso va siempre acompañado del relativo, que es
@@ -148,14 +148,14 @@ function resultados(pasos: Paso[]): Resultado[] {
 }
 
 export function LecturaAgente({ pregunta, contexto, esperado,
-                                modo = CON_RESPUESTA, revelar }: {
+                                modo = MEDICION_VISIBLE, revelar }: {
   pregunta: string;
   contexto: string;
   /** Valores que dibuja el gráfico, para la verificación cruzada. */
   esperado?: { real: number; pred: number } | null;
   /**
    * Qué puede ver el agente. Es el único eje que separa los dos modos, y no es
-   * un matiz de redacción: en `a_ciegas` el servicio le quita `backtest` del
+   * un matiz de redacción: en `medicion_oculta` el servicio le quita `backtest` del
    * juego de herramientas, que es la única que revela lo medido. La garantía es
    * la herramienta ausente, no el prompt. Mismos dos nombres en el backend
    * (`agent.MODOS`) y en el mapa de arquitectura.
@@ -185,7 +185,7 @@ export function LecturaAgente({ pregunta, contexto, esperado,
   const [verTraza, setVerTraza] = useState(false);
   const [revelado, setRevelado] = useState<{ real: number } | "cargando" | null>(null);
   const [errRevelar, setErrRevelar] = useState<string | null>(null);
-  const aCiegas = modo === A_CIEGAS;
+  const oculta = modo === MEDICION_OCULTA;
   const vocab = MODO[modo];
 
   /** La consulta de revelación. La hace la consola, y recién cuando se la pide. */
@@ -223,17 +223,17 @@ export function LecturaAgente({ pregunta, contexto, esperado,
     setCosto(r.data?.costo?.usd_total ?? null);
     // Recién ACÁ, con la respuesta del agente ya en la mano, se consulta lo que
     // midió el sensor. El orden no depende de que alguien apriete un botón.
-    if (aCiegas) await revelarMedido();
+    if (oculta) await revelarMedido();
   }
 
   const res = resultados(pasos);
   const herramientas = pasos.filter((p) => p.tipo === "tool").map((p) => p.nombre);
   const webs = pasos.filter((p) => p.tipo === "web").length;
 
-  // ¿El agente vio los mismos números que dibuja el gráfico? A ciegas no
+  // ¿El agente vio los mismos números que dibuja el gráfico? Con la medición oculta no
   // aplica: el agente NO vio lo medido, y ese es justamente el punto.
   const primero = res[0];
-  const coincide = !aCiegas && primero && esperado && primero.real != null && primero.pred != null
+  const coincide = !oculta && primero && esperado && primero.real != null && primero.pred != null
     ? Math.abs(primero.real - esperado.real) <= TOLERANCIA
       && Math.abs(primero.pred - esperado.pred) <= TOLERANCIA
     : null;
@@ -242,9 +242,9 @@ export function LecturaAgente({ pregunta, contexto, esperado,
     <div className="card lectura">
       <div className="lectura-head">
         <div>
-          <h3>{aCiegas ? "El agente predice a ciegas" : "El agente juzga con la respuesta"}</h3>
+          <h3>{oculta ? "El agente predice sin ver la medición" : "El agente evalúa el método"}</h3>
           <p className="hint">
-            {aCiegas ? (<>
+            {oculta ? (<>
               El agente <b>no puede ver</b> lo que midió el sensor: el servicio le quita del juego
               la única herramienta que lo revela. Se compromete primero; la consola consulta el
               sensor después, ya con su respuesta en la mano.
@@ -264,12 +264,12 @@ export function LecturaAgente({ pregunta, contexto, esperado,
       {cargando && !respuesta && (
         <div className="lectura-espera">
           <span className="chat-dots"><i /><i /><i /></span>
-          {aCiegas ? "Diagnosticando el cielo, midiendo el riesgo y comprometiéndose…"
+          {oculta ? "Diagnosticando el cielo, midiendo el riesgo y comprometiéndose…"
                    : "Reconstruyendo el método, comparándolo contra lo medido y redactando…"}
         </div>
       )}
 
-      {!aCiegas && res.map((r, i) => (
+      {!oculta && res.map((r, i) => (
         <section className="bloq bloq-algo" key={i}>
           <header className="bloq-h">
             <span className="bloq-ic bloq-ic-algo"><IconoAlgoritmo size={15} /></span>
@@ -309,7 +309,7 @@ export function LecturaAgente({ pregunta, contexto, esperado,
       {/* La REVELACIÓN. La hace la consola, no el agente: él ya se comprometió y
           no puede volver atrás. Por eso el veredicto se calcula acá, con el
           número que él dio y el que registró el sensor, y no se le pregunta. */}
-      {aCiegas && respuesta && revelar && (revelado || errRevelar) && (
+      {oculta && respuesta && revelar && (revelado || errRevelar) && (
         <section className="bloq bloq-revelar">
           {typeof revelado === "object" && revelado ? (
             <Veredicto pred={primero?.pred ?? null} real={revelado.real}

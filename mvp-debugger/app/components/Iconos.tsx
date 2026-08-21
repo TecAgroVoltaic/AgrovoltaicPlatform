@@ -122,7 +122,7 @@ export function IconoGrafo({ size = 16, className }: P) {
   );
 }
 
-/** Los datos: un cilindro de base de datos. */
+/** Base de datos: un cilindro. */
 export function IconoDatos({ size = 16, className }: P) {
   return (
     <svg {...base(size)} className={className}>

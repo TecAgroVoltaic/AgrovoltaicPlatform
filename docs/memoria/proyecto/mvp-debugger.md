@@ -300,7 +300,7 @@ prueba») queda igual, abajo.
 Cuidado con una colisión que estuvo a punto de pasar: `.arq-ayuda` **ya existía** para el texto
 de la leyenda del lienzo. La sección nueva se llama `.arq-porque`.
 
-### Vista nueva «Los datos» (`app/components/console/datos/`)
+### Vista nueva «Base de datos» (`app/components/console/datos/`)
 
 **El lienzo: el recorrido en cinco actos, con el dato a la vista.** La primera versión dibujaba
 `extract → transform → load`, que son los nombres de los MÓDULOS: se veía prolijo y no explicaba
@@ -376,3 +376,15 @@ uno muestre el DATO y diga POR QUÉ, que **no queden nombres de módulo** (`extr
 `load`), que **no quede ni una coordenada absoluta en el marcado**, que cada tramo crezca según
 cuántos actos tiene, que las zonas sean contiguas y que **ninguna flecha cruce la línea**. Con la
 brevedad como aserción explícita, tooltips incluidos. **40 chequeos, 0 fallas.**
+
+## 2026-08-20 — Renombre de los modos y de la sección de datos
+
+- **Los modos** pasan a `medicion_visible` / `medicion_oculta`, con etiquetas «Medición visible»
+  y «Medición oculta» y botones «Evaluar» / «Predecir». El par anterior («con la respuesta» / «a
+  ciegas») era informal para algo que se muestra fuera del equipo. Detalle y la tabla de
+  herramientas por modo en [[agente-pronostico]].
+- **La vista «Los datos» pasa a «Base de datos».** El id interno y la carpeta siguen siendo
+  `datos/` (no son visibles en ninguna pantalla).
+- **Corregida una desactualización previa de la doc:** `docs/content/web.tsx` decía «las cuatro
+  secciones de la consola» y listaba 4, cuando ya son 7. Se agregaron Arquitectura, Base de datos
+  y Salud, y se corrigió el conteo.

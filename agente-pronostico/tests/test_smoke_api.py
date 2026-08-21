@@ -142,7 +142,7 @@ class _AgenteFalso:
     def conversar(self, pregunta):
         return dict(self.TRAZA)
 
-    def chat(self, mensajes, contexto=None, modo="con_respuesta"):
+    def chat(self, mensajes, contexto=None, modo="medicion_visible"):
         return dict(self.TRAZA)
 
 
@@ -169,7 +169,7 @@ def test_chat_devuelve_la_traza(agente_falso):
 
 def test_un_modo_inventado_es_422_y_no_una_caida_al_permisivo(agente_falso):
     """Antes, `MODOS.get(modo) or MODOS["analisis"]` convertia un typo en una
-    fuga: quien pedia pronosticar a ciegas recibia el modo CON `backtest`, que
+    fuga: quien pedia la medicion oculta recibia el modo CON `backtest`, que
     es la unica herramienta que revela lo medido. Fallar en el borde es lo
     correcto; degradar la garantia en silencio, no."""
     # Given: un nombre de modo que no existe (typo, cliente viejo, lo que sea)
@@ -182,14 +182,14 @@ def test_un_modo_inventado_es_422_y_no_una_caida_al_permisivo(agente_falso):
     # Then: lo rechaza el borde, con los dos nombres validos en el detalle
     assert r.status_code == 422
     detalle = r.text
-    assert "con_respuesta" in detalle and "a_ciegas" in detalle
+    assert "medicion_visible" in detalle and "medicion_oculta" in detalle
 
 
 def test_el_agente_cae_al_modo_restrictivo_ante_un_modo_desconocido():
     """La red de abajo, por si alguien llama a `chat` sin pasar por la API."""
     # Given/When: el perfil que elegiria el agente ante un modo invalido
-    from pronostico.agent.agent import A_CIEGAS, MODOS
-    perfil = MODOS.get("modo-que-no-existe") or MODOS[A_CIEGAS]
+    from pronostico.agent.agent import MEDICION_OCULTA, MODOS
+    perfil = MODOS.get("modo-que-no-existe") or MODOS[MEDICION_OCULTA]
 
     # Then: el restrictivo. Nunca el que trae `backtest`.
     assert "backtest" not in [e["name"] for e in perfil["schemas"]]

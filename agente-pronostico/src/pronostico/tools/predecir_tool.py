@@ -1,4 +1,4 @@
-"""Tool `predecir` — el agente se compromete con un numero, a ciegas.
+"""Tool `predecir` — el agente se compromete con un numero, sin ver la medicion.
 
 Es la herramienta con la que el agente EJERCE su criterio: elige la configuracion
 del metodo a partir del diagnostico y la aplica. Se diferencia de `forecast` en
@@ -7,7 +7,7 @@ perillas.
 
 Lo que NO devuelve es tan importante como lo que devuelve: ni el valor medido en
 el instante objetivo, ni el error, ni nada derivado. Si los devolviera, el agente
-podria "predecir" con la respuesta a la vista y su justificacion seria una
+podria "predecir" con la medicion a la vista y su justificacion seria una
 racionalizacion. La revelacion del resultado es un paso posterior y ajeno a esta
 herramienta.
 

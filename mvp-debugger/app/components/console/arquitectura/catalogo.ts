@@ -67,7 +67,7 @@ export const HERRAMIENTAS: Record<string, Ficha> = {
     resumen: "reconstruye el pasado y lo compara con lo medido",
     hover: "Reconstruye cómo se habría predicho una fecha pasada y lo compara con lo que midió el sensor. Es la única herramienta que revela el resultado.",
     hace: "Reconstruye qué se habría predicho en cada instante de una fecha pasada, usando **solo** lo anterior a ese instante, y lo contrasta con lo que midió el sensor.",
-    ayuda: "Es el banco de pruebas del método: sin ella, «el pronóstico anda bien» sería una opinión. Da el *skill*, que compara contra repetir la última lectura, y ese es el único número que distingue un método útil de uno que acierta porque el cielo estuvo quieto. Es también la herramienta que se le **quita** al agente para que pueda predecir a ciegas.",
+    ayuda: "Es el banco de pruebas del método: sin ella, «el pronóstico anda bien» sería una opinión. Da el *skill*, que compara contra repetir la última lectura, y ese es el único número que distingue un método útil de uno que acierta porque el cielo estuvo quieto. Es también la herramienta que se le **quita** al agente para que pueda predecir sin ver la medición.",
     devuelve: [
       "`punto_consultado`: real, reconstruido, error, techo y kt* de la hora pedida",
       "`metricas {mae, bias, error_rel_pct, skill_pct}`: el *skill* compara contra la persistencia ingenua",
@@ -75,13 +75,13 @@ export const HERRAMIENTAS: Record<string, Ficha> = {
       "`_grafico`: payload para el widget; **se le quita al modelo** antes de mandárselo, para no pagar esos tokens",
     ],
     limites: [
-      "**Queda fuera del modo «a ciegas».** Es la única herramienta que trae el valor medido: con ella a mano el agente podría «predecir» sabiendo la respuesta.",
+      "**Queda fuera del modo «medición oculta».** Es la única herramienta que trae el valor medido: con ella a mano el agente podría «predecir» sabiendo la respuesta.",
       "Si te pasás del rango disponible, devuelve el rango exacto para que el modelo lo cite en vez de adivinarlo.",
       "El techo de cielo despejado se promedia en resolución nativa antes de agrupar. Evaluado en el borde del bucket daba 0 para el bucket diario, con un *skill* negativo sin sentido.",
     ],
     pruebas: [
       "`tests/test_backtest_mensajes.py`: 18 pruebas",
-      "`test_el_modo_a_ciegas_no_expone_backtest`: verifica que no esté en el juego de `a_ciegas`",
+      "`test_el_modo_medicion_oculta_no_expone_backtest`: verifica que no esté en ese juego",
     ],
     archivo: "src/pronostico/tools/backtest_tool.py",
   },
@@ -145,7 +145,7 @@ export const HERRAMIENTAS: Record<string, Ficha> = {
     ],
     pruebas: [
       "`test_la_ventana_se_ancla_en_el_corte_no_en_el_objetivo`: prueba por perturbación",
-      "`test_riesgo_de_nubes_no_devuelve_el_valor_medido`: mismo contrato ciego que `predecir`",
+      "`test_riesgo_de_nubes_no_devuelve_el_valor_medido`: mismo contrato que `predecir`, sin la medición",
       "`test_la_banda_es_mas_angosta_con_el_cielo_quieto`",
     ],
     archivo: "src/pronostico/tools/riesgo_tool.py",
@@ -256,7 +256,7 @@ export const NODOS_FIJOS: NodoFijo[] = [
       hover: "La ejecuta Anthropic del lado servidor, no nuestro código. Para conocimiento externo, nunca para conseguir un dato del sitio.",
       hace: "Es la única herramienta que sale de la casa, y la única que no corre en nuestro proceso. Sirve para conocimiento general (qué es el índice de cielo despejado, qué dice la literatura sobre un método), no para conseguir un número de San Carlos.",
       limites: [
-        "Queda fuera del modo «a ciegas»: ahí no hay nada externo que consultar, y sí una tentación de buscar el dato.",
+        "Queda fuera del modo «medición oculta»: ahí no hay nada externo que consultar, y sí una tentación de buscar el dato.",
         "Los pasos de búsqueda quedan en la traza como `tipo: web`.",
       ],
       archivo: "src/pronostico/agent/agent.py · WEB_SEARCH",

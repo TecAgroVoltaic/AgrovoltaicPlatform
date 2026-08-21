@@ -33,7 +33,7 @@ const NAV: [View, string, Icono][] = [
   ["pred", "Predicción vs Real", IconoPrediccion],
   ["arq", "Arquitectura del agente", IconoGrafo],
   ["perf", "Rendimiento", IconoRendimiento],
-  ["datos", "Los datos", IconoDatos],
+  ["datos", "Base de datos", IconoDatos],
   ["costo", "Costo y uso", IconoCosto],
   ["salud", "Salud del sistema", IconoSalud],
 ];
