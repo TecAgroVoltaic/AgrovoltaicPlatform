@@ -320,11 +320,18 @@ Ahora cada acto muestra **cómo se ve el dato en ese punto**, con los valores re
 El antes/después no desapareció: se movió **adentro de los pasos 3 y 4**, que es donde se
 entiende sin cruzar tablas.
 
-**Lo que el dibujo enseña sin decirlo.** Una línea vertical parte el lienzo en dos zonas
-rotuladas: **«al cargar · una sola vez»** (irreversible, por eso hay lo mínimo) y **«al consultar
-· cada vez»** (reversible, ahí vive toda la corrección). La línea lleva el rótulo «acá termina lo
-irreversible», el salto entre zonas es más ancho que el hueco normal, y **no hay flecha que la
-cruce**: una flecha diría lo contrario de lo que el dibujo tiene que enseñar.
+**Lo que el dibujo enseña sin decirlo.** Una línea parte el lienzo en dos zonas rotuladas:
+**«al cargar · una sola vez»** (irreversible, por eso hay lo mínimo) y **«al consultar · cada
+vez»** (reversible, ahí vive toda la corrección). La línea lleva el rótulo «acá termina lo
+irreversible» y **no hay flecha que la cruce**: una flecha diría lo contrario de lo que el dibujo
+tiene que enseñar.
+
+**El layout es fluido, no un lienzo de ancho fijo.** La segunda versión posicionaba los actos en
+coordenadas absolutas sobre 1140 px: en pantalla ancha sobraba espacio a los lados, en angosta
+había que arrastrar. Ahora cada tramo crece con `flex-grow` igual a **cuántos actos contiene**,
+así las cinco cajas salen del mismo ancho sin que nadie lo declare y el conjunto ocupa lo que
+haya. Por debajo de 1180 px las zonas se apilan y la línea se vuelve horizontal; por debajo de
+840 px los actos envuelven. Nada de esto perdió lo que el dibujo enseña.
 
 **Debajo, once tratamientos numerados**, uno por renglón, con la misma numeración y el mismo
 orden que el documento que revisó Leo Cardinale (P1 a P12). Cada renglón declara dónde vive
@@ -339,16 +346,24 @@ solo lee `lecturas_ambientales_sc`, y las tablas fotovoltaicas no pasan por él.
 que los números están vivos, se muestran con la **fecha de la corrida al lado** (`CORRIDA`),
 verificados con SELECT contra la base viva el 2026-08-20.
 
-### Tres defectos reales encontrados al construirla
+### Cinco defectos reales encontrados al construirla
 1. **`<p>` dentro de `<span>`.** `renderMd` envuelve en `<p>`; el helper de markdown en línea lo
    metía en un span. Anidado inválido: el parser lo expulsa y la regla CSS que lo apuntaba no lo
    alcanzaba nunca. Ahora es un `<div class="md-plano">`.
 2. **Huecos desiguales entre columnas** del lienzo. Corregidos.
 3. **Texto recortado en silencio.** El acto 1 apilaba nombre de archivo y encabezado en dos
    renglones y no entraba en la caja; con `overflow:hidden` se habría cortado sin avisar, que es
-   el peor defecto posible en una vista que existe para explicar. Se compactó la muestra a un
-   renglón por variante, el alto fijo pasó a `min-height` (si algo crece, crece la caja) y **la
-   prueba calcula el presupuesto de altura de cada acto** para que no vuelva a pasar.
+   el peor defecto posible en una vista que existe para explicar. Muestra compactada a un renglón
+   por variante y alto fijo → `min-height`: si algo crece, crece la caja.
+4. **El tooltip de TODA la consola recortaba el texto.** `#tip` tenía `white-space:nowrap` junto
+   con `max-width`, y esa combinación no envuelve: **corta**. Con `width:max-content` una etiqueta
+   corta sigue en un renglón (idéntico a antes) y una larga envuelve al llegar al tope. Afectaba a
+   las gráficas y al grafo de arquitectura, no solo a esta vista.
+5. **Superposición en la muestra del acto 2.** La convergencia se dibujaba con una llave lateral;
+   al pasar a ancho fluido, el nombre resultante se montaba encima de la entrada y había que
+   recortar los nombres para que entraran, que es justo el dato que ese paso tiene que dejar leer.
+   Ahora va apilada y centrada, con una flecha hacia abajo: sin posicionamiento, sin superposición
+   posible.
 
 ### Cómo se verificó sin navegador
 La extensión de Chrome no estaba conectada, así que se compilaron los componentes con `tsc` y se
@@ -358,6 +373,6 @@ ningún nodo se solape ni se salga del lienzo, que los huecos entre columnas sea
 6 tools tengan `ayuda`, y que el modal de cada una muestre «En qué ayuda» **sin perder** «Límites»
 ni «Cómo se prueba». Y sobre el lienzo: que los cinco actos estén numerados y en orden, que cada
 uno muestre el DATO y diga POR QUÉ, que **no queden nombres de módulo** (`extract`/`transform`/
-`load`), que la línea caiga en el salto entre zonas y que ese salto sea más ancho que el hueco
-normal, que cada zona cubra exactamente sus actos, y el **presupuesto de altura** de cada caja.
-Con la brevedad como aserción explícita. **42 chequeos, 0 fallas.**
+`load`), que **no quede ni una coordenada absoluta en el marcado**, que cada tramo crezca según
+cuántos actos tiene, que las zonas sean contiguas y que **ninguna flecha cruce la línea**. Con la
+brevedad como aserción explícita, tooltips incluidos. **40 chequeos, 0 fallas.**

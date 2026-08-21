@@ -211,7 +211,10 @@ svg.chart { width:100%; height:auto; display:block; }
 /* ── Tooltip de gráficas ─────────────────────────────────────────────────── */
 svg .hit { cursor:crosshair; }
 .bar { transition:opacity .1s; } .bar:hover { opacity:.72; }
-#tip { position:fixed; z-index:60; pointer-events:none; background:var(--raise); color:var(--ink); border:1px solid var(--line2); border-radius:7px; padding:5px 10px; font-family:var(--mono); font-variant-numeric:tabular-nums; font-size:12px; white-space:nowrap; max-width:min(320px,calc(100vw - 16px)); box-shadow:0 4px 14px #0000001f; }
+#tip { position:fixed; z-index:60; pointer-events:none; background:var(--raise); color:var(--ink); border:1px solid var(--line2); border-radius:7px; padding:5px 10px; font-family:var(--mono); font-variant-numeric:tabular-nums; font-size:12px; line-height:1.45;
+  /* `nowrap` con `max-width` no envuelve: RECORTA. Con `max-content` una
+     etiqueta corta sigue en un renglon y una larga envuelve al llegar al tope. */
+  width:max-content; max-width:min(340px,calc(100vw - 16px)); box-shadow:0 4px 14px #0000001f; }
 #tip[hidden] { display:none; }
 
 /* ── Ask (caja de pregunta) ──────────────────────────────────────────────── */
@@ -555,47 +558,59 @@ svg .hit { cursor:crosshair; }
 @media (prefers-reduced-motion:reduce){ .arq-nodo, .arq-fila { transition:none; } }
 
 /* ── Los datos · el recorrido en cinco actos ──────────────────────────────
-   El lienzo NO reutiliza los nodos de arquitectura: allá un nodo es una caja con
-   título y subtítulo, y acá cada paso tiene que mostrar el dato. La estructura
-   compartida (marco, scroll horizontal, leyenda) sí se reutiliza. */
-.dat-lienzo { position:relative; width:1140px; margin:0 auto; flex:0 0 auto; }
+   Layout FLUIDO, no un lienzo de ancho fijo. Cada tramo crece en proporción a
+   cuántos actos contiene (`flex-grow` = nº de actos), así las cinco cajas salen
+   del mismo ancho sin declararlo y el conjunto ocupa lo que haya. */
+.dat-flujo { display:flex; align-items:stretch; padding:16px 18px 18px; gap:0; }
+.dat-tramo { position:relative; flex:1 1 0; min-width:0; display:flex; }
+.dat-tramo + .dat-tramo { padding-left:34px; }
 
 /* Las dos zonas. El fondo tenue es lo que hace legible que son dos regímenes
    distintos y no cinco pasos iguales en fila. */
-.dat-zona { position:absolute; top:0; height:44px; border-radius:10px 10px 0 0;
-  display:flex; flex-direction:column; justify-content:center; gap:1px; padding:0 12px; }
+.dat-zona { flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:2px;
+  padding:10px 12px 12px; border-radius:11px; }
 .dat-zona b { font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:.11em; font-weight:600; }
-.dat-zona i { font-style:normal; font-size:11px; color:var(--muted); }
-.dat-zona.z-cargar { background:color-mix(in srgb,var(--warn) 9%,transparent); }
-.dat-zona.z-cargar b { color:var(--warn); }
-.dat-zona.z-consultar { background:color-mix(in srgb,var(--pred) 10%,transparent); }
-.dat-zona.z-consultar b { color:var(--pred); }
+.dat-zona > i { font-style:normal; font-size:11px; color:var(--muted); }
+.dat-zona.z-cargar { background:color-mix(in srgb,var(--warn) 8%,transparent); }
+.dat-zona.z-cargar > b { color:var(--warn); }
+.dat-zona.z-consultar { background:color-mix(in srgb,var(--pred) 9%,transparent); }
+.dat-zona.z-consultar > b { color:var(--pred); }
+.dat-pasos { display:flex; align-items:stretch; gap:24px; margin-top:9px; flex:1 1 auto; }
+.dat-pasos > * { flex:1 1 0; min-width:0; }
 
-/* La línea. No es un paso: es la regla que ordena el modelo, y por eso es el
-   único elemento vertical del dibujo. */
-.dat-divisor { position:absolute; width:1px; background:var(--line2);
+/* La línea. Es lo único del dibujo que no es un paso: es la regla. */
+.dat-divisor { position:absolute; left:16px; top:0; bottom:0; width:1px;
   background-image:linear-gradient(var(--line2) 55%, transparent 0); background-size:1px 9px;
   display:flex; align-items:center; justify-content:center; }
 .dat-divisor em { position:absolute; white-space:nowrap; transform:rotate(-90deg);
   font-family:var(--mono); font-size:9px; font-style:normal; text-transform:uppercase; letter-spacing:.11em;
-  color:var(--muted); background:var(--panel); padding:0 8px; }
+  color:var(--muted); background:var(--panel); padding:0 9px; }
 
-/* Cada acto. */
-.dat-acto { position:absolute; text-align:left; font:inherit; cursor:pointer;
+/* Cada acto. `min-height` y no `height`: si un texto crece, crece la caja en vez
+   de recortarlo, que en una vista hecha para explicar sería el peor defecto. */
+.dat-acto { position:relative; text-align:left; font:inherit; cursor:pointer;
   background:var(--raise); border:1px solid var(--line2); border-radius:10px;
-  padding:11px 12px; display:flex; flex-direction:column; gap:7px;
+  padding:11px 12px; display:flex; flex-direction:column; gap:7px; min-height:236px;
   transition:border-color .16s, transform .16s; }
 .dat-acto:hover { border-color:var(--accent); transform:translateY(-1px); }
 .dat-acto.z-cargar { border-top:3px solid color-mix(in srgb,var(--warn) 55%,transparent); }
 .dat-acto.z-consultar { border-top:3px solid color-mix(in srgb,var(--pred) 60%,transparent); }
-.dat-acto-h { display:flex; align-items:center; gap:8px; }
+.dat-acto-h { display:flex; align-items:flex-start; gap:8px; }
 .dat-paso { flex:0 0 auto; width:19px; height:19px; border-radius:50%; background:var(--panel2);
   border:1px solid var(--line); font-family:var(--mono); font-size:10.5px; color:var(--ink2);
   display:flex; align-items:center; justify-content:center; }
-.dat-acto-t { font-size:13px; font-weight:600; color:var(--ink); letter-spacing:-.01em; line-height:1.25; }
+/* Los `min-height` alinean el arranque de la muestra en las cinco cajas: sin
+   ellos, un título de una línea contra otro de dos desfasa todo lo de abajo. */
+.dat-acto-t { font-size:13px; font-weight:600; color:var(--ink); letter-spacing:-.01em;
+  line-height:1.25; min-height:2.5em; }
 .dat-gesto { font-family:var(--mono); font-size:9.5px; text-transform:uppercase; letter-spacing:.07em;
-  color:var(--muted); line-height:1.35; }
-.dat-porque { font-size:11px; color:var(--ink2); line-height:1.42; margin-top:auto; }
+  color:var(--muted); line-height:1.4; min-height:2.8em; }
+.dat-porque { font-size:11px; color:var(--ink2); line-height:1.45; margin-top:auto; padding-top:4px; }
+
+/* La flecha al siguiente acto, dibujada en el hueco. */
+.dat-flecha { position:absolute; right:-17px; top:50%; width:7px; height:7px;
+  border-top:1.5px solid var(--line2); border-right:1.5px solid var(--line2);
+  transform:translateY(-50%) rotate(45deg); }
 
 /* ── La muestra del dato ─────────────────────────────────────────────────
    Lo que separa este diagrama de uno genérico: en cada paso se ve el dato de
@@ -603,39 +618,53 @@ svg .hit { cursor:crosshair; }
 .dat-m { display:flex; flex-direction:column; gap:3px; padding:8px 9px; border-radius:7px;
   background:var(--panel2); border:1px solid var(--line); }
 .dat-m em { font-style:normal; font-family:var(--mono); font-size:8.5px; text-transform:uppercase;
-  letter-spacing:.09em; color:var(--muted); }
-.dat-m > span { display:flex; align-items:baseline; justify-content:space-between; gap:7px; }
+  letter-spacing:.09em; color:var(--muted); line-height:1.35; }
+.dat-m > span { display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
 .dat-m i { font-style:normal; font-family:var(--mono); font-size:9.5px; color:var(--muted);
   overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .dat-m b { font-family:var(--mono); font-size:10.5px; font-weight:500; color:var(--ink);
   font-variant-numeric:tabular-nums; white-space:nowrap; }
 
-/* Acto 1: los tres nombres distintos, uno por renglón. La fecha va corta a la
-   izquierda para que el nombre entero entre sin recortarse: el nombre ES el
-   dato que hay que poder leer. */
+/* Acto 1: una variante por renglón, con la fecha corta a la izquierda para que
+   el nombre entero entre sin recortarse. El nombre ES el dato que hay que leer. */
 .dat-m-arch b { color:var(--warn); }
 .dat-m-arch em { order:9; margin-top:2px; }
 
-/* Acto 2: la convergencia. La llave la dibuja el borde, no un carácter: un `}`
-   tipográfico no escala con la altura del bloque. */
-.dat-m-conv { flex-direction:row; align-items:center; gap:7px; }
-.dat-conv-in { display:flex; flex-direction:column; gap:2px; min-width:0; flex:1 1 auto; }
-.dat-conv-in b { font-size:9.5px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.dat-conv-llave { flex:0 0 auto; width:7px; align-self:stretch; margin:3px 0;
-  border:1px solid var(--line2); border-left:0; border-radius:0 5px 5px 0; position:relative; }
-.dat-conv-llave::after { content:""; position:absolute; left:100%; top:50%; width:6px; height:1px; background:var(--line2); }
-.dat-conv-out { flex:0 0 auto; font-family:var(--mono); font-size:10px; color:var(--good);
-  font-weight:600; margin-left:5px; }
+/* Acto 2: la convergencia, apilada y centrada. La versión con llave lateral
+   obligaba a recortar los nombres y, con el ancho fluido, el resultado se
+   montaba encima de la entrada. */
+.dat-m-conv { align-items:center; gap:2px; }
+.dat-m-conv i { max-width:100%; }
+.dat-m-conv b { color:var(--good); font-weight:600; margin-top:1px; }
+.dat-conv-baja { width:7px; height:7px; margin:4px 0 2px;
+  border-right:1.5px solid var(--line2); border-bottom:1.5px solid var(--line2);
+  transform:rotate(45deg); }
 
 /* Actos 3 a 5: los valores, con el estado en el color. Rojo = lo que entró tal
-   cual; verde = lo que devuelve la vista. Es el antes y el después, pero puesto
-   donde se entiende: dentro del paso que lo produce. */
+   cual; verde = lo que devuelve la vista. Es el antes y el después, puesto donde
+   se entiende: dentro del paso que lo produce. */
 .dat-m-val.e-crudo { border-color:color-mix(in srgb,var(--crit) 35%,transparent); }
 .dat-m-val.e-crudo b { color:var(--crit); }
 .dat-m-val.e-corregido { border-color:color-mix(in srgb,var(--good) 32%,transparent); }
 .dat-m-val.e-corregido b { color:var(--good); }
 
-.dat-flecha path { fill:none; stroke:var(--line2); stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round; }
+/* ── Cuando ya no entran los cinco en fila ───────────────────────────────
+   Las zonas se apilan y la línea se vuelve horizontal. Sigue enseñando lo mismo:
+   de este lado lo irreversible, del otro lo reescribible. */
+@media (max-width:1180px) {
+  .dat-flujo { flex-direction:column; gap:0; }
+  .dat-tramo + .dat-tramo { padding-left:0; padding-top:34px; }
+  .dat-divisor { left:0; right:0; top:16px; bottom:auto; width:auto; height:1px;
+    background-image:linear-gradient(90deg,var(--line2) 55%, transparent 0); background-size:9px 1px; }
+  .dat-divisor em { transform:none; }
+}
+/* Y cuando tampoco entran los tres de una zona: envuelven. El `min-width` es lo
+   que dispara el salto de renglón; sin él las cajas se estrangulan. */
+@media (max-width:840px) {
+  .dat-pasos { flex-wrap:wrap; gap:16px 24px; }
+  .dat-pasos > * { flex:1 1 210px; }
+  .dat-flecha { display:none; }
+}
 
 /* El sello de fecha. Estos números son una foto y no una lectura viva, así que
    se dice en la línea del título y no en una nota al pie que nadie lee. */

@@ -32,10 +32,11 @@ export const CORRIDA = { ejecutado: "2026-08-10", verificado: "2026-08-20" };
 // la línea que parte el recorrido en dos: lo que se decide AL CARGAR es
 // irreversible, lo que se decide AL CONSULTAR se reescribe. Esa línea es la
 // decisión de diseño que ordena el modelo entero, así que se dibuja.
-export const LIENZO_D = { w: 1140, alto: 320 };
-/** Ancho de cada acto y posición de la línea que parte el recorrido. */
-export const ACTO = { w: 200, h: 240, y: 52, divisor: 679 };
-
+// SIN GEOMETRÍA. La primera versión posicionaba los actos en coordenadas
+// absolutas sobre un lienzo de 1140 px fijos: en una pantalla ancha sobraba
+// espacio a los lados y en una angosta había que arrastrar. Ahora el ancho lo
+// reparte flex, y cada zona recibe una fracción proporcional a cuántos actos
+// tiene, así todas las cajas salen del mismo ancho sin declararlo.
 /** La muestra del dato: qué se dibuja adentro de cada acto. */
 export type Muestra =
   /** El mismo concepto escrito de tres formas, una por archivo. */
@@ -51,7 +52,6 @@ export type Acto = {
   id: string;
   /** De qué lado de la línea cae. Es lo más importante del dibujo. */
   zona: "cargar" | "consultar";
-  x: number;
   /** Qué pasa acá, en dos o tres palabras. */
   titulo: string;
   /** El detalle operativo del paso, en una línea corta. */
@@ -64,7 +64,7 @@ export type Acto = {
 
 export const ACTOS: Acto[] = [
   {
-    n: 1, id: "llega", zona: "cargar", x: 20,
+    n: 1, id: "llega", zona: "cargar",
     titulo: "Llega el crudo",
     gesto: "285 archivos · 13 esquemas",
     muestra: {
@@ -89,7 +89,7 @@ export const ACTOS: Acto[] = [
     },
   },
   {
-    n: 2, id: "unifica", zona: "cargar", x: 238,
+    n: 2, id: "unifica", zona: "cargar",
     titulo: "Se unifica el nombre",
     gesto: "~70 variantes → 1 por concepto",
     muestra: {
@@ -110,7 +110,7 @@ export const ACTOS: Acto[] = [
     },
   },
   {
-    n: 3, id: "guarda", zona: "cargar", x: 456,
+    n: 3, id: "guarda", zona: "cargar",
     titulo: "Se guarda tal cual",
     gesto: "2 tablas · eléctrico 5 min · radiación 15 s",
     muestra: {
@@ -136,7 +136,7 @@ export const ACTOS: Acto[] = [
     },
   },
   {
-    n: 4, id: "corrige", zona: "consultar", x: 702,
+    n: 4, id: "corrige", zona: "consultar",
     titulo: "Se corrige al leer",
     gesto: "vistas SQL sobre el crudo",
     muestra: {
@@ -162,7 +162,7 @@ export const ACTOS: Acto[] = [
     },
   },
   {
-    n: 5, id: "calibra", zona: "consultar", x: 920,
+    n: 5, id: "calibra", zona: "consultar",
     titulo: "Se calibra y se evalúa",
     gesto: "W/m² · kt* · Performance Ratio",
     muestra: {
@@ -192,12 +192,12 @@ export const ACTOS: Acto[] = [
 /** Las dos zonas, con el rótulo que explica por qué la línea está ahí. */
 export const ZONAS = [
   {
-    id: "cargar" as const, x: 20, w: 636,
+    id: "cargar" as const,
     titulo: "Al cargar · una sola vez",
     nota: "Irreversible: por eso acá hay lo mínimo.",
   },
   {
-    id: "consultar" as const, x: 702, w: 418,
+    id: "consultar" as const,
     titulo: "Al consultar · cada vez",
     nota: "Reversible: acá vive toda la corrección.",
   },

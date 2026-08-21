@@ -1,30 +1,33 @@
 "use client";
 // El recorrido del dato, en cinco actos.
 //
-// La versión anterior dibujaba `extract → transform → load`: los nombres de los
-// módulos. Se veía prolijo y no explicaba nada, porque quien no escribió el
-// pipeline no sabe qué hace un módulo llamado «transform».
+// Dos versiones anteriores y qué falló en cada una:
 //
-// Este dibuja EL DATO. Cada acto muestra cómo se ve en ese punto, con los valores
-// reales que están en la base, más el gesto que se le aplica y por qué. Y la
-// línea del medio es el protagonista: parte el recorrido entre lo que se decide
-// al cargar (irreversible) y lo que se decide al consultar (reescribible). Esa
-// línea es la decisión de diseño del modelo, así que se dibuja en vez de
-// contarse.
+//   1ª — dibujaba `extract → transform → load`: los nombres de los MÓDULOS. Se
+//        veía prolijo y no explicaba nada, porque quien no escribió el pipeline
+//        no sabe qué hace algo llamado «transform».
+//   2ª — ya mostraba el dato, pero en coordenadas absolutas sobre un lienzo de
+//        1140 px FIJOS. En una pantalla ancha sobraba espacio a los lados; en
+//        una angosta había que arrastrar para leer.
+//
+// Esta reparte el ancho con flex: cada zona recibe una fracción proporcional a
+// cuántos actos tiene, así las cinco cajas salen del mismo ancho sin que nadie
+// lo declare, y el conjunto ocupa lo que haya. Cuando ya no entran, las zonas se
+// apilan y la línea divisoria se vuelve horizontal, sin perder lo que enseña.
 //
 // El hover no tiene código propio: cada acto lleva `data-tip` y lo atiende
 // `ChartTooltip`, montado en la consola y funcionando por delegación.
 import type { Detalle } from "@/app/components/console/arquitectura/NodoModal";
-import { ACTO, ACTOS, LIENZO_D, ZONAS, type Acto, type Muestra } from "./catalogoDatos";
+import { ACTOS, ZONAS, type Acto, type Muestra } from "./catalogoDatos";
 
 /** La muestra del dato. Es el corazón del dibujo: sin esto sería otro diagrama de cajas. */
 function VerMuestra({ m }: { m: Muestra }) {
   if (m.tipo === "archivos") {
     return (
       <span className="dat-m dat-m-arch">
-        {m.filas.map(([archivo, header]) => (
-          <span key={archivo}>
-            <i>{archivo}</i>
+        {m.filas.map(([cuando, header]) => (
+          <span key={cuando}>
+            <i>{cuando}</i>
             <b>{header}</b>
           </span>
         ))}
@@ -33,13 +36,15 @@ function VerMuestra({ m }: { m: Muestra }) {
     );
   }
   if (m.tipo === "convergencia") {
+    // Apilado y centrado, NO con una llave lateral: la llave obligaba a recortar
+    // los nombres para que entraran al lado, y con el ancho fluido el resultado
+    // terminaba encima de la entrada. Un nombre recortado es justo el dato que
+    // este paso tiene que dejar leer.
     return (
       <span className="dat-m dat-m-conv">
-        <span className="dat-conv-in">
-          {m.desde.map((d) => <b key={d}>{d}</b>)}
-        </span>
-        <span className="dat-conv-llave" aria-hidden="true" />
-        <span className="dat-conv-out">{m.hasta}</span>
+        {m.desde.map((d) => <i key={d}>{d}</i>)}
+        <span className="dat-conv-baja" aria-hidden="true" />
+        <b>{m.hasta}</b>
       </span>
     );
   }
@@ -56,58 +61,56 @@ function VerMuestra({ m }: { m: Muestra }) {
   );
 }
 
-export function LienzoDatos({ onAbrir }: { onAbrir: (d: Detalle) => void }) {
-  const yCentro = ACTO.y + ACTO.h / 2;
-
-  // Flechas entre actos consecutivos DE LA MISMA zona. El salto entre zonas no
-  // lleva flecha: ahí va la línea divisoria, y una flecha atravesándola diría
-  // justo lo contrario de lo que el dibujo tiene que enseñar.
-  const flechas = ACTOS.slice(0, -1)
-    .map((a, i) => ({ a, b: ACTOS[i + 1] }))
-    .filter(({ a, b }) => a.zona === b.zona)
-    .map(({ a }) => a.x + ACTO.w);
-
+function Paso({ a, ultimo, onAbrir }: {
+  a: Acto; ultimo: boolean; onAbrir: (d: Detalle) => void;
+}) {
   return (
-    <div className="arq-lienzo dat-lienzo" style={{ height: LIENZO_D.alto }}>
-      {/* Las dos zonas: el rótulo dice por qué la línea está donde está. */}
-      {ZONAS.map((z) => (
-        <span key={z.id} className={"dat-zona z-" + z.id} style={{ left: z.x, width: z.w }}>
-          <b>{z.titulo}</b>
-          <i>{z.nota}</i>
-        </span>
-      ))}
-
-      {/* La línea. Es lo único del lienzo que no es un paso: es la regla. */}
-      <span className="dat-divisor" style={{ left: ACTO.divisor, top: 6, height: LIENZO_D.alto - 24 }}>
-        <em>acá termina lo irreversible</em>
+    <button className={"dat-acto z-" + a.zona} data-tip={a.ficha.hover}
+            onClick={() => onAbrir({
+              titulo: a.titulo,
+              clase: `paso ${a.n} de ${ACTOS.length} · ${a.zona === "cargar" ? "al cargar" : "al consultar"}`,
+              ficha: a.ficha,
+            })}>
+      <span className="dat-acto-h">
+        <span className="dat-paso">{a.n}</span>
+        <span className="dat-acto-t">{a.titulo}</span>
       </span>
+      <span className="dat-gesto">{a.gesto}</span>
+      <VerMuestra m={a.muestra} />
+      <span className="dat-porque">{a.porque}</span>
+      {/* La flecha solo entre actos de la MISMA zona. El salto entre zonas lo
+          marca la línea, y una flecha cruzándola diría lo contrario de lo que
+          el dibujo tiene que enseñar. */}
+      {!ultimo && <span className="dat-flecha" aria-hidden="true" />}
+    </button>
+  );
+}
 
-      <svg className="arq-edges" viewBox={`0 0 ${LIENZO_D.w} ${LIENZO_D.alto}`} aria-hidden="true">
-        {flechas.map((x) => (
-          <g key={x} className="dat-flecha">
-            <path d={`M ${x + 3} ${yCentro} L ${x + 13} ${yCentro}`} />
-            <path d={`M ${x + 9} ${yCentro - 4} L ${x + 14} ${yCentro} L ${x + 9} ${yCentro + 4}`} />
-          </g>
-        ))}
-      </svg>
-
-      {ACTOS.map((a: Acto) => (
-        <button key={a.id} className={"dat-acto z-" + a.zona} data-tip={a.ficha.hover}
-                style={{ left: a.x, top: ACTO.y, width: ACTO.w, minHeight: ACTO.h }}
-                onClick={() => onAbrir({
-                  titulo: a.titulo,
-                  clase: `paso ${a.n} de ${ACTOS.length} · ${a.zona === "cargar" ? "al cargar" : "al consultar"}`,
-                  ficha: a.ficha,
-                })}>
-          <span className="dat-acto-h">
-            <span className="dat-paso">{a.n}</span>
-            <span className="dat-acto-t">{a.titulo}</span>
-          </span>
-          <span className="dat-gesto">{a.gesto}</span>
-          <VerMuestra m={a.muestra} />
-          <span className="dat-porque">{a.porque}</span>
-        </button>
-      ))}
+export function LienzoDatos({ onAbrir }: { onAbrir: (d: Detalle) => void }) {
+  return (
+    <div className="dat-flujo">
+      {ZONAS.map((z, iz) => {
+        const suyos = ACTOS.filter((a) => a.zona === z.id);
+        return (
+          <div key={z.id} className="dat-tramo" style={{ flexGrow: suyos.length }}>
+            {/* La línea. No es un paso: es la regla que ordena el modelo. */}
+            {iz > 0 && (
+              <span className="dat-divisor">
+                <em>acá termina lo irreversible</em>
+              </span>
+            )}
+            <div className={"dat-zona z-" + z.id}>
+              <b>{z.titulo}</b>
+              <i>{z.nota}</i>
+              <div className="dat-pasos">
+                {suyos.map((a, i) => (
+                  <Paso key={a.id} a={a} ultimo={i === suyos.length - 1} onAbrir={onAbrir} />
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
