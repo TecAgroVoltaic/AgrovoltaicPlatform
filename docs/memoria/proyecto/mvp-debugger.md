@@ -301,26 +301,37 @@ Cuidado con una colisión que estuvo a punto de pasar: `.arq-ayuda` **ya existí
 de la leyenda del lienzo. La sección nueva se llama `.arq-porque`.
 
 ### Vista nueva «Los datos» (`app/components/console/datos/`)
-El recorrido del ETL como grafo (`285 CSV → extract → transform → load → 2 tablas crudas → 4
-vistas`), reutilizando el `NodoModal`, el lienzo y la leyenda de Arquitectura. Debajo, **una
-lista numerada de once tratamientos**, uno por renglón, con la misma numeración y el mismo orden
-que el documento que revisó Leo Cardinale (P1 a P12): normalización de nombres, separación por
-fuente, muestreo, el crudo intacto, el 85 °C, el offset, los rangos físicos, la irradiancia
-pre-jul-2025, la calibración, las filas mezcladas y los duplicados/huecos.
 
-Cada renglón lleva **dónde vive el tratamiento**: `al cargar` (irreversible, y por eso hay muy
-poco) contra `al consultar` (una vista SQL, se reescribe en una tarde). Esa distinción es la
-regla rectora del modelo, así que va con color y no solo con texto. Y la referencia a la
-pregunta de Leo que lo respalda, para poder contrastarlo.
+**El lienzo: el recorrido en cinco actos, con el dato a la vista.** La primera versión dibujaba
+`extract → transform → load`, que son los nombres de los MÓDULOS: se veía prolijo y no explicaba
+nada, porque quien no escribió el pipeline no sabe qué hace algo llamado «transform». Izack lo
+cortó («demasiado genérico, así no se entiende»).
+
+Ahora cada acto muestra **cómo se ve el dato en ese punto**, con los valores reales de la base:
+
+| # | Acto | Lo que se ve |
+|---|---|---|
+| 1 | Llega el crudo | `dic-2024 → vpv1` · `may-2025 → Voltaje PV1 [V]` · `jun-2026 → voltaje_pv1_v` |
+| 2 | Se unifica el nombre | las tres variantes convergiendo a una |
+| 3 | Se guarda tal cual | `85,0 °C` · `26.503.163 W` · `−15.538`, en rojo |
+| 4 | Se corrige al leer | las **mismas tres filas**: `NULL` · `NULL` · `0`, en verde |
+| 5 | Se calibra y se evalúa | `734 W/m²` · `kt* 0,61` · `PR 0,621` |
+
+El antes/después no desapareció: se movió **adentro de los pasos 3 y 4**, que es donde se
+entiende sin cruzar tablas.
+
+**Lo que el dibujo enseña sin decirlo.** Una línea vertical parte el lienzo en dos zonas
+rotuladas: **«al cargar · una sola vez»** (irreversible, por eso hay lo mínimo) y **«al consultar
+· cada vez»** (reversible, ahí vive toda la corrección). La línea lleva el rótulo «acá termina lo
+irreversible», el salto entre zonas es más ancho que el hueco normal, y **no hay flecha que la
+cruce**: una flecha diría lo contrario de lo que el dibujo tiene que enseñar.
+
+**Debajo, once tratamientos numerados**, uno por renglón, con la misma numeración y el mismo
+orden que el documento que revisó Leo Cardinale (P1 a P12). Cada renglón declara dónde vive
+(`al cargar` / `al consultar`) y cita la pregunta de Leo que lo respalda.
 
 Va en el **grupo transversal** de la navegación (es el `SEPARADOR` ahora), no en el de un
 agente: el ETL existe con cualquiera de los dos agentes apagado.
-
-**Primera versión descartada.** Tenía tablas de antes/después, otra de ganancias y un listado de
-las 7 inconsistencias aparte: la misma información contada tres veces, y para leerla había que
-cruzarlas. Izack lo cortó de raíz («debe ser super breve, específico y directo»). Ahora el
-problema y lo que se hizo van en la misma frase, y los números que sobrevivieron (26,5 MW, 10 a
-80 °C, 99,0 % de QC, PR 0,621/0,626) viven dentro del renglón que los necesita.
 
 **La diferencia honesta con la vista de Arquitectura.** Aquella se dibuja con lo que el servicio
 publica en vivo, así que no puede mentir. Esta **no tiene esa red**: el servicio del pronóstico
@@ -328,11 +339,16 @@ solo lee `lecturas_ambientales_sc`, y las tablas fotovoltaicas no pasan por él.
 que los números están vivos, se muestran con la **fecha de la corrida al lado** (`CORRIDA`),
 verificados con SELECT contra la base viva el 2026-08-20.
 
-### Dos defectos reales encontrados al construirla
+### Tres defectos reales encontrados al construirla
 1. **`<p>` dentro de `<span>`.** `renderMd` envuelve en `<p>`; el helper de markdown en línea lo
    metía en un span. Anidado inválido: el parser lo expulsa y la regla CSS que lo apuntaba no lo
    alcanzaba nunca. Ahora es un `<div class="md-plano">`.
-2. **Huecos desiguales entre columnas** del lienzo (34, 34, 34, 14). Corregidos a 29 parejos.
+2. **Huecos desiguales entre columnas** del lienzo. Corregidos.
+3. **Texto recortado en silencio.** El acto 1 apilaba nombre de archivo y encabezado en dos
+   renglones y no entraba en la caja; con `overflow:hidden` se habría cortado sin avisar, que es
+   el peor defecto posible en una vista que existe para explicar. Se compactó la muestra a un
+   renglón por variante, el alto fijo pasó a `min-height` (si algo crece, crece la caja) y **la
+   prueba calcula el presupuesto de altura de cada acto** para que no vuelva a pasar.
 
 ### Cómo se verificó sin navegador
 La extensión de Chrome no estaba conectada, así que se compilaron los componentes con `tsc` y se
@@ -340,5 +356,8 @@ renderizaron con `react-dom/server`: los 6 nodos con su `data-tip`, los 11 trata
 y en orden, que cada uno declare dónde vive y cite su pregunta de Leo, el sello de fecha, que
 ningún nodo se solape ni se salga del lienzo, que los huecos entre columnas sean iguales, que las
 6 tools tengan `ayuda`, y que el modal de cada una muestre «En qué ayuda» **sin perder** «Límites»
-ni «Cómo se prueba». Con la brevedad como aserción explícita: ningún tratamiento pasa de 260
-caracteres y ninguna ficha del lienzo pasa de 3 puntos. **28 chequeos, 0 fallas.**
+ni «Cómo se prueba». Y sobre el lienzo: que los cinco actos estén numerados y en orden, que cada
+uno muestre el DATO y diga POR QUÉ, que **no queden nombres de módulo** (`extract`/`transform`/
+`load`), que la línea caiga en el salto entre zonas y que ese salto sea más ancho que el hueco
+normal, que cada zona cubra exactamente sus actos, y el **presupuesto de altura** de cada caja.
+Con la brevedad como aserción explícita. **42 chequeos, 0 fallas.**

@@ -18,32 +18,66 @@ import type { Ficha } from "@/app/components/console/arquitectura/catalogo";
 /** Cuándo se corrió el ETL y cuándo se verificaron estas cifras contra la base. */
 export const CORRIDA = { ejecutado: "2026-08-10", verificado: "2026-08-20" };
 
-// ── Geometría del lienzo ───────────────────────────────────────────────────
-// Cinco columnas, una por etapa. El recorrido se lee de izquierda a derecha,
-// que es como se lee un pipeline.
-export const LIENZO_D = { w: 1140, margenInferior: 30 };
-export const COL_D = { csv: 16, extract: 245, transform: 460, load: 675, tabla: 890 };
-export const ANCHO_D = { csv: 200, etapa: 186, tabla: 234 };
+// ── El recorrido, en cinco actos ───────────────────────────────────────────
+//
+// La primera versión de este lienzo dibujaba `extract → transform → load`. Eran
+// los nombres de los MÓDULOS, y a alguien que no escribió el pipeline no le
+// dicen nada: se veía un diagrama genérico que podría ser el de cualquier ETL
+// del mundo.
+//
+// Este muestra el DATO, no el código. Cada acto lleva una muestra de cómo se ve
+// el dato en ese punto (con valores reales, los mismos que están en la base), el
+// gesto que se le aplica y por qué. Alguien que no sepa nada del proyecto
+// debería poder leer el orden, entender qué pasó en cada paso y, sobre todo, ver
+// la línea que parte el recorrido en dos: lo que se decide AL CARGAR es
+// irreversible, lo que se decide AL CONSULTAR se reescribe. Esa línea es la
+// decisión de diseño que ordena el modelo entero, así que se dibuja.
+export const LIENZO_D = { w: 1140, alto: 320 };
+/** Ancho de cada acto y posición de la línea que parte el recorrido. */
+export const ACTO = { w: 200, h: 240, y: 52, divisor: 679 };
 
-export type GrupoDato = "fuente" | "etapa" | "tabla" | "vista";
+/** La muestra del dato: qué se dibuja adentro de cada acto. */
+export type Muestra =
+  /** El mismo concepto escrito de tres formas, una por archivo. */
+  | { tipo: "archivos"; filas: [string, string][] }
+  /** Varias formas que colapsan a una. */
+  | { tipo: "convergencia"; desde: string[]; hasta: string }
+  /** Filas de valores, con su estado. `encabezado` describe de dónde salen. */
+  | { tipo: "valores"; encabezado?: string; filas: [string, string][];
+      estado: "crudo" | "corregido" };
 
-export type NodoDato = {
+export type Acto = {
+  n: number;
   id: string;
-  grupo: GrupoDato;
-  x: number; y: number; w: number; h: number;
+  /** De qué lado de la línea cae. Es lo más importante del dibujo. */
+  zona: "cargar" | "consultar";
+  x: number;
+  /** Qué pasa acá, en dos o tres palabras. */
   titulo: string;
-  sub: string;
+  /** El detalle operativo del paso, en una línea corta. */
+  gesto: string;
+  muestra: Muestra;
+  /** Por qué se hace así y no de otra forma. Una frase. */
+  porque: string;
   ficha: Ficha;
 };
 
-export const NODOS_DATOS: NodoDato[] = [
-  // ── La fuente ────────────────────────────────────────────────────────────
+export const ACTOS: Acto[] = [
   {
-    id: "csv", grupo: "fuente", x: COL_D.csv, y: 76, w: ANCHO_D.csv, h: 74,
-    titulo: "285 archivos CSV",
-    sub: "13 esquemas · nov-2024 a jun-2026",
+    n: 1, id: "llega", zona: "cargar", x: 20,
+    titulo: "Llega el crudo",
+    gesto: "285 archivos · 13 esquemas",
+    muestra: {
+      tipo: "archivos",
+      filas: [
+        ["dic-2024", "vpv1"],
+        ["may-2025", "Voltaje PV1 [V]"],
+        ["jun-2026", "voltaje_pv1_v"],
+      ],
+    },
+    porque: "Nadie fijó un estándar: cada versión del datalogger escribió distinto.",
     ficha: {
-      hover: "Los datos crudos tal como los deja el datalogger: 285 CSV con 13 esquemas distintos y siete clases de problemas.",
+      hover: "19 meses de descargas, un archivo por día, con 13 esquemas distintos y la misma variable escrita de tres formas.",
       hace: "19 meses de descargas del sitio, un archivo por día, como los dejó cada versión del datalogger.",
       ayuda: "Es el punto de partida: **no hay un estándar de datos**. Sin ver esto, los once tratamientos de abajo parecen burocracia.",
       puntos: [
@@ -54,16 +88,20 @@ export const NODOS_DATOS: NodoDato[] = [
       archivo: "dataset/Monitoreo-AgroVoltaic-SC-NEW/",
     },
   },
-
-  // ── Extract ──────────────────────────────────────────────────────────────
   {
-    id: "extract", grupo: "etapa", x: COL_D.extract, y: 76, w: ANCHO_D.etapa, h: 74,
-    titulo: "extract",
-    sub: "colapsa ~70 nombres a uno",
+    n: 2, id: "unifica", zona: "cargar", x: 238,
+    titulo: "Se unifica el nombre",
+    gesto: "~70 variantes → 1 por concepto",
+    muestra: {
+      tipo: "convergencia",
+      desde: ["vpv1", "Voltaje PV1 [V]", "voltaje_pv1_v"],
+      hasta: "voltaje_pv1_v",
+    },
+    porque: "Se colapsan solas quitando acentos, unidades y mayúsculas. Sin lista que mantener.",
     ficha: {
-      hover: "Lee cada CSV tolerando filas rotas y normaliza los nombres de columna: ~70 variantes crudas colapsan a un nombre canónico por concepto.",
+      hover: "slugify() quita acentos, unidades y mayúsculas, así que las ~70 formas de escribir lo mismo caen solas en un nombre canónico.",
       hace: "Lee el CSV aunque traiga filas rotas, normaliza cada encabezado y tipa los valores.",
-      ayuda: "Es lo que evita reescribir el pipeline cada vez que cambia el datalogger: `slugify()` quita acentos, unidades y mayúsculas, así que `Energìa [Wh]`, `energia_hoy_wh` y `Energía Hoy` caen solas en el mismo lugar, sin enumerarlas.",
+      ayuda: "Es lo que evita reescribir el pipeline cada vez que cambia el datalogger: `Energìa [Wh]`, `energia_hoy_wh` y `Energía Hoy` caen solas en el mismo lugar, sin enumerarlas.",
       puntos: [
         "**Cero columnas quemadas.** De `CONCEPT_MAP` se derivan las columnas, las etiquetas, el resampleo y el DDL.",
         "Columna nueva = una línea. Ortografía nueva del mismo concepto = nada.",
@@ -71,74 +109,97 @@ export const NODOS_DATOS: NodoDato[] = [
       archivo: "src/agrovoltaic/extract.py · normalize.py",
     },
   },
-
-  // ── Transform ────────────────────────────────────────────────────────────
   {
-    id: "transform", grupo: "etapa", x: COL_D.transform, y: 76, w: ANCHO_D.etapa, h: 74,
-    titulo: "transform",
-    sub: "parte en dos · 5 min y 15 s",
-    ficha: {
-      hover: "Separa cada archivo en dos flujos por fuente física y los lleva a su cadencia oficial. NO limpia nada: el crudo se conserva.",
-      hace: "Separa cada archivo en dos flujos según de qué sensor viene cada columna, y los lleva a su cadencia: 5 min el eléctrico, 15 s la radiación.",
-      ayuda: "Antes todo iba a una tabla ancha y la radiación quedaba diluida en el ritmo del inversor. Y lo que **no** hace pesa igual: no anula ni recorta nada, el crudo pasa tal cual.",
-      puntos: [
-        "**15 s y no 10**: ThingSpeak no admite menos. Lo de menos de 10 s eran pruebas.",
-        "Promedia las tasas pero toma el **último** valor de los acumuladores: promediar energía acumulada no significa nada.",
+    n: 3, id: "guarda", zona: "cargar", x: 456,
+    titulo: "Se guarda tal cual",
+    gesto: "2 tablas · eléctrico 5 min · radiación 15 s",
+    muestra: {
+      tipo: "valores", estado: "crudo",
+      encabezado: "lo imposible entra igual",
+      filas: [
+        ["temp_inclinado", "85,0 °C"],
+        ["potencia_pv1_w", "26.503.163 W"],
+        ["irradiancia", "−15.538"],
       ],
-      archivo: "src/agrovoltaic/transform.py",
     },
-  },
-
-  // ── Load ─────────────────────────────────────────────────────────────────
-  {
-    id: "load", grupo: "etapa", x: COL_D.load, y: 76, w: ANCHO_D.etapa, h: 74,
-    titulo: "load",
-    sub: "UPSERT por timestamp",
+    porque: "Una corrección es una hipótesis, y las hipótesis cambian. El crudo no se reconstruye.",
     ficha: {
-      hover: "Inserta con ON CONFLICT DO UPDATE sobre la PK timestamp, y salta los CSV cuyo md5 no cambió. Reprocesar nunca duplica.",
-      hace: "Inserta con `ON CONFLICT DO UPDATE` sobre la PK `timestamp`, y salta los archivos cuyo md5 no cambió.",
-      ayuda: "Es lo que hace de esto un **proceso permanente y no un script de una sola vez**: correrlo dos veces da lo mismo que correrlo una. Agregar datos es soltar el CSV y volver a correr.",
-      puntos: [
-        "Idempotente por **archivo** (md5 en `_ingest_log`) y por **fila** (PK `timestamp`).",
-        "Un archivo malo se loguea y **no frena el resto**.",
-      ],
-      archivo: "src/agrovoltaic/load.py · state.py",
-    },
-  },
-
-  // ── Tablas crudas ────────────────────────────────────────────────────────
-  {
-    id: "crudo", grupo: "tabla", x: COL_D.tabla, y: 62, w: ANCHO_D.tabla, h: 100,
-    titulo: "2 tablas crudas",
-    sub: "36.469 eléctricas · 94.868 radiación",
-    ficha: {
-      hover: "El dato del sensor tal cual, sin una sola corrección. Es la regla rectora del modelo: lo que se guarda es lo que midió el aparato.",
+      hover: "El valor del sensor entra exactamente como llegó, valores imposibles incluidos. Es la decisión que ordena todo el modelo.",
       hace: "Guardan el valor **exactamente como llegó**, valores imposibles incluidos: el 85 °C, el pico de 26,5 MW y la irradiancia negativa están ahí adentro.",
-      ayuda: "Guardar la basura a propósito es contraintuitivo, y es la decisión más importante del modelo. Una corrección es una hipótesis y las hipótesis cambian: si el 85 °C se hubiera vuelto NULL al cargar, hoy no habría cómo contar cuántas veces falló el sensor. El crudo no se reconstruye; una vista se reescribe en una tarde.",
+      ayuda: "Guardar la basura a propósito es contraintuitivo, y es la decisión más importante del modelo. Si el 85 °C se hubiera vuelto NULL al cargar, hoy no habría cómo contar cuántas veces falló el sensor. El crudo no se reconstruye; una vista se reescribe en una tarde.",
       puntos: [
         "`monitoreo_sc_electrico` (5 min) y `radiacion_sc_15s` (15 s), cada una con PK `timestamp`.",
+        "Antes de guardar se separa por sensor: el inversor y el piranómetro venían mezclados en el mismo archivo.",
         "**RLS sin políticas** en las 9 tablas: solo entran los roles de servicio.",
       ],
-      archivo: "sql/schema.sql",
+      archivo: "src/agrovoltaic/transform.py · load.py · sql/schema.sql",
     },
   },
-
-  // ── Capa de vistas ───────────────────────────────────────────────────────
   {
-    id: "vistas", grupo: "vista", x: COL_D.tabla, y: 196, w: ANCHO_D.tabla, h: 116,
-    titulo: "4 vistas de análisis",
-    sub: "corrección · calibración · PR",
+    n: 4, id: "corrige", zona: "consultar", x: 702,
+    titulo: "Se corrige al leer",
+    gesto: "vistas SQL sobre el crudo",
+    muestra: {
+      tipo: "valores", estado: "corregido",
+      encabezado: "las mismas tres filas",
+      filas: [
+        ["temp_inclinado", "NULL"],
+        ["potencia_pv1_w", "NULL"],
+        ["irradiancia", "0"],
+      ],
+    },
+    porque: "Cambiar un umbral es reescribir una vista, no recargar 130.000 filas.",
     ficha: {
-      hover: "Donde vive la corrección. Cada regla es una columna nueva calculada en SQL sobre el crudo, nunca una escritura sobre él.",
-      hace: "Aplican en SQL, sobre el crudo y sin tocarlo, los tratamientos 4 a 9: rangos físicos, calibración contra el cielo despejado y Performance Ratio.",
-      ayuda: "La otra mitad de la regla: el crudo queda intacto **y aun así se consulta dato limpio**. Cambiar un umbral es reescribir una vista, no recargar 130.000 filas, y el valor corregido se puede comparar contra el original en la misma consulta.",
+      hover: "Rangos físicos, el 85 °C y el offset se resuelven en SQL, al consultar, sin tocar el crudo.",
+      hace: "Aplican en SQL, sobre el crudo y sin tocarlo, los tratamientos 4 a 8: temperatura fuera de 10 a 80 °C, potencia fuera de 0 a 5.000 W, el offset −38,845 y los negativos.",
+      ayuda: "La otra mitad de la regla: el crudo queda intacto **y aun así se consulta dato limpio**. Y como cada corrección es una columna con nombre propio, el valor corregido se puede comparar contra el original en la misma consulta.",
       puntos: [
-        "`v_sc_electrico_corregido` · `v_sc_radiacion_corregida`: rangos y offset. Todas con `security_invoker = on`, así la vista no elude los permisos de quien consulta.",
-        "`v_sc_radiacion_calibrada`: W/m², kt\\* y control de calidad. **99,0 %** pasa QC.",
-        "`v_sc_performance`: PR por arreglo. **PV1 = 0,621 · PV2 = 0,626**, convergen y validan el modelo bifacial.",
+        "`v_sc_electrico_corregido`: temperatura, potencia, voltaje, corriente y frecuencia.",
+        "`v_sc_radiacion_corregida`: offset y negativos a 0; la irradiancia anterior a jul-2025 se marca no válida.",
+        "Con `security_invoker = on`: la vista no elude los permisos de quien consulta.",
       ],
       archivo: "sql/schema.sql · src/agrovoltaic/ddl.py",
     },
+  },
+  {
+    n: 5, id: "calibra", zona: "consultar", x: 920,
+    titulo: "Se calibra y se evalúa",
+    gesto: "W/m² · kt* · Performance Ratio",
+    muestra: {
+      tipo: "valores", estado: "corregido",
+      encabezado: "recién acá significa algo",
+      filas: [
+        ["irradiancia", "734 W/m²"],
+        ["kt* (claridad)", "0,61"],
+        ["PR del arreglo", "0,621"],
+      ],
+    },
+    porque: "No hay constante de fábrica: se calibra contra el cielo despejado modelado.",
+    ficha: {
+      hover: "La irradiancia pasa a W/m² contra el cielo despejado de pvlib, y de ahí salen kt* y el Performance Ratio por arreglo.",
+      hace: "Convierten la irradiancia a W/m² contra el techo de cielo despejado (pvlib), derivan la fracción de claridad kt\\* y el Performance Ratio de cada arreglo.",
+      ayuda: "Es lo que convierte un número sin unidad en una medición. Sin esto no había forma de saber si una lectura era plausible, ni de calcular rendimiento: la geometría del sistema estuvo bloqueada hasta que Leo la confirmó.",
+      puntos: [
+        "`v_sc_radiacion_calibrada`: W/m², kt\\* y bandera de calidad. **99,0 %** pasa QC, kt\\* p95 = 1,00.",
+        "`v_sc_performance`: **PV1 = 0,621 · PV2 = 0,626**. Convergen, y eso valida el modelo bifacial.",
+        "«Celda calibrada» es el nombre comercial del sensor, no quiere decir que el dato venga escalado (Leo P11).",
+      ],
+      archivo: "src/agrovoltaic/clearsky.py · performance.py",
+    },
+  },
+];
+
+/** Las dos zonas, con el rótulo que explica por qué la línea está ahí. */
+export const ZONAS = [
+  {
+    id: "cargar" as const, x: 20, w: 636,
+    titulo: "Al cargar · una sola vez",
+    nota: "Irreversible: por eso acá hay lo mínimo.",
+  },
+  {
+    id: "consultar" as const, x: 702, w: 418,
+    titulo: "Al consultar · cada vez",
+    nota: "Reversible: acá vive toda la corrección.",
   },
 ];
 

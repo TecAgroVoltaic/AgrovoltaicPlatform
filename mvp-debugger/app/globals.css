@@ -554,15 +554,88 @@ svg .hit { cursor:crosshair; }
 .arq-m-file { font-family:var(--mono); font-size:11px; color:var(--muted); }
 @media (prefers-reduced-motion:reduce){ .arq-nodo, .arq-fila { transition:none; } }
 
-/* ── Los datos · el recorrido del ETL ─────────────────────────────────────
-   Reutiliza el lienzo, los nodos, el marco y la leyenda de la vista de
-   arquitectura: es el mismo lenguaje visual y duplicarlo solo habría abierto
-   dos sitios donde ajustar lo mismo. Acá vive únicamente lo propio. */
-.dat-lienzo .arq-lane { top:14px; }
-.dat-fuente { border-left:3px solid var(--ceil); }
-.dat-etapa  { border-left:3px solid var(--accent); }
-.dat-tabla  { border-left:3px solid var(--real); }
-.dat-vista  { border-left:3px solid var(--pred); }
+/* ── Los datos · el recorrido en cinco actos ──────────────────────────────
+   El lienzo NO reutiliza los nodos de arquitectura: allá un nodo es una caja con
+   título y subtítulo, y acá cada paso tiene que mostrar el dato. La estructura
+   compartida (marco, scroll horizontal, leyenda) sí se reutiliza. */
+.dat-lienzo { position:relative; width:1140px; margin:0 auto; flex:0 0 auto; }
+
+/* Las dos zonas. El fondo tenue es lo que hace legible que son dos regímenes
+   distintos y no cinco pasos iguales en fila. */
+.dat-zona { position:absolute; top:0; height:44px; border-radius:10px 10px 0 0;
+  display:flex; flex-direction:column; justify-content:center; gap:1px; padding:0 12px; }
+.dat-zona b { font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:.11em; font-weight:600; }
+.dat-zona i { font-style:normal; font-size:11px; color:var(--muted); }
+.dat-zona.z-cargar { background:color-mix(in srgb,var(--warn) 9%,transparent); }
+.dat-zona.z-cargar b { color:var(--warn); }
+.dat-zona.z-consultar { background:color-mix(in srgb,var(--pred) 10%,transparent); }
+.dat-zona.z-consultar b { color:var(--pred); }
+
+/* La línea. No es un paso: es la regla que ordena el modelo, y por eso es el
+   único elemento vertical del dibujo. */
+.dat-divisor { position:absolute; width:1px; background:var(--line2);
+  background-image:linear-gradient(var(--line2) 55%, transparent 0); background-size:1px 9px;
+  display:flex; align-items:center; justify-content:center; }
+.dat-divisor em { position:absolute; white-space:nowrap; transform:rotate(-90deg);
+  font-family:var(--mono); font-size:9px; font-style:normal; text-transform:uppercase; letter-spacing:.11em;
+  color:var(--muted); background:var(--panel); padding:0 8px; }
+
+/* Cada acto. */
+.dat-acto { position:absolute; text-align:left; font:inherit; cursor:pointer;
+  background:var(--raise); border:1px solid var(--line2); border-radius:10px;
+  padding:11px 12px; display:flex; flex-direction:column; gap:7px;
+  transition:border-color .16s, transform .16s; }
+.dat-acto:hover { border-color:var(--accent); transform:translateY(-1px); }
+.dat-acto.z-cargar { border-top:3px solid color-mix(in srgb,var(--warn) 55%,transparent); }
+.dat-acto.z-consultar { border-top:3px solid color-mix(in srgb,var(--pred) 60%,transparent); }
+.dat-acto-h { display:flex; align-items:center; gap:8px; }
+.dat-paso { flex:0 0 auto; width:19px; height:19px; border-radius:50%; background:var(--panel2);
+  border:1px solid var(--line); font-family:var(--mono); font-size:10.5px; color:var(--ink2);
+  display:flex; align-items:center; justify-content:center; }
+.dat-acto-t { font-size:13px; font-weight:600; color:var(--ink); letter-spacing:-.01em; line-height:1.25; }
+.dat-gesto { font-family:var(--mono); font-size:9.5px; text-transform:uppercase; letter-spacing:.07em;
+  color:var(--muted); line-height:1.35; }
+.dat-porque { font-size:11px; color:var(--ink2); line-height:1.42; margin-top:auto; }
+
+/* ── La muestra del dato ─────────────────────────────────────────────────
+   Lo que separa este diagrama de uno genérico: en cada paso se ve el dato de
+   verdad, con los valores que están en la base. */
+.dat-m { display:flex; flex-direction:column; gap:3px; padding:8px 9px; border-radius:7px;
+  background:var(--panel2); border:1px solid var(--line); }
+.dat-m em { font-style:normal; font-family:var(--mono); font-size:8.5px; text-transform:uppercase;
+  letter-spacing:.09em; color:var(--muted); }
+.dat-m > span { display:flex; align-items:baseline; justify-content:space-between; gap:7px; }
+.dat-m i { font-style:normal; font-family:var(--mono); font-size:9.5px; color:var(--muted);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.dat-m b { font-family:var(--mono); font-size:10.5px; font-weight:500; color:var(--ink);
+  font-variant-numeric:tabular-nums; white-space:nowrap; }
+
+/* Acto 1: los tres nombres distintos, uno por renglón. La fecha va corta a la
+   izquierda para que el nombre entero entre sin recortarse: el nombre ES el
+   dato que hay que poder leer. */
+.dat-m-arch b { color:var(--warn); }
+.dat-m-arch em { order:9; margin-top:2px; }
+
+/* Acto 2: la convergencia. La llave la dibuja el borde, no un carácter: un `}`
+   tipográfico no escala con la altura del bloque. */
+.dat-m-conv { flex-direction:row; align-items:center; gap:7px; }
+.dat-conv-in { display:flex; flex-direction:column; gap:2px; min-width:0; flex:1 1 auto; }
+.dat-conv-in b { font-size:9.5px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.dat-conv-llave { flex:0 0 auto; width:7px; align-self:stretch; margin:3px 0;
+  border:1px solid var(--line2); border-left:0; border-radius:0 5px 5px 0; position:relative; }
+.dat-conv-llave::after { content:""; position:absolute; left:100%; top:50%; width:6px; height:1px; background:var(--line2); }
+.dat-conv-out { flex:0 0 auto; font-family:var(--mono); font-size:10px; color:var(--good);
+  font-weight:600; margin-left:5px; }
+
+/* Actos 3 a 5: los valores, con el estado en el color. Rojo = lo que entró tal
+   cual; verde = lo que devuelve la vista. Es el antes y el después, pero puesto
+   donde se entiende: dentro del paso que lo produce. */
+.dat-m-val.e-crudo { border-color:color-mix(in srgb,var(--crit) 35%,transparent); }
+.dat-m-val.e-crudo b { color:var(--crit); }
+.dat-m-val.e-corregido { border-color:color-mix(in srgb,var(--good) 32%,transparent); }
+.dat-m-val.e-corregido b { color:var(--good); }
+
+.dat-flecha path { fill:none; stroke:var(--line2); stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round; }
 
 /* El sello de fecha. Estos números son una foto y no una lectura viva, así que
    se dice en la línea del título y no en una nota al pie que nadie lee. */

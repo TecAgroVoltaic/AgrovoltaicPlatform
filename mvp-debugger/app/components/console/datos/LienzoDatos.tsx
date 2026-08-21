@@ -1,81 +1,112 @@
 "use client";
-// El recorrido del dato, como grafo. Mismo patrón que el lienzo de arquitectura:
-// nodos en coordenadas absolutas y aristas SVG generadas desde esas posiciones.
+// El recorrido del dato, en cinco actos.
 //
-// A diferencia de aquel, acá NO hay pila calculada: las etapas de un ETL son las
-// que son y su lugar en el relato no cambia, así que todas viven en `NODOS_DATOS`
-// con posición fija. Si algún día el pipeline gana una etapa, se agrega ahí.
+// La versión anterior dibujaba `extract → transform → load`: los nombres de los
+// módulos. Se veía prolijo y no explicaba nada, porque quien no escribió el
+// pipeline no sabe qué hace un módulo llamado «transform».
 //
-// El hover no tiene código propio: cada nodo lleva `data-tip` y lo atiende
+// Este dibuja EL DATO. Cada acto muestra cómo se ve en ese punto, con los valores
+// reales que están en la base, más el gesto que se le aplica y por qué. Y la
+// línea del medio es el protagonista: parte el recorrido entre lo que se decide
+// al cargar (irreversible) y lo que se decide al consultar (reescribible). Esa
+// línea es la decisión de diseño del modelo, así que se dibuja en vez de
+// contarse.
+//
+// El hover no tiene código propio: cada acto lleva `data-tip` y lo atiende
 // `ChartTooltip`, montado en la consola y funcionando por delegación.
-import type { ReactNode } from "react";
-import type { Ficha } from "@/app/components/console/arquitectura/catalogo";
 import type { Detalle } from "@/app/components/console/arquitectura/NodoModal";
-import { ANCHO_D, COL_D, LIENZO_D, NODOS_DATOS, type GrupoDato, type NodoDato } from "./catalogoDatos";
+import { ACTO, ACTOS, LIENZO_D, ZONAS, type Acto, type Muestra } from "./catalogoDatos";
 
-const ROTULO: Record<GrupoDato, string> = {
-  fuente: "entrada · CSV crudos",
-  etapa: "etapa del pipeline",
-  tabla: "Supabase · dato crudo",
-  vista: "Supabase · capa de análisis",
-};
-
-/** Curva horizontal suave entre dos puertos. */
-function curva(x1: number, y1: number, x2: number, y2: number): string {
-  const dx = Math.max(24, Math.abs(x2 - x1) * 0.5);
-  return `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
-}
-
-function Nodo({ clase, x, y, w, h, titulo, sub, tip, onAbrir }: {
-  clase: string; x: number; y: number; w: number; h: number;
-  titulo: string; sub: ReactNode; tip: string; onAbrir: () => void;
-}) {
+/** La muestra del dato. Es el corazón del dibujo: sin esto sería otro diagrama de cajas. */
+function VerMuestra({ m }: { m: Muestra }) {
+  if (m.tipo === "archivos") {
+    return (
+      <span className="dat-m dat-m-arch">
+        {m.filas.map(([archivo, header]) => (
+          <span key={archivo}>
+            <i>{archivo}</i>
+            <b>{header}</b>
+          </span>
+        ))}
+        <em>la misma variable, tres nombres</em>
+      </span>
+    );
+  }
+  if (m.tipo === "convergencia") {
+    return (
+      <span className="dat-m dat-m-conv">
+        <span className="dat-conv-in">
+          {m.desde.map((d) => <b key={d}>{d}</b>)}
+        </span>
+        <span className="dat-conv-llave" aria-hidden="true" />
+        <span className="dat-conv-out">{m.hasta}</span>
+      </span>
+    );
+  }
   return (
-    <button className={`arq-nodo ${clase}`} data-tip={tip} onClick={onAbrir}
-            style={{ left: x, top: y, width: w, height: h }}>
-      <span className="arq-n-t">{titulo}</span>
-      <span className="arq-n-s">{sub}</span>
-    </button>
+    <span className={"dat-m dat-m-val e-" + m.estado}>
+      {m.encabezado && <em>{m.encabezado}</em>}
+      {m.filas.map(([campo, valor]) => (
+        <span key={campo}>
+          <i>{campo}</i>
+          <b>{valor}</b>
+        </span>
+      ))}
+    </span>
   );
 }
 
 export function LienzoDatos({ onAbrir }: { onAbrir: (d: Detalle) => void }) {
-  const por = (id: string) => NODOS_DATOS.find((n) => n.id === id) as NodoDato;
-  const alto = Math.max(...NODOS_DATOS.map((n) => n.y + n.h)) + LIENZO_D.margenInferior;
+  const yCentro = ACTO.y + ACTO.h / 2;
 
-  // Centro vertical del carril de etapas: las cuatro cajas del pipeline están a
-  // la misma altura, así que la troncal es una sola línea recta encadenada.
-  const yEtapa = por("extract").y + por("extract").h / 2;
-  const crudo = por("crudo");
-  const vistas = por("vistas");
-
-  const aristas: { d: string; clase?: string }[] = [
-    { d: curva(COL_D.csv + ANCHO_D.csv, yEtapa, COL_D.extract, yEtapa) },
-    { d: curva(COL_D.extract + ANCHO_D.etapa, yEtapa, COL_D.transform, yEtapa) },
-    { d: curva(COL_D.transform + ANCHO_D.etapa, yEtapa, COL_D.load, yEtapa) },
-    { d: curva(COL_D.load + ANCHO_D.etapa, yEtapa, COL_D.tabla, crudo.y + crudo.h / 2) },
-    // El crudo NO se transforma para llegar a las vistas: se lee. Punteada para
-    // que se vea que es una lectura y no otra escritura.
-    { d: `M ${COL_D.tabla + 40} ${crudo.y + crudo.h} L ${COL_D.tabla + 40} ${vistas.y}`, clase: "punteada" },
-  ];
+  // Flechas entre actos consecutivos DE LA MISMA zona. El salto entre zonas no
+  // lleva flecha: ahí va la línea divisoria, y una flecha atravesándola diría
+  // justo lo contrario de lo que el dibujo tiene que enseñar.
+  const flechas = ACTOS.slice(0, -1)
+    .map((a, i) => ({ a, b: ACTOS[i + 1] }))
+    .filter(({ a, b }) => a.zona === b.zona)
+    .map(({ a }) => a.x + ACTO.w);
 
   return (
-    <div className="arq-lienzo dat-lienzo" style={{ height: alto }}>
-      <svg className="arq-edges" viewBox={`0 0 ${LIENZO_D.w} ${alto}`} aria-hidden="true">
-        {aristas.map((a, i) => (
-          <path key={i} d={a.d} className={(a.clase || "") + " viva"} />
+    <div className="arq-lienzo dat-lienzo" style={{ height: LIENZO_D.alto }}>
+      {/* Las dos zonas: el rótulo dice por qué la línea está donde está. */}
+      {ZONAS.map((z) => (
+        <span key={z.id} className={"dat-zona z-" + z.id} style={{ left: z.x, width: z.w }}>
+          <b>{z.titulo}</b>
+          <i>{z.nota}</i>
+        </span>
+      ))}
+
+      {/* La línea. Es lo único del lienzo que no es un paso: es la regla. */}
+      <span className="dat-divisor" style={{ left: ACTO.divisor, top: 6, height: LIENZO_D.alto - 24 }}>
+        <em>acá termina lo irreversible</em>
+      </span>
+
+      <svg className="arq-edges" viewBox={`0 0 ${LIENZO_D.w} ${LIENZO_D.alto}`} aria-hidden="true">
+        {flechas.map((x) => (
+          <g key={x} className="dat-flecha">
+            <path d={`M ${x + 3} ${yCentro} L ${x + 13} ${yCentro}`} />
+            <path d={`M ${x + 9} ${yCentro - 4} L ${x + 14} ${yCentro} L ${x + 9} ${yCentro + 4}`} />
+          </g>
         ))}
       </svg>
 
-      <span className="arq-lane" style={{ left: COL_D.csv }}>Crudo</span>
-      <span className="arq-lane" style={{ left: COL_D.extract }}>El pipeline</span>
-      <span className="arq-lane" style={{ left: COL_D.tabla }}>Supabase</span>
-
-      {NODOS_DATOS.map((n) => (
-        <Nodo key={n.id} clase={`dat-${n.grupo}`}
-              x={n.x} y={n.y} w={n.w} h={n.h}
-              titulo={n.titulo} sub={n.sub} tip={n.ficha.hover}
-              onAbrir={() => onAbrir({ titulo: n.titulo, clase: ROTULO[n.grupo], ficha: n.ficha as Ficha })} />
+      {ACTOS.map((a: Acto) => (
+        <button key={a.id} className={"dat-acto z-" + a.zona} data-tip={a.ficha.hover}
+                style={{ left: a.x, top: ACTO.y, width: ACTO.w, minHeight: ACTO.h }}
+                onClick={() => onAbrir({
+                  titulo: a.titulo,
+                  clase: `paso ${a.n} de ${ACTOS.length} · ${a.zona === "cargar" ? "al cargar" : "al consultar"}`,
+                  ficha: a.ficha,
+                })}>
+          <span className="dat-acto-h">
+            <span className="dat-paso">{a.n}</span>
+            <span className="dat-acto-t">{a.titulo}</span>
+          </span>
+          <span className="dat-gesto">{a.gesto}</span>
+          <VerMuestra m={a.muestra} />
+          <span className="dat-porque">{a.porque}</span>
+        </button>
       ))}
     </div>
   );

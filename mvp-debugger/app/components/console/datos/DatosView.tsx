@@ -33,8 +33,8 @@ export function DatosView() {
       <div className="phead">
         <h1>Los datos</h1>
         <p>
-          Qué se le hizo al crudo para que la base sirva. Un punto por tratamiento,
-          numerados como en el documento que revisó Leo Cardinale.
+          El recorrido completo, con el dato a la vista en cada paso. Abajo, un punto
+          por tratamiento, numerados como en el documento que revisó Leo Cardinale.
         </p>
       </div>
 
@@ -43,11 +43,11 @@ export function DatosView() {
           <LienzoDatos onAbrir={setDetalle} />
         </div>
         <div className="arq-leyenda">
-          <span><i style={{ background: "var(--ceil)" }} /> CSV crudos</span>
-          <span><i style={{ background: "var(--accent)" }} /> etapa del pipeline</span>
-          <span><i style={{ background: "var(--real)" }} /> tabla cruda</span>
-          <span><i style={{ background: "var(--pred)" }} /> capa de análisis</span>
-          <span className="arq-ayuda">Pasá el mouse para el resumen · hacé clic para el detalle</span>
+          <span><i style={{ background: "var(--warn)" }} /> se decide al cargar</span>
+          <span><i style={{ background: "var(--pred)" }} /> se decide al consultar</span>
+          <span><i style={{ background: "var(--crit)" }} /> valor crudo</span>
+          <span><i style={{ background: "var(--good)" }} /> valor que devuelve la vista</span>
+          <span className="arq-ayuda">Hacé clic en cualquier paso para el detalle</span>
         </div>
       </div>
 
