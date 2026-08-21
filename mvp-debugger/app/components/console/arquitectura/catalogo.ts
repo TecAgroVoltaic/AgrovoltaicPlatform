@@ -21,8 +21,15 @@ export type Ficha = {
   resumen?: string;
   /** Una línea, texto plano: va al `data-tip` que consume ChartTooltip. */
   hover: string;
-  /** Markdown. El párrafo de apertura del modal. */
+  /** Markdown. QUÉ hace, en una o dos frases. Sin justificar: eso va en `ayuda`. */
   hace: string;
+  /**
+   * Markdown. EN QUÉ AYUDA: qué sería peor sin esta pieza, con un número medido
+   * cuando exista. Es la pregunta que el esquema no contesta y la que de verdad
+   * justifica que la pieza exista; separarla de `hace` evita el párrafo denso que
+   * mezclaba mecanismo con motivo y no respondía bien ninguno de los dos.
+   */
+  ayuda?: string;
   devuelve?: string[];
   limites?: string[];
   puntos?: string[];
@@ -35,7 +42,8 @@ export const HERRAMIENTAS: Record<string, Ficha> = {
   forecast: {
     resumen: "pronostica a futuro desde el último dato",
     hover: "Pronostica irradiancia o humedad de suelo a un horizonte de hasta 6 horas, anclado en el último dato disponible.",
-    hace: "El puente entre el modelo y los números en el modo «con la respuesta». Despacha por variable al forecaster que corresponde y arma el resultado: valor esperado, banda de incertidumbre y contexto para redactar.",
+    hace: "Pronostica hacia adelante desde el último dato que hay en la base, hasta 6 horas. Despacha por variable al forecaster que corresponde y devuelve el número, su banda y el contexto con el que se armó.",
+    ayuda: "Es la única pieza que produce un número **hacia el futuro**; todas las demás miran hacia atrás. Y devuelve el contexto junto con el valor, así que el agente puede explicar de dónde salió en vez de recitarlo: si no viniera el kt\\* reciente y el techo, la justificación sería inventada.",
     devuelve: [
       "`valor_esperado`: el número, redondeado a un decimal",
       "`banda {bajo, alto, nivel:±1σ}`: incertidumbre por variabilidad reciente de nubes",
@@ -58,7 +66,8 @@ export const HERRAMIENTAS: Record<string, Ficha> = {
   backtest: {
     resumen: "reconstruye el pasado y lo compara con lo medido",
     hover: "Reconstruye cómo se habría predicho una fecha pasada y lo compara con lo que midió el sensor. Es la única herramienta que revela el resultado.",
-    hace: "Evalúa el método sobre datos que ya pasaron. Para cada instante del período reconstruye la predicción usando **solo** lo anterior a ese instante, y la contrasta con lo medido. No es una predicción en vivo: es una evaluación.",
+    hace: "Reconstruye qué se habría predicho en cada instante de una fecha pasada, usando **solo** lo anterior a ese instante, y lo contrasta con lo que midió el sensor.",
+    ayuda: "Es el banco de pruebas del método: sin ella, «el pronóstico anda bien» sería una opinión. Da el *skill*, que compara contra repetir la última lectura, y ese es el único número que distingue un método útil de uno que acierta porque el cielo estuvo quieto. Es también la herramienta que se le **quita** al agente para que pueda predecir a ciegas.",
     devuelve: [
       "`punto_consultado`: real, reconstruido, error, techo y kt* de la hora pedida",
       "`metricas {mae, bias, error_rel_pct, skill_pct}`: el *skill* compara contra la persistencia ingenua",
@@ -80,7 +89,8 @@ export const HERRAMIENTAS: Record<string, Ficha> = {
   diagnosticar_condiciones: {
     resumen: "cómo venía el cielo antes del corte",
     hover: "Describe cómo venía el cielo en los minutos previos al corte y cuánto se mueve el techo en el horizonte. Es la evidencia con la que el agente elige su configuración.",
-    hace: "Le da al agente algo sobre lo que razonar **antes** de comprometerse. Corta los datos en `instante − horizonte` y describe lo que había hasta ahí: qué tan claro venía, qué tan disperso, si subía o bajaba, si hubo saltos bruscos. Además devuelve la **teoría** de qué hace cada perilla, para que la elección sea argumentada y no un tanteo.",
+    hace: "Corta los datos en `instante − horizonte` y describe cómo venía el cielo hasta ahí: qué tan claro, qué tan disperso, subiendo o bajando, con o sin saltos bruscos.",
+    ayuda: "Es lo que convierte la predicción en un razonamiento en vez de un botón. Sin este paso el agente elegiría la configuración a ciegas o la dejaría por defecto siempre; con él puede argumentar «venía cerrándose, le creo menos a lo reciente». Trae además la **teoría** de cada perilla, así la elección se defiende con un mecanismo y no con una corazonada.",
     devuelve: [
       "`claridad`: mediana, mínimo, máximo, desviación, tendencia, saltos bruscos y régimen",
       "`techo {en_el_corte, en_el_objetivo, cambio_pct}`: astronómico, no medido",
@@ -99,7 +109,8 @@ export const HERRAMIENTAS: Record<string, Ficha> = {
   contexto_historico: {
     resumen: "qué es normal a esta hora en los días previos",
     hover: "Qué pasó a esta misma hora en los días anteriores, y en qué régimen viene el sitio. Ubica lo de hoy contra lo normal.",
-    hace: "La ventana corta dice cómo viene el cielo *ahora*; esto dice si eso es normal. Si a esta hora lo típico es 21 % del techo y hoy venís con 12 %, es un día atípicamente cerrado, y eso cambia qué configuración conviene.",
+    hace: "Dice qué pasó a esta misma hora en los días anteriores, y en qué régimen viene el sitio día a día.",
+    ayuda: "Sin esto, un 12 % del techo no significa nada: no hay contra qué compararlo. Con esto se sabe si es un día atípicamente cerrado (lo típico a esa hora son 21 %) o simplemente la tarde de siempre. Es la misma información que arregló el sesgo diurno del método: el sitio tiene mañanas claras y tardes que se cierran, y persistir la mañana hacia la tarde erraba **+52 % a las 16 h**.",
     devuelve: [
       "`misma_hora_dias_previos[]`: fecha, % del techo y nº de lecturas por día",
       "`tipico {pct_tipico, pct_min, pct_max, dispersion, n_dias_con_dato}`",
@@ -117,7 +128,8 @@ export const HERRAMIENTAS: Record<string, Ficha> = {
   riesgo_de_nubes: {
     resumen: "cuánto confiar en el número, y de qué lado puede fallar",
     hover: "En qué régimen viene el cielo y con qué frecuencia cambia fuerte a esa hora, separado por dirección. No predice si va a haber nubes.",
-    hace: "Responde «cuánto puedo confiar en esto», que **no es lo mismo** que «va a haber nubes». Anticipar la nube no se puede: medido sobre 78 días, la turbulencia reciente predice la futura con correlación 0,24 a 1 h y 0,08 a 6 h, y la nubosidad de los modelos numéricos no predice el cambio en absoluto. Cuantificar el riesgo sí se puede, y es lo que hace: alimenta la banda y la confianza declarada, nunca el valor central.",
+    hace: "Mide en qué régimen viene el cielo (calmo, medio o turbulento, con umbrales sacados del propio sitio) y con qué frecuencia cambia fuerte a esa hora, separando si se tapa o si se abre.",
+    ayuda: "Sin esto la confianza declarada sería una impresión. Con esto la banda se estrecha cuando el cielo está quieto y se abre cuando está movido: a 1 h la dispersión entre regímenes pasó de **19 a 8 puntos**, con una banda **más angosta** (307 → 289 W/m²). Y sirve para decir de qué lado puede fallar, porque el error es asimétrico: si se tapa el número queda **+181** alto; si se abre, **−233** bajo.",
     devuelve: [
       "`estado_actual {turbulencia, regimen, n}`: calmo / medio / turbulento, con umbrales derivados del propio sitio",
       "`frecuencia_historica_a_esta_hora {pct_se_tapa, pct_se_abre, direccion_dominante}`",
@@ -142,7 +154,8 @@ export const HERRAMIENTAS: Record<string, Ficha> = {
   predecir: {
     resumen: "se compromete con un número · hipótesis obligatoria",
     hover: "Pronostica un instante histórico con la configuración que el agente elija, sin ver el resultado. La hipótesis es obligatoria.",
-    hace: "El momento en que el agente se compromete. Corre el mismo método que el backtest pero **devolviendo solo la predicción**: ni el valor medido ni el error. El campo `hipotesis` es obligatorio en el esquema: si fuera opcional, el modelo pediría el número y después inventaría el motivo.",
+    hace: "El momento en que el agente se compromete con un número. Corre el mismo método que el backtest pero **devolviendo solo la predicción**: ni el valor medido ni el error.",
+    ayuda: "Es lo que hace demostrable que el agente predice y no describe. Al no devolver `medido` ni `error`, la justificación no puede ser una racionalización armada después de ver el resultado. Y como `hipotesis` es **obligatoria en el esquema**, el motivo se escribe *antes* de conocer el número: si fuera opcional, el modelo pediría el valor y después inventaría la razón.",
     devuelve: [
       "`valor_esperado` y `banda {bajo, alto, ±1σ}`",
       "`hipotesis`: devuelta tal cual, para que quede en la traza",

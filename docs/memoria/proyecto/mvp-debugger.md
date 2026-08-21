@@ -284,3 +284,60 @@ La extensión de Chrome no estaba conectada, así que los componentes se **rende
 correctos en cada uno, un `data-tip` por nodo, y la tabla de parámetros de cada modal con
 exactamente las filas de su `input_schema` (`predecir` → 7). Incluido el caso de la herramienta
 sin ficha. 27 chequeos, todos OK.
+
+## 2026-08-20 — Vista «Los datos» + «En qué ayuda» en las fichas de los tools
+
+Dos superficies para la demo, sobre la misma idea: una ficha tiene que contestar **por qué
+existe la pieza**, no solo qué hace.
+
+### En las fichas de los tools (vista de Arquitectura)
+Campo nuevo `ayuda` en el tipo `Ficha`, y `hace` recortado a una o dos frases. El modal abre
+con «Qué hace» y, debajo, **«En qué ayuda»**: qué sería peor sin esa herramienta, con un número
+medido cuando existe (la banda por régimen a 1 h pasó de 19 a 8 puntos de dispersión; el sesgo
+diurno a las 16 h era +52 %). Todo el detalle técnico («Qué devuelve», «Límites», «Cómo se
+prueba») queda igual, abajo.
+
+Cuidado con una colisión que estuvo a punto de pasar: `.arq-ayuda` **ya existía** para el texto
+de la leyenda del lienzo. La sección nueva se llama `.arq-porque`.
+
+### Vista nueva «Los datos» (`app/components/console/datos/`)
+El recorrido del ETL como grafo, con el mismo lenguaje visual que Arquitectura y reutilizando
+su `NodoModal`, su lienzo y su leyenda: `285 CSV → extract → transform → load → 2 tablas crudas
+→ 4 vistas`. Cada nodo abre ficha. Debajo: la regla rectora, la tabla **antes/después**, lo que
+apareció al calibrar, y las 7 inconsistencias.
+
+Va en el **grupo transversal** de la navegación (es el `SEPARADOR` ahora), no en el de un
+agente: el ETL existe con cualquiera de los dos agentes apagado.
+
+**La diferencia honesta con la vista de Arquitectura.** Aquella se dibuja con lo que el servicio
+publica en vivo, así que no puede mentir. Esta **no tiene esa red**: el servicio del pronóstico
+solo lee `lecturas_ambientales_sc`, y las tablas fotovoltaicas no pasan por él. En vez de fingir
+que los números están vivos, se muestran con la **fecha de la corrida al lado** (`CORRIDA`), para
+que se lean como una foto. Verificados con SELECT contra la base viva el 2026-08-20:
+
+| | crudo | tras la capa de vistas |
+|---|---|---|
+| Pico de `potencia_pv1_w` | 26.503.163 W (18.664× lo instalado) | 1.603 W |
+| Pico de `potencia_total_wac` | 118.634 W | 2.157 W |
+| Filas con temperatura en 85 °C | 12.174 | 0 |
+| Rango de `temp_inclinado` | 0,0 a 127,9 °C | 15,3 a 79,8 °C |
+| Filas con irradiancia negativa | 14.888 (mínimo −15.538) | 0 |
+| Irradiancia pre 2025-07-01 | se conserva cruda | 37.825 filas marcadas no válidas |
+
+Y lo que apareció al calibrar: máximo 1.340 W/m², **99,0 %** pasa QC, kt\* p95 = **1,00**, y el
+Performance Ratio energético **PV1 = 0,621 · PV2 = 0,626** (convergen, o sea que el modelo
+bifacial es correcto).
+
+### Dos defectos reales encontrados al construirla
+1. **`<p>` dentro de `<span>`.** `renderMd` envuelve en `<p>`; el helper de markdown en línea lo
+   metía en un span. Anidado inválido: el parser lo expulsa y la regla CSS que lo apuntaba no lo
+   alcanzaba nunca. Ahora es un `<div class="md-plano">`.
+2. **Huecos desiguales entre columnas** del lienzo (34, 34, 34, 14). Corregidos a 29 parejos.
+
+### Cómo se verificó sin navegador
+La extensión de Chrome no estaba conectada, así que se compilaron los componentes con `tsc` y se
+renderizaron con `react-dom/server`: los 6 nodos con su `data-tip`, las 6 filas de antes/después,
+las 10 celdas de valor corregido, las 7 inconsistencias numeradas, el sello de fecha, que ningún
+nodo se solape ni se salga del lienzo, que los huecos sean iguales, que las 6 tools tengan
+`ayuda` con `hace` por debajo de 300 caracteres, y que el modal de cada una muestre «En qué
+ayuda» **sin perder** «Límites» ni «Cómo se prueba». **23 chequeos, 0 fallas.**

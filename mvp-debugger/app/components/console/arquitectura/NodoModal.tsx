@@ -70,10 +70,21 @@ export function NodoModal({ detalle, onCerrar }: {
 
       <div className="arq-m-body">
         {ficha ? (
-          <section>
-            <span className="lbl">Qué hace</span>
-            <div className="md" dangerouslySetInnerHTML={{ __html: renderMd(ficha.hace) }} />
-          </section>
+          <>
+            <section>
+              <span className="lbl">Qué hace</span>
+              <div className="md" dangerouslySetInnerHTML={{ __html: renderMd(ficha.hace) }} />
+            </section>
+            {/* La pregunta que ningún esquema contesta: qué sería peor sin esta
+                pieza. Va arriba de todo el detalle técnico porque es lo primero
+                que alguien necesita para entender por qué existe. */}
+            {ficha.ayuda && (
+              <section className="arq-porque">
+                <span className="lbl">En qué ayuda</span>
+                <div className="md" dangerouslySetInnerHTML={{ __html: renderMd(ficha.ayuda) }} />
+              </section>
+            )}
+          </>
         ) : (
           <section className="arq-sindoc">
             <IconoAlerta size={15} />

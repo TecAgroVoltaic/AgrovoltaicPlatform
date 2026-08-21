@@ -533,6 +533,12 @@ svg .hit { cursor:crosshair; }
   border-radius:50%; background:var(--line2); }
 .arq-li code, .arq-tbl code { font-family:var(--mono); font-size:11.5px; color:var(--ink); background:var(--panel2); border-radius:4px; padding:1px 5px; overflow-wrap:anywhere; }
 .arq-li strong { color:var(--ink); font-weight:600; }
+/* «En qué ayuda»: la respuesta a por qué existe la pieza. Va con un filete a la
+   izquierda para separarla del «qué hace» sin abrir otra tarjeta, que en un modal
+   que ya tiene seis secciones sumaría ruido en vez de jerarquía. */
+.arq-porque { border-left:2px solid var(--accent); padding-left:13px; }
+.arq-porque .lbl { color:var(--accent); }
+
 .arq-sindoc { flex-direction:row !important; align-items:flex-start; gap:9px !important; font-size:12.5px; color:var(--warn); line-height:1.45; }
 .arq-sindoc svg { flex:0 0 auto; margin-top:2px; }
 .arq-sindoc b { color:var(--ink); }
@@ -547,6 +553,49 @@ svg .hit { cursor:crosshair; }
 .arq-tbl td p { margin:0; }
 .arq-m-file { font-family:var(--mono); font-size:11px; color:var(--muted); }
 @media (prefers-reduced-motion:reduce){ .arq-nodo, .arq-fila { transition:none; } }
+
+/* ── Los datos · el recorrido del ETL ─────────────────────────────────────
+   Reutiliza el lienzo, los nodos, el marco y la leyenda de la vista de
+   arquitectura: es el mismo lenguaje visual y duplicarlo solo habría abierto
+   dos sitios donde ajustar lo mismo. Acá vive únicamente lo que esta vista
+   tiene y aquella no. */
+.dat-lienzo .arq-lane { top:14px; }
+.dat-fuente { border-left:3px solid var(--ceil); }
+.dat-etapa  { border-left:3px solid var(--accent); }
+.dat-tabla  { border-left:3px solid var(--real); }
+.dat-vista  { border-left:3px solid var(--pred); }
+
+/* La regla que ordena el modelo. Va en su propia tarjeta porque es una decisión,
+   no un dato: sin ella, guardar un pico de 26,5 MW parece un descuido. */
+.dat-regla { display:flex; flex-direction:column; gap:9px; }
+.dat-regla p { margin:0; font-size:13.5px; line-height:1.6; color:var(--ink2); }
+.dat-regla p b { color:var(--ink); }
+.dat-regla .hint { margin:0; font-size:12.5px; color:var(--muted); }
+
+/* El sello de fecha. Los números de esta vista son una foto, no una lectura
+   viva, y eso se dice en la misma línea del título en vez de en una nota al pie
+   que nadie lee. */
+.dat-cap { display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:8px; }
+.dat-sello { font-family:var(--mono); font-size:10.5px; color:var(--muted); }
+
+.dat-tbl td.k { font-family:var(--mono); font-size:11.5px; color:var(--ink); }
+.dat-tbl .dat-mal  { font-family:var(--mono); font-variant-numeric:tabular-nums; color:var(--crit); white-space:nowrap; }
+.dat-tbl .dat-bien { font-family:var(--mono); font-variant-numeric:tabular-nums; color:var(--good); white-space:nowrap; }
+/* renderMd siempre envuelve en <p>: sin esto el margen del navegador
+   descuadra las celdas y los renglones de la lista. */
+.md-plano p { margin:0; font-size:inherit; color:inherit; line-height:inherit; }
+.md-plano p + p { margin-top:6px; }
+
+/* Las siete inconsistencias, numeradas: acá el número SÍ es información (es el
+   identificador con el que se las nombra en la memoria del proyecto), no un
+   adorno de lista. */
+.dat-inc { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:11px; }
+.dat-inc li { display:flex; gap:11px; align-items:flex-start; }
+.dat-inc li > div { display:flex; flex-direction:column; gap:2px; }
+.dat-inc b { font-size:13px; color:var(--ink); font-weight:600; }
+.dat-inc .md-plano { font-size:12.5px; color:var(--ink2); line-height:1.5; }
+.dat-n { flex:0 0 auto; width:21px; height:21px; border-radius:6px; background:var(--panel2); border:1px solid var(--line);
+         font-family:var(--mono); font-size:11px; color:var(--muted); display:flex; align-items:center; justify-content:center; }
 
 /* ── Salud del sistema ────────────────────────────────────────────────────
    El diagnóstico va arriba y se lee como un titular: qué pasa y por qué. Las

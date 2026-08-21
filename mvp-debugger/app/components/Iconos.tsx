@@ -122,6 +122,17 @@ export function IconoGrafo({ size = 16, className }: P) {
   );
 }
 
+/** Los datos: un cilindro de base de datos. */
+export function IconoDatos({ size = 16, className }: P) {
+  return (
+    <svg {...base(size)} className={className}>
+      <ellipse cx="12" cy="6" rx="7.5" ry="3" />
+      <path d="M4.5 6v12c0 1.66 3.36 3 7.5 3s7.5-1.34 7.5-3V6" />
+      <path d="M4.5 12c0 1.66 3.36 3 7.5 3s7.5-1.34 7.5-3" />
+    </svg>
+  );
+}
+
 /** Rendimiento: un medidor. */
 export function IconoRendimiento({ size = 16, className }: P) {
   return (
