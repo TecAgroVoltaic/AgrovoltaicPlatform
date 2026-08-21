@@ -3,37 +3,32 @@
 Sistema de memoria jerárquico. Un tema por archivo, agrupados por carpeta. Empieza aquí
 para ubicar qué buscas; cada línea apunta al archivo de detalle.
 
-**Última actualización:** 2026-08-19 · *(**Solo el agente predictivo, y verificado end-to-end.**
-El agente histórico quedó **bloqueado en la consola** con un flag de servidor reversible
-(`AGENTE_ANALIZADOR=on`) que corta también `/api/analizador/*` — ver [mvp-debugger](proyecto/mvp-debugger.md).
-Se probó la cadena entera contra producción tras el cambio de fuente al dump: **74 chequeos, 0 fallas**
-(`agente-pronostico/scripts/e2e.py`). Hallazgo que habría hundido la demo: el último dato es de
-**madrugada**, así que la irradiancia pronosticada daba 0 siempre → se agregó el **instante de
-referencia** (`ahora` en `/forecast`) con `medido` + `error` al lado, auditado aparte como
-reconstrucción. Además 3 defectos corregidos (prompt desactualizado, rango histórico mal, mensaje
-de "hueco" vs "fuera de rango") y la **cobertura real de la serie** documentada: 133 días, no continua.
-Detalle en [agente-pronostico](proyecto/agente-pronostico.md).)*
+**Última actualización:** 2026-08-21 · *(**Vocabulario unificado + vista «Base de datos» nueva.**
+Los modos del agente pasaron por dos renombres hasta quedar en `medicion_visible` / `medicion_oculta`:
+antes la misma cosa tenía cuatro nombres (servicio, chip, botón y variable decían cosas distintas) y
+«modo backtest» era además falso, porque `/backtest` dibuja el gráfico en los dos. Al renombrar
+apareció una **fuga real**: un modo inválido caía al modo PERMISIVO, o sea que quien pedía la medición
+oculta recibía `backtest`. Ahora es 422, verificado en producción. Vista **«Base de datos»** nueva: el
+recorrido del ETL en cinco actos con el dato a la vista, partido por la línea que separa lo
+irreversible (al cargar) de lo reescribible (al consultar), más once tratamientos numerados como el
+doc de Leo. Y las fichas de los tools ganaron **«En qué ayuda»**. Detalle en
+[agente-pronostico](proyecto/agente-pronostico.md) y [mvp-debugger](proyecto/mvp-debugger.md).
+**La extensión de Chrome no conecta**, así que toda la UI se verifica con `react-dom/server` — ver
+[verificacion-consola](proyecto/verificacion-consola.md).)*
 
-**Anterior:** 2026-08-18 · *(**Cartago caído → la fuente del ETL es ahora una réplica
-del dump dentro de la EC2** (`agrodash-pg`, `127.0.0.1:5433`, 21,3 M filas). El ETL llevaba 9 días
-fallando en silencio: corregido, con `/salud/ingesta` que lo hace visible (hoy **503, stale**, dato
-congelado desde el 23-jul). Jonathan cerró además **6 tareas de confiabilidad** —auth de la consola
-que falla cerrada, rate-limit + tope de gasto en el store, CI con 3 jobs, vistas de salud, estados
-de error— y sumó un **documento de arquitectura en LaTeX** y un RUNBOOK. Verificado en vivo el
-18-ago: ver [agrodash-local](proyecto/agrodash-local.md). **Dos riesgos nuevos documentados:**
-[cuota-store-supabase](proyecto/cuota-store-supabase.md) (79 % del Free tier) y
-[superficie-expuesta](proyecto/superficie-expuesta.md).)*
+**Anterior:** 2026-08-19 · *(**Solo el agente predictivo, y verificado end-to-end.**
+El agente histórico quedó bloqueado en la consola con un flag de servidor reversible
+(`AGENTE_ANALIZADOR=on`). 74 chequeos e2e, 0 fallas. Hallazgo que habría hundido la demo: el último
+dato es de madrugada → se agregó el instante de referencia (`ahora` en `/forecast`).)*
 
-**Previo:** 2026-08-10 · *(**Leo Cardinale validó el tratamiento de datos** —
-doc rev LCV, ver [respuestas-leo-cardinale](decisiones/respuestas-leo-cardinale.md). Regla
-rectora nueva: **guardar el crudo en la DB y corregir en una capa de análisis** (superó 85→NULL,
-offset→0, resampleo-todo-a-5-min). Muestreo: eléctricas 5 min / radiación 15 s aparte. Temp válida
-10–80 °C. Bloqueantes de geometría RESUELTOS: 1420 Wp/arreglo, PV1=inclinado/PV2=vertical,
-tilt/azimut, sin constante de calibración → clear-sky. **Esquema Supabase rediseñado + ETL
-re-corrido + capas de calibración y Performance Ratio, TODO EN VIVO** en `jijklguopafevyucogro`
-(modelo crudo+vistas; radiación ya en W/m²; PR por arreglo ≈0,62 con bifacialidad; modelo viejo
-dropeado). Detalle en [implementacion](proyecto/implementacion.md). Prev: agente de pronóstico
-multi-variable VIVO en la EC2, fuente SC congelada 23-jul → "solo histórico".)*
+**Previo:** 2026-08-18 · Cartago caído → el ETL lee una réplica del dump dentro de la EC2; llevaba
+9 días fallando en silencio. Detalle: [agrodash-local](proyecto/agrodash-local.md) · riesgos abiertos
+en [cuota-store-supabase](proyecto/cuota-store-supabase.md) y [superficie-expuesta](proyecto/superficie-expuesta.md).
+
+**Antes:** 2026-08-10 · Leo Cardinale validó el tratamiento de datos y con eso cayeron los
+bloqueantes de geometría. Regla rectora: **crudo en la DB, corrección en capa de análisis**. Esquema
+rediseñado, ETL re-corrido y capas de calibración y PR **en vivo**. Fuente de verdad:
+[respuestas-leo-cardinale](decisiones/respuestas-leo-cardinale.md) · [implementacion](proyecto/implementacion.md).
 
 ## proyecto/ — qué es y en qué fase está
 - [objetivo.md](proyecto/objetivo.md) — estandarizar CSV crudos y cargarlos a Supabase como pipeline automatizado y permanente
@@ -41,7 +36,7 @@ multi-variable VIVO en la EC2, fuente SC congelada 23-jul → "solo histórico".
 - [implementacion.md](proyecto/implementacion.md) — paquete `src/agrovoltaic`: diseño (cero columnas quemadas), estructura, idempotencia, bugs corregidos
 - [arquitectura-regiones.md](proyecto/arquitectura-regiones.md) — dos regiones (Cartago/AgroDash + San Carlos/Supabase), sin DB central; San Carlos está partido
 - [capa-agentes.md](proyecto/capa-agentes.md) — Comparador + Analizador; infraestructura consolidada (servicio Python aparte, batch, lee ambas DBs)
-- [agente-pronostico.md](proyecto/agente-pronostico.md) — agente LLM que pronostica irradiancia + humedad de suelo vía clear-sky + kt*; dos modos (análisis / predicción a ciegas) y `GET /arquitectura`, que **deriva** el mapa del agente de `agent.MODOS` y los esquemas reales; **verificado e2e contra producción el 19-ago (72 chequeos, 0 fallas · 159 tests)**; instante de referencia para pronosticar con sol pese al congelamiento; cobertura real de la serie
+- [agente-pronostico.md](proyecto/agente-pronostico.md) — agente LLM que pronostica irradiancia + humedad de suelo vía clear-sky + kt*; dos modos (`medicion_visible` / `medicion_oculta`) y `GET /arquitectura`, que **deriva** el mapa del agente de `agent.MODOS` y los esquemas reales; **verificado e2e contra producción el 19-ago (72 chequeos, 0 fallas · 159 tests)**; instante de referencia para pronosticar con sol pese al congelamiento; cobertura real de la serie
 - [agente-analizador.md](proyecto/agente-analizador.md) — **NUEVO (2026-08-10):** agente Q&A sobre el histórico PV en Supabase; tools atómicas (SRP) sobre las vistas limpias; el LLM solo orquesta; MVP CLI, tools validadas contra la base
 - [mvp-debugger.md](proyecto/mvp-debugger.md) — web local (Next.js) para depurar en vivo los agentes; **desde el 19-ago solo muestra el predictivo** (flag `AGENTE_ANALIZADOR`): visor de traza (tools+salidas+respuesta), explorador de datos read-only, tokens+costo por consulta y acumulado (`/preguntar`, `/datos/*`, `/uso`); **vista «Arquitectura del agente»** (grafo de nodos leído de `/arquitectura`, con hover y modales por herramienta, cada uno con «En qué ayuda»); **vista «Base de datos»** (el recorrido del ETL en cinco actos, con el dato a la vista en cada paso); + artifact de diseño en iteración
 - [integracion-visioneflow.md](proyecto/integracion-visioneflow.md) — agente montándose en VisioneFlow: servicio FastAPI /forecast HECHO (53 tests) + modelos agregados + deploy preparado (runbook docs/pronostico/04); bloqueante: la EC2 no alcanza la DB AgroDash (sin Tailscale)
@@ -50,6 +45,7 @@ multi-variable VIVO en la EC2, fuente SC congelada 23-jul → "solo histórico".
 - [agrodash-local.md](proyecto/agrodash-local.md) — **NUEVO (2026-08-14):** réplica del dump de AgroDash **restaurada en la EC2** (`agrodash-pg`, 127.0.0.1:5433) como fuente del ETL con Cartago caído; 5.045 MB / 21.3M filas → el dump completo NO cabe en la Supabase Free (500 MB); + script para levantarla local
 - [cuota-store-supabase.md](proyecto/cuota-store-supabase.md) — **NUEVO (2026-08-18):** el store está al **79 % del Free tier** (395/500 MB) y `lecturas_ambientales_sc` se lleva el 89 %; pasarse = solo-lectura; opciones sin decidir
 - [superficie-expuesta.md](proyecto/superficie-expuesta.md) — **NUEVO (2026-08-18):** qué escucha y qué es alcanzable en la EC2 (verificado desde fuera); 8000/8010 bindean `0.0.0.0` y solo los frena el security group; `/forecast/salud/ingesta` es público
+- [verificacion-consola.md](proyecto/verificacion-consola.md) — **NUEVO (2026-08-21):** la extensión de Chrome NO conecta; cómo verificar la UI sin navegador (`tsc` + `react-dom/server`, 44 chequeos) y las trampas de la operativa local (`npm run build` con `next dev` vivo rompe el dev server)
 - [metodologia.md](proyecto/metodologia.md) — metodología del equipo (San Carlos): variables, puntos de medición, arquitectura HW, frecuencias, periodos
 - [evaluacion-datos.md](proyecto/evaluacion-datos.md) — plan de análisis/dashboard San Carlos: DataViz/Stats/Mining, 7 objetivos energéticos, Ridge, Colab
 
@@ -61,6 +57,7 @@ multi-variable VIVO en la EC2, fuente SC congelada 23-jul → "solo histórico".
 - [remodelado-propuesto.md](datos/remodelado-propuesto.md) — **HISTÓRICO/SUPERADO**: las vistas viejas (v_inversor/…) y `monitoreo_agrovoltaic` se dropearon; el split ahora es nativo del modelo crudo
 - [diccionario-variables.md](datos/diccionario-variables.md) — variables fuente San Carlos (jun 2026): 3 tablas (PV/inversor+SP722, Fliwer, nodos ESP32)
 - [correccion-filas-mezcladas.md](datos/correccion-filas-mezcladas.md) — spec del equipo para remapear filas de piranómetro (L/M/N/O) + par ground-truth original/corregido
+- [verificacion-numeros.md](datos/verificacion-numeros.md) — **NUEVO (2026-08-21):** las consultas SQL que reproducen el antes/después del ETL; hay que re-correrlas cuando cambie el pipeline, porque las cifras de la consola son un corte fechado
 - [geometria-sistema.md](datos/geometria-sistema.md) — specs físicas confirmadas por Leo: 1420 Wp/arreglo (4×355 Wp), PV1=inclinado (20°/150°), PV2=vertical (90°/50°), bifaciales; insumo de calibración/PR
 
 ## inconsistencias/ — un archivo por problema (verificadas en NEW el 2026-06-01)
@@ -77,7 +74,8 @@ multi-variable VIVO en la EC2, fuente SC congelada 23-jul → "solo histórico".
 - [decisiones.md](decisiones/decisiones.md) — resampleo, gaps, duplicados, schema destino; **2026-08-10 giro a "crudo en DB + corrección en análisis"** (superó 85→NULL, offset→0, resampleo-todo)
 - [respuestas-leo-cardinale.md](decisiones/respuestas-leo-cardinale.md) — **fuente de verdad**: respuestas verbatim de Leo P1–P12 + los 4 datos pendientes (doc rev LCV, 2026-08-10)
 
-## pendientes/ — lo que bloquea
+## pendientes/ — lo que bloquea y lo que falta decidir
+- [abiertos.md](pendientes/abiertos.md) — **NUEVO (2026-08-21):** lo que depende de NOSOTROS: volumen del contenedor (885k filas cada 6 h), addon NWP apagado (−8 % MAE a 6 h), 32 commits sin pushear, NSRDB sin evaluar
 - [bloqueantes.md](pendientes/bloqueantes.md) — **2026-08-10 casi todo RESUELTO por Leo** (kWp, tilt/azimut, PV1/PV2, constante de calibración); solo queda el mapeo caja→sitio fino para el Comparador
 
 ## contexto-externo/ — sistemas relacionados

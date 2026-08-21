@@ -53,3 +53,8 @@ Detalle de las preguntas para el equipo: `../../equipo/DUDAS-Pendientes.md` y `.
 
 Relacionado: [[irradiancia-sin-calibrar]], [[agrodash]], [[capa-agentes]],
 [[cuota-store-supabase]], [[superficie-expuesta]].
+
+---
+
+Esto son cosas que dependen de **terceros**. Lo que depende de nosotros (ofrecido y no
+autorizado, deuda conocida, decisiones sin tomar) vive en [abiertos](abiertos.md).
