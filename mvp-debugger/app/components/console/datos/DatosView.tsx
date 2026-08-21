@@ -1,30 +1,29 @@
 "use client";
-// «Los datos»: qué se le hizo al crudo para que la base sirva para algo.
+// «Los datos»: qué se le hizo al crudo, en once líneas.
 //
 // Es la contraparte de la vista de arquitectura. Aquella cuenta cómo razona el
-// agente; esta cuenta de dónde salen los números sobre los que razona. Sin esta
-// pantalla, la limpieza de 19 meses de CSV es una afirmación sin evidencia.
+// agente; esta, de dónde salen los números sobre los que razona.
 //
-// SOBRE LOS NÚMEROS: son un corte fechado, no una lectura viva, y la pantalla lo
-// dice. El servicio del pronóstico solo lee `lecturas_ambientales_sc`; las tablas
-// fotovoltaicas no pasan por él, así que ningún endpoint puede reportarlos. Antes
-// que fingir que están vivos, se muestran con la fecha de la corrida al lado.
+// La forma es deliberada: una lista numerada, un tratamiento por renglón, en el
+// mismo orden y con la misma numeración que el documento que revisó Leo Cardinale
+// (P1 a P12). La versión anterior tenía tablas de antes/después y un listado de
+// problemas aparte: era la misma información contada tres veces, y para leerla
+// había que cruzarlas. Acá el problema y lo que se hizo van en la misma frase.
+//
+// Los números que quedan (26,5 MW, 10 a 80 °C) están dentro del renglón que los
+// necesita, no en una tabla propia. Son de la corrida del 2026-08-10 verificada
+// contra la base el 2026-08-20; el sello está a la vista porque el servicio del
+// pronóstico no lee estas tablas y no puede refrescarlos.
 import { useState } from "react";
 import { renderMd } from "@/app/lib/markdown";
 import { NodoModal, type Detalle } from "@/app/components/console/arquitectura/NodoModal";
 import { LienzoDatos } from "./LienzoDatos";
-import { ANTES_DESPUES, CORRIDA, GANANCIAS, INCONSISTENCIAS } from "./catalogoDatos";
+import { CORRIDA, TRATAMIENTOS } from "./catalogoDatos";
 
-/**
- * Markdown para las notas de las tablas y la lista.
- *
- * Va en un `<div>` y no en un `<span>`: `renderMd` envuelve en `<p>`, y un
- * párrafo dentro de un span es anidado inválido (el parser lo expulsa y la regla
- * CSS que lo apuntaba deja de alcanzarlo). Dentro de un `<td>` un div es válido.
- */
-function Md({ children }: { children: string }) {
-  return <div className="md-plano" dangerouslySetInnerHTML={{ __html: renderMd(children) }} />;
-}
+const DONDE: Record<"etl" | "vista", string> = {
+  etl: "al cargar",
+  vista: "al consultar",
+};
 
 export function DatosView() {
   const [detalle, setDetalle] = useState<Detalle | null>(null);
@@ -34,9 +33,8 @@ export function DatosView() {
       <div className="phead">
         <h1>Los datos</h1>
         <p>
-          De 285 CSV con 13 esquemas distintos a una base consultable, por un proceso
-          que se puede volver a correr. Hacé clic en cualquier etapa para ver qué hace
-          y en qué ayuda.
+          Qué se le hizo al crudo para que la base sirva. Un punto por tratamiento,
+          numerados como en el documento que revisó Leo Cardinale.
         </p>
       </div>
 
@@ -53,101 +51,38 @@ export function DatosView() {
         </div>
       </div>
 
-      {/* ── La regla que explica todo el modelo ──────────────────────────── */}
-      <div className="card dat-regla">
-        <span className="lbl">La regla que ordena todo</span>
-        <p>
-          <b>El crudo se guarda tal cual; la corrección vive en una capa de análisis.</b>{" "}
-          Ninguna de las cifras de la izquierda se borró: siguen en la base, exactamente
-          como las midió el sensor. Lo de la derecha son columnas nuevas, calculadas en
-          SQL sobre las de la izquierda.
-        </p>
-        <p className="hint">
-          Es contraintuitivo guardar un pico de 26,5 MW a propósito, y esa es la
-          discusión que se dio. Una corrección es una hipótesis, y las hipótesis se
-          revisan: si el 85 °C se hubiera convertido en NULL al cargar, hoy no habría
-          forma de contar cuántas veces falló el sensor. El dato original no se
-          reconstruye; una vista se reescribe en una tarde.
-        </p>
-      </div>
-
-      {/* ── Antes y después ──────────────────────────────────────────────── */}
       <div className="card">
         <div className="dat-cap">
-          <span className="lbl">Antes y después, medido</span>
+          <span className="lbl">Qué se le hizo a los datos</span>
           <span className="dat-sello">
             corrida del {CORRIDA.ejecutado} · verificado contra la base el {CORRIDA.verificado}
           </span>
         </div>
-        <div className="arq-tblwrap">
-          <table className="arq-tbl dat-tbl">
-            <thead>
-              <tr><th>Qué se mira</th><th>Crudo</th><th>Tras la capa</th><th>Por qué importa</th></tr>
-            </thead>
-            <tbody>
-              {ANTES_DESPUES.map((f) => (
-                <tr key={f.que}>
-                  <td className="k">{f.que}</td>
-                  <td className="dat-mal">{f.crudo}</td>
-                  <td className="dat-bien">{f.corregido}</td>
-                  <td><Md>{f.nota}</Md></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* ── Lo que se ganó calibrando ────────────────────────────────────── */}
-      <div className="card">
-        <span className="lbl">Lo que apareció al calibrar</span>
-        <p className="hint">
-          Estas cuatro no tienen columna «antes» porque antes no existían: la
-          irradiancia era un número sin unidad y el rendimiento no se podía calcular
-          sin conocer la geometría del sistema.
-        </p>
-        <div className="arq-tblwrap">
-          <table className="arq-tbl dat-tbl">
-            <thead>
-              <tr><th>Qué</th><th>Valor</th><th>Qué significa</th></tr>
-            </thead>
-            <tbody>
-              {GANANCIAS.map((g) => (
-                <tr key={g.que}>
-                  <td className="k">{g.que}</td>
-                  <td className="dat-bien">{g.valor}</td>
-                  <td><Md>{g.nota}</Md></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* ── Las siete inconsistencias ────────────────────────────────────── */}
-      <div className="card">
-        <span className="lbl">Las siete inconsistencias del crudo</span>
-        <p className="hint">
-          Contadas sobre los 285 archivos. Son la razón de ser de todo lo de arriba.
-        </p>
-        <ul className="dat-inc">
-          {INCONSISTENCIAS.map((i) => (
-            <li key={i.n}>
-              <span className="dat-n">{i.n}</span>
-              <div>
-                <b>{i.que}</b>
-                <Md>{i.evidencia}</Md>
+        <ol className="dat-trat">
+          {TRATAMIENTOS.map((t) => (
+            <li key={t.n}>
+              <span className="dat-n">{t.n}</span>
+              <div className="dat-cuerpo">
+                <span className="dat-tit">
+                  {t.titulo}
+                  {t.parcial && <em className="dat-parcial">parcial</em>}
+                </span>
+                <div className="md-plano"
+                     dangerouslySetInnerHTML={{ __html: renderMd(t.que) }} />
               </div>
+              <span className="dat-meta">
+                <span className={"dat-donde d-" + t.donde}>{DONDE[t.donde]}</span>
+                {t.leo && <span className="dat-leo">{t.leo}</span>}
+              </span>
             </li>
           ))}
-        </ul>
+        </ol>
       </div>
 
       <p className="note">
-        <b>Lo que falta.</b> La separación fina de las filas mezcladas (inconsistencia 2)
-        sigue pendiente: hoy esas filas se saltan y se acepta el hueco, en vez de
-        recuperar el dato remapeando las columnas. El detalle del pipeline, el esquema
-        completo y las decisiones de datos están en{" "}
+        <b>«Al cargar» contra «al consultar».</b> Lo primero es irreversible y por eso hay
+        muy poco: el dato original no se reconstruye. Lo segundo es una vista SQL y se
+        reescribe en una tarde. Las respuestas completas de Leo y el esquema están en{" "}
         <a href="/docs#datos-pipeline">la documentación</a>.
       </p>
 

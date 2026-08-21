@@ -301,32 +301,32 @@ Cuidado con una colisión que estuvo a punto de pasar: `.arq-ayuda` **ya existí
 de la leyenda del lienzo. La sección nueva se llama `.arq-porque`.
 
 ### Vista nueva «Los datos» (`app/components/console/datos/`)
-El recorrido del ETL como grafo, con el mismo lenguaje visual que Arquitectura y reutilizando
-su `NodoModal`, su lienzo y su leyenda: `285 CSV → extract → transform → load → 2 tablas crudas
-→ 4 vistas`. Cada nodo abre ficha. Debajo: la regla rectora, la tabla **antes/después**, lo que
-apareció al calibrar, y las 7 inconsistencias.
+El recorrido del ETL como grafo (`285 CSV → extract → transform → load → 2 tablas crudas → 4
+vistas`), reutilizando el `NodoModal`, el lienzo y la leyenda de Arquitectura. Debajo, **una
+lista numerada de once tratamientos**, uno por renglón, con la misma numeración y el mismo orden
+que el documento que revisó Leo Cardinale (P1 a P12): normalización de nombres, separación por
+fuente, muestreo, el crudo intacto, el 85 °C, el offset, los rangos físicos, la irradiancia
+pre-jul-2025, la calibración, las filas mezcladas y los duplicados/huecos.
+
+Cada renglón lleva **dónde vive el tratamiento**: `al cargar` (irreversible, y por eso hay muy
+poco) contra `al consultar` (una vista SQL, se reescribe en una tarde). Esa distinción es la
+regla rectora del modelo, así que va con color y no solo con texto. Y la referencia a la
+pregunta de Leo que lo respalda, para poder contrastarlo.
 
 Va en el **grupo transversal** de la navegación (es el `SEPARADOR` ahora), no en el de un
 agente: el ETL existe con cualquiera de los dos agentes apagado.
 
+**Primera versión descartada.** Tenía tablas de antes/después, otra de ganancias y un listado de
+las 7 inconsistencias aparte: la misma información contada tres veces, y para leerla había que
+cruzarlas. Izack lo cortó de raíz («debe ser super breve, específico y directo»). Ahora el
+problema y lo que se hizo van en la misma frase, y los números que sobrevivieron (26,5 MW, 10 a
+80 °C, 99,0 % de QC, PR 0,621/0,626) viven dentro del renglón que los necesita.
+
 **La diferencia honesta con la vista de Arquitectura.** Aquella se dibuja con lo que el servicio
 publica en vivo, así que no puede mentir. Esta **no tiene esa red**: el servicio del pronóstico
 solo lee `lecturas_ambientales_sc`, y las tablas fotovoltaicas no pasan por él. En vez de fingir
-que los números están vivos, se muestran con la **fecha de la corrida al lado** (`CORRIDA`), para
-que se lean como una foto. Verificados con SELECT contra la base viva el 2026-08-20:
-
-| | crudo | tras la capa de vistas |
-|---|---|---|
-| Pico de `potencia_pv1_w` | 26.503.163 W (18.664× lo instalado) | 1.603 W |
-| Pico de `potencia_total_wac` | 118.634 W | 2.157 W |
-| Filas con temperatura en 85 °C | 12.174 | 0 |
-| Rango de `temp_inclinado` | 0,0 a 127,9 °C | 15,3 a 79,8 °C |
-| Filas con irradiancia negativa | 14.888 (mínimo −15.538) | 0 |
-| Irradiancia pre 2025-07-01 | se conserva cruda | 37.825 filas marcadas no válidas |
-
-Y lo que apareció al calibrar: máximo 1.340 W/m², **99,0 %** pasa QC, kt\* p95 = **1,00**, y el
-Performance Ratio energético **PV1 = 0,621 · PV2 = 0,626** (convergen, o sea que el modelo
-bifacial es correcto).
+que los números están vivos, se muestran con la **fecha de la corrida al lado** (`CORRIDA`),
+verificados con SELECT contra la base viva el 2026-08-20.
 
 ### Dos defectos reales encontrados al construirla
 1. **`<p>` dentro de `<span>`.** `renderMd` envuelve en `<p>`; el helper de markdown en línea lo
@@ -336,8 +336,9 @@ bifacial es correcto).
 
 ### Cómo se verificó sin navegador
 La extensión de Chrome no estaba conectada, así que se compilaron los componentes con `tsc` y se
-renderizaron con `react-dom/server`: los 6 nodos con su `data-tip`, las 6 filas de antes/después,
-las 10 celdas de valor corregido, las 7 inconsistencias numeradas, el sello de fecha, que ningún
-nodo se solape ni se salga del lienzo, que los huecos sean iguales, que las 6 tools tengan
-`ayuda` con `hace` por debajo de 300 caracteres, y que el modal de cada una muestre «En qué
-ayuda» **sin perder** «Límites» ni «Cómo se prueba». **23 chequeos, 0 fallas.**
+renderizaron con `react-dom/server`: los 6 nodos con su `data-tip`, los 11 tratamientos numerados
+y en orden, que cada uno declare dónde vive y cite su pregunta de Leo, el sello de fecha, que
+ningún nodo se solape ni se salga del lienzo, que los huecos entre columnas sean iguales, que las
+6 tools tengan `ayuda`, y que el modal de cada una muestre «En qué ayuda» **sin perder** «Límites»
+ni «Cómo se prueba». Con la brevedad como aserción explícita: ningún tratamiento pasa de 260
+caracteres y ninguna ficha del lienzo pasa de 3 puntos. **28 chequeos, 0 fallas.**

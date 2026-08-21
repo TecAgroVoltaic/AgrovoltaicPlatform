@@ -557,45 +557,54 @@ svg .hit { cursor:crosshair; }
 /* ── Los datos · el recorrido del ETL ─────────────────────────────────────
    Reutiliza el lienzo, los nodos, el marco y la leyenda de la vista de
    arquitectura: es el mismo lenguaje visual y duplicarlo solo habría abierto
-   dos sitios donde ajustar lo mismo. Acá vive únicamente lo que esta vista
-   tiene y aquella no. */
+   dos sitios donde ajustar lo mismo. Acá vive únicamente lo propio. */
 .dat-lienzo .arq-lane { top:14px; }
 .dat-fuente { border-left:3px solid var(--ceil); }
 .dat-etapa  { border-left:3px solid var(--accent); }
 .dat-tabla  { border-left:3px solid var(--real); }
 .dat-vista  { border-left:3px solid var(--pred); }
 
-/* La regla que ordena el modelo. Va en su propia tarjeta porque es una decisión,
-   no un dato: sin ella, guardar un pico de 26,5 MW parece un descuido. */
-.dat-regla { display:flex; flex-direction:column; gap:9px; }
-.dat-regla p { margin:0; font-size:13.5px; line-height:1.6; color:var(--ink2); }
-.dat-regla p b { color:var(--ink); }
-.dat-regla .hint { margin:0; font-size:12.5px; color:var(--muted); }
-
-/* El sello de fecha. Los números de esta vista son una foto, no una lectura
-   viva, y eso se dice en la misma línea del título en vez de en una nota al pie
-   que nadie lee. */
-.dat-cap { display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:8px; }
+/* El sello de fecha. Estos números son una foto y no una lectura viva, así que
+   se dice en la línea del título y no en una nota al pie que nadie lee. */
+.dat-cap { display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:8px; margin-bottom:14px; }
 .dat-sello { font-family:var(--mono); font-size:10.5px; color:var(--muted); }
 
-.dat-tbl td.k { font-family:var(--mono); font-size:11.5px; color:var(--ink); }
-.dat-tbl .dat-mal  { font-family:var(--mono); font-variant-numeric:tabular-nums; color:var(--crit); white-space:nowrap; }
-.dat-tbl .dat-bien { font-family:var(--mono); font-variant-numeric:tabular-nums; color:var(--good); white-space:nowrap; }
-/* renderMd siempre envuelve en <p>: sin esto el margen del navegador
-   descuadra las celdas y los renglones de la lista. */
+/* renderMd siempre envuelve en <p>: sin esto el margen del navegador descuadra
+   los renglones. */
 .md-plano p { margin:0; font-size:inherit; color:inherit; line-height:inherit; }
 .md-plano p + p { margin-top:6px; }
 
-/* Las siete inconsistencias, numeradas: acá el número SÍ es información (es el
-   identificador con el que se las nombra en la memoria del proyecto), no un
-   adorno de lista. */
-.dat-inc { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:11px; }
-.dat-inc li { display:flex; gap:11px; align-items:flex-start; }
-.dat-inc li > div { display:flex; flex-direction:column; gap:2px; }
-.dat-inc b { font-size:13px; color:var(--ink); font-weight:600; }
-.dat-inc .md-plano { font-size:12.5px; color:var(--ink2); line-height:1.5; }
-.dat-n { flex:0 0 auto; width:21px; height:21px; border-radius:6px; background:var(--panel2); border:1px solid var(--line);
-         font-family:var(--mono); font-size:11px; color:var(--muted); display:flex; align-items:center; justify-content:center; }
+/* La lista de tratamientos. El número SÍ es información: es el orden en que se
+   aplican y la numeración con la que se los nombra en la memoria del proyecto.
+   Cada renglón cabe en una línea de lectura, por eso el cuerpo se limita a 72ch
+   y la meta se ancla a la derecha en vez de envolver el texto. */
+.dat-trat { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; }
+.dat-trat li { display:flex; gap:12px; align-items:flex-start; padding:12px 0; border-top:1px solid var(--line); }
+.dat-trat li:first-child { border-top:0; padding-top:0; }
+.dat-cuerpo { flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:3px; max-width:76ch; }
+.dat-tit { font-size:13.5px; color:var(--ink); font-weight:600; letter-spacing:-.01em; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.dat-trat .md-plano { font-size:12.5px; color:var(--ink2); line-height:1.55; }
+.dat-n { flex:0 0 auto; width:22px; height:22px; border-radius:6px; background:var(--panel2); border:1px solid var(--line);
+         font-family:var(--mono); font-size:11px; color:var(--muted); display:flex; align-items:center; justify-content:center;
+         font-variant-numeric:tabular-nums; margin-top:1px; }
+
+/* Dónde vive cada tratamiento. Es la distinción que ordena el modelo entero
+   (irreversible contra reescribible), así que lleva color y no solo texto. */
+.dat-meta { flex:0 0 auto; display:flex; align-items:center; gap:7px; margin-top:2px; }
+.dat-donde { font-family:var(--mono); font-size:9.5px; text-transform:uppercase; letter-spacing:.09em;
+             padding:3px 7px; border-radius:5px; border:1px solid var(--line); white-space:nowrap; }
+.dat-donde.d-etl   { color:var(--accent); border-color:color-mix(in srgb,var(--accent) 40%,transparent); }
+.dat-donde.d-vista { color:var(--pred);   border-color:color-mix(in srgb,var(--pred) 45%,transparent); }
+.dat-leo { font-family:var(--mono); font-size:10px; color:var(--muted); white-space:nowrap; }
+.dat-parcial { font-family:var(--mono); font-size:9.5px; font-style:normal; text-transform:uppercase;
+               letter-spacing:.09em; color:var(--warn); border:1px solid color-mix(in srgb,var(--warn) 45%,transparent);
+               border-radius:5px; padding:2px 6px; }
+
+/* En pantallas angostas la meta se va abajo del texto en vez de estrangularlo. */
+@media (max-width:820px) {
+  .dat-trat li { flex-wrap:wrap; }
+  .dat-meta { width:100%; margin-left:34px; }
+}
 
 /* ── Salud del sistema ────────────────────────────────────────────────────
    El diagnóstico va arriba y se lee como un titular: qué pasa y por qué. Las

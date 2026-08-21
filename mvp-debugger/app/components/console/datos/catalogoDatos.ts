@@ -44,13 +44,12 @@ export const NODOS_DATOS: NodoDato[] = [
     sub: "13 esquemas · nov-2024 a jun-2026",
     ficha: {
       hover: "Los datos crudos tal como los deja el datalogger: 285 CSV con 13 esquemas distintos y siete clases de problemas.",
-      hace: "Es la entrada: 19 meses de descargas del sitio agrovoltaico, un archivo por día. Nadie los normalizó nunca, así que llegan como los dejó cada versión del datalogger.",
-      ayuda: "Nada de lo que sigue se entiende sin ver de dónde se parte. **No hay un estándar de datos**: la misma variable aparece como `vpv1`, `Voltaje PV1 [V]` y `voltaje_pv1_v` según el mes, y hay filas de dos sensores distintos intercaladas en el mismo archivo. Ese es el problema que el pipeline existe para resolver.",
+      hace: "19 meses de descargas del sitio, un archivo por día, como los dejó cada versión del datalogger.",
+      ayuda: "Es el punto de partida: **no hay un estándar de datos**. Sin ver esto, los once tratamientos de abajo parecen burocracia.",
       puntos: [
-        "**13 esquemas distintos**: las columnas aparecen, desaparecen y cambian de nombre entre archivos.",
-        "**Typos que sobreviven en el header**: `Energì` con acento grave en 72 archivos, `POTencia` en 2, `Corriente PV2[A]` sin espacio en 5.",
-        "**Cadencia variable**: ~2 s en dic-2024, ~1 min en may-2025, ~5 min desde nov-2025.",
-        "**Dos huecos largos**: 126 días (dic-2024 → may-2025) y 71 días (jun → sep-2025). No se rellenan con datos sintéticos.",
+        "**13 esquemas**: las columnas aparecen, desaparecen y cambian de nombre entre archivos.",
+        "**Typos en el header**: `Energì` en 72 archivos, `POTencia` en 2, `Corriente PV2[A]` en 5.",
+        "**Dos huecos largos**: 126 y 71 días sin dato.",
       ],
       archivo: "dataset/Monitoreo-AgroVoltaic-SC-NEW/",
     },
@@ -63,12 +62,11 @@ export const NODOS_DATOS: NodoDato[] = [
     sub: "colapsa ~70 nombres a uno",
     ficha: {
       hover: "Lee cada CSV tolerando filas rotas y normaliza los nombres de columna: ~70 variantes crudas colapsan a un nombre canónico por concepto.",
-      hace: "Lee el CSV aunque tenga filas con distinto número de columnas, normaliza cada encabezado y tipa los valores a numérico con el timestamp parseado.",
-      ayuda: "Es lo que hace que el pipeline **no haya que reescribirlo cada vez que cambia el datalogger**. `slugify()` quita acentos, unidades, mayúsculas y puntuación, así que las ~70 formas de escribir lo mismo colapsan solas: `Energìa [Wh]`, `energia_hoy_wh` y `Energía Hoy` terminan en el mismo lugar sin que nadie las enumere. Solo la leyenda de conceptos se declara a mano, una entrada por concepto y no por variante.",
+      hace: "Lee el CSV aunque traiga filas rotas, normaliza cada encabezado y tipa los valores.",
+      ayuda: "Es lo que evita reescribir el pipeline cada vez que cambia el datalogger: `slugify()` quita acentos, unidades y mayúsculas, así que `Energìa [Wh]`, `energia_hoy_wh` y `Energía Hoy` caen solas en el mismo lugar, sin enumerarlas.",
       puntos: [
-        "**Cero columnas quemadas.** La única fuente irreducible es `CONCEPT_MAP`; de ahí se derivan las columnas canónicas, las etiquetas, el método de resampleo y hasta el DDL SQL.",
-        "Una **columna nueva** cuesta una línea. Una **ortografía nueva** del mismo concepto no cuesta nada: la reconoce `slugify`.",
-        "Las filas rotas (de los 8 archivos con lecturas mezcladas de dos sensores) se saltan y se loguean, no revientan el parser.",
+        "**Cero columnas quemadas.** De `CONCEPT_MAP` se derivan las columnas, las etiquetas, el resampleo y el DDL.",
+        "Columna nueva = una línea. Ortografía nueva del mismo concepto = nada.",
       ],
       archivo: "src/agrovoltaic/extract.py · normalize.py",
     },
@@ -81,12 +79,11 @@ export const NODOS_DATOS: NodoDato[] = [
     sub: "parte en dos · 5 min y 15 s",
     ficha: {
       hover: "Separa cada archivo en dos flujos por fuente física y los lleva a su cadencia oficial. NO limpia nada: el crudo se conserva.",
-      hace: "Separa cada archivo en dos flujos según de qué sensor viene cada columna (eléctrico y radiación) y los reagrupa a su cadencia oficial: 5 min el eléctrico, 15 s la radiación.",
-      ayuda: "Resuelve el problema de que **un mismo archivo mezcla dos sensores que muestrean distinto**. Antes iban a una sola tabla ancha y la radiación quedaba diluida en la cadencia del inversor; ahora cada fuente vive en su tabla, a su ritmo, y se puede consultar sin arrastrar columnas vacías de la otra.\n\nLo que **no** hace es igual de importante: no anula ni recorta ningún valor. El crudo entra tal cual.",
+      hace: "Separa cada archivo en dos flujos según de qué sensor viene cada columna, y los lleva a su cadencia: 5 min el eléctrico, 15 s la radiación.",
+      ayuda: "Antes todo iba a una tabla ancha y la radiación quedaba diluida en el ritmo del inversor. Y lo que **no** hace pesa igual: no anula ni recorta nada, el crudo pasa tal cual.",
       puntos: [
-        "**Radiación a 15 s, no a 10.** ThingSpeak no admite intervalos menores; los muestreos por debajo de 10 s eran pruebas y se promedian.",
-        "El resampleo distingue **tasas de acumuladores**: promedio para potencia e irradiancia, último valor para la energía acumulada. Promediar un acumulador daría un número sin significado físico.",
-        "Cada fila guarda su trazabilidad: `n_muestras`, `intervalo_original_seg` y `fuente_archivo`.",
+        "**15 s y no 10**: ThingSpeak no admite menos. Lo de menos de 10 s eran pruebas.",
+        "Promedia las tasas pero toma el **último** valor de los acumuladores: promediar energía acumulada no significa nada.",
       ],
       archivo: "src/agrovoltaic/transform.py",
     },
@@ -99,12 +96,11 @@ export const NODOS_DATOS: NodoDato[] = [
     sub: "UPSERT por timestamp",
     ficha: {
       hover: "Inserta con ON CONFLICT DO UPDATE sobre la PK timestamp, y salta los CSV cuyo md5 no cambió. Reprocesar nunca duplica.",
-      hace: "Inserta cada flujo en su tabla con `ON CONFLICT DO UPDATE` sobre la clave primaria `timestamp`, y lleva un registro del md5 de cada archivo ya procesado.",
-      ayuda: "Es lo que convierte esto en un **proceso permanente y no en un script de una sola vez**. Correrlo dos veces da el mismo resultado que correrlo una: agregar datos nuevos es soltar el CSV en la carpeta y volver a correr, sin borrar nada ni preocuparse por duplicar. Sin esta propiedad, cada actualización sería una intervención manual con riesgo de romper lo que ya estaba.",
+      hace: "Inserta con `ON CONFLICT DO UPDATE` sobre la PK `timestamp`, y salta los archivos cuyo md5 no cambió.",
+      ayuda: "Es lo que hace de esto un **proceso permanente y no un script de una sola vez**: correrlo dos veces da lo mismo que correrlo una. Agregar datos es soltar el CSV y volver a correr.",
       puntos: [
-        "**Idempotente en dos niveles.** Por archivo: el md5 en `_ingest_log` salta los CSV sin cambios (hoy tiene las 285 entradas). Por fila: la PK `timestamp` más `ON CONFLICT DO UPDATE`.",
-        "Un archivo malo **no frena el resto**: se loguea y el pipeline sigue.",
-        "«Reprocesar todo» hace TRUNCATE y recarga limpia, para cuando cambia una regla y hay que rehacer la base entera.",
+        "Idempotente por **archivo** (md5 en `_ingest_log`) y por **fila** (PK `timestamp`).",
+        "Un archivo malo se loguea y **no frena el resto**.",
       ],
       archivo: "src/agrovoltaic/load.py · state.py",
     },
@@ -117,13 +113,11 @@ export const NODOS_DATOS: NodoDato[] = [
     sub: "36.469 eléctricas · 94.868 radiación",
     ficha: {
       hover: "El dato del sensor tal cual, sin una sola corrección. Es la regla rectora del modelo: lo que se guarda es lo que midió el aparato.",
-      hace: "Guardan el valor del sensor **exactamente como llegó**, incluidos los valores imposibles: las temperaturas en 85 °C, el pico de 26,5 MW y la irradiancia negativa están ahí adentro.",
-      ayuda: "Esta es **la decisión de diseño más importante de todo el modelo**, y es contraintuitiva: guardar la basura a propósito. La razón es que una corrección es una hipótesis, y las hipótesis cambian. Si el 85 °C se hubiera convertido en NULL al cargar, hoy no habría forma de saber cuántas veces falló el sensor ni de revisar el criterio cuando aparezca uno mejor. El dato original no se puede reconstruir; una vista sí se puede reescribir en una tarde.\n\nValidada con Leo Cardinale el 2026-08-10. Superó las decisiones previas de `85 → NULL`, `offset → 0` y «resamplear todo a 5 minutos».",
+      hace: "Guardan el valor **exactamente como llegó**, valores imposibles incluidos: el 85 °C, el pico de 26,5 MW y la irradiancia negativa están ahí adentro.",
+      ayuda: "Guardar la basura a propósito es contraintuitivo, y es la decisión más importante del modelo. Una corrección es una hipótesis y las hipótesis cambian: si el 85 °C se hubiera vuelto NULL al cargar, hoy no habría cómo contar cuántas veces falló el sensor. El crudo no se reconstruye; una vista se reescribe en una tarde.",
       puntos: [
-        "`monitoreo_sc_electrico`: 1 fila = una ventana de 5 min del inversor y los DS18B20.",
-        "`radiacion_sc_15s`: tabla aparte a 15 s, porque el piranómetro muestrea mucho más rápido y meterlo en la cadencia del inversor perdía información.",
-        "Ambas con PK `timestamp` y metadata de trazabilidad por fila.",
-        "**RLS habilitado sin políticas** en las 9 tablas públicas: solo los roles de servicio entran, la API REST pública queda bloqueada.",
+        "`monitoreo_sc_electrico` (5 min) y `radiacion_sc_15s` (15 s), cada una con PK `timestamp`.",
+        "**RLS sin políticas** en las 9 tablas: solo entran los roles de servicio.",
       ],
       archivo: "sql/schema.sql",
     },
@@ -136,92 +130,84 @@ export const NODOS_DATOS: NodoDato[] = [
     sub: "corrección · calibración · PR",
     ficha: {
       hover: "Donde vive la corrección. Cada regla es una columna nueva calculada en SQL sobre el crudo, nunca una escritura sobre él.",
-      hace: "Aplican en SQL, sobre el crudo y sin tocarlo, las tres capas de corrección: rangos físicos válidos, calibración de la irradiancia contra el cielo despejado, y el Performance Ratio por arreglo.",
-      ayuda: "Es la otra mitad de la regla rectora: el crudo queda intacto **y aun así se consulta dato limpio**. Cambiar un umbral es reescribir una vista, no recargar 130.000 filas. Y como cada corrección es una columna con nombre propio, siempre se puede comparar el valor corregido contra el original en la misma consulta, que es lo que hace auditable el criterio.",
+      hace: "Aplican en SQL, sobre el crudo y sin tocarlo, los tratamientos 4 a 9: rangos físicos, calibración contra el cielo despejado y Performance Ratio.",
+      ayuda: "La otra mitad de la regla: el crudo queda intacto **y aun así se consulta dato limpio**. Cambiar un umbral es reescribir una vista, no recargar 130.000 filas, y el valor corregido se puede comparar contra el original en la misma consulta.",
       puntos: [
-        "`v_sc_electrico_corregido`: temperatura fuera de **10 a 80 °C** → NULL (reemplaza el −10 a 60 de AgroDash); potencia fuera de 0 a 5.000 W; y los rangos de voltaje, corriente y frecuencia.",
-        "`v_sc_radiacion_corregida`: el offset nocturno −38,845 y los negativos → 0; y **toda la irradiancia anterior al 2025-07-01 → NULL**, porque el error de medición se corrigió a mediados de 2025.",
-        "`v_sc_radiacion_calibrada`: W/m² más kt\\* contra el clear-sky de pvlib, con bandera de control de calidad.",
-        "`v_sc_performance`: el Performance Ratio por arreglo, con modelo bifacial de dos planos.",
-        "Todas con `security_invoker = on`, para que la vista no eluda los permisos de quien la consulta.",
+        "`v_sc_electrico_corregido` · `v_sc_radiacion_corregida`: rangos y offset. Todas con `security_invoker = on`, así la vista no elude los permisos de quien consulta.",
+        "`v_sc_radiacion_calibrada`: W/m², kt\\* y control de calidad. **99,0 %** pasa QC.",
+        "`v_sc_performance`: PR por arreglo. **PV1 = 0,621 · PV2 = 0,626**, convergen y validan el modelo bifacial.",
       ],
       archivo: "sql/schema.sql · src/agrovoltaic/ddl.py",
     },
   },
 ];
 
-// ── Antes y después, medido ────────────────────────────────────────────────
-/** Cada fila: qué se mira, cuánto daba en crudo, cuánto tras la capa de vistas. */
-export const ANTES_DESPUES: { que: string; crudo: string; corregido: string; nota: string }[] = [
-  {
-    que: "Pico de potencia del string PV1",
-    crudo: "26.503.163 W",
-    corregido: "1.603 W",
-    nota: "26,5 MW en un arreglo de 1.420 Wp: **18.664 veces** lo instalado.",
-  },
-  {
-    que: "Pico de potencia AC total",
-    crudo: "118.634 W",
-    corregido: "2.157 W",
-    nota: "El sistema entero son 2.840 Wp. Todo lo que pase de ahí es ruido.",
-  },
-  {
-    que: "Filas con temperatura en 85,0 °C",
-    crudo: "12.174",
-    corregido: "0",
-    nota: "85,0 es el valor que devuelve un DS18B20 con falso contacto, no una lectura.",
-  },
-  {
-    que: "Rango de temperatura del panel",
-    crudo: "0,0 a 127,9 °C",
-    corregido: "15,3 a 79,8 °C",
-    nota: "Dentro del rango físico que fijó Leo Cardinale: 10 a 80 °C.",
-  },
-  {
-    que: "Filas con irradiancia negativa",
-    crudo: "14.888",
-    corregido: "0",
-    nota: "El mínimo crudo era **−15.538**. El offset nocturno −38,845 aparece exacto en 3.198 filas.",
-  },
-  {
-    que: "Irradiancia anterior a jul-2025",
-    crudo: "se conserva cruda",
-    corregido: "37.825 filas marcadas no válidas",
-    nota: "El error de medición se corrigió a mediados de 2025; antes de eso el dato no sirve.",
-  },
-];
+// ── Qué se le hizo a los datos ─────────────────────────────────────────────
+/**
+ * Un tratamiento por línea, en el orden en que se aplican.
+ *
+ * Sigue el documento que revisó Leo Cardinale (P1 a P12, doc rev LCV del
+ * 2026-08-10): cada punto es la respuesta a una de esas preguntas, o el paso del
+ * pipeline que la implementa. `leo` cita cuál, para que se pueda contrastar.
+ *
+ * `donde` importa más de lo que parece: separa lo que se decide al CARGAR (y por
+ * lo tanto es irreversible) de lo que se decide al CONSULTAR (y se puede
+ * reescribir). Casi todo vive en la segunda, y esa es la regla rectora.
+ */
+export type Tratamiento = {
+  n: number;
+  titulo: string;
+  /** Una frase. Problema y solución en la misma línea. */
+  que: string;
+  donde: "etl" | "vista";
+  leo?: string;
+  /** Marca lo que todavía no está cerrado. */
+  parcial?: boolean;
+};
 
-/** Lo que se ganó al calibrar, que no tiene columna «antes» porque antes no existía. */
-export const GANANCIAS: { que: string; valor: string; nota: string }[] = [
+export const TRATAMIENTOS: Tratamiento[] = [
   {
-    que: "Máximo de irradiancia calibrada",
-    valor: "1.340 W/m²",
-    nota: "Físicamente posible para el sitio. Antes de calibrar, el número no tenía unidad.",
+    n: 1, titulo: "Normalización de nombres", donde: "etl", leo: "P1",
+    que: "13 esquemas y unas 70 formas de escribir lo mismo (`vpv1`, `Voltaje PV1 [V]`, `voltaje_pv1_v`). `slugify()` las colapsa solas a un nombre canónico por concepto.",
   },
   {
-    que: "Lecturas que pasan control de calidad",
-    valor: "99,0 %",
-    nota: "Sobre el período válido, contra el techo de cielo despejado de pvlib.",
+    n: 2, titulo: "Separación por fuente física", donde: "etl", leo: "P8",
+    que: "El inversor y el piranómetro venían en el mismo archivo. Se parten en dos tablas, una por fuente.",
   },
   {
-    que: "kt\\* en el percentil 95",
-    valor: "1,00",
-    nota: "La fracción de claridad se queda pegada a 1 y no lo pasa: la calibración es correcta.",
+    n: 3, titulo: "Ritmo de muestreo", donde: "etl", leo: "P8",
+    que: "Venía variable (2 s, 1 min, 5 min). Eléctrico a **5 min**; radiación a **15 s** en tabla aparte, porque ThingSpeak no admite menos.",
   },
   {
-    que: "Performance Ratio energético",
-    valor: "PV1 = 0,621 · PV2 = 0,626",
-    nota: "**Convergen**, y eso valida el modelo bifacial: comparten paneles, inversor y sitio.",
+    n: 4, titulo: "El crudo no se toca", donde: "vista", leo: "P2 · P5 · P9",
+    que: "**La regla que ordena todo.** Nada se anula al cargar: cada corrección es una columna nueva calculada en una vista SQL sobre el dato original.",
   },
-];
-
-// ── Las siete inconsistencias del crudo ────────────────────────────────────
-export const INCONSISTENCIAS: { n: number; que: string; evidencia: string }[] = [
-  { n: 1, que: "13 esquemas distintos", evidencia: "La misma variable como `vpv1`, `Voltaje PV1 [V]` o `voltaje_pv1_v` según el mes." },
-  { n: 2, que: "Filas de dos sensores mezcladas", evidencia: "8 archivos donde la irradiancia cae en la columna «Voltaje PV1». Es el problema más grave y el único a medio resolver." },
-  { n: 3, que: "Irradiancia sin calibrar", evidencia: "Offset −38,845 en 205 archivos; mínimos hasta −15.538; las columnas del SP722 casi siempre vacías." },
-  { n: 4, que: "Temperaturas saturadas en 85 °C", evidencia: "En 137 archivos. Es el código de error del DS18B20 desconectado, no una medición." },
-  { n: 5, que: "Cadencia de muestreo variable", evidencia: "~2 s en dic-2024, ~1 min en may-2025, ~5 min desde nov-2025." },
-  { n: 6, que: "Huecos temporales largos", evidencia: "126 días (dic-2024 → may-2025) y 71 días (jun → sep-2025). No se rellenan con datos sintéticos." },
-  { n: 7, que: "Duplicados y fragmentos", evidencia: "2 archivos idénticos por MD5 y varios fragmentos de 86 bytes con nombre `(N)`." },
+  {
+    n: 5, titulo: "Temperaturas en 85 °C", donde: "vista", leo: "P2 · P3 · P9",
+    que: "85,0 es el código de error del DS18B20 con falso contacto, no una lectura. Se anula, junto con todo lo que caiga fuera de **10 a 80 °C**.",
+  },
+  {
+    n: 6, titulo: "Offset −38,845 y negativos", donde: "vista", leo: "P4 · P5",
+    que: "Es calibración y ruido eléctrico, esperable en estos equipos. Se llevan a 0 en la capa; el crudo queda por si sirve después.",
+  },
+  {
+    n: 7, titulo: "Rangos físicos por variable", donde: "vista", leo: "P9 · P10",
+    que: "Potencia 0 a 5.000 W, voltaje de string 0 a 600 V, corriente 0 a 20 A, frecuencia 55 a 65 Hz. Fuera de rango va a NULL: el crudo llega a marcar **26,5 MW** en un arreglo de 1.420 Wp.",
+  },
+  {
+    n: 8, titulo: "Irradiancia anterior a jul-2025", donde: "vista", leo: "P12",
+    que: "El error de medición se corrigió a mediados de 2025. Esas lecturas se marcan **no válidas** en vez de borrarse.",
+  },
+  {
+    n: 9, titulo: "Calibración de la irradiancia", donde: "vista", leo: "P11",
+    que: "No hay constante guardada: «celda calibrada» es el nombre comercial del sensor. Se calibra contra el cielo despejado de pvlib.",
+  },
+  {
+    n: 10, titulo: "Filas de dos sensores mezcladas", donde: "etl", leo: "P6 · P7", parcial: true,
+    que: "8 archivos donde la irradiancia cae en la columna «Voltaje PV1». Hoy se conserva lo que coincide con el header y se acepta el hueco; falta el remapeo fino.",
+  },
+  {
+    n: 11, titulo: "Duplicados y huecos", donde: "etl",
+    que: "Los archivos repetidos se saltan por md5. Los huecos de 126 y 71 días **no** se rellenan con datos sintéticos.",
+  },
 ];
