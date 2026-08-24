@@ -1,7 +1,7 @@
 """
 Detección de anomalías (Comparador MVP) — DETERMINISTA, sin LLM.
 
-Dado (variable, ventana), analiza la data reciente del store `lecturas_ambientales_sc`
+Dado (variable, ventana), analiza la data reciente del store `lecturas_ambientales`
 y devuelve HALLAZGOS estructurados. El LLM SOLO los narra; los números salen de acá.
 
 Detecta:

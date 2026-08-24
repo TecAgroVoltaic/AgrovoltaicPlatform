@@ -77,9 +77,16 @@ openssl rand -hex 32   # pegar el resultado en FORECAST_API_KEY
 ```bash
 cd /home/ec2-user/runtime/Agent-Runtime
 FORECAST_BUILD_CONTEXT=/home/ec2-user/forecast/agente-pronostico \
-  docker compose -f docker-compose.forecast.yml up -d --build
+  /usr/local/bin/docker-compose -f docker-compose.forecast.yml up -d --build --force-recreate
 docker ps --format '{{.Names}} {{.Status}}' | grep forecast   # espera: healthy
 ```
+
+> **Corrección (2026-08-24):** en esa EC2 el plugin `docker compose` **no existe**; lo que
+> hay es el binario suelto `/usr/local/bin/docker-compose`, que es además el que usa
+> `forecast-refresh.service`. Escribir `docker compose` no falla con un error claro: imprime
+> la ayuda de `docker` y no despliega nada.
+> `--force-recreate` es necesario cuando solo cambió el código: sin él, compose puede dejar
+> el contenedor viejo corriendo si considera que la config no cambió.
 
 (Modo demo (b): antes de levantar, descomentar el bloque `volumes:` del compose.)
 

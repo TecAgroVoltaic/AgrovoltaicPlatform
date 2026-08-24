@@ -52,10 +52,18 @@ HORAS_POR_DIA = 24
 # la recorria entera).
 _SQL_ULTIMO = """
     SELECT v.variable,
-           (SELECT max(ts) FROM lecturas_ambientales_sc l WHERE l.variable = v.variable)
+           (SELECT max(l.ts)
+              FROM lecturas_ambientales l
+              JOIN series_ambientales   s USING (serie_id)
+             WHERE s.variable = v.variable)
       FROM unnest(%s::text[]) AS v(variable)
 """
-_SQL_FILAS = "SELECT variable, count(*) FROM lecturas_ambientales_sc GROUP BY variable"
+_SQL_FILAS = """
+    SELECT s.variable, count(*)
+      FROM lecturas_ambientales l
+      JOIN series_ambientales   s USING (serie_id)
+     GROUP BY s.variable
+"""
 
 # Cuanto vale un conteo antes de volver a pedirlo. Mas corto que el intervalo del
 # ETL no aporta nada: el numero no puede haber cambiado.

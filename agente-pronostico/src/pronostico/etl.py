@@ -1,5 +1,5 @@
 """
-ETL AgroDash (Cartago, SOLO LECTURA) -> Supabase store `lecturas_ambientales_sc`.
+ETL AgroDash (Cartago, SOLO LECTURA) -> Supabase store `lecturas_ambientales`.
 
 Arquitectura A: trae la data ambiental de San Carlos (que hoy vive en AgroDash)
 al store propio del agente, para que el forecaster la lea local y quede historia.
@@ -8,9 +8,11 @@ al store propio del agente, para que el forecaster la lea local y quede historia
   STORE  : os.environ['STORE_URL']  -> Supabase de AgroVoltaic (Session pooler).
 
 Propiedades:
-  * IDEMPOTENTE: PK del store = readings.id de AgroDash. Se hace COPY a una tabla
-    temporal y luego INSERT ... SELECT ... ON CONFLICT (origen_id) DO NOTHING.
-    Re-correr nunca duplica, aunque haya lecturas con el mismo created_at.
+  * IDEMPOTENTE: PK del store = (serie_id, ts). Se hace COPY a una tabla temporal
+    y luego INSERT ... SELECT ... ON CONFLICT (serie_id, ts) DO NOTHING.
+    Re-correr nunca duplica, aunque haya lecturas con el mismo created_at: el
+    canal (serie_id) desambigua las que comparten timestamp por venir del mismo
+    lote. readings.id se conserva en `origen_id` para trazabilidad, sin indice.
   * INCREMENTAL: arranca desde max(ts) del store (menos un solape). Con --full
     re-escanea desde BACKFILL_SINCE (el conflicto igual protege de duplicar).
   * ESCALABLE EN MEMORIA: la fuente se lee con cursor SERVER-SIDE (streaming) y
@@ -81,14 +83,37 @@ _COPY_SQL = (
     "COPY _stage (origen_id, caja, variable, sensor_type, sensor_id, "
     "ts, ts_medicion, valor, unidad) FROM STDIN"
 )
-_INSERT_SELECT = """
-    INSERT INTO lecturas_ambientales_sc
-        (origen_id, fuente, caja, variable, sensor_type, sensor_id,
-         ts, ts_medicion, valor, unidad)
-    SELECT origen_id, 'agrodash', caja, variable, sensor_type, sensor_id,
-           ts, ts_medicion, valor, unidad
+# El store esta normalizado (migracion 002): dimension aparte de los hechos. Por
+# eso el volcado son DOS sentencias en vez de una.
+#
+# La primera da de alta los canales que traiga el lote. Va siempre, no solo la
+# primera vez: si AgroDash estrena un sensor, el ETL lo ingiere en vez de
+# reventar con un FK violation.
+_INSERT_SERIES = """
+    INSERT INTO series_ambientales
+        (fuente, caja, variable, sensor_type, sensor_id, unidad)
+    SELECT DISTINCT 'agrodash', caja, variable, sensor_type, sensor_id::uuid, unidad
     FROM _stage
-    ON CONFLICT (origen_id) DO NOTHING
+    ON CONFLICT ON CONSTRAINT series_ambientales_natural_key DO NOTHING
+"""
+# La segunda mete los hechos. La idempotencia paso de `origen_id` a
+# `(serie_id, ts)`: se verifico que el par es unico en las 885.606 filas
+# historicas, y asi nos ahorramos un indice de 66 MB sobre un uuid en texto.
+# `origen_id` se guarda igual (uuid, sin indice) para no perder la trazabilidad
+# hacia readings.id de AgroDash.
+_INSERT_SELECT = """
+    INSERT INTO lecturas_ambientales
+        (serie_id, ts, ts_medicion, valor, origen_id)
+    SELECT s.serie_id, g.ts, g.ts_medicion, g.valor, g.origen_id::uuid
+    FROM _stage g
+    JOIN series_ambientales s
+      ON  s.fuente      = 'agrodash'
+      AND s.caja        = g.caja
+      AND s.variable    = g.variable
+      AND s.sensor_type = g.sensor_type
+      AND s.sensor_id   = g.sensor_id::uuid
+      AND s.unidad IS NOT DISTINCT FROM g.unidad
+    ON CONFLICT (serie_id, ts) DO NOTHING
 """
 
 
@@ -99,14 +124,18 @@ def _localizar(dt: datetime | None) -> datetime | None:
 
 def _watermark(store: psycopg.Connection, variable: str) -> datetime | None:
     row = store.execute(
-        "SELECT max(ts) FROM lecturas_ambientales_sc WHERE variable = %s", (variable,)
+        "SELECT max(l.ts) FROM lecturas_ambientales l "
+        "JOIN series_ambientales s USING (serie_id) WHERE s.variable = %s",
+        (variable,),
     ).fetchone()
     return row[0] if row else None
 
 
 def _count(store: psycopg.Connection, variable: str) -> int:
     return store.execute(
-        "SELECT count(*) FROM lecturas_ambientales_sc WHERE variable = %s", (variable,)
+        "SELECT count(*) FROM lecturas_ambientales l "
+        "JOIN series_ambientales s USING (serie_id) WHERE s.variable = %s",
+        (variable,),
     ).fetchone()[0]
 
 
@@ -128,6 +157,7 @@ def _flush(store: psycopg.Connection, rows: list[tuple]) -> None:
         with scur.copy(_COPY_SQL) as cp:
             for r in rows:
                 cp.write_row(r)
+        scur.execute(_INSERT_SERIES)          # canales nuevos, si los hay
         scur.execute(_INSERT_SELECT)          # ON CONFLICT DO NOTHING (idempotente)
     store.commit()                             # dispara ON COMMIT DROP de _stage
 

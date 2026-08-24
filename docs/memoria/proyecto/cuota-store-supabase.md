@@ -1,57 +1,109 @@
 ---
 name: cuota-store-supabase
-description: El store de Supabase está al 79% del Free tier (395 de 500 MB) y lecturas_ambientales_sc se lleva el 89%; pasarse deja el proyecto en solo-lectura
+description: La cuota del store estaba reventada (egress 103%, disco 90%) por un modelo de datos inflado y una descarga completa cada 6 h; normalizado el 2026-08-24 quedo en 30% de disco y 11,8x menos egress, sin perder un dato
 categoria: proyecto
+actualizado: 2026-08-24
+tags: [supabase, cuota, egress, rls, normalizacion, infraestructura]
 ---
 
 # Cuota del store (Supabase Free tier)
 
-**Medido 2026-08-18** sobre `jijklguopafevyucogro`: **395 MB de los 500** del plan Free (79 %).
+**RESUELTO el 2026-08-24 sin gastar un colon y sin perder un dato.** Lo que sigue es el
+diagnostico y la cirugia, porque la causa de fondo (modelar una serie de tiempo como texto
+repetido) es un error que se puede repetir en las otras tablas.
 
-| Tabla | Tamaño | Filas | Peso |
+## De donde veniamos
+
+| Metrica | 2026-08-24 antes | Limite Free | Despues |
 |---|---:|---:|---:|
-| `lecturas_ambientales_sc` | 353 MB | 885.606 | **89 %** |
-| `radiacion_sc_15s` | 11 MB | 94.868 | 3 % |
-| `monitoreo_sc_electrico` | 7,8 MB | 36.469 | 2 % |
-| `radiacion_sc_clearsky` | 6,2 MB | 94.868 | 2 % |
-| `radiacion_sc_poa` | 5,1 MB | 56.450 | 1 % |
-| resto (`agente_log`, `predicciones`, `_ingest_log`, `diccionario_variables`, `uso_diario`) | ~1,6 MB | — | <1 % |
+| **Egress** | **5,156 GB (103 %)** | 5 GB | ~0,57 GB/mes proyectado |
+| **Disco** | 415 MB (90 %) | 500 MB | **150 MB (30 %)** |
 
-Casi todo el consumo es **la ingesta ambiental que viene de AgroDash**, no el histórico
-fotovoltaico propio (que suma ~30 MB entre todas sus tablas y vistas).
+## Las dos causas (ninguna era "Supabase se nos quedo corta")
 
-## Por qué importa
+**1. La tabla estaba inflada 4 veces.** `lecturas_ambientales_sc` pesaba 353 MB, el 85 % de la
+base, para guardar 885.606 floats. Formato largo con **siete columnas de texto** repetidas en
+cada fila (~130 bytes) cuando en toda la tabla habia apenas **once combinaciones distintas**. Y
+los indices (192 MB) pesaban mas que los datos (161 MB): `idx_lecturas_sensor_ts` eran 103 MB de
+btree sobre un texto de once valores posibles.
 
-Superar el límite del Free tier deja el proyecto en **solo-lectura**. Eso no degrada: **rompe**
-la escritura del ETL (`lecturas_ambientales_sc`), la del forecaster (`predicciones`) y la del
-control de gasto (`gasto_diario`). Con ~105 MB de margen, cualquier backfill grande lo revienta.
+**2. El forecaster se bajaba la tabla entera, dos veces al dia.** `data.py` hacia
+`SELECT ts, valor, sensor_id ... WHERE variable = X` sin filtro: **todos** los canales (5 de
+humedad, 6 de irradiancia) para despues descartar todos menos uno en pandas. Se cacheaba en un
+parquet dentro del contenedor, pero el contenedor no tiene volumen y `forecast-refresh.timer`
+lo recrea cada 6 h. 56 MB por arranque en frio, ~235 MB/dia medidos. Eso era el egress entero.
 
-## Lo que ya se dejó fuera por esta razón
+## Lo que se hizo (migracion 002)
 
-- **Humedad de suelo completa:** ~936.295 filas ≈ **375 MB**. No cabe. Por eso existe el flag
-  `--variable` del ETL: `--full` sin filtro habría arrastrado ambas variables y reventado la cuota
-  ([[agrodash-local]]).
-- **El dump entero de AgroDash:** 5.046 MB, **10× el límite**. Nunca fue opción; la vía correcta
-  es leer la réplica local y subir solo los targets de San Carlos ([[arquitectura-regiones]]).
+Separar la dimension (11 filas) de los hechos (885.606). Detalle y justificacion de cada
+decision en `agente-pronostico/sql/002_normalizar_lecturas_ambientales.sql`.
 
-## Decisión pendiente
+- `series_ambientales`: 1 fila por canal. `sensor_id` pasa de texto a `uuid`.
+- `lecturas_ambientales`: `(serie_id, ts, ts_medicion, valor, origen_id)`, PK `(serie_id, ts)`.
+- **Sin indices secundarios.** La PK cubre todo lo que se consulta.
+- `lecturas_ambientales_sc` **sigue existiendo como vista** con la forma exacta de la tabla vieja,
+  asi que la consulta vieja del forecaster funciona igual y el contenedor desplegado no se rompio.
+- `data.py` ahora elige el canal con un agregado diminuto y baja **solo ese canal, solo las dos
+  columnas que usa**: 56 MB -> 4,7 MB por arranque, **11,8 veces menos**.
 
-Ninguna de estas está tomada; la cuota se esquivó, no se resolvió:
+Resultado: la tabla 353 -> 88 MB, la base 415 -> 150 MB, 253 tests en verde.
 
-1. **Subir de plan** (Pro, 8 GB) — resuelve de raíz, cuesta dinero.
-2. **Podar o aplicar retención** a `lecturas_ambientales_sc` (p. ej. mantener resolución fina solo
-   de los últimos N meses y agregados hacia atrás).
-3. **Mover la ingesta ambiental fuera de Supabase**, dejando ahí solo el histórico PV y los
-   agregados que consumen los agentes.
+## Lo que NO se hizo, y por que
 
-## Cómo medirlo
+- **`valor` sigue en DOUBLE PRECISION.** Pasarlo a `real` ahorraba 4 bytes por fila pero
+  perturbaba 186.730 valores en el septimo digito. La regla de Leo es guardar el crudo.
+- **No se podo ni una fila.** Normalizar es lossless; retencion no lo es.
+- **No se subio de plan ni se migro a Railway.** Railway sale ~5 USD/mes (RAM 10 USD/GB-mes,
+  volumen 0,156 USD/GB-mes, egress 0,05 USD/GB, plan Hobby con 5 USD de credito) contra 25 de
+  Supabase Pro, y no tiene topes duros; queda anotado como destino si alguna vez hace falta.
+  Pero migrar sin normalizar solo habria hecho barata la ineficiencia.
+
+## Como se verifico que no se perdio nada
+
+Antes del `DROP`: 885.606 = 885.606 en las 11 series; sumas exactas en `numeric` identicas
+(diferencia maxima 0.00); hash por fila de `(valor, ts_medicion)` identico; hash de `origen_id`
+identico; `EXCEPT` en los dos sentidos sobre el canal del forecaster dio 0 y 0; la serie que
+devuelve `data.py` identica a la de antes. Backup local previo en
+`sql/dump/lecturas_ambientales_sc_2026-08-24.csv.gz` (28 MB, 885.606 filas).
+
+Truco util: comparar `sum(valor)` en `double precision` daba 5 de 11 y asusta. Es el **orden** de
+la suma en IEEE 754, no diferencia de datos. En `numeric` da 11 de 11.
+
+## Runway
+
+La ingesta SC sigue congelada desde el 2026-07-23. Cuando se restaure: ~9.000 filas/dia entre las
+dos variables, ~275k/mes. A la densidad vieja eran 110 MB/mes con 85 MB de margen, o sea **menos
+de un mes de vida**. A la nueva son ~28 MB/mes con 350 MB de margen: **mas de un año**.
+
+## Lo que queda pendiente
+
+- ~~Redesplegar el contenedor en la EC2.~~ **HECHO el 2026-08-24 14:52 UTC.** rsync +
+  `docker-compose -f docker-compose.forecast.yml up -d --build --force-recreate`. **Ojo: es el
+  binario `/usr/local/bin/docker-compose`, NO el plugin `docker compose`**, que en esa EC2 no
+  existe (el runbook 04 dice lo contrario y esta desactualizado). Verificado: `/salud/ingesta`
+  devuelve los mismos 191.676 y 693.930 de antes; arranque en frio real (contenedor de 14:52:26,
+  parquet escrito 16 s despues) con `/forecast` en 0,25 s y 0,52 s; el ETL `--full` releyo 582.015
+  filas de AgroDash contra el camino de escritura nuevo e inserto **0** (idempotencia y FKs OK);
+  endpoint publico sano.
+- **El volumen del contenedor** sigue sin darse. Ya no es critico (4,7 MB por arranque en frio se
+  aguantan de sobra), pero sigue siendo trabajo tirado a la basura cada 6 h. Ver [[abiertos]].
+- **`fliwer.readings`** (la migracion de Joshua) tiene 82.828 inserts para 41.414 filas vivas
+  (cargo dos veces, hay bloat) y un `raw_payload jsonb` que duplica cada columna, 460 bytes por
+  fila. Mismo error de modelado, escala 20 veces menor. Sin tocar.
+
+## Como medirlo
 
 ```sql
 select pg_size_pretty(pg_database_size(current_database()));
-select c.relname, pg_size_pretty(pg_total_relation_size(c.oid))
+
+select c.relname,
+       pg_size_pretty(pg_total_relation_size(c.oid)) as total,
+       pg_size_pretty(pg_relation_size(c.oid))       as heap,
+       pg_size_pretty(pg_indexes_size(c.oid))        as indices
 from pg_class c join pg_namespace n on n.oid = c.relnamespace
-where n.nspname = 'public' and c.relkind = 'r'
+where n.nspname in ('public','fliwer') and c.relkind = 'r'
 order by pg_total_relation_size(c.oid) desc;
 ```
 
-Relacionado: [[agrodash-local]], [[pipeline-tiempo-real]], [[arquitectura-regiones]], [[estado]].
+Relacionado: [[acceso-lectura-equipo]], [[agrodash-local]], [[pipeline-tiempo-real]],
+[[arquitectura-regiones]], [[abiertos]], [[superficie-expuesta]], [[estado]].

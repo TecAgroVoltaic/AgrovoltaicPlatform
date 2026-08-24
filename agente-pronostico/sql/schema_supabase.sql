@@ -13,27 +13,77 @@
 
 -- ----------------------------------------------------------------------------
 -- 1. Store de lecturas ambientales (lo que trae el ETL desde AgroDash, crudo).
---    Formato LARGO: 1 fila = 1 lectura de 1 canal. PK = id de origen (readings.id
---    de AgroDash) -> upsert 1:1, idempotente aunque haya varias lecturas con el
---    mismo created_at (los inserts por lote comparten timestamp).
+--    NORMALIZADO desde la migración 002: la dimensión (el canal) va aparte de
+--    los hechos (la lectura).
+--
+--    Por qué. La versión anterior era una sola tabla larga que repetía SIETE
+--    columnas de texto en cada fila (~130 bytes) para guardar un solo float, y
+--    en toda la tabla había apenas ONCE combinaciones distintas. Resultado:
+--    353 MB para 885.606 lecturas, el 85 % de la cuota del Free tier, con
+--    192 MB de índices pesando más que los 161 MB de datos. Normalizado son
+--    88 MB, 4 veces menos, sin perder un solo dato.
+--
+--    La idempotencia del ETL va por `(serie_id, ts)`, no por `origen_id`: el par
+--    es único en las 885.606 filas históricas y así nos ahorramos un índice de
+--    66 MB sobre un uuid en texto. `origen_id` se guarda igual, sin índice,
+--    para no perder la trazabilidad hacia readings.id de AgroDash.
 -- ----------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS lecturas_ambientales_sc (
-    origen_id    TEXT PRIMARY KEY,                 -- readings.id (uuid) de AgroDash
-    fuente       TEXT        NOT NULL DEFAULT 'agrodash',
-    caja         TEXT        NOT NULL,             -- box, p.ej. 'Caja Irradiancia SC'
-    variable     TEXT        NOT NULL,             -- normalizado: 'irradiancia' | 'humedad_suelo'
-    sensor_type  TEXT        NOT NULL,             -- type crudo de AgroDash ('irradiancia','humedad')
-    sensor_id    TEXT        NOT NULL,             -- uuid del canal (desambigua sensores de una caja)
-    ts           TIMESTAMPTZ NOT NULL,             -- created_at, etiquetado hora local (UTC-6)
-    ts_medicion  TIMESTAMPTZ,                      -- timestamp_real si existe (a veces NULL)
-    valor        DOUBLE PRECISION,                 -- valor CRUDO (sin calibrar)
-    unidad       TEXT                              -- 'crudo' | 'adc' | 'W/m2' (cuando se calibre)
+CREATE TABLE IF NOT EXISTS series_ambientales (
+    serie_id    SMALLINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    fuente      TEXT NOT NULL DEFAULT 'agrodash',
+    caja        TEXT NOT NULL,             -- box, p.ej. 'Caja Irradiancia SC'
+    variable    TEXT NOT NULL,             -- normalizado: 'irradiancia' | 'humedad_suelo'
+    sensor_type TEXT NOT NULL,             -- type crudo de AgroDash ('irradiancia','humedad')
+    sensor_id   UUID NOT NULL,             -- uuid del canal en AgroDash
+    unidad      TEXT,                      -- 'crudo' | 'adc' | 'W/m2' (cuando se calibre)
+    CONSTRAINT series_ambientales_natural_key
+        UNIQUE NULLS NOT DISTINCT (fuente, caja, variable, sensor_type, sensor_id, unidad)
 );
-COMMENT ON TABLE lecturas_ambientales_sc IS
-    'Store operativo del agente: data ambiental de San Carlos ingerida desde AgroDash (read-only). Cruda; la calibración es aparte.';
+COMMENT ON TABLE series_ambientales IS
+    'Dimensión del store ambiental: 1 fila por canal físico. Lo que antes se repetía en cada lectura.';
 
-CREATE INDEX IF NOT EXISTS idx_lecturas_var_ts    ON lecturas_ambientales_sc (variable, ts DESC);
-CREATE INDEX IF NOT EXISTS idx_lecturas_sensor_ts ON lecturas_ambientales_sc (sensor_id, ts DESC);
+CREATE TABLE IF NOT EXISTS lecturas_ambientales (
+    serie_id    SMALLINT         NOT NULL REFERENCES series_ambientales (serie_id),
+    ts          TIMESTAMPTZ      NOT NULL,  -- created_at, etiquetado hora local (UTC-6)
+    ts_medicion TIMESTAMPTZ,                -- timestamp_real si existe (a veces NULL)
+    valor       DOUBLE PRECISION,           -- valor CRUDO (sin calibrar)
+    origen_id   UUID             NOT NULL,  -- readings.id de AgroDash (trazabilidad)
+    PRIMARY KEY (serie_id, ts)
+);
+COMMENT ON TABLE lecturas_ambientales IS
+    'Store operativo del agente (hechos): data ambiental de San Carlos ingerida desde AgroDash (read-only). Cruda; la calibración es aparte.';
+COMMENT ON COLUMN lecturas_ambientales.origen_id IS
+    'readings.id de AgroDash. Sin índice a propósito: es trazabilidad, no clave de búsqueda.';
+
+-- Sin índices secundarios A PROPÓSITO. La PK (serie_id, ts) cubre todo lo que
+-- se consulta (última lectura por canal, rango, serie completa de un canal) y
+-- con once series un índice sobre `variable` o `sensor_id` sería un btree de
+-- texto de once valores distintos: eso era `idx_lecturas_sensor_ts`, 103 MB.
+
+-- El esquema público está expuesto a PostgREST: sin RLS la data quedaría
+-- legible con la llave anon.
+ALTER TABLE lecturas_ambientales ENABLE ROW LEVEL SECURITY;
+ALTER TABLE series_ambientales   ENABLE ROW LEVEL SECURITY;
+
+-- Compatibilidad: reproduce exactamente la tabla larga anterior a la 002, para
+-- que los consumidores de solo lectura no se enteren del cambio. Para escribir
+-- se usan las dos tablas de arriba.
+CREATE OR REPLACE VIEW lecturas_ambientales_sc
+WITH (security_invoker = true) AS
+SELECT l.origen_id::text  AS origen_id,
+       s.fuente,
+       s.caja,
+       s.variable,
+       s.sensor_type,
+       s.sensor_id::text  AS sensor_id,
+       l.ts,
+       l.ts_medicion,
+       l.valor,
+       s.unidad
+FROM lecturas_ambientales l
+JOIN series_ambientales   s USING (serie_id);
+COMMENT ON VIEW lecturas_ambientales_sc IS
+    'Compatibilidad: reproduce la tabla larga anterior a la normalización (002).';
 
 -- ----------------------------------------------------------------------------
 -- 2. Predicciones (audit + write-back). Cada corrida del forecaster inserta 1 fila.
@@ -123,13 +173,16 @@ COMMENT ON TABLE uso_diario IS
 --    La EDAD se calcula acá; el UMBRAL de "stale" NO: eso es política y vive en
 --    la app (INGESTA_STALE_HORAS), para poder cambiarlo sin migrar la DB.
 -- ----------------------------------------------------------------------------
+-- SECURITY DEFINER a propósito (sin security_invoker): con RLS activo y cero
+-- políticas, un invoker le devolvería 0 filas a todo el que no tenga BYPASSRLS.
 CREATE OR REPLACE VIEW v_salud_ingesta AS
-SELECT variable,
-       max(ts)                                                       AS ultimo_dato,
-       count(*)                                                      AS filas,
-       round((EXTRACT(EPOCH FROM (now() - max(ts))) / 3600.0)::numeric, 2) AS edad_horas
-FROM lecturas_ambientales_sc
-GROUP BY variable;
+SELECT s.variable,
+       max(l.ts)                                                       AS ultimo_dato,
+       count(*)                                                        AS filas,
+       round((EXTRACT(EPOCH FROM (now() - max(l.ts))) / 3600.0)::numeric, 2) AS edad_horas
+FROM lecturas_ambientales l
+JOIN series_ambientales   s USING (serie_id)
+GROUP BY s.variable;
 
 COMMENT ON VIEW v_salud_ingesta IS
     'Frescura de la ingesta por variable: último dato, filas y edad en horas. El umbral de stale lo decide la app.';

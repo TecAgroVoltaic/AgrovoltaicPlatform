@@ -2,7 +2,7 @@
 name: abiertos
 description: Trabajo pendiente que depende de NOSOTROS (no de terceros): ofrecido y no autorizado, deuda conocida y decisiones sin tomar
 categoria: pendiente
-actualizado: 2026-08-21
+actualizado: 2026-08-24
 tags: [pendientes, deuda, decisiones]
 ---
 
@@ -14,10 +14,9 @@ depende de nosotros: está ofrecido, medido o identificado, y falta decidir o ha
 ## Ofrecido al usuario y NO autorizado
 
 - **Darle un volumen al contenedor del pronóstico.** Hoy no tiene ninguno (`Mounts: []`) y
-  `forecast-refresh.timer` lo recrea **cada 6 horas** (00, 06, 12, 18 UTC). Consecuencia medida:
-  el primer pronóstico real después de cada recreación **vuelve a bajarse ~885.000 filas** de
-  Supabase. `data.rango_datos()` con agregado SQL arregló la vista de arquitectura (246 ms en
-  frío), pero **no** el camino del pronóstico. Ofrecido dos veces, sin respuesta.
+  `forecast-refresh.timer` lo recrea **cada 6 horas** (00, 06, 12, 18 UTC). Ofrecido dos veces,
+  sin respuesta. **Dejó de ser urgente el 2026-08-24**: la descarga por arranque en frío pasó de
+  56 MB a 4,7 MB, así que ya no revienta la cuota. Sigue siendo trabajo tirado cada 6 h.
 - **Encender el addon NWP en producción.** Está desplegado y **apagado**; se activa con
   `NWP_HABILITADO=1` en `forecast.env`. Ganancia medida fuera de muestra: **−8 % de MAE a 6 h**.
   El costo es que el sistema pasa a depender de un servicio externo (Open-Meteo), que hoy no.

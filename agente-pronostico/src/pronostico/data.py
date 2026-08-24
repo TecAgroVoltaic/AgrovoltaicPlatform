@@ -1,5 +1,5 @@
 """
-Capa de datos del pronostico — lee del STORE (Supabase `lecturas_ambientales_sc`).
+Capa de datos del pronostico: lee del STORE (Supabase `lecturas_ambientales`).
 
 Arquitectura A: el ETL trae la data ambiental de San Carlos desde AgroDash al
 store; el forecaster la lee de AQUI (no de AgroDash), asi queda desacoplado de la
@@ -57,10 +57,26 @@ DATA_DIR = config.DATA_DIR
 # Cache en memoria POR VARIABLE (evita releer el parquet en cada get_recent_data).
 _SERIES: dict[str, pd.Series] = {}
 
-_SQL_STORE = """
-    SELECT ts, valor, sensor_id
-    FROM lecturas_ambientales_sc
-    WHERE variable = %s
+# Dos consultas en vez de una, y a proposito. La version anterior se bajaba
+# TODOS los canales de la variable (5 de humedad, 6 de irradiancia) para despues
+# descartar todos menos uno en pandas, y encima arrastraba el `sensor_id` (uuid
+# de 36 caracteres) repetido en cada fila. Eso eran ~73 MB por arranque en frio y
+# fue lo que reviento la cuota de egress del Free tier.
+#
+# Ahora: primero un agregado diminuto para elegir el canal (once filas), despues
+# solo las columnas que se usan del canal elegido. Misma serie de salida, ~20
+# veces menos bytes por la red.
+_SQL_CANALES = """
+    SELECT s.serie_id, s.sensor_id::text, count(*) AS n
+    FROM lecturas_ambientales l
+    JOIN series_ambientales   s USING (serie_id)
+    WHERE s.variable = %s
+    GROUP BY s.serie_id, s.sensor_id
+"""
+_SQL_SERIE = """
+    SELECT ts, valor
+    FROM lecturas_ambientales
+    WHERE serie_id = %s
     ORDER BY ts
 """
 
@@ -68,6 +84,22 @@ _SQL_STORE = """
 def _parquet(variable: str):
     """Cache parquet por variable (no se versiona)."""
     return DATA_DIR / f"store_{variable}.parquet"
+
+
+def _elegir_canal(variable: str, canales: list[tuple]) -> tuple[int, str]:
+    """(serie_id, sensor_id) del canal a usar, a partir de (serie_id, sensor_id, n).
+
+    Misma regla de siempre y por la misma razon: el canal preferido de config si
+    esta disponible, si no el de mas lecturas, y el empate se rompe por sensor_id
+    ordenado. Lo importante es que sea REPRODUCIBLE, no cual gana.
+    """
+    n_max = max(n for _, _, n in canales)
+    candidatos = sorted(sid for _, sid, n in canales if n == n_max)
+    disponibles = {sid for _, sid, _ in canales}
+    pref = CANAL_PREFERIDO.get(variable)
+    top = pref if (pref and pref in disponibles) else candidatos[0]
+    serie_id = next(sid_num for sid_num, sid, _ in canales if sid == top)
+    return serie_id, top
 
 
 def _descargar_desde_store(variable: str, verbose: bool = True) -> pd.Series:
@@ -78,33 +110,29 @@ def _descargar_desde_store(variable: str, verbose: bool = True) -> pd.Series:
         print(f"Leyendo store (Supabase) variable={variable!r} (solo lectura)...")
     with psycopg.connect(conn_str, autocommit=True) as conn:
         conn.execute("SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY")
+        canales = conn.execute(_SQL_CANALES, (variable,)).fetchall()
+        if not canales:
+            raise SystemExit(
+                f"Store sin datos para variable={variable!r}. "
+                f"Corre el ETL (pronostico.etl) o revisa STORE_URL."
+            )
+        serie_id, top = _elegir_canal(variable, canales)
+        if verbose:
+            print(f"Canales: {len(canales)} | elegido: {top}")
         with conn.cursor() as cur:
-            cur.execute(_SQL_STORE, (variable,))
+            cur.execute(_SQL_SERIE, (serie_id,))
             rows = cur.fetchall()
 
-    df = pd.DataFrame(rows, columns=["ts", "valor", "sensor_id"])
-    if df.empty:
+    if not rows:
         raise SystemExit(
-            f"Store sin datos para variable={variable!r}. "
+            f"Store sin datos para variable={variable!r} canal={top!r}. "
             f"Corre el ETL (pronostico.etl) o revisa STORE_URL."
         )
-    df["valor"] = df["valor"].astype(float)
-    df["sensor_id"] = df["sensor_id"].astype(str)
-
-    # Elegir el canal (sensor_id): el preferido si esta, si no el de mas lecturas
-    # (desempate por sensor_id ordenado) -> reproducible.
-    conteos = df["sensor_id"].value_counts()
-    n_max = int(conteos.max())
-    candidatos = sorted(conteos[conteos == n_max].index)
-    pref = CANAL_PREFERIDO.get(variable)
-    top = pref if (pref and pref in set(df["sensor_id"])) else candidatos[0]
-    if verbose:
-        print(f"Canales: {df['sensor_id'].nunique()} | elegido: {top}")
-    s = df[df["sensor_id"] == top].copy()
 
     # Indice tz-aware: store.ts es instante absoluto -> convertir a hora local CR.
-    idx = pd.to_datetime(s["ts"], utc=True).dt.tz_convert(TZ)
-    serie = pd.Series(s["valor"].values, index=idx, name=variable).sort_index()
+    idx = pd.to_datetime([r[0] for r in rows], utc=True).tz_convert(TZ)
+    valores = pd.array([r[1] for r in rows], dtype="float64")
+    serie = pd.Series(valores, index=idx, name=variable).sort_index()
     serie = serie[~serie.index.duplicated(keep="first")]
     serie.index.name = "ts"
     return serie
@@ -157,10 +185,14 @@ def get_recent_data(now, lookback_min: float,
     return serie[(serie.index >= desde) & (serie.index < now)]  # < now: sin fuga
 
 
+# Sigue contando TODOS los canales de la variable, no solo el elegido: es el
+# rango del store, no el de la serie que usa el forecaster. Se mantiene asi para
+# que los numeros de la consola no cambien con la normalizacion.
 _SQL_RANGO = """
-    SELECT min(ts), max(ts), count(*)
-    FROM lecturas_ambientales_sc
-    WHERE variable = %s
+    SELECT min(l.ts), max(l.ts), count(*)
+    FROM lecturas_ambientales l
+    JOIN series_ambientales   s USING (serie_id)
+    WHERE s.variable = %s
 """
 
 

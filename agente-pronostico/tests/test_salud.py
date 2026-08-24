@@ -39,7 +39,7 @@ class _ConexionFalsa:
 
     def execute(self, sql, params=None):
         self.consultas.append(sql)
-        if "max(ts)" in sql:
+        if "max(l.ts)" in sql:
             return iter([(v, ts) for v, ts, _ in self._frescura])
         if "count(*)" in sql:
             return iter([(v, n) for v, _, n in self._frescura])
@@ -210,7 +210,7 @@ def test_el_conteo_de_filas_se_cachea_y_el_ultimo_dato_no(monkeypatch):
     # Then: el ultimo dato se vuelve a pedir (decide el estado, tiene que estar
     # fresco); el conteo no (recorre la tabla entera y solo cambia si el ETL
     # inserto, cosa que pasa cada ~6 min)
-    assert any("max(ts)" in q for q in conexion.consultas)
+    assert any("max(l.ts)" in q for q in conexion.consultas)
     assert not any("count(*)" in q for q in conexion.consultas)
 
 
