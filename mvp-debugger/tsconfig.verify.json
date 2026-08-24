@@ -1,0 +1,20 @@
+{
+  "//": "Config APARTE para el arnés de verificación sin navegador (scripts/verificar-vistas.mjs). El tsconfig de Next no sirve: usa `jsx: preserve` y módulos ESM, y react-dom/server necesita JSX ya transformado y CommonJS. `jsx: react-jsx` y no `react` a secas, porque con `react` fallan todos los archivos por el `import React` que Next no exige.",
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "jsx": "react-jsx",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true,
+    "strict": false,
+    "noEmitOnError": false,
+    "outDir": ".verify",
+    "rootDir": ".",
+    "baseUrl": ".",
+    "paths": { "@/*": ["./*"] }
+  },
+  "include": ["app/**/*.ts", "app/**/*.tsx"],
+  "exclude": ["node_modules", ".next", ".verify"]
+}

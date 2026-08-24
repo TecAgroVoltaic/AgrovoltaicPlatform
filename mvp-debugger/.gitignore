@@ -7,3 +7,6 @@ out
 
 # build info de TypeScript
 *.tsbuildinfo
+
+# Arbol compilado del arnes de verificacion (scripts/verificar-vistas.mjs)
+.verify

@@ -75,6 +75,38 @@ variables, `saturado_85` en 117 dias. Y **`kt_imposible` en 82 de los 228 dias
 caracterizados**, que dice algo incomodo sobre la calibracion de la irradiancia: ver
 [[irradiancia-sin-calibrar]].
 
+## En la consola (2026-08-24)
+
+Vista **«Calidad de datos»** en el mvp-debugger, transversal (no de un agente: describe los
+datos, no el comportamiento de un modelo). Servicio FastAPI propio en **:8020**, proxy
+`/api/comparador/*` **solo GET**: la deteccion corre por lotes y la consola solo sirve el
+store. Si la consola pudiera dispararla, cada visita recorreria los 274 dias y el resultado
+dependeria de quien mire y cuando.
+
+Dos decisiones de la vista que costaron una iteracion:
+
+- **El mapa es un calendario, no una tabla.** El hallazgo mas grande son los 295 dias que
+  faltan de 569, y una tabla de 274 filas no puede mostrar lo que no existe.
+- **Dos tiras, una por fuente.** El veredicto combinado daba 226 graves y **cero dias ok**, o
+  sea un mapa todo rojo, tan informativo como uno todo verde. Separado aparece lo accionable:
+  **radiacion 126 dias ok, electrico 4**. El problema esta en el inversor, no en el
+  piranometro.
+
+Y el veredicto se decide en el SERVICIO, no en la vista: si lo calculara el cliente, la
+consola y el reporte del CLI podrian discrepar sobre si un dia sirve. Ademas "grave" no es
+cualquier hallazgo grave, es el que toca una parte material del dia (una quinta parte de las
+lecturas, o los que invalidan el dia por naturaleza): un dia no deja de servir porque 3 de 144
+lecturas de una de trece columnas se salieran de rango.
+
+Dos trampas tecnicas anotadas: `timestamptz <= date` compara contra la **medianoche** de ese
+dia y se comia el ultimo dia entero (274 aparecia como 273), y **psycopg parsea los `%` de
+toda la cadena SQL, comentarios incluidos** (un "20 %" en un comentario revienta con
+"incomplete placeholder").
+
+El arnes de verificacion sin navegador se **promovio de scratchpad a
+`mvp-debugger/scripts/verificar-vistas.mjs`** (`npm run verificar`, 28 chequeos), que era deuda
+anotada en [[abiertos]]. Ver [[verificacion-consola]].
+
 ## Pendiente
 
 - **Punto 4 (el estudio).** Los 4 dispositivos `fliwer` de Joshua (temperatura, humedad de aire,

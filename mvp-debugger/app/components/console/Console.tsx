@@ -11,9 +11,10 @@ import { Fragment, useEffect, useState, type ComponentType } from "react";
 import { jget } from "@/app/lib/client";
 import { ChartTooltip } from "@/app/components/ChartTooltip";
 import {
-  IconoCosto, IconoDatos, IconoDocs, IconoGrafo, IconoPanel, IconoPrediccion,
-  IconoReconciliar, IconoRendimiento, IconoSalud,
+  IconoCalidad, IconoCosto, IconoDatos, IconoDocs, IconoGrafo, IconoPanel,
+  IconoPrediccion, IconoReconciliar, IconoRendimiento, IconoSalud,
 } from "@/app/components/Iconos";
+import { CalidadView } from "@/app/components/console/CalidadView";
 import { ReconView } from "@/app/components/console/ReconView";
 import { PredView } from "@/app/components/console/PredView";
 import { ArqView } from "@/app/components/console/arquitectura/ArqView";
@@ -24,7 +25,7 @@ import { SaludView } from "@/app/components/console/SaludView";
 import { ChatWidget } from "@/app/components/chat/ChatWidget";
 import type { Traza } from "@/app/components/TraceViewer";
 
-type View = "recon" | "pred" | "arq" | "datos" | "perf" | "costo" | "salud";
+type View = "recon" | "pred" | "arq" | "calidad" | "datos" | "perf" | "costo" | "salud";
 type Icono = ComponentType<{ size?: number }>;
 // Una sola tabla: rótulo + icono por vista. LABEL se deriva de acá para que no
 // existan dos listas que se puedan separar.
@@ -33,6 +34,7 @@ const NAV: [View, string, Icono][] = [
   ["pred", "Predicción vs Real", IconoPrediccion],
   ["arq", "Arquitectura del agente", IconoGrafo],
   ["perf", "Rendimiento", IconoRendimiento],
+  ["calidad", "Calidad de datos", IconoCalidad],
   ["datos", "Base de datos", IconoDatos],
   ["costo", "Costo y uso", IconoCosto],
   ["salud", "Salud del sistema", IconoSalud],
@@ -40,7 +42,7 @@ const NAV: [View, string, Icono][] = [
 const LABEL = Object.fromEntries(NAV.map(([v, l]) => [v, l])) as Record<View, string>;
 const AGENT_OF: Partial<Record<View, string>> = { recon: "analizador", perf: "analizador", pred: "pronostico", arq: "pronostico" };
 // La navegación arranca un grupo nuevo acá (vistas transversales, no de un agente).
-const SEPARADOR: View = "datos";
+const SEPARADOR: View = "calidad";
 
 /**
  * `analizador` = ¿está habilitado el agente histórico? Viene del servidor
@@ -157,6 +159,7 @@ export function Console({ analizador = true }: { analizador?: boolean }) {
         {view === "recon" && <ReconView />}
         {view === "pred" && <PredView theme={theme} />}
         {view === "arq" && <ArqView />}
+        {view === "calidad" && <CalidadView />}
         {view === "datos" && <DatosView />}
         {view === "perf" && <PerfView theme={theme} />}
         {view === "costo" && <CostoView agent={agent} theme={theme} sesion={sesion} />}

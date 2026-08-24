@@ -28,11 +28,49 @@ en la salida de alguna tool**. Si no, es una alerta (el modelo estaría alucinan
 - Series del store (irradiancia + humedad de suelo) con resumen y sparkline.
 - Detección de anomalías determinista.
 
+### Calidad de datos (`Calidad de datos`)
+
+Lo que encontró el **Comparador** barriendo el histórico PV día por día: completitud,
+validez, duplicados, y la caracterización del cielo. Es una vista **transversal**, no de un
+agente: describe los datos, no el comportamiento de un modelo.
+
+La pieza central es el **mapa de días**, y es un calendario y no una tabla a propósito: el
+hallazgo más grande del histórico es que faltan 295 de los 569 días de calendario, y eso en
+una tabla de 274 filas no se ve, porque una tabla solo muestra lo que existe.
+
+Son **dos tiras**, una por fuente, porque el veredicto combinado escondía lo más accionable:
+la radiación tiene 126 días sanos y el eléctrico 4. Fundidas en una sola barra, ambas se ven
+igual de rojas.
+
+El veredicto de cada día lo decide **el servicio**, no la vista. Si lo calculara el cliente,
+la consola y el reporte del CLI podrían discrepar sobre si un día sirve, que es la clase de
+desacuerdo que nadie detecta hasta que ya tomó una decisión con él. Y «grave» no es cualquier
+hallazgo grave: un día no deja de servir porque 3 de 144 lecturas de una de trece columnas se
+salieran de rango.
+
+La detección **no corre desde acá**: es por lotes (`python -m comparador todo`) y deja los
+hallazgos en la base. Si la consola pudiera dispararla, cada visita recorrería los 274 días y
+el resultado dependería de quién mire y cuándo. Por eso el proxy solo expone `GET`.
+
+## Verificar la UI sin navegador
+
+La extensión de Chrome que daría control del navegador **no conecta**, así que las vistas se
+verifican compilando los componentes y renderizándolos de verdad con `react-dom/server`:
+
+```bash
+npm run verificar
+```
+
+No es un mock: es el mismo componente con los mismos datos. Lo que se afirma no es «compila»
+sino **propiedades del resultado**: que no vuelva el vocabulario viejo, que no queden
+coordenadas absolutas, presupuestos de contenido, y que el CSS que la vista usa exista.
+
 ## Arquitectura
 
 ```
 Browser ─► /api/analizador/*  (route handler, inyecta x-api-key)  ─► :8010  analizador.api  ─► Supabase PV (RO)
-        └► /api/pronostico/*  (route handler, inyecta x-api-key)  ─► :8000  pronostico.api  ─► store parquet / Supabase (RO)
+        ├► /api/pronostico/*  (route handler, inyecta x-api-key)  ─► :8000  pronostico.api  ─► store parquet / Supabase (RO)
+        └► /api/comparador/*  (route handler, solo GET)           ─► :8020  comparador.api  ─► Supabase PV (RO)
 ```
 
 - El browser **nunca** habla directo con los servicios Python ni ve las API keys:
@@ -49,7 +87,7 @@ Browser ─► /api/analizador/*  (route handler, inyecta x-api-key)  ─► :80
 
 ```bash
 cd mvp-debugger
-./dev.sh          # levanta analizador:8010 + pronostico:8000 + next:3000
+./dev.sh          # levanta analizador:8010 + pronostico:8000 + comparador:8020 + next:3000
 ```
 
 `dev.sh` toma la `ANTHROPIC_API_KEY` de `agente-pronostico/.env`, usa el venv de
@@ -88,6 +126,9 @@ PYTHONPATH=agente-analizador/src agente-pronostico/.venv/bin/python \
 # 2) pronostico
 cd agente-pronostico && .venv/bin/python -m uvicorn pronostico.api:app --port 8000
 
+# comparador (venv propio; sirve el store de hallazgos, no lo calcula)
+cd agente-comparador && .venv/bin/python -m uvicorn comparador.api:app --port 8020
+
 # 3) web
 cd ../mvp-debugger && npm install && npm run dev
 ```
@@ -100,6 +141,7 @@ cd ../mvp-debugger && npm install && npm run dev
 |---|---|---|
 | `ANALIZADOR_URL` | `http://127.0.0.1:8010` | servicio del analizador |
 | `PRONOSTICO_URL` | `http://127.0.0.1:8000` | servicio del pronóstico |
+| `COMPARADOR_URL` | `http://127.0.0.1:8020` | servicio del comparador |
 | `ANALIZADOR_API_KEY` | (vacío) | si el servicio exige `x-api-key` |
 | `PRONOSTICO_API_KEY` | (vacío) | idem |
 

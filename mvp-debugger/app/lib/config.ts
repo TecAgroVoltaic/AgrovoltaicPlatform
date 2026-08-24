@@ -13,3 +13,8 @@ export const PRONOSTICO: Servicio = {
   url: process.env.PRONOSTICO_URL || "http://127.0.0.1:8000",
   key: process.env.PRONOSTICO_API_KEY || undefined,
 };
+
+export const COMPARADOR: Servicio = {
+  url: process.env.COMPARADOR_URL || "http://127.0.0.1:8020",
+  key: process.env.COMPARADOR_API_KEY || undefined,
+};

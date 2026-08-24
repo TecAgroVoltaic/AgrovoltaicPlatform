@@ -24,8 +24,9 @@ depende de nosotros: está ofrecido, medido o identificado, y falta decidir o ha
 
 ## Deuda conocida
 
-- **El arnés de verificación sin navegador vive en un scratchpad** y se pierde al cerrar la
-  sesión. Promoverlo a `mvp-debugger/scripts/` — ver [verificacion-consola](../proyecto/verificacion-consola.md).
+- ~~El arnés de verificación sin navegador vive en un scratchpad.~~ **HECHO el 2026-08-24:**
+  promovido a `mvp-debugger/scripts/verificar-vistas.mjs` + `tsconfig.verify.json`, con
+  `npm run verificar` (28 chequeos). Ver [verificacion-consola](../proyecto/verificacion-consola.md).
 - **La vista «Base de datos» muestra un corte fechado, no una lectura viva.** Es deliberado y está
   declarado en pantalla: el servicio del pronóstico solo lee `lecturas_ambientales_sc`, así que
   ningún endpoint puede reportar las tablas fotovoltaicas. Si algún día se quiere en vivo, hay que

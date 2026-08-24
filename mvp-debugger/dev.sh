@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Levanta el MVP completo en local: los 2 servicios Python (analizador :8010,
-# pronostico :8000) + el Next dev (:3000). Ctrl-C cierra todo.
+# Levanta el MVP completo en local: los 3 servicios Python (analizador :8010,
+# pronostico :8000, comparador :8020) + el Next dev (:3000). Ctrl-C cierra todo.
 #
 # La ANTHROPIC_API_KEY se toma de agente-pronostico/.env (no se imprime). Los
 # servicios leen las DBs en SOLO LECTURA. Uso:  ./dev.sh
@@ -9,6 +9,9 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 REPO="$(cd "$HERE/.." && pwd)"
 VENV="$REPO/agente-pronostico/.venv/bin/python"
+# El comparador tiene venv propio (pvlib + psycopg-pool). Si no esta, se salta:
+# no vale la pena romper todo el MVP porque falte un servicio de solo lectura.
+VENV_COMP="$REPO/agente-comparador/.venv/bin/python"
 LOGS="$HERE/.logs"; mkdir -p "$LOGS"
 
 if [ ! -x "$VENV" ]; then
@@ -35,6 +38,16 @@ echo "→ pronostico en http://127.0.0.1:8000"
 ( cd "$REPO/agente-pronostico" && "$VENV" -m uvicorn pronostico.api:app \
     --host 127.0.0.1 --port 8000 ) > "$LOGS/pronostico.log" 2>&1 &
 pids+=($!)
+
+if [ -x "$VENV_COMP" ]; then
+  echo "→ comparador en http://127.0.0.1:8020"
+  ( cd "$REPO/agente-comparador" && "$VENV_COMP" -m uvicorn comparador.api:app \
+      --host 127.0.0.1 --port 8020 ) > "$LOGS/comparador.log" 2>&1 &
+  pids+=($!)
+else
+  echo "→ comparador OMITIDO (falta $VENV_COMP)"
+  echo "  crealo con:  cd agente-comparador && python3 -m venv .venv && .venv/bin/pip install -e '.[dev,service]'"
+fi
 
 echo -n "esperando health"
 for _ in $(seq 1 30); do
