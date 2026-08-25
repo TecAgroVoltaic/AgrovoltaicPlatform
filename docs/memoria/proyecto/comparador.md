@@ -77,11 +77,23 @@ caracterizados**, que dice algo incomodo sobre la calibracion de la irradiancia:
 
 ## En la consola (2026-08-24)
 
-Vista **«Calidad de datos»** en el mvp-debugger, transversal (no de un agente: describe los
-datos, no el comportamiento de un modelo). Servicio FastAPI propio en **:8020**, proxy
-`/api/comparador/*` **solo GET**: la deteccion corre por lotes y la consola solo sirve el
-store. Si la consola pudiera dispararla, cada visita recorreria los 274 dias y el resultado
-dependeria de quien mire y cuando.
+Vista **«Calidad de datos»** en el mvp-debugger, y el Comparador como **tercer agente del
+selector**. Lo puse primero como vista transversal (razonando que describe los datos y no el
+comportamiento de un modelo) y estaba mal: `capa-agentes.md` lo llama agente desde el
+principio, y el usuario lo buscó en el selector. Corregido el mismo dia.
+
+Servicio FastAPI propio en **:8020**, proxy `/api/comparador/*` **solo GET**: la deteccion
+corre por lotes y la consola solo sirve el store. Si la consola pudiera dispararla, cada
+visita recorreria los 274 dias y el resultado dependeria de quien mire y cuando.
+
+El selector paso a estar **derivado de una tabla** (`AGENTES` en Console.tsx) en vez de dos
+botones escritos a mano y dos `if (a === "...")` en `goAgent`: con tres agentes eso se
+multiplica y se desincroniza. De esa tabla salen el selector, el ping de salud, el contexto
+del chat y a que vista saltar al cambiar de agente.
+
+Y la tabla tiene un campo **`chat`**: el Comparador esta marcado `chat: false` porque **no
+tiene `/chat`**. Es determinista y no lleva LLM a proposito; ofrecerle un chat seria ofrecer
+un 502. El widget solo se monta para los agentes que lo declaran.
 
 Dos decisiones de la vista que costaron una iteracion:
 

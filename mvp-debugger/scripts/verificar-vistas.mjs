@@ -130,7 +130,21 @@ const consola = require("node:fs").readFileSync(
   path.join(RAIZ, "app/components/console/Console.tsx"), "utf8");
 check("aparece en la navegación", /\["calidad", "Calidad de datos"/.test(consola));
 check("se renderiza cuando está activa", /view === "calidad" && <CalidadView \/>/.test(consola));
-check("es transversal, no de un agente", !/calidad:\s*"(analizador|pronostico)"/.test(consola));
+check("la vista pertenece al comparador", /calidad:\s*"comparador"/.test(consola));
+check("el comparador está en el selector de agentes",
+  /id:\s*"comparador"/.test(consola));
+check("y declarado SIN chat",
+  /id:\s*"comparador"[^}]*chat:\s*false/.test(consola),
+  "no tiene /chat: es determinista y no lleva LLM a proposito");
+// El selector se dibuja desde la tabla. Antes eran dos botones escritos a mano y
+// dos `if (a === "...")` en goAgent; con tres agentes eso se multiplica y se
+// desincroniza. Si alguien vuelve a escribirlos, estas dos pruebas lo dicen.
+check("el selector se deriva de la tabla, no está escrito a mano",
+  /agentes\.map\(\(a\) =>/.test(consola) && !/goAgent\("pronostico"\)/.test(consola));
+check("goAgent no tiene pares de agentes quemados",
+  !/a === "pronostico" &&|a === "analizador" &&/.test(consola));
+check("el separador vuelve a «datos» (calidad ya no es transversal)",
+  /const SEPARADOR: View = "datos"/.test(consola));
 
 // ── 4. Resultado ──────────────────────────────────────────────────────────────
 rmSync(OUT, { recursive: true, force: true });

@@ -40,9 +40,32 @@ const NAV: [View, string, Icono][] = [
   ["salud", "Salud del sistema", IconoSalud],
 ];
 const LABEL = Object.fromEntries(NAV.map(([v, l]) => [v, l])) as Record<View, string>;
-const AGENT_OF: Partial<Record<View, string>> = { recon: "analizador", perf: "analizador", pred: "pronostico", arq: "pronostico" };
+const AGENT_OF: Partial<Record<View, string>> = {
+  recon: "analizador", perf: "analizador",
+  pred: "pronostico", arq: "pronostico",
+  calidad: "comparador",
+};
 // La navegación arranca un grupo nuevo acá (vistas transversales, no de un agente).
-const SEPARADOR: View = "calidad";
+const SEPARADOR: View = "datos";
+
+// Un agente = un servicio Python detrás de /api/<id>/*. UNA tabla, porque de acá
+// salen el selector, el ping de salud, el contexto del chat y a qué vista saltar
+// al cambiar de agente: con esto repartido, agregar el tercero habría multiplicado
+// los `if (a === "...")` que había en goAgent y los ternarios del rótulo.
+//
+// `chat` no es decorativo: el Comparador NO tiene /chat. Es determinista y no
+// lleva LLM a propósito (capa-agentes.md: el LLM no está en el camino de la
+// detección numérica), así que ofrecerle un chat sería ofrecer un 502.
+type Agente = { id: string; corto: string; largo: string; inicial: string; chat: boolean };
+const AGENTES: Agente[] = [
+  { id: "analizador", corto: "Analizador", largo: "Analizador PV", inicial: "A", chat: true },
+  { id: "pronostico", corto: "Pronóstico", largo: "Pronóstico ambiental", inicial: "P", chat: true },
+  { id: "comparador", corto: "Comparador", largo: "Comparador de calidad", inicial: "C", chat: false },
+];
+/** Primera vista del agente, derivada del orden de NAV (no una segunda lista). */
+function primeraVistaDe(id: string): View | undefined {
+  return NAV.find(([v]) => AGENT_OF[v] === id)?.[0];
+}
 
 /**
  * `analizador` = ¿está habilitado el agente histórico? Viene del servidor
@@ -52,6 +75,7 @@ const SEPARADOR: View = "calidad";
  */
 export function Console({ analizador = true }: { analizador?: boolean }) {
   const vistas = NAV.filter(([v]) => analizador || AGENT_OF[v] !== "analizador");
+  const agentes = AGENTES.filter((a) => analizador || a.id !== "analizador");
   const [agent, setAgent] = useState(analizador ? "analizador" : "pronostico");
   const [view, setView] = useState<View>(analizador ? "recon" : "pred");
   const [theme, setTheme] = useState("");
@@ -81,8 +105,14 @@ export function Console({ analizador = true }: { analizador?: boolean }) {
   }
   function goAgent(a: string) {
     setAgent(a);
-    if (a === "pronostico" && (view === "recon" || view === "perf")) setView("pred");
-    if (a === "analizador" && (view === "pred" || view === "arq")) setView("recon");
+    // Si la vista abierta es de OTRO agente, saltar a la primera del elegido. Las
+    // transversales (sin agente) se quedan: no pertenecen a nadie y cambiar de
+    // agente mirando «Base de datos» no debería moverte de pantalla.
+    const duenio = AGENT_OF[view];
+    if (duenio && duenio !== a) {
+      const destino = primeraVistaDe(a);
+      if (destino) setView(destino);
+    }
   }
   function toggleTheme() {
     const eff = theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
@@ -90,7 +120,8 @@ export function Console({ analizador = true }: { analizador?: boolean }) {
   }
   const addTraza = (ag: string, traza: Traza) => setSesion((s) => [...s, { agent: ag, traza }]);
   // El chat habla con el agente de la sección (goView ya sincroniza `agent`).
-  const contexto = `${agent === "analizador" ? "Analizador PV" : "Pronóstico"} · ${LABEL[view]}`;
+  const agenteActivo = AGENTES.find((a) => a.id === agent);
+  const contexto = `${agenteActivo?.largo ?? agent} · ${LABEL[view]}`;
 
   return (
     <div className="app">
@@ -114,21 +145,20 @@ export function Console({ analizador = true }: { analizador?: boolean }) {
             <IconoPanel size={15} />
           </button>
         </div>
-        {analizador ? (
-          <div className="agent">
-            <button className={agent === "analizador" ? "on" : ""} onClick={() => goAgent("analizador")}
-                    data-tip="Analizador PV">{ancha ? "Analizador" : "A"}</button>
-            <button className={agent === "pronostico" ? "on" : ""} onClick={() => goAgent("pronostico")}
-                    data-tip="Pronóstico ambiental">{ancha ? "Pronóstico" : "P"}</button>
-          </div>
-        ) : (
-          // Un solo agente: un rótulo, no un selector de una opción.
-          <div className="agent">
-            <button className="on" disabled data-tip="Pronóstico ambiental">
-              {ancha ? "Pronóstico ambiental" : "P"}
+        <div className="agent">
+          {agentes.length === 1 ? (
+            // Un solo agente: un rótulo, no un selector de una opción.
+            <button className="on" disabled data-tip={agentes[0].largo}>
+              {ancha ? agentes[0].largo : agentes[0].inicial}
             </button>
-          </div>
-        )}
+          ) : agentes.map((a) => (
+            <button key={a.id} className={agent === a.id ? "on" : ""}
+                    onClick={() => goAgent(a.id)} data-tip={a.largo}
+                    aria-pressed={agent === a.id}>
+              {ancha ? a.corto : a.inicial}
+            </button>
+          ))}
+        </div>
         <nav className="nav">
           {vistas.map(([v, l, Icono]) => (
             <Fragment key={v}>
@@ -170,7 +200,9 @@ export function Console({ analizador = true }: { analizador?: boolean }) {
         </div>
       </main>
 
-      <ChatWidget agent={agent} contexto={contexto} onTraza={addTraza} />
+      {agenteActivo?.chat && (
+        <ChatWidget agent={agent} contexto={contexto} onTraza={addTraza} />
+      )}
     </div>
   );
 }
