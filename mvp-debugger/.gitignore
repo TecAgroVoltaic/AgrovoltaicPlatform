@@ -14,3 +14,5 @@ out
 
 # Arbol compilado del arnes de verificacion (scripts/verificar-vistas.mjs)
 .verify
+.vercel
+.env*
