@@ -1,4 +1,4 @@
-\section{Estado y pendientes}
+\section{Estado actual}
 
 \subsection{Volúmenes actuales}
 
@@ -21,32 +21,6 @@ La verificación cruzada confirmó que el crudo sigue siendo crudo (temperaturas
 \emph{offset} presentes en la tabla base) y que las vistas hacen su trabajo (85 pasa a
 NULL, la potencia máxima cae a un valor físico, la irradiancia negativa queda en cero,
 kt* con percentil 95 en 1{,}01 y 99{,}4\% de filas aprobando el control de calidad).
-
-\subsection{Lo que bloquea}
-
-\begin{itemize}[leftmargin=*,itemsep=3pt]
-  \item \textbf{Ingesta de San Carlos congelada} desde el 2026-07-23. No es un fallo del
-    sistema; es un corte del subsistema de campo. Todo corre en modo sólo histórico.
-  \item \textbf{Mapeo fino de caja a sitio en AgroDash} ---qué cajas son Cartago y cuáles
-    San Carlos---. No bloquea nada de San Carlos fotovoltaico; sólo el futuro agente
-    comparador entre regiones.
-  \item \textbf{Factor de bifacialidad real} de la hoja de datos y geometría de filas para
-    modelar la POA trasera. Hoy se usa $\varphi = 0{,}80$ asumido, respaldado por la
-    convergencia del PR entre los dos arreglos.
-  \item \textbf{Límite del plan gratuito de Supabase}: 500\,MB, y el proyecto anda cerca.
-\end{itemize}
-
-\subsection{Trabajo pendiente}
-
-\begin{itemize}[leftmargin=*,itemsep=3pt]
-  \item \textbf{Separación fina de filas mezcladas} (Paso 2 del ETL de CSV).
-  \item \textbf{Pronosticador serio} ---AutoARIMA o ML--- detrás de la misma interfaz, e
-    incertidumbre conformal en lugar de la banda heurística actual.
-  \item \textbf{Capa de agentes}: el comparador entre regiones, del que ya existe el
-    primer ladrillo (detección de anomalías) y la vista de predicho contra real.
-  \item \textbf{Pruebas del ETL de CSV}: hoy la verificación es el \emph{notebook} de EDA,
-    que imprime un veredicto por sección, pero no hay suite automatizada.
-\end{itemize}
 
 \subsection{Decisiones que conviene no revisitar}
 

@@ -1,0 +1,450 @@
+================================================================================
+ CAMBIO DE URL EN VISIONEFLOW - agentes AgroVoltaic
+ Generado: 2026-08-25   (rev 3: los dos agentes verificados contra el canvas real)
+================================================================================
+
+QUE PASO
+--------
+Los dos microservicios (sidecars) que alimentan a estos agentes se movieron
+del EC2 de VisioneFlow a un EC2 propio:
+
+    ANTES:  octopia-runtime   i-0c041d684f640f32d   52.1.28.77
+            (el mismo server donde corre VisioneFlow)
+
+    AHORA:  VisioneMetrics    i-0edbbaea4a310fd33   34.203.122.144
+            (dedicado, con su propio dominio y certificado)
+
+Los agentes de VisioneFlow les siguen hablando por HTTPS con x-api-key.
+Lo unico que cambia es EL HOST.
+
+
+LA REGLA, EN UNA LINEA
+----------------------
+    api.flow.visione-edge.com     ->     agro.visione-edge.com
+
+Las rutas NO cambian. En el server nuevo deje /forecast/ y /analizador/ como
+alias de los nombres viejos justamente para que no tengas que reconfigurar
+ninguna ruta, solo el host.
+
+
+LA API KEY NO CAMBIA
+--------------------
+El archivo de entorno se copio tal cual, asi que la x-api-key que ya esta
+pegada en cada nodo sigue siendo valida. No toques credenciales.
+
+
+================================================================================
+ AGENTE 1:  "Agrovoltaic-Agent"
+================================================================================
+Tiene DOS ramas y dos triggers. Hay 5 nodos con URL. Los demas (Webhook,
+AI Agent, Window Buffer, las dos Salidas) NO tienen URL que cambiar: el Webhook
+es de entrada, no de salida.
+
+RAMA 1 - Webhook -> AI Agent -> Salida
+Los tres nodos que cuelgan del handle "Tools" del AI Agent:
+
+ [ ] nodo "Forecast"
+     antes  https://api.flow.visione-edge.com/forecast/forecast
+     ahora  https://agro.visione-edge.com/forecast/forecast        POST   [200 OK]
+
+ [ ] nodo "backtest"
+     antes  https://api.flow.visione-edge.com/forecast/backtest
+     ahora  https://agro.visione-edge.com/forecast/backtest        GET    [200 OK]
+
+ [ ] nodo "Detectar-Anomalias"
+     antes  https://api.flow.visione-edge.com/forecast/anomalias
+     ahora  https://agro.visione-edge.com/forecast/anomalias       POST   [200 OK]
+
+RAMA 2 - Cada hora -> Forecast irradiancia -> Forecast humedad_suelo -> Salida
+Los dos son POST al MISMO endpoint; lo que cambia entre ellos es la variable
+del cuerpo, no la URL:
+
+ [ ] nodo "Forecast irradiancia"
+     antes  https://api.flow.visione-edge.com/forecast/forecast
+     ahora  https://agro.visione-edge.com/forecast/forecast        POST   [200 OK]
+
+ [ ] nodo "Forecast humedad_suelo"
+     antes  https://api.flow.visione-edge.com/forecast/forecast
+     ahora  https://agro.visione-edge.com/forecast/forecast        POST   [200 OK]
+
+Los cuatro endpoints distintos se probaron el 2026-08-25 por HTTPS desde fuera
+de AWS, con la API key real y con el cuerpo que manda cada nodo. Los cuatro
+devolvieron 200. Sin la key, 401.
+
+
+================================================================================
+ AGENTE 2:  "Agrovoltaic-Analyzer"
+================================================================================
+Estructura: "Pregunta del usuario" (trigger MANUAL) -> "Analizador PV" (AI Agent)
+-> "Respuesta", con "Window Buffer" de memoria y SIETE tools colgando del handle
+"Tools". Solo esas siete tienen URL; el trigger, el AI Agent, la Respuesta y el
+Window Buffer no.
+
+Como su trigger es manual, a este agente el horario del server no lo afecta,
+salvo que alguien lo use fuera de 07:00-19:00 de lunes a viernes.
+
+Dato duro: este agente NUNCA fue invocado. Cero llamadas a /analizador/ en todo
+el log del server viejo.
+
+En cada nodo, cambiar el campo `url`:
+
+ [ ] nodo "irradiancia_resumen"
+     antes  https://api.flow.visione-edge.com/analizador/tool/irradiancia_resumen
+     ahora  https://agro.visione-edge.com/analizador/tool/irradiancia_resumen      [200 OK]
+
+ [ ] nodo "performance_ratio"
+     antes  https://api.flow.visione-edge.com/analizador/tool/performance_ratio
+     ahora  https://agro.visione-edge.com/analizador/tool/performance_ratio        [200 OK]
+
+ [ ] nodo "energia_por_arreglo"
+     antes  https://api.flow.visione-edge.com/analizador/tool/energia_por_arreglo
+     ahora  https://agro.visione-edge.com/analizador/tool/energia_por_arreglo      [200 OK]
+
+ [ ] nodo "catalogo_variables"
+     antes  https://api.flow.visione-edge.com/analizador/tool/catalogo_variables
+     ahora  https://agro.visione-edge.com/analizador/tool/catalogo_variables       [200 OK]
+
+ [ ] nodo "cobertura_datos"
+     antes  https://api.flow.visione-edge.com/analizador/tool/cobertura_datos
+     ahora  https://agro.visione-edge.com/analizador/tool/cobertura_datos          [200 OK]
+
+ [ ] nodo "temperatura_por_arreglo"
+     antes  https://api.flow.visione-edge.com/analizador/tool/temperatura_por_arreglo
+     ahora  https://agro.visione-edge.com/analizador/tool/temperatura_por_arreglo  [200 OK]
+
+ [ ] nodo "tendencia"
+     antes  https://api.flow.visione-edge.com/analizador/tool/tendencia
+     ahora  https://agro.visione-edge.com/analizador/tool/tendencia                [200 OK]
+
+     OJO: esta tool exige el parametro `metrica`, y solo acepta estos valores:
+     potencia | irradiancia | kt | pr | temperatura
+     Con un valor fuera de esa lista el servicio responde 500 (deberia ser 400).
+     Sin el parametro, 400.
+
+
+CUATRO TOOLS QUE ESTE AGENTE TODAVIA NO TIENE
+----------------------------------------------
+El Historico expone 11 tools; tu canvas cablea 7. Las 4 que faltan salieron de
+fusionar el Comparador adentro del Historico, y hasta hoy no habian estado
+desplegadas en ningun lado. Si las queres usar, se agregan como un
+httpRequestTool mas cada una (las cuatro verificadas hoy):
+
+     https://agro.visione-edge.com/analizador/tool/graficar            [200 OK] *
+     https://agro.visione-edge.com/analizador/tool/calidad_periodo     [200 OK]
+     https://agro.visione-edge.com/analizador/tool/hallazgos_calidad   [200 OK]
+     https://agro.visione-edge.com/analizador/tool/cielo_periodo       [200 OK]
+
+     (*) `graficar` pide el mismo parametro `metrica` que `tendencia`, con los
+         mismos cinco valores validos.
+
+El esquema de cada una lo devuelve:  GET https://agro.visione-edge.com/analizador/tools
+
+
+================================================================================
+ IMPORTANTE: EL HORARIO DEL TRIGGER "Cada hora"
+================================================================================
+El server nuevo NO esta encendido las 24 horas. Un EventBridge Scheduler lo
+apaga y lo prende:
+
+    stop-ec2-night     19:00  lunes a viernes   (America/Costa_Rica)
+    start-ec2-morning  07:00  lunes a viernes
+
+O sea que esta APAGADO todas las noches de 19:00 a 07:00, y de viernes 19:00
+hasta lunes 07:00 completo.
+
+Tu trigger "Cada hora" dispara los dos nodos Forecast CADA HORA, las 24 horas
+(verificado en el log: 2 llamadas en punto, sin parar). Contra el server viejo
+daba igual porque nunca se apagaba. Contra el nuevo, falla 12 veces por noche y
+unas 60 cada fin de semana.
+
+ [ ] Acotar el trigger a la ventana en que el server esta vivo: 07:00 a 18:00,
+     de lunes a viernes.
+
+     El nodo es del tipo `scheduleTrigger`, y su descripcion en el catalogo dice
+     que acepta "cron, intervalo". NO pude confirmar los nombres de los campos
+     (su esquema esta escaneado, no curado), asi que abrilo y fijate que te
+     ofrece:
+
+       - Si tiene campo de CRON:      0 7-18 * * 1-5    (zona America/Costa_Rica)
+       - Si solo tiene INTERVALO:     no hay forma de acotarlo por horario. Ahi
+                                      las salidas son dos: dejar que falle de
+                                      noche, o sacar la instancia del scheduler
+                                      para que quede 24/7 (+$9/mes bajandola a
+                                      t3.medium, +$39/mes dejandola en t3.large).
+
+     Se corta en las 18:00 y no en las 19:00 a proposito: a las 19:00 en punto
+     es cuando el scheduler apaga la maquina.
+
+De noche, ademas, no hay sol que pronosticar: la irradiancia es cero.
+
+NOTA: el ETL de ingesta del server nuevo tambien corre solo en esa ventana, pero
+ese no pierde nada: sus timers tienen Persistent=true y OnBootSec, asi que al
+encender se pone al dia solo con lo que se perdio.
+
+
+================================================================================
+ SI PREFERIS LOS NOMBRES NUEVOS
+================================================================================
+Los agentes se renombraron en el repo (Analizador -> Historico, Pronostico ->
+Predictivo). Las rutas canonicas del server nuevo son estas, y funcionan igual:
+
+     /forecast/...      equivale a    /predictivo/...
+     /analizador/...    equivale a    /historico/...
+
+Ejemplo:  https://agro.visione-edge.com/predictivo/forecast
+          https://agro.visione-edge.com/historico/tool/performance_ratio
+
+Los alias viejos van a seguir andando: no tienen fecha de vencimiento.
+
+
+================================================================================
+ MIENTRAS TANTO, NADA SE ROMPE
+================================================================================
+El nginx de octopia quedo reenviando /forecast/ y /analizador/ al server nuevo.
+Asi que los agentes funcionan HOY con las URLs viejas, sin tocar nada. Ese
+puente es temporal y se quita cuando confirmes que los nodos ya apuntan al host
+nuevo.
+
+Lo unico que el puente NO puede arreglar es el horario: si el trigger sigue
+disparando de madrugada, va a fallar igual, porque la maquina de destino esta
+apagada.
+
+
+================================================================================
+ OTRA COSA QUE APUNTA A LA URL VIEJA
+================================================================================
+Algo desde la IP 201.206.180.134 le pega a /forecast/health CADA 15 SEGUNDOS.
+No es VisioneFlow (VisioneFlow llama desde 52.1.28.77). Si ese monitor es tuyo,
+repuntalo tambien.
+
+
+================================================================================
+ DATOS DE LA CONSOLA (aparte de todo esto)
+================================================================================
+    https://agro.visione-edge.com
+    password:  ssh -i ~/.ssh/VisioneMetrics.pem ec2-user@34.203.122.144 'cat ~/.consola_pw'
+
+Certificado Let's Encrypt, vence 2026-11-23, renovacion automatica verificada
+con un ensayo real (all simulated renewals succeeded).
+
+
+================================================================================
+ COMO AGREGAR LAS 4 TOOLS QUE FALTAN (datos completos de cada nodo)
+================================================================================
+Un httpRequestTool por tool, colgado del handle "Tools" del nodo "Analizador PV".
+Los campos comunes a las cuatro:
+
+    HTTP Method     : POST
+    Authentication  : API Key
+    API Key Header  : x-api-key
+    API Key Value   : la MISMA que ya tienen los otros nodos del Analyzer.
+                      Copiala de cualquiera de ellos (p.ej. temperatura_por_arreglo).
+
+Lo que cambia en cada uno:
+
+--------------------------------------------------------------------------------
+NODO 1 de 4
+
+  Node Name        : graficar
+  Tool Name        : graficar
+  httpRequestFields.url:
+      https://agro.visione-edge.com/analizador/tool/graficar
+
+  Tool Description :
+      Genera un GRAFICO de tendencia de una metrica del sistema PV para
+      MOSTRARSELO al usuario. Usalo cuando el usuario quiera VER la evolucion
+      en el tiempo (no solo un numero). Metricas: 'potencia' (W por arreglo),
+      'irradiancia' (GHI W/m2), 'kt' (indice de claridad), 'pr' (performance
+      ratio por arreglo), 'temperatura' (C por arreglo). Devuelve los puntos
+      reales de la base; nunca inventes una serie.
+
+  Parameter Schema (JSON):
+
+      {
+        "required": [
+          "metrica"
+        ],
+        "properties": {
+          "metrica": {
+            "type": "string",
+            "enum": [
+              "potencia",
+              "irradiancia",
+              "kt",
+              "pr",
+              "temperatura"
+            ],
+            "description": "Que graficar."
+          },
+          "desde": {
+            "type": "string",
+            "description": "Inicio ISO (opcional; omitir = todo)."
+          },
+          "hasta": {
+            "type": "string",
+            "description": "Fin ISO exclusivo (opcional)."
+          },
+          "bucket": {
+            "type": "string",
+            "enum": [
+              "day",
+              "week",
+              "month"
+            ],
+            "description": "Granularidad temporal. Default 'day'."
+          }
+        }
+      }
+
+--------------------------------------------------------------------------------
+NODO 2 de 4
+
+  Node Name        : calidad_periodo
+  Tool Name        : calidad_periodo
+  httpRequestFields.url:
+      https://agro.visione-edge.com/analizador/tool/calidad_periodo
+
+  Tool Description :
+      Veredicto de calidad de los datos en un periodo: cuantos dias son
+      utilizables, cuantos estan degradados y cuantos no tienen datos, mas los
+      problemas mas frecuentes. Usala ANTES de reportar cualquier agregado del
+      historico, y siempre que pregunten si los datos sirven o que tan
+      confiable es un periodo. Omiti desde/hasta para todo el historico.
+
+  Parameter Schema (JSON):
+
+      {
+        "required": [],
+        "properties": {
+          "desde": {
+            "type": "string",
+            "description": "Inicio ISO, hora local CR. Omitir = todo."
+          },
+          "hasta": {
+            "type": "string",
+            "description": "Fin ISO EXCLUSIVO. Omitir = todo."
+          },
+          "fuente": {
+            "type": "string",
+            "enum": [
+              "radiacion_sc_15s",
+              "monitoreo_sc_electrico"
+            ],
+            "description": "Acota el veredicto a una fuente. Omitir = las dos, y el dia se juzga por la peor. Las dos NO estan igual de sanas: conviene acotar."
+          }
+        }
+      }
+
+--------------------------------------------------------------------------------
+NODO 3 de 4
+
+  Node Name        : hallazgos_calidad
+  Tool Name        : hallazgos_calidad
+  httpRequestFields.url:
+      https://agro.visione-edge.com/analizador/tool/hallazgos_calidad
+
+  Tool Description :
+      Detalle de los problemas de calidad detectados: que tipo, en que
+      variable, que dia y cuantas lecturas afecta. Usala cuando pregunten QUE
+      esta mal (no solo si los datos sirven), por un sensor concreto o por un
+      problema concreto. Tipos posibles: dia_incompleto, hueco,
+      duplicado_timestamp, cambio_de_cadencia, columna_ausente, nulos,
+      fuera_de_rango, saturado_85, constante_en_cero, sensor_plano,
+      offset_nocturno, kt_imposible.
+
+  Parameter Schema (JSON):
+
+      {
+        "required": [],
+        "properties": {
+          "desde": {
+            "type": "string",
+            "description": "Inicio ISO, hora local CR. Omitir = todo."
+          },
+          "hasta": {
+            "type": "string",
+            "description": "Fin ISO EXCLUSIVO. Omitir = todo."
+          },
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "dia_incompleto",
+              "hueco",
+              "duplicado_timestamp",
+              "cambio_de_cadencia",
+              "columna_ausente",
+              "nulos",
+              "fuera_de_rango",
+              "saturado_85",
+              "constante_en_cero",
+              "sensor_plano",
+              "offset_nocturno",
+              "kt_imposible"
+            ],
+            "description": "Filtra por un tipo de problema."
+          },
+          "severidad": {
+            "type": "string",
+            "enum": [
+              "grave",
+              "aviso",
+              "info"
+            ],
+            "description": "grave = el dato no sirve; aviso = usable con cuidado."
+          },
+          "variable": {
+            "type": "string",
+            "description": "Filtra por columna, p.ej. temp_vertical."
+          },
+          "limite": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200,
+            "default": 50
+          }
+        }
+      }
+
+--------------------------------------------------------------------------------
+NODO 4 de 4
+
+  Node Name        : cielo_periodo
+  Tool Name        : cielo_periodo
+  httpRequestFields.url:
+      https://agro.visione-edge.com/analizador/tool/cielo_periodo
+
+  Tool Description :
+      Como estuvo el cielo en un periodo: indice de cielo despejado (kt)
+      medio, indice de variabilidad, reparto de dias entre
+      despejado/parcial/cubierto/variable, y que fraccion de la irradiancia de
+      cielo despejado se alcanzo. Usala para preguntas sobre nubes, dias
+      soleados, o por que la generacion fue baja. Omiti desde/hasta para todo
+      el historico.
+
+  Parameter Schema (JSON):
+
+      {
+        "required": [],
+        "properties": {
+          "desde": {
+            "type": "string",
+            "description": "Inicio ISO, hora local CR. Omitir = todo."
+          },
+          "hasta": {
+            "type": "string",
+            "description": "Fin ISO EXCLUSIVO. Omitir = todo."
+          },
+          "detalle_diario": {
+            "type": "boolean",
+            "default": false,
+            "description": "Devolver ademas un renglon por dia (max 400)."
+          }
+        }
+      }
+
+--------------------------------------------------------------------------------
+
+NOTA sobre `graficar`: `metrica` es OBLIGATORIA y solo acepta esos cinco
+valores. Con un valor fuera de la lista el servicio responde 500 en vez de 400.
+Es un defecto del servicio, no del nodo; conviene que el enum del Parameter
+Schema este bien puesto para que el LLM no invente una metrica.

@@ -14,7 +14,7 @@ ETL de CSV & \cd{src/agrovoltaic} & Estandarizar 19 meses de CSV crudos del inve
 y los sensores, y cargarlos a Supabase de forma idempotente. \\
 Agente de pronóstico & \cd{agente-pronostico/} & Pronosticar irradiancia y humedad de
 suelo con anclaje físico; el LLM sólo orquesta. \\
-Agente analizador & \cd{agente-analizador/} & Responder preguntas sobre el histórico
+Agente Histórico & \cd{agente-historico/} & Responder preguntas sobre el histórico
 fotovoltaico ya limpio, componiendo herramientas atómicas. \\
 Consola de depuración & \cd{mvp-debugger/} & Ver la traza completa de cada agente y
 cruzar cada número contra los datos. \\
@@ -46,10 +46,10 @@ remuestrear todo a 5 minutos durante la carga.
 El proyecto abarca dos sitios y \textbf{no} se fusionan sus bases:
 
 \begin{itemize}[leftmargin=*,itemsep=2pt]
-  \item \textbf{Cartago} --- recolección automática hacia \textbf{AgroDash} (PostgreSQL,
+  \item \textbf{Cartago}: recolección automática hacia \textbf{AgroDash} (PostgreSQL,
     app Rust/Axum). Sensores de suelo y ambiente: humedad, conductividad, temperatura,
     irradiancia, PAR. No mide fotovoltaica.
-  \item \textbf{San Carlos} --- recolección semi-manual de CSV hacia \textbf{Supabase}.
+  \item \textbf{San Carlos}: recolección semi-manual de CSV hacia \textbf{Supabase}.
     Es la región fotovoltaica.
 \end{itemize}
 

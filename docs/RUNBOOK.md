@@ -1,4 +1,4 @@
-# Runbook — levantar todo desde cero
+# Runbook: levantar todo desde cero
 
 Qué hacer si te sentás frente a una máquina nueva, o si algo se cayó y hay que
 reconstruirlo. Cada sección es independiente: levantá solo lo que necesites.
@@ -10,15 +10,24 @@ reconstruirlo. Cada sección es independiente: levantá solo lo que necesites.
 
 | Pieza | Dónde vive | Cómo sobrevive a un reinicio |
 |---|---|---|
-| Agente de pronóstico | EC2 `52.1.28.77`, contenedor `forecast-forecast-1` | `restart: unless-stopped` |
-| Agente analizador | EC2, contenedor `analizador-analizador-1` | idem |
+| Agente Predictivo | EC2 `34.203.122.144`, contenedor `predictivo-predictivo-1` (`127.0.0.1:8000`) | `restart: unless-stopped` |
+| Agente Histórico | idem, contenedor `historico-historico-1` (`127.0.0.1:8010`) | idem |
 | Réplica de AgroDash | EC2, contenedor `agrodash-pg` (puerto **loopback** 5433) | idem, volumen `agrodash_pgdata` |
-| Ingesta cada 15 min | EC2, `forecast-etl.timer` (systemd) | `enable`ado |
-| Refresco del sidecar cada 6 h | EC2, `forecast-refresh.timer` | `enable`ado |
+| Ingesta cada 15 min | EC2, `predictivo-etl.timer` (systemd) | `enable`ado |
+| Refresco del sidecar cada 6 h | EC2, `predictivo-refresh.timer` | `enable`ado |
 | Store de datos | Supabase `jijklguopafevyucogro` | gestionado |
-| Consola de depuración | **solo local** (no desplegada) | — |
+| Consola de depuración | `https://agro.visione-edge.com` (pm2 en `127.0.0.1:3001`) | `pm2 save` + servicio pm2 |
+| Borde HTTPS | nginx del sistema, TLS de Let's Encrypt | unidad systemd |
 
-Acceso al servidor: `ssh -i ~/aws/visione-key.pem ec2-user@52.1.28.77`
+Acceso al servidor: `ssh -i ~/.ssh/VisioneMetrics.pem ec2-user@34.203.122.144`
+
+> **El servidor se apaga solo.** Un EventBridge Scheduler lo apaga a las 19:00 y lo
+> enciende a las 07:00, de lunes a viernes; el fin de semana está apagado completo. Si
+> no responde de noche, no está caído. Detalle: `docs/memoria/proyecto/servidor-propio.md`.
+
+> `52.1.28.77` (`octopia-runtime`) es el EC2 de **VisioneFlow**. Ahí ya no corre nada de
+> AgroVoltaic desde el 2026-08-25; sólo queda un reenvío temporal de `/forecast/` y
+> `/analizador/` hacia el servidor nuevo.
 
 ## 1. Secretos que hacen falta
 
@@ -29,7 +38,7 @@ Ninguno está en el repo. Antes de levantar nada, conseguí:
 | `DATABASE_URL` (raíz) | Supabase de AgroVoltaic (store) | `.env` de la raíz, gestor de secretos |
 | `ANTHROPIC_API_KEY` | los dos agentes | `forecast.env` en la EC2 |
 | `FORECAST_API_KEY` | proteger el sidecar | `forecast.env` en la EC2 |
-| `HISTORICO_API_KEY` | proteger el analizador | entorno del contenedor en la EC2 |
+| `HISTORICO_API_KEY` | proteger el Histórico | `historico.env` en el servidor |
 | `DEBUGGER_PASSWORD` | entrar a la consola | `.env.local` (local) |
 | `DEBUGGER_SESSION_SECRET` | firmar la cookie de sesión | idem |
 
@@ -101,36 +110,38 @@ cd agente-predictivo && pip install -e ".[dev,service]"
 uvicorn predictivo.api:app --port 8000
 
 cd agente-historico && pip install -e ".[dev,service]"
-uvicorn analizador.api:app --port 8010
+uvicorn historico.api:app --port 8010
 ```
 
-En la EC2 se despliegan como contenedores. El del pronóstico:
+En el servidor se despliegan como contenedores, cada uno con su compose **en este
+repo** (ya no en el de VisioneFlow):
 
 ```bash
 # 1) subir el código (no está en ningún remoto git)
-rsync -az -e "ssh -i ~/aws/visione-key.pem" --exclude .venv --exclude __pycache__ \
-  agente-predictivo/ ec2-user@52.1.28.77:/home/ec2-user/forecast/agente-predictivo/
+S=ec2-user@34.203.122.144
+rsync -az -e "ssh -i ~/.ssh/VisioneMetrics.pem" --exclude .venv --exclude __pycache__ \
+  agente-predictivo/ $S:/home/ec2-user/agrovoltaic/predictivo/agente-predictivo/
+rsync -az -e "ssh -i ~/.ssh/VisioneMetrics.pem" --exclude .venv --exclude __pycache__ \
+  agente-historico/  $S:/home/ec2-user/agrovoltaic/historico/agente-historico/
 
-# 2) reconstruir (en la EC2 el binario es docker-compose, con guion)
-ssh -i ~/aws/visione-key.pem ec2-user@52.1.28.77 '
-  cd /home/ec2-user/runtime/Agent-Runtime
-  FORECAST_BUILD_CONTEXT=/home/ec2-user/forecast/agente-predictivo \
-    docker-compose -f docker-compose.forecast.yml up -d --build'
+# 2) reconstruir y levantar
+ssh -i ~/.ssh/VisioneMetrics.pem $S '
+  cd /home/ec2-user/agrovoltaic/predictivo && docker compose -f docker-compose.predictivo.yml up -d --build
+  cd /home/ec2-user/agrovoltaic/historico  && docker compose -f docker-compose.historico.yml  up -d --build'
 ```
 
-> El compose vive en el repo **Agent-Runtime**, no en este. Es un proyecto compose
-> separado a propósito: el deploy del runtime hace `docker rm -f` de todo
-> `agent-runtime-*` y se llevaría puesto el sidecar.
+> Los dos usan `network_mode: host` y **atan uvicorn a `127.0.0.1`**. No se publican:
+> quien los expone es nginx, y sólo bajo `/predictivo/` y `/historico/` con `x-api-key`.
 
 ## 6. Los temporizadores de la ingesta
 
 ```bash
-scp -i ~/aws/visione-key.pem agente-predictivo/deploy/systemd/*.{service,timer} \
-  ec2-user@52.1.28.77:/tmp/
-ssh -i ~/aws/visione-key.pem ec2-user@52.1.28.77 '
-  sudo cp /tmp/forecast-*.{service,timer} /etc/systemd/system/ &&
+scp -i ~/.ssh/VisioneMetrics.pem agente-predictivo/deploy/systemd/predictivo-*.{service,timer} \
+  ec2-user@34.203.122.144:/tmp/
+ssh -i ~/.ssh/VisioneMetrics.pem ec2-user@34.203.122.144 '
+  sudo cp /tmp/predictivo-*.{service,timer} /etc/systemd/system/ &&
   sudo systemctl daemon-reload &&
-  sudo systemctl enable --now forecast-etl.timer forecast-refresh.timer'
+  sudo systemctl enable --now predictivo-etl.timer predictivo-refresh.timer'
 ```
 
 Detalle y diagnóstico: `agente-predictivo/deploy/systemd/README.md`.
@@ -141,25 +152,30 @@ Detalle y diagnóstico: `agente-predictivo/deploy/systemd/README.md`.
 cd mvp-debugger
 npm ci
 cp .env.local.example .env.local     # completá al menos DEBUGGER_PASSWORD
-./consola.sh                         # túnel a la EC2 + consola en un puerto libre
+./consola.sh                         # túnel al servidor + consola local en un puerto libre
 ```
 
+Lo normal es no levantar nada: la consola está desplegada en
+`https://agro.visione-edge.com` y la contraseña se lee del servidor con
+`cat ~/.consola_pw`. `./dev.sh` levanta **todo local** (los dos agentes y la web) y
+`./consola.sh` corre tu web local contra los agentes de producción.
+
 Sin `DEBUGGER_PASSWORD` no vas a poder entrar (en producción responde 503; en
-desarrollo deja pasar). Para levantar **todo local** en vez de usar la EC2: `./dev.sh`.
+desarrollo deja pasar).
 
 ## 8. Verificar que quedó bien
 
 ```bash
 # tests (no necesitan credenciales ni red)
-cd agente-predictivo && pytest -q      # 117
-cd agente-historico && pytest -q      #  24
-cd mvp-debugger && npm run build && ./scripts/smoke-auth.sh   # 9 casos
+cd agente-predictivo && pytest -q      # 253
+cd agente-historico && pytest -q      #  61
+cd mvp-debugger && npm run build && ./scripts/smoke-auth.sh
 
 # salud del sistema en producción
-ssh -i ~/aws/visione-key.pem ec2-user@52.1.28.77 '
-  systemctl list-timers "forecast-*" --no-pager
+ssh -i ~/.ssh/VisioneMetrics.pem ec2-user@34.203.122.144 '
+  systemctl list-timers "predictivo-*" --no-pager
   docker ps --format "{{.Names}} {{.Status}}"
-  curl -s localhost:8000/salud/ingesta'
+  curl -s localhost:8000/health'
 ```
 
 `/salud/ingesta` devuelve **503 mientras la fuente de San Carlos siga congelada**
@@ -169,10 +185,11 @@ ssh -i ~/aws/visione-key.pem ec2-user@52.1.28.77 '
 
 | Síntoma | Dónde mirar |
 |---|---|
-| La ingesta no trae datos | `systemctl status forecast-etl.service` y la tabla `agente_log` (`nivel='error'`) |
-| El pronóstico responde datos viejos | `GET /salud/ingesta` — la fuente está congelada, no es un bug del agente |
+| La ingesta no trae datos | `systemctl status predictivo-etl.service` y la tabla `agente_log` (`nivel='error'`) |
+| El pronóstico responde datos viejos | `GET /salud/ingesta`: la fuente está congelada, no es un bug del agente |
 | Todo responde 429 | tope diario de gasto o rate-limit; ver `PRESUPUESTO_DIARIO_USD` |
 | La consola responde 503 | falta `DEBUGGER_PASSWORD` en el entorno |
+| Nada responde de noche o en fin de semana | el servidor está apagado por programación, no caído |
 | Supabase rechaza escrituras | el plan gratuito son 500 MB y está en ~395 MB |
 
 Los errores del agente quedan siempre en `agente_log`; el panel **Salud del sistema**

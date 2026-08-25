@@ -19,8 +19,8 @@ Si aparece un número que no está en ninguna salida, el modelo lo alucinó.
 
 \begin{center}
 \small
-\cd{Navegador} $\to$ \cd{/api/analizador/*} $\to$ \cd{:8010} $\to$ Supabase (RO) \\[2pt]
-\cd{Navegador} $\to$ \cd{/api/pronostico/*} $\to$ \cd{:8000} $\to$ store (RO)
+\cd{Navegador} $\to$ \cd{/api/historico/*} $\to$ \cd{:8010} $\to$ Supabase (RO) \\[2pt]
+\cd{Navegador} $\to$ \cd{/api/predictivo/*} $\to$ \cd{:8000} $\to$ store (RO)
 \end{center}
 
 El navegador \textbf{nunca} habla directo con los servicios Python ni ve las API keys.
@@ -48,8 +48,14 @@ cambiarle la contraseña al equipo.
 
 \subsection{Dos formas de levantarla}
 
-\cd{./dev.sh} monta todo local: analizador, pronóstico y la web. \cd{./consola.sh} abre
-un túnel SSH contra los agentes que \emph{ya corren} en la EC2 ---que siguen escuchando
-sólo en el loopback del servidor, sin exponer nada--- elige puertos libres (8000, 8010 y
-3000 suelen estar ocupados en una máquina de trabajo), sincroniza las URLs con los
-puertos de esa corrida y cierra el túnel al salir.
+Desde el despliegue hay una tercera, y es la normal: entrar a la consola publicada.
+Las otras dos siguen existiendo porque sirven para otra cosa.
+
+\cd{./dev.sh} monta todo local: los dos agentes y la web, contra las bases reales en
+sólo lectura. Es lo que se usa para desarrollar.
+
+\cd{./consola.sh} abre un túnel SSH contra los agentes que \emph{ya corren} en el
+servidor y levanta la web local contra ellos. Sirve para lo que la consola desplegada no
+puede: probar código propio todavía sin desplegar contra los datos de producción. Elige
+puertos libres (8000, 8010 y 3000 suelen estar ocupados en una máquina de trabajo),
+sincroniza las URLs con los puertos de esa corrida y cierra el túnel al salir.

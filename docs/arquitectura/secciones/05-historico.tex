@@ -1,4 +1,4 @@
-\section{Agente analizador}
+\section{Agente Histórico}
 
 Responde preguntas en español sobre el histórico fotovoltaico ya limpio. Mismo principio
 que el forecaster: el LLM entiende y redacta, los números salen de consultas SQL de sólo
@@ -25,9 +25,16 @@ rápida y también la que abre la puerta a inyección y a respuestas incomprobab
 \cd{catalogo} & Diccionario de variables. \\
 \cd{tendencia} & Evolución de una variable en el tiempo. \\
 \cd{graficar} & Serie lista para dibujar. \\
+\cd{calidad\_periodo} & Veredicto de calidad: dias utilizables, degradados y sin datos. \\
+\cd{hallazgos\_calidad} & Que esta mal y donde, por tipo de problema y severidad. \\
+\cd{cielo\_periodo} & Como estuvo el cielo: kt medio, variabilidad y reparto de dias. \\
 \bottomrule
 \end{tabular}
 \end{center}
+
+Las tres ultimas llegaron de fusionar lo que iba a ser un agente aparte, el
+comparador, cuando quedo claro que no era otro agente sino tres herramientas mas
+del mismo: responden sobre el mismo historico y contra la misma base.
 
 El registro (\cd{tools/\_\_init\_\_.py}) es puro ensamblado: junta los esquemas que ve el
 modelo y el mapa nombre\,$\to$\,función. Agregar una herramienta es crear su archivo e

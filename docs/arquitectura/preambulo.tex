@@ -14,7 +14,14 @@
 \setsansfont{texgyreheros}[
   Extension=.otf, UprightFont=*-regular, ItalicFont=*-italic,
   BoldFont=*-bold, BoldItalicFont=*-bolditalic, Scale=MatchLowercase]
-\setmonofont{JetBrains Mono}[Scale=MatchLowercase]
+% JetBrains Mono es una fuente DEL SISTEMA y no esta en todas las maquinas
+% (en macOS, por ejemplo, no viene). Se degrada con gracia en vez de romper
+% la compilacion: Menlo, y si tampoco esta, la Latin Modern de texmf.
+\IfFontExistsTF{JetBrains Mono}
+  {\setmonofont{JetBrains Mono}[Scale=MatchLowercase]}
+  {\IfFontExistsTF{Menlo}
+    {\setmonofont{Menlo}[Scale=MatchLowercase]}
+    {\setmonofont{lmmono10-regular.otf}[Scale=MatchLowercase]}}
 \setmathfont{texgyrepagella-math.otf}
 \usepackage[spanish,es-noquoting,es-tabla]{babel}
 % expansion no existe en xetex; protrusion si, y es la que mas se nota.
@@ -44,7 +51,7 @@
 \definecolor{papel}{HTML}{F5F3EE}   % fondo de cajas
 \definecolor{borde}{HTML}{D6D2C8}
 
-\hypersetup{colorlinks=false,pdftitle={AgroVoltaic --- Arquitectura},
+\hypersetup{colorlinks=false,pdftitle={AgroVoltaic. Arquitectura},
             pdfauthor={Proyecto AgroVoltaic (TEC)}}
 
 % --- Titulos ----------------------------------------------------------------
@@ -54,7 +61,7 @@
 
 \pagestyle{fancy}
 \fancyhf{}
-\fancyhead[L]{\small\color{humo}AgroVoltaic --- Arquitectura del sistema}
+\fancyhead[L]{\small\color{humo}AgroVoltaic $\cdot$ Arquitectura del sistema}
 \fancyhead[R]{\small\color{humo}\thepage}
 \renewcommand{\headrulewidth}{0.4pt}
 

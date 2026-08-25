@@ -25,8 +25,22 @@
     el encabezado. La excepción son \cd{/health} y \cd{/salud/ingesta}, abiertas a
     propósito para monitoreo automático: no exponen datos de la serie.
 
-  \item \textbf{Nada publicado en la EC2.} Los agentes y la réplica escuchan sólo en el
-    loopback; el acceso es por túnel SSH.
+  \item \textbf{Los servicios no se publican; se publica el borde.} Los dos agentes y la
+    réplica escuchan en \cd{127.0.0.1} y nada más. Lo único alcanzable desde internet es
+    nginx, con TLS. Hasta la mudanza los servicios escuchaban en \cd{0.0.0.0} y lo único
+    que los tapaba era el grupo de seguridad de la nube: cualquier máquina de la misma
+    red privada los alcanzaba. Atarlos al loopback quita esa clase entera de error.
+
+  \item \textbf{Freno de fuerza bruta en el borde.} El límite de intentos de la propia
+    consola vive en memoria del proceso, así que un reinicio lo borra y en un despliegue
+    con varias instancias no se comparte. La defensa que no depende de eso es doble: cada
+    intento cuesta un derivado de clave deliberadamente caro (unos 400\,ms de CPU), y
+    nginx limita la ruta de acceso a seis intentos por minuto. Verificado, no sólo
+    configurado: diez intentos seguidos dan seis 401 y cuatro 429.
+
+  \item \textbf{Falla cerrada.} Sin contraseña configurada, la consola en producción no
+    se abre: responde 503 y lo dice. Un despliegue anterior quedó expuesto justamente por
+    hacer lo contrario, abrirse cuando faltaba la variable.
 
   \item \textbf{Errores internos genéricos.} Un fallo interno responde el 500 estándar;
     el detalle queda en el log del servidor, nunca en la respuesta.
@@ -45,7 +59,7 @@
 \cd{STORE\_URL} & El store del agente, separado de la fuente a propósito. \\
 \cd{ANTHROPIC\_API\_KEY} & Los dos agentes. \\
 \cd{FORECAST\_API\_KEY} & Proteger el servicio de pronóstico. \\
-\cd{ANALIZADOR\_API\_KEY} & Proteger el servicio del analizador. \\
+\cd{HISTORICO\_API\_KEY} & Proteger el servicio del Histórico. \\
 \cd{DEBUGGER\_PASSWORD} & Entrar a la consola. \\
 \cd{DEBUGGER\_SESSION\_SECRET} & Firmar la cookie de sesión. \\
 \bottomrule
