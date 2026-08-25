@@ -17,6 +17,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { jget, mensajeError, nfmt } from "@/app/lib/client";
+import { Estado } from "@/app/components/console/Estado";
 
 const RUTA = "/api/historico";
 
@@ -192,7 +193,7 @@ export function CalidadView() {
     return () => { vivo = false; };
   }, [sel]);
 
-  if (error) return <div className="card"><p className="hint">{error}</p></div>;
+  if (error) return <div className="card"><Estado error={error} que="el control de calidad" /></div>;
   if (!resumen) return <div className="card"><p className="hint">Cargando…</p></div>;
 
   const { cobertura, cielo, tipos } = resumen;

@@ -175,6 +175,51 @@ check("los dos agentes se llaman Histórico y Predictivo",
 check("y son exactamente DOS",
   (consola.match(/^\s*\{ id: "/gm) || []).length === 2);
 
+// ── 3b. El apagado programado ─────────────────────────────────────────────────
+// El servidor de datos no esta encendido las 24 h. Un "502 Bad Gateway" a las 3
+// de la manana manda a alguien a buscar un bug que no existe, asi que la consola
+// tiene que distinguir "esta apagado" de "esta roto".
+{
+  const cliente = require(path.join(OUT, "app/lib/client.js"));
+  const { Estado } = require(path.join(OUT, "app/components/console/Estado.js"));
+
+  check("un 502 del proxy se lee como servidor apagado",
+    cliente.servidorApagado({ status: 502, ok: false, data: {} }) === true);
+  check("un fetch que ni salio (status 0), tambien",
+    cliente.servidorApagado({ status: 0, ok: false, data: {} }) === true);
+  check("el mensaje del proxy tambien lo delata",
+    cliente.servidorApagado({ status: 500, ok: false,
+      data: { error: "servicio inaccesible: connect ECONNREFUSED" } }) === true);
+  check("pero un 401 NO es un apagado, es una sesion vencida",
+    cliente.servidorApagado({ status: 401, ok: false, data: {} }) === false);
+  check("ni un 422, que es un error de verdad",
+    cliente.servidorApagado({ status: 422, ok: false, data: { detail: "faltan campos" } }) === false);
+
+  const apagado = renderToStaticMarkup(React.createElement(Estado,
+    { error: cliente.mensajeError({ status: 502, ok: false, data: {} }), que: "la serie" }));
+  check("el panel de apagado lo dice con esas palabras", /Servidor apagado/.test(apagado));
+  check("y dice cuando vuelve", /07:00/.test(apagado) && /19:00/.test(apagado));
+  check("no ofrece reintentar: no hay nada que reintentar", !/Reintentar/.test(apagado));
+  check("y aclara que la documentacion sigue en pie", /documentación/.test(apagado));
+
+  const roto = renderToStaticMarkup(React.createElement(Estado,
+    { error: "el servicio respondió 500", que: "la serie", onReintentar: () => {} }));
+  check("un error de verdad sigue pintandose como error", /No se pudieron cargar/.test(roto));
+  check("y ese si ofrece reintentar", /Reintentar/.test(roto));
+}
+
+// ── 3c. La copia del mapa del agente ──────────────────────────────────────────
+// La vista de arquitectura tiene que seguir en pie con el servidor apagado: no
+// muestra datos medidos, muestra la forma del agente. La copia tiene que traer
+// todo lo que la vista lee, o la pantalla se cae igual pero mas tarde.
+{
+  const { MAPA_RESPALDO: m } = require(path.join(OUT, "app/components/console/arquitectura/mapaRespaldo.js"));
+  check("la copia trae los modos", m && m.modos && Object.keys(m.modos).length >= 2);
+  check("trae las herramientas", Array.isArray(m.herramientas) && m.herramientas.length > 0);
+  check("trae los limites", !!m.limites);
+  check("y la ficha del agente", !!(m.agente && m.agente.nombre));
+}
+
 // ── 4. Resultado ──────────────────────────────────────────────────────────────
 rmSync(OUT, { recursive: true, force: true });
 console.log(`\n${ok} chequeos OK`);

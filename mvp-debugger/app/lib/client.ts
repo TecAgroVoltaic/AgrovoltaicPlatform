@@ -60,12 +60,33 @@ export function inlineMd(texto: string): string {
 // y la UI en "cargando..." para siempre. Estos helpers convierten eso en un
 // estado de error explicito y accionable.
 
+// El servidor de datos NO esta encendido las 24 horas: un programador de AWS lo
+// apaga a las 19:00 y lo enciende a las 07:00, de lunes a viernes, y el fin de
+// semana lo deja apagado. Es una decision de costo, no una falla, y la consola
+// tiene que decirlo asi. Un "502 Bad Gateway" a las 3 de la manana manda a
+// alguien a buscar un bug que no existe.
+export const HORARIO = "de lunes a viernes, 07:00 a 19:00 (hora de Costa Rica)";
+export const MSG_APAGADO =
+  `el servidor de datos está apagado. Se enciende ${HORARIO}`;
+
+/** true si el fallo es "el servicio de atras no esta ahi", y no otra cosa.
+ *
+ * El proxy de /api/* devuelve 502 con `servicio inaccesible` cuando no logra
+ * conectar; el 0 es que ni siquiera salio el fetch; el 504 es que salio y no
+ * volvio. Los tres significan lo mismo para quien mira la pantalla. Un 401 o un
+ * 422 NO entran: esos son fallos de verdad y hay que verlos como tales. */
+export function servidorApagado(r: Resp): boolean {
+  if (r.status === 0 || r.status === 502 || r.status === 504) return true;
+  const d = r.data as any;
+  return typeof d?.error === "string" && d.error.includes("servicio inaccesible");
+}
+
 /** Mensaje legible de una respuesta fallida (detail de FastAPI, error del proxy, o el status). */
 export function mensajeError(r: Resp): string {
+  if (servidorApagado(r)) return MSG_APAGADO;
   const d = r.data as any;
   if (typeof d?.detail === "string") return d.detail;
   if (typeof d?.error === "string") return d.error;
-  if (r.status === 0) return "no se pudo contactar al servicio";
   if (r.status === 401) return "sesión vencida: recargá la página para volver a entrar";
   return `el servicio respondió ${r.status}`;
 }

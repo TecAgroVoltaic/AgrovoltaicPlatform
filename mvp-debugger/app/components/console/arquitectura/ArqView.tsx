@@ -9,7 +9,7 @@
 // mostrar una herramienta que no existe, ni ocultar una que sí. Si el catálogo y
 // el servicio se separan, la discrepancia se muestra en pantalla.
 import { useCallback, useEffect, useRef, useState } from "react";
-import { jget, mensajeError } from "@/app/lib/client";
+import { jget } from "@/app/lib/client";
 import { IconoAlerta } from "@/app/components/Iconos";
 import { HERRAMIENTAS } from "./catalogo";
 import { Lienzo } from "./Lienzo";
@@ -17,6 +17,7 @@ import { NodoModal, type Detalle } from "./NodoModal";
 import type { Mapa } from "./mapa";
 
 import { MEDICION_OCULTA, MEDICION_VISIBLE, MODO } from "@/app/components/console/modos";
+import { MAPA_RESPALDO } from "./mapaRespaldo";
 
 const RUTA = "/api/predictivo/arquitectura";
 
@@ -29,7 +30,9 @@ const LEYENDA: Record<string, string> = {
 
 export function ArqView() {
   const [mapa, setMapa] = useState<Mapa | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  // Si el mapa que se esta viendo salio de la copia y no del servicio, hay que
+  // decirlo: una copia y la realidad no valen lo mismo.
+  const [esRespaldo, setEsRespaldo] = useState(false);
   const [modo, setModo] = useState<string>(MEDICION_VISIBLE);
   const [detalle, setDetalle] = useState<Detalle | null>(null);
   const marco = useRef<HTMLDivElement>(null);
@@ -38,10 +41,14 @@ export function ArqView() {
     let vivo = true;
     jget<Mapa>(RUTA).then((r) => {
       if (!vivo) return;
-      if (!r.ok || !r.data?.modos) { setError(mensajeError(r)); return; }
-      setMapa(r.data);
+      // El mapa describe la FORMA del agente, no datos medidos: cambia con el
+      // codigo, no con la hora. Si el servicio no esta (apagado de noche o el
+      // fin de semana), se dibuja la copia en vez de dejar la pantalla vacia.
+      const usable = r.ok && r.data?.modos ? r.data : (MAPA_RESPALDO as unknown as Mapa);
+      setEsRespaldo(!(r.ok && r.data?.modos));
+      setMapa(usable);
       // El modo inicial es el primero que publica el servicio, no uno fijo.
-      setModo(Object.keys(r.data.modos)[0] || MEDICION_VISIBLE);
+      setModo(Object.keys(usable.modos ?? {})[0] || MEDICION_VISIBLE);
     });
     return () => { vivo = false; };
   }, []);
@@ -52,19 +59,6 @@ export function ArqView() {
     if (document.fullscreenElement) document.exitFullscreen();
     else el.requestFullscreen?.().catch(() => { /* el navegador puede negarlo */ });
   }, []);
-
-  if (error) {
-    return (
-      <section className="vista">
-        <div className="phead"><h1>Arquitectura del agente</h1></div>
-        <div className="card">
-          <p className="hint" style={{ color: "var(--crit)" }}>
-            No se pudo leer el mapa del agente: {error}
-          </p>
-        </div>
-      </section>
-    );
-  }
 
   if (!mapa) {
     return (
@@ -94,6 +88,13 @@ export function ArqView() {
             Cada número sale de una función determinista sobre datos medidos. Este mapa se
             lee del servicio en cada carga, así que muestra el agente como está hoy.
           </p>
+          {esRespaldo && (
+            <p className="hint" style={{ marginTop: 6 }}>
+              <strong>Copia guardada.</strong> El servicio no respondió, así que este mapa
+              sale de la última captura y no del agente en vivo. Coincide salvo que el
+              código haya cambiado desde entonces.
+            </p>
+          )}
         </div>
         <button className="btn-sm" onClick={pantallaCompleta}>Pantalla completa</button>
       </div>
