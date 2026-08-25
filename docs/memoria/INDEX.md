@@ -3,7 +3,17 @@
 Sistema de memoria jerárquico. Un tema por archivo, agrupados por carpeta. Empieza aquí
 para ubicar qué buscas; cada línea apunta al archivo de detalle.
 
-**Última actualización:** 2026-08-21 · *(**Vocabulario unificado + vista «Base de datos» nueva.**
+**Última actualización:** 2026-08-25 · *(**Servidor propio y consola desplegada.**
+AgroVoltaic salió del EC2 de VisioneFlow: los dos agentes, la réplica de AgroDash y la consola
+viven ahora en `VisioneMetrics`, detrás de nginx con TLS en `agro.visione-edge.com`. Se corrigieron
+tres cosas que la doc daba por buenas y no lo eran: los servicios escuchaban en `0.0.0.0` (no en
+loopback), el `Dockerfile` del Predictivo apuntaba a un módulo que el refactor borró, y la
+renovación automática del certificado estaba **deshabilitada** pese a que certbot dijo lo
+contrario. Detalle en [servidor-propio](proyecto/servidor-propio.md). **TODO decidido y pospuesto:**
+unificar la orquestación en VisioneFlow cuando el Agente Histórico esté terminado, porque hoy hay
+dos cerebros sobre las mismas tools: ver [abiertos](pendientes/abiertos.md).)*
+
+**Anterior:** 2026-08-21 · *(**Vocabulario unificado + vista «Base de datos» nueva.**
 Los modos del agente pasaron por dos renombres hasta quedar en `medicion_visible` / `medicion_oculta`:
 antes la misma cosa tenía cuatro nombres (servicio, chip, botón y variable decían cosas distintas) y
 «modo backtest» era además falso, porque `/backtest` dibuja el gráfico en los dos. Al renombrar
@@ -16,16 +26,16 @@ doc de Leo. Y las fichas de los tools ganaron **«En qué ayuda»**. Detalle en
 **La extensión de Chrome no conecta**, así que toda la UI se verifica con `react-dom/server` — ver
 [verificacion-consola](proyecto/verificacion-consola.md).)*
 
-**Anterior:** 2026-08-19 · *(**Solo el Agente Predictivo, y verificado end-to-end.**
+**Previo:** 2026-08-19 · *(**Solo el Agente Predictivo, y verificado end-to-end.**
 El Agente Histórico quedó bloqueado en la consola con un flag de servidor reversible
 (`AGENTE_HISTORICO=on`). 74 chequeos e2e, 0 fallas. Hallazgo que habría hundido la demo: el último
 dato es de madrugada → se agregó el instante de referencia (`ahora` en `/forecast`).)*
 
-**Previo:** 2026-08-18 · Cartago caído → el ETL lee una réplica del dump dentro de la EC2; llevaba
+**Antes:** 2026-08-18 · Cartago caído → el ETL lee una réplica del dump dentro de la EC2; llevaba
 9 días fallando en silencio. Detalle: [agrodash-local](proyecto/agrodash-local.md) · riesgos abiertos
 en [cuota-store-supabase](proyecto/cuota-store-supabase.md) y [superficie-expuesta](proyecto/superficie-expuesta.md).
 
-**Antes:** 2026-08-10 · Leo Cardinale validó el tratamiento de datos y con eso cayeron los
+**Y antes:** 2026-08-10 · Leo Cardinale validó el tratamiento de datos y con eso cayeron los
 bloqueantes de geometría. Regla rectora: **crudo en la DB, corrección en capa de análisis**. Esquema
 rediseñado, ETL re-corrido y capas de calibración y PR **en vivo**. Fuente de verdad:
 [respuestas-leo-cardinale](decisiones/respuestas-leo-cardinale.md) · [implementacion](proyecto/implementacion.md).
@@ -37,6 +47,7 @@ rediseñado, ETL re-corrido y capas de calibración y PR **en vivo**. Fuente de 
 - [arquitectura-regiones.md](proyecto/arquitectura-regiones.md) — dos regiones (Cartago/AgroDash + San Carlos/Supabase), sin DB central; San Carlos está partido
 - [capa-agentes.md](proyecto/capa-agentes.md) — Agente Histórico + Agente Predictivo; infraestructura consolidada (servicio Python aparte, batch, lee ambas DBs)
 - [agente-predictivo.md](proyecto/agente-predictivo.md) — agente LLM que pronostica irradiancia + humedad de suelo vía clear-sky + kt*; dos modos (`medicion_visible` / `medicion_oculta`) y `GET /arquitectura`, que **deriva** el mapa del agente de `agent.MODOS` y los esquemas reales; **verificado e2e contra producción el 19-ago (72 chequeos, 0 fallas · 159 tests)**; instante de referencia para pronosticar con sol pese al congelamiento; cobertura real de la serie
+- [servidor-propio.md](proyecto/servidor-propio.md) — **NUEVO (2026-08-25):** la plataforma salió del EC2 de VisioneFlow a uno propio (`VisioneMetrics`), con dominio, TLS y la consola desplegada en `agro.visione-edge.com`. Réplica de 6 GB movida por red privada y verificada por conteo exacto (21.314.662 filas). Los servicios **no estaban en loopback** como decía la doc: escuchaban en `0.0.0.0` y los tapaba solo el security group. El servidor **se apaga 19:00–07:00 y los fines de semana**, así que todo consumidor externo tiene que disparar en esa ventana
 - [agente-historico-calidad.md](proyecto/agente-historico-calidad.md) — **NUEVO (2026-08-24):** control de calidad determinista del histórico PV (completitud contra las **horas de sol**, no contra 24 h) + caracterización del cielo (kt y variabilidad). Las tres trampas que costaron una corrida cada una: el **VI medía la cadencia del logger** (4,15 vs 23,81 para el mismo kt), los **kt imposibles se disfrazaban de día soleado** (kt medio 5,67), y **«sensor plano» eran tres cosas distintas** (85, cero, o trabado de verdad). Store `hallazgos_calidad` + `cielo_diario` + reporte + **vista «Calidad de datos» en la consola** (servicio :8020, mapa de días como calendario y no tabla, dos tiras por fuente: radiación 126 días ok contra eléctrico 4)
 - [agente-historico.md](proyecto/agente-historico.md) — **NUEVO (2026-08-10):** agente Q&A sobre el histórico PV en Supabase; tools atómicas (SRP) sobre las vistas limpias; el LLM solo orquesta; MVP CLI, tools validadas contra la base
 - [mvp-debugger.md](proyecto/mvp-debugger.md) — web local (Next.js) para depurar en vivo los agentes; **desde el 19-ago solo muestra el predictivo** (flag `AGENTE_HISTORICO`): visor de traza (tools+salidas+respuesta), explorador de datos read-only, tokens+costo por consulta y acumulado (`/preguntar`, `/datos/*`, `/uso`); **vista «Arquitectura del agente»** (grafo de nodos leído de `/arquitectura`, con hover y modales por herramienta, cada uno con «En qué ayuda»); **vista «Base de datos»** (el recorrido del ETL en cinco actos, con el dato a la vista en cada paso); + artifact de diseño en iteración
