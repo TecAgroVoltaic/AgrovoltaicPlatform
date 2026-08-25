@@ -18,7 +18,14 @@ _SEVERIDAD_ORDEN = {"grave": 0, "aviso": 1, "info": 2}
 _ICONO = {"grave": "!!", "aviso": " !", "info": "  "}
 
 
-def _resumen_hallazgos(desde: date, hasta: date) -> list[dict]:
+def hallazgos_por_tipo(desde: date, hasta: date) -> list[dict]:
+    """Un renglon por (fuente, tipo, severidad) con dias, variables, lecturas y
+    el rango de fechas que abarca.
+
+    Publica y no privada porque tiene DOS consumidores: el reporte de texto y la
+    vista de calidad de la consola, que necesita `fuente` y las fechas extremas.
+    El resumen que ve el LLM (`calidad_periodo`) es otro: recorta a los cinco
+    problemas mas frecuentes y no trae fuente ni fechas."""
     return db.query(
         """
         SELECT fuente, tipo, severidad,
@@ -107,7 +114,7 @@ def generar(desde: date, hasta: date) -> str:
         L.append(f"            la irradiancia medida fue el {c['pct_del_techo']} % de la "
                  f"de cielo despejado")
 
-    filas = _resumen_hallazgos(desde, hasta)
+    filas = hallazgos_por_tipo(desde, hasta)
     L.append("")
     L.append("HALLAZGOS")
     L.append("-" * 78)

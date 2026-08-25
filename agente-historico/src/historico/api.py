@@ -194,11 +194,21 @@ def arquitectura_agente() -> dict:
 @app.get("/calidad/resumen", dependencies=[Depends(_verificar_api_key)])
 def calidad_resumen(desde: str | None = Query(None),
                     hasta: str | None = Query(None)) -> dict:
-    """Cobertura, cielo y conteo de hallazgos por tipo. La cabecera de la vista."""
+    """Cobertura, cielo y desglose de hallazgos por tipo. La cabecera de la vista.
+
+    `calidad` y `cielo` son lo mismo que ven las tools (y por lo tanto el LLM).
+    `tipos` es el desglose COMPLETO por fuente, con las fechas extremas: la tabla
+    de la consola lo necesita y el resumen de la tool no lo trae, porque para
+    narrar alcanzan los cinco problemas mas frecuentes.
+    """
+    from historico.calidad import reporte
+    from historico.periodo import rango
     from historico.tools import calidad_periodo, cielo_periodo
+    d, h = rango(desde, hasta)
     return {
         "calidad": calidad_periodo.run(desde, hasta),
         "cielo": cielo_periodo.run(desde, hasta),
+        "tipos": reporte.hallazgos_por_tipo(d, h),
     }
 
 

@@ -35,6 +35,8 @@ type Tipo = {
   dias: number; variables: number; lecturas: number | null;
   primer_dia: string; ultimo_dia: string;
 };
+// Lo que la vista necesita para pintar. NO es lo que devuelve el servicio: eso lo
+// traduce `normalizar`, abajo.
 type Resumen = {
   periodo: { desde: string; hasta: string };
   cobertura: { dias_con_datos: number; dias_calendario: number };
@@ -45,6 +47,37 @@ type Resumen = {
   };
   tipos: Tipo[];
 };
+
+/** Traduce la respuesta de `/calidad/resumen` a lo que pinta la vista.
+ *
+ * Existe porque el servicio habla en los terminos del AGENTE (un veredicto para
+ * narrar, los cinco problemas mas frecuentes) y la vista necesita otra cosa (un
+ * conteo para un KPI, el desglose completo con fuente y fechas). Traducir aca, en
+ * un solo lugar y en el borde, es preferible a que cada trozo de JSX sepa la forma
+ * exacta del JSON: cuando el servicio cambie, se cambia esta funcion y nada mas.
+ */
+function normalizar(api: any): Resumen {
+  const v = api?.calidad?.veredicto ?? {};
+  const c = api?.cielo?.resumen ?? {};
+  return {
+    periodo: api?.calidad?.periodo ?? { desde: "", hasta: "" },
+    cobertura: {
+      dias_con_datos: v.dias_con_datos ?? 0,
+      dias_calendario: v.dias_en_rango ?? 0,
+    },
+    cielo: {
+      dias: c.dias ?? 0,
+      kt_medio: c.kt_medio ?? null,
+      vi_medio: c.variabilidad_media ?? null,
+      despejados: c.despejados ?? 0,
+      parciales: c.parciales ?? 0,
+      cubiertos: c.cubiertos ?? 0,
+      variables: c.variables ?? 0,
+      pct_del_techo: c.pct_del_techo ?? null,
+    },
+    tipos: Array.isArray(api?.tipos) ? api.tipos : [],
+  };
+}
 type Hallazgo = {
   fecha: string; fuente: string; variable: string; tipo: string;
   severidad: "grave" | "aviso" | "info"; n_afectadas: number | null;
@@ -142,7 +175,7 @@ export function CalidadView() {
         if (!vivo) return;
         if (!r.ok) return setError(mensajeError(r));
         if (!d.ok) return setError(mensajeError(d));
-        setResumen(r.data);
+        setResumen(normalizar(r.data));
         setDias(d.data?.dias ?? []);
         setError(null);
       });
