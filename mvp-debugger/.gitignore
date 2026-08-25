@@ -2,6 +2,10 @@ node_modules
 .next
 out
 .env.local
+# Los respaldos con fecha del .env.local tienen los MISMOS secretos que el
+# original. Sin esta linea, un `git add -A` los publica.
+.env.local.bak*
+.env.local.*
 *.log
 .DS_Store
 

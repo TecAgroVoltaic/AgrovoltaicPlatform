@@ -106,7 +106,7 @@ solo —8000, 8010 y 3000 suelen estar ocupados en una máquina de desarrollo—
 las URLs del `.env.local` con los puertos de esa corrida y cierra el túnel al salir.
 
 Requiere `.env.local` con `DEBUGGER_PASSWORD` (si no, no vas a poder entrar) y la llave
-SSH en `~/aws/visione-key.pem` (override: `EC2_KEY`, `EC2_HOST`, `CONSOLA_PORT`).
+SSH en `~/.ssh/VisioneMetrics.pem` (override: `EC2_KEY`, `EC2_HOST`, `CONSOLA_PORT`).
 
 ## Acceso
 

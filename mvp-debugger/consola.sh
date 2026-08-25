@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 #
-# Levanta la consola de evaluación contra los agentes que YA CORREN EN LA EC2,
-# usando un túnel SSH. No expone nada: los servicios siguen escuchando solo en
-# el loopback del servidor.
+# Levanta la consola LOCAL contra los agentes que YA CORREN EN EL SERVIDOR,
+# usando un túnel SSH.
+#
+# OJO, desde 2026-08-25 esto es OPCIONAL: la consola ya está desplegada en
+# https://agro.visione-edge.com y ahí no hace falta túnel ni nada. Este script
+# sigue sirviendo para lo otro: correr TU código local (una vista a medio hacer,
+# un cambio sin desplegar) contra los datos y los agentes de producción.
 #
 #   ./consola.sh              # elige puertos libres solo
 #   CONSOLA_PORT=3010 ./consola.sh
@@ -13,8 +17,8 @@
 # acceso a las bases). Este script es para mirar producción sin montar nada.
 set -euo pipefail
 
-EC2_HOST="${EC2_HOST:-ec2-user@52.1.28.77}"
-LLAVE_SSH="${EC2_KEY:-$HOME/aws/visione-key.pem}"
+EC2_HOST="${EC2_HOST:-ec2-user@34.203.122.144}"   # VisioneMetrics
+LLAVE_SSH="${EC2_KEY:-$HOME/.ssh/VisioneMetrics.pem}"
 # Puertos REMOTOS de los agentes en la EC2 (fijos, definidos por sus compose).
 PUERTO_PREDICTIVO_REMOTO=8000
 PUERTO_HISTORICO_REMOTO=8010
@@ -96,7 +100,7 @@ PUERTO_PREDICTIVO_LOCAL=$(puerto_libre "$PUERTO_PREDICTIVO_LOCAL")
 PUERTO_HISTORICO_LOCAL=$(puerto_libre "$PUERTO_HISTORICO_LOCAL")
 abrir_tunel
 esperar_servicio "$PUERTO_PREDICTIVO_LOCAL" "predictivo"
-esperar_servicio "$PUERTO_HISTORICO_LOCAL" "analizador"
+esperar_servicio "$PUERTO_HISTORICO_LOCAL" "historico"
 sincronizar_env
 
 [[ -d "$AQUI/.next" ]] || { log "compilando la consola"; (cd "$AQUI" && npm run build); }
