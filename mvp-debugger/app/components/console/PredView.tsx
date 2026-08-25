@@ -90,7 +90,7 @@ export function PredView({ theme }: { theme: string }) {
     } catch { /* caché corrupto: se ignora y manda la red */ }
     if (cacheado) aplicar(cacheado, true);
 
-    jget(`/api/pronostico/serie?variable=${vari}&bucket=D&ultimos_dias=1`).then((r: Resp) => {
+    jget(`/api/predictivo/serie?variable=${vari}&bucket=D&ultimos_dias=1`).then((r: Resp) => {
       const resumen = r.ok ? (r.data as any)?.resumen : null;
       if (!resumen?.hasta) { if (!cacheado) setRango(null); return; }
       const nuevo = { desde: resumen.desde.slice(0, 10), hasta: resumen.hasta.slice(0, 10) };
@@ -106,7 +106,7 @@ export function PredView({ theme }: { theme: string }) {
   useEffect(() => {
     if (!fecha) return;
     setDia(null); setErrDia(null);
-    jget(`/api/pronostico/backtest?variable=${vari}&desde=${fecha}`
+    jget(`/api/predictivo/backtest?variable=${vari}&desde=${fecha}`
          + `&hasta=${diaSiguiente(fecha)}&bucket=${bucket}`)
       .then((r: Resp) => {
         if (!r.ok) { setErrDia(mensajeError(r)); return; }

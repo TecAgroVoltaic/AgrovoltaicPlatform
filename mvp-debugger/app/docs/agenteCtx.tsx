@@ -5,9 +5,9 @@
 // (hoy el mini-chat del glosario) lo consume.
 import { createContext, useContext } from "react";
 
-export type Agente = "analizador" | "pronostico";
+export type Agente = "historico" | "predictivo";
 
-export const AgenteDocs = createContext<Agente>("analizador");
+export const AgenteDocs = createContext<Agente>("historico");
 
 export function useAgenteDocs(): Agente {
   return useContext(AgenteDocs);

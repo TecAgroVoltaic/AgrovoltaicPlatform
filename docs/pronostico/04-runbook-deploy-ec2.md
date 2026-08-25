@@ -40,15 +40,15 @@ El resto del runbook funciona igual con (a) o (b); solo cambia `forecast.env` y 
 
 ### 1. Subir el código del agente a la EC2
 
-`agente-pronostico/` NO está en ningún remoto git (vive dentro del working tree de
+`agente-predictivo/` NO está en ningún remoto git (vive dentro del working tree de
 AgroVoltaic, sin trackear). Se sube por rsync (incluye `data/` para el modo demo):
 
 ```bash
 ssh -i ~/.ssh/visione-key.pem ec2-user@52.1.28.77 "mkdir -p /home/ec2-user/forecast"
 rsync -av -e "ssh -i ~/.ssh/visione-key.pem" \
   --exclude .venv --exclude __pycache__ --exclude .pytest_cache \
-  /Users/izack/Visione/AgroVoltaic/agente-pronostico/ \
-  ec2-user@52.1.28.77:/home/ec2-user/forecast/agente-pronostico/
+  /Users/izack/Visione/AgroVoltaic/agente-predictivo/ \
+  ec2-user@52.1.28.77:/home/ec2-user/forecast/agente-predictivo/
 ```
 
 ### 2. Publicar los cambios del Backend (nginx + modelos)
@@ -76,7 +76,7 @@ openssl rand -hex 32   # pegar el resultado en FORECAST_API_KEY
 
 ```bash
 cd /home/ec2-user/runtime/Agent-Runtime
-FORECAST_BUILD_CONTEXT=/home/ec2-user/forecast/agente-pronostico \
+FORECAST_BUILD_CONTEXT=/home/ec2-user/forecast/agente-predictivo \
   /usr/local/bin/docker-compose -f docker-compose.forecast.yml up -d --build --force-recreate
 docker ps --format '{{.Names}} {{.Status}}' | grep forecast   # espera: healthy
 ```
@@ -109,7 +109,7 @@ carpeta **Agent Tools › HTTP**) conectado al `aiAgent` por el handle **`tool`*
 **Nodo `aiAgent`:**
 - Modelo: `claude-haiku-4-5` (disponible en el dropdown tras el paso 2).
 - System prompt: copiar **verbatim** el `SYSTEM_PROMPT` de
-  `agente-pronostico/src/pronostico/agent/prompts.py`.
+  `agente-predictivo/src/predictivo/agent/prompts.py`.
 
 **Nodo `httpRequestTool` (la instancia "forecast"), campo por campo en el modal:**
 

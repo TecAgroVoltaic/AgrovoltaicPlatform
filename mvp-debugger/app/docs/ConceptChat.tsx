@@ -4,9 +4,9 @@
 // /api/<agente>/chat, la misma tool que usa el widget flotante: nunca inventa,
 // puede usar sus herramientas y buscar en la web para dar contexto.
 //
-// El agente NO está fijo: si el analizador está bloqueado en esta consola, la
+// El agente NO está fijo: si el Histórico está bloqueado en esta consola, la
 // pregunta va al de pronóstico (también resuelve conocimiento externo por web).
-// Antes apuntaba duro a /api/analizador/chat y el bloqueo lo dejaba en 503.
+// Antes apuntaba duro a /api/historico/chat y el bloqueo lo dejaba en 503.
 import { useEffect, useRef, useState } from "react";
 import { jpost } from "@/app/lib/client";
 import { renderMd } from "@/app/lib/markdown";
@@ -60,7 +60,7 @@ export function ConceptChat() {
     <div className="dx-ask">
       <p className="dx-ask-sub">
         Tocá un concepto o escribí tu pregunta. Responde el{" "}
-        <strong>{agente === "analizador" ? "Analizador PV" : "agente de Pronóstico"}</strong>, el mismo agente
+        <strong>{agente === "historico" ? "Agente Histórico" : "Agente Predictivo"}</strong>, el mismo agente
         de la consola: no inventa, y puede consultar los datos del sistema o buscar en la web para dar contexto.
         Podés repreguntar para profundizar.
       </p>

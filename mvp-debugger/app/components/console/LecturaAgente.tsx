@@ -192,7 +192,7 @@ export function LecturaAgente({ pregunta, contexto, esperado,
   async function revelarMedido() {
     if (!revelar) return;
     setRevelado("cargando"); setErrRevelar(null);
-    const r = await jpost<any>("/api/pronostico/forecast", {
+    const r = await jpost<any>("/api/predictivo/forecast", {
       variable: revelar.variable, horizon_seconds: revelar.horizonte_seg,
       ahora: revelar.ahora,
     });
@@ -211,7 +211,7 @@ export function LecturaAgente({ pregunta, contexto, esperado,
     setRevelado(null); setErrRevelar(null);
     // Un solo turno: no es una conversación, es una lectura puntual. Por eso no
     // reusa el hilo del widget flotante (ni lo ensucia).
-    const r = await jpost<any>("/api/pronostico/chat", {
+    const r = await jpost<any>("/api/predictivo/chat", {
       mensajes: [{ rol: "user", texto: pregunta }], contexto, modo,
     });
     setCargando(false);

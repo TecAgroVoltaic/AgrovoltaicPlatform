@@ -8,7 +8,7 @@ categoria: contexto-externo
 
 **Corrección importante (2026-06-16, verificada por dump de esquema).** AgroDash NO es
 "solo un sistema de suelo aparte que no se toca": es la **base de datos de la región Cartago**
-y el **objetivo de comparación** del Agente Comparador (ver [[capa-agentes]], [[arquitectura-regiones]]).
+y el **objetivo de comparación** del Agente Histórico (ver [[capa-agentes]], [[arquitectura-regiones]]).
 
 - **Server:** `iot-mainserver` (Ubuntu, PostgreSQL 14 nativo, sin Docker). App en Rust/Axum
   (`~/Documents/api-sensores`). Dos bases con **esquema idéntico**: `control` (la viva) y
@@ -20,7 +20,7 @@ y el **objetivo de comparación** del Agente Comparador (ver [[capa-agentes]], [
 - **Réplica local (2026-08-14):** con Cartago y el rig **inalcanzables**, el dump está restaurado
   en un **cluster nativo del equipo de trabajo** (`~/pgdata-agrodash`, PostgreSQL 18, puerto
   **5433**, DB `agrodash_control`, 21.3M filas, 5.046 MB). Se levanta con
-  `agente-pronostico/scripts/agrodash_local.sh`. **Es la fuente actual del ETL** — ver
+  `agente-predictivo/scripts/agrodash_local.sh`. **Es la fuente actual del ETL** — ver
   [[agrodash-local]].
 - **Copia viva en el rig (2026-06-30):** el dump ya está **restaurado y corriendo** en `izack-rig`
   como contenedor Docker `agrodash-pg` (postgres:16, volumen persistente `agrodash_pgdata`,
@@ -29,7 +29,7 @@ y el **objetivo de comparación** del Agente Comparador (ver [[capa-agentes]], [
   `readings` va del `2011-01-01` basura ([[agrodash-esquema]]) al `2026-06-30` (data fresca).
   Expuesto **solo en Tailscale**: `100.100.130.47:5432`, user `postgres` / pass **redactada** (ver gestor de secretos / `AGRODASH_PASSWORD`).
   Desde la Mac: `PGPASSWORD="$AGRODASH_PASSWORD" psql -h 100.100.130.47 -U postgres -d agrodash_control`.
-  Este es el **entorno de pruebas** donde correrá el Comparador ([[capa-agentes]]).
+  Este es el **entorno de pruebas** donde correrá el Agente Histórico ([[capa-agentes]]).
 - **Acceso actual (act. 2026-07-23):** el server YA está en la **tailnet propia** — Tailscale
   instalado el 2026-07-23, nodo `iot-cartago-agrovoltaic`, IP `100.101.177.71` → ahora es
   **alcanzable en vivo** por Tailscale (topología y ACL en [[conectividad-tailnet]]). Antes: solo
@@ -61,7 +61,7 @@ y el **objetivo de comparación** del Agente Comparador (ver [[capa-agentes]], [
   `sensor_correlations` (pearson) y un sistema de alertas — parte del "comparador" ya existe.
 
 **Matiz "no combinar":** a nivel de **almacenamiento** sigue separado de la Supabase PV de
-San Carlos (no se fusionan tablas). PERO el **Comparador SÍ lo lee**, y la data ambiental de
+San Carlos (no se fusionan tablas). PERO el **Agente Histórico SÍ lo lee**, y la data ambiental de
 San Carlos ya vive aquí. El PDF (`../../_archivo/referencia_api_agrodash.pdf`) quedó **desactualizado**
 respecto a esta realidad; usar el esquema real, no el PDF.
 

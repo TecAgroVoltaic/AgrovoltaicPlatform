@@ -36,12 +36,12 @@ categoria: decision
 Herramientas usadas: `pandas`, `psycopg`, `python-dotenv`, `pyarrow`; `pvlib`/
 `pvanalytics` reservadas para la calibración (pendiente). Destino: **Supabase (PostgreSQL)**.
 
-## Decisiones del agente de pronóstico (2026-07-27/28)
+## Decisiones del Agente Predictivo (2026-07-27/28)
 
 | Decisión | Detalle | Vínculo |
 |---|---|---|
 | **Arquitectura A (store propio)** | ETL AgroDash→Supabase; el forecaster lee el STORE, no la fuente. Desacopla y da historia | [[pipeline-tiempo-real]] |
-| **Prioridad: solo predicciones** | De momento humedad + irradiancia; no el Comparador aún | [[pipeline-tiempo-real]], [[capa-agentes]] |
+| **Prioridad: solo predicciones** | De momento humedad + irradiancia; no el Agente Histórico aún | [[pipeline-tiempo-real]], [[capa-agentes]] |
 | **Humedad = suelo de San Carlos** | `Caja Hum_Suelo SC` (cruda, ADC); no aire/Zentra | [[pipeline-tiempo-real]] |
 | **"Solo histórico", no avisar al equipo** | Fuente SC congelada (23-jul); se construye idempotente y se pone en vivo al restaurarse | [[agrodash]] |
 | **Forecaster de humedad = persistencia de mediana** | Suelo cambia lento y es autocorrelado; sin cielo despejado (eso es solar) | [[pipeline-tiempo-real]] |

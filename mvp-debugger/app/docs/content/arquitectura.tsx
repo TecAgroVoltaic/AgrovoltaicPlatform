@@ -5,7 +5,7 @@ import { useAgenteDocs } from "../agenteCtx";
 export function Arquitectura() {
   // Si el analizador esta bloqueado su seccion no existe: el enlace se degrada
   // a texto en vez de mandar al lector a una pagina que no es la que pidio.
-  const soloPronostico = useAgenteDocs() === "pronostico";
+  const soloPronostico = useAgenteDocs() === "predictivo";
   return (
     <Page
       crumb="Arquitectura"
@@ -21,8 +21,8 @@ export function Arquitectura() {
         head={["Componente", "Qué es", "Puerto / dominio"]}
         rows={[
           [<IC>mvp-debugger</IC>, "Web Next.js 14: consola de evaluación + chat. Proxy server-side hacia los agentes.", "3000 (local) · AWS Amplify (prod)"],
-          [<IC>agente-analizador</IC>, "FastAPI. Q&A del histórico fotovoltaico. 8 tools SQL sobre la Supabase PV.", "8010"],
-          [<IC>agente-pronostico</IC>, "FastAPI. Pronóstico de irradiancia y humedad de suelo + backtest + anomalías.", "8000"],
+          [<IC>agente-historico</IC>, "FastAPI. Q&A del histórico fotovoltaico. 8 tools SQL sobre la Supabase PV.", "8010"],
+          [<IC>agente-predictivo</IC>, "FastAPI. Pronóstico de irradiancia y humedad de suelo + backtest + anomalías.", "8000"],
           [<IC>Supabase PV</IC>, "PostgreSQL: tablas crudas del inversor/piranómetro + vistas de corrección. Proyecto jijklguopafevyucogro.", "Session pooler (RO)"],
           [<IC>AgroDash</IC>, "PostgreSQL región Cartago (réplica): sensores de suelo/ambiente de ambos sitios. Fuente del pronóstico.", "Tailscale (RO)"],
           [<IC>VisioneFlow</IC>, "Plataforma de agentes: agent-builder (edición) + Backend (ejecución).", "flow · api.flow.visione-edge.com"],
@@ -32,9 +32,9 @@ export function Arquitectura() {
       <h2>Flujo de una pregunta (mvp-debugger)</h2>
       <p>Cuando preguntás algo en el chat de la consola:</p>
       <Diagram>{`  1. Browser        el widget manda { mensajes[], contexto } a
-                    POST /api/analizador/chat   (nunca al Python directo)
+                    POST /api/historico/chat   (nunca al Python directo)
 
-  2. Route handler  app/api/analizador/[...path]/route.ts reenvía al
+  2. Route handler  app/api/historico/[...path]/route.ts reenvía al
      (Next server)   servicio Python e INYECTA el header x-api-key
                     (la key vive solo en el servidor, nunca en el browser)
 
@@ -62,7 +62,7 @@ export function Arquitectura() {
       <Table
         head={["", "Local (dev.sh)", "Producción (EC2)"]}
         rows={[
-          ["analizador", "127.0.0.1:8010", "sidecar Docker, nginx /analizador/ → :8010"],
+          ["historico", "127.0.0.1:8010", "sidecar Docker, nginx /analizador/ → :8010"],
           ["pronóstico", "127.0.0.1:8000", "sidecar Docker, nginx /forecast/ → :8000"],
           ["web", "localhost:3000 (next dev)", "AWS Amplify (apunta a api.flow.visione-edge.com)"],
           ["auth agentes", "sin key (abierto)", "x-api-key obligatorio (HTTPS)"],

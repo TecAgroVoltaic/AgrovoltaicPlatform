@@ -14,7 +14,7 @@ fuera** (curl contra la IP pública). Vale para `52.1.28.77`.
 | Puerto | Proceso | Bind | ¿Alcanzable desde internet? |
 |---|---|---|---|
 | 80 / 443 | nginx (`agent-runtime-loadbalancer-1`) | `0.0.0.0` | **Sí** — es la entrada pública |
-| 8000 | uvicorn · agente de pronóstico | `0.0.0.0` | **No** (probado: sin respuesta) |
+| 8000 | uvicorn · Agente Predictivo | `0.0.0.0` | **No** (probado: sin respuesta) |
 | 8010 | uvicorn · agente analizador | `0.0.0.0` | **No** (probado: sin respuesta) |
 | 5433 | `agrodash-pg` (réplica del dump) | **`127.0.0.1`** | **No** — atado a loopback |
 | 6379 | redis del Agent-Runtime | `0.0.0.0` | no verificado desde fuera |

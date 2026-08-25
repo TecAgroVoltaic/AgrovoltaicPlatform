@@ -1,6 +1,6 @@
 ---
 name: bloqueantes
-description: Bloqueantes de calibración/Performance Ratio + operativos (cuota del store al 79 %, password de la consola); 2026-08-10 Leo resolvió kWp, tilt/azimut, PV1↔inclinado/PV2↔vertical y constante de calibración; solo queda el mapeo caja→sitio fino (Comparador)
+description: Bloqueantes de calibración/Performance Ratio + operativos (cuota del store al 79 %, password de la consola); 2026-08-10 Leo resolvió kWp, tilt/azimut, PV1↔inclinado/PV2↔vertical y constante de calibración; solo queda el mapeo caja→sitio fino (Agente Histórico)
 categoria: pendiente
 ---
 
@@ -13,7 +13,7 @@ Bloquea la **calibración de irradiancia** y el cálculo de **Performance Ratio*
 
 1. ~~Lat/lon~~ **RESUELTO (2026-07-03; valor registrado 2026-08-10):** San Carlos
    **lat `10.33`, lon `-84.42`, altitud `600 m`**, tz `America/Costa_Rica` (nivel ciudad,
-   overrideable por `SITE_LAT`/`SITE_LON`/`SITE_ALT`). Fuente: `agente-pronostico/src/pronostico/config.py`.
+   overrideable por `SITE_LAT`/`SITE_LON`/`SITE_ALT`). Fuente: `agente-predictivo/src/predictivo/config.py`.
    Desbloquea el ajuste clear-sky. Ver [[geometria-sistema]].
 2. ~~kWp instalados~~ **RESUELTO (2026-08-10):** **1420 Wp por arreglo** (4 × 355 Wp),
    **2840 Wp total**, bifaciales (factor de bifacialidad para análisis avanzado). Ver [[geometria-sistema]].
@@ -33,7 +33,7 @@ Bloquea la **calibración de irradiancia** y el cálculo de **Performance Ratio*
 
 7. **Mapeo caja→sitio en AgroDash** — qué cajas son Cartago y cuáles San Carlos (sufijo `SC` = San
    Carlos). **Confirmado en parte 2026-06-30 (Andrés, asistente de Aníbal): la humedad está en
-   Cartago y la irradiancia en San Carlos.** Queda el mapeo caja-por-caja fino para el Comparador
+   Cartago y la irradiancia en San Carlos.** Queda el mapeo caja-por-caja fino para el Agente Histórico
    ([[capa-agentes]]). *No bloquea San Carlos PV; solo la capa de comparación entre regiones.*
 
 ## Bloqueantes operativos (no son de datos, pero frenan igual)

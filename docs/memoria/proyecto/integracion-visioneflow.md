@@ -1,12 +1,12 @@
 ---
 name: integracion-visioneflow
-description: Planteamiento para montar el agente de pronóstico en VisioneFlow (plataforma de flujos del usuario). Microservicio Python /forecast (DB por URL) + nodo GENÉRICO httpRequestTool + aiAgent que orquesta. Reutilizable, no a medida.
+description: Planteamiento para montar el Agente Predictivo en VisioneFlow (plataforma de flujos del usuario). Microservicio Python /forecast (DB por URL) + nodo GENÉRICO httpRequestTool + aiAgent que orquesta. Reutilizable, no a medida.
 categoria: proyecto
 ---
 
-# Planteamiento: montar el agente de pronóstico en VisioneFlow
+# Planteamiento: montar el Agente Predictivo en VisioneFlow
 
-Cómo llevar el [[agente-pronostico]] (hoy paquete Python autónomo) a **VisioneFlow**
+Cómo llevar el [[agente-predictivo]] (hoy paquete Python autónomo) a **VisioneFlow**
 (`/Users/izack/Visione/Apps/VisioneFlow`), la plataforma de flujos del usuario, de forma
 **escalable** y **genérica**. Definido el 2026-07-02 tras explorar la arquitectura real de esa app.
 
@@ -63,7 +63,7 @@ quedaría bloqueado. Dos salidas:
   el SSRF. Más elegante y reutilizable, pero toca el validador → mejora posterior.
 
 ## Ya hecho (2026-07-02): DB por URL + perfil de sitio
-En el paquete `pronostico` (`agente-pronostico/`), común a cualquier integración:
+En el paquete `predictivo` (`agente-predictivo/`), común a cualquier integración:
 - `config.conninfo()` es la fuente única de "a qué DB conectar": **prioriza `DATABASE_URL`**
   (o `AGRODASH_URL`); si no, arma la URL desde `AGRODASH_*` + `AGRODASH_PASSWORD` (compat, con
   `quote(safe="")` para no romper con `/` en la clave). Perezosa (importar no exige credenciales),
@@ -74,10 +74,10 @@ En el paquete `pronostico` (`agente-pronostico/`), común a cualquier integraci�
   offline idéntico.
 
 ## Hecho (2026-07-02): implementación de las fases 1, 2 (preparada) y 3.1
-Plan: `docs/pronostico/03-plan-integracion-visioneflow.md` (con nota de lo ejecutado).
-**Runbook vigente del deploy: `docs/pronostico/04-runbook-deploy-ec2.md`** (estado real
-de la EC2 verificado). Diagrama: `docs/pronostico/img/04-arquitectura-visioneflow.png`.
-- **Servicio `/forecast` LISTO y probado local**: `agente-pronostico/src/pronostico/api.py`
+Plan: `docs/predictivo/03-plan-integracion-visioneflow.md` (con nota de lo ejecutado).
+**Runbook vigente del deploy: `docs/predictivo/04-runbook-deploy-ec2.md`** (estado real
+de la EC2 verificado). Diagrama: `docs/predictivo/img/04-arquitectura-visioneflow.png`.
+- **Servicio `/forecast` LISTO y probado local**: `agente-predictivo/src/predictivo/api.py`
   (FastAPI, API key opcional por `x-api-key`, validación pydantic en el borde), extra
   `service` en pyproject, `Dockerfile` (+.dockerignore, no-root), `tests/test_api.py`.
   `pytest` = 53 OK. Curl local: 313.1 W/m2, banda [270.6, 355.6] con el caché parquet.
@@ -118,7 +118,7 @@ NO se construyó nodo TS a medida (se usa el genérico `httpRequestTool`, ya en 
 3. ~~Armar el flujo en el canvas~~ ✅ **HECHO Y PROBADO END-TO-END (2026-07-23):** flujo con
    `webhookTrigger` → `aiAgent`(anthropic/`claude-haiku-4-5`) → `output` + `httpRequestTool`
    (`forecast`, handle `tool`). El POST al webhook devuelve el pronóstico (el agente llama la tool,
-   que lee la DB viva). JSON de referencia: `docs/pronostico/flujo-visioneflow.json` (Shape A,
+   que lee la DB viva). JSON de referencia: `docs/predictivo/flujo-visioneflow.json` (Shape A,
    formato verificado contra `agent-builder/.../flowGenerator/importer.ts`).
    **Bug multi-tenant corregido en el camino (desplegado en prod):** el `aiAgent` usaba la key
    Anthropic GLOBAL del runtime (env, compartida entre todos los usuarios) en vez de la del **dueño
@@ -138,4 +138,4 @@ EC2 con timers. La fuente SC está congelada (23-jul) → se trabajó "solo hist
 flujo del canvas con **trigger programado + write-back** a `predicciones` (Fase 4). Detalle
 completo en [[pipeline-tiempo-real]].
 
-Relacionado: [[agente-pronostico]], [[pipeline-tiempo-real]], [[agrodash]], [[capa-agentes]], [[arquitectura-regiones]], [[conectividad-tailnet]].
+Relacionado: [[agente-predictivo]], [[pipeline-tiempo-real]], [[agrodash]], [[capa-agentes]], [[arquitectura-regiones]], [[conectividad-tailnet]].

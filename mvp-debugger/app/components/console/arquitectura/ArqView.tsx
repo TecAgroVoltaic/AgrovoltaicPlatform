@@ -18,7 +18,7 @@ import type { Mapa } from "./mapa";
 
 import { MEDICION_OCULTA, MEDICION_VISIBLE, MODO } from "@/app/components/console/modos";
 
-const RUTA = "/api/pronostico/arquitectura";
+const RUTA = "/api/predictivo/arquitectura";
 
 // Qué gana el lector al cambiar de modo. Es el momento de la presentación: la
 // garantía del sistema no es una promesa del prompt, es una herramienta ausente.

@@ -22,8 +22,8 @@ export function PronosticoPanel() {
     setCargando(true);
     setMsg("");
     const [a, b] = await Promise.all([
-      jget("/api/pronostico/serie?variable=irradiancia&bucket=D&ultimos_dias=60"),
-      jget("/api/pronostico/serie?variable=humedad_suelo&bucket=D&ultimos_dias=60"),
+      jget("/api/predictivo/serie?variable=irradiancia&bucket=D&ultimos_dias=60"),
+      jget("/api/predictivo/serie?variable=humedad_suelo&bucket=D&ultimos_dias=60"),
     ]);
     if (a.ok) setIrr(a.data);
     else setMsg("irradiancia: " + JSON.stringify(a.data));
@@ -33,7 +33,7 @@ export function PronosticoPanel() {
 
   async function detectar() {
     setAnom(null);
-    const r = await jpost("/api/pronostico/anomalias", { variable, ventana_min: ventana });
+    const r = await jpost("/api/predictivo/anomalias", { variable, ventana_min: ventana });
     if (r.ok) setAnom(r.data);
     else setMsg("anomalias: " + JSON.stringify(r.data));
   }

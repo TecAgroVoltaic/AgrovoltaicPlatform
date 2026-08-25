@@ -1,11 +1,11 @@
 "use client";
 import { Page, Note, IC, Table, Meta, Pre, Diagram } from "../ui";
 
-export function Analizador() {
+export function Historico() {
   return (
     <Page
-      crumb="Agente Analizador PV"
-      title="Analizador PV"
+      crumb="Agente Histórico"
+      title="Agente Histórico"
       lead="Agente de preguntas y respuestas sobre el histórico fotovoltaico de San Carlos. El LLM solo orquesta; los números salen siempre de herramientas que hacen SQL de solo-lectura sobre las vistas ya limpias."
     >
       <Meta items={[
@@ -18,7 +18,7 @@ export function Analizador() {
       ]} />
 
       <h2>El lazo del agente</h2>
-      <p>Clase <IC>Analizador</IC> (<IC>agent/agent.py</IC>): tool-use manual con el SDK de Anthropic (no el tool-runner beta) para control total y no filtrar el razonamiento interno. El agente se construye de forma <strong>perezosa</strong> en el primer <IC>/preguntar</IC> o <IC>/chat</IC>: así <IC>/health</IC> y <IC>/tool</IC> no dependen de la <IC>ANTHROPIC_API_KEY</IC>.</p>
+      <p>Clase <IC>Historico</IC> (<IC>agent/agent.py</IC>): tool-use manual con el SDK de Anthropic (no el tool-runner beta) para control total y no filtrar el razonamiento interno. El agente se construye de forma <strong>perezosa</strong> en el primer <IC>/preguntar</IC> o <IC>/chat</IC>: así <IC>/health</IC> y <IC>/tool</IC> no dependen de la <IC>ANTHROPIC_API_KEY</IC>.</p>
       <p>La <strong>barrera anti-invención</strong> es estructural + de prompt: el modelo no tiene acceso a la DB (toda cifra pasa por el <IC>DISPATCH</IC> de tools) y el system prompt ordena «NUNCA calcules ni inventes números». La comparación PV1 vs PV2 no necesita tool dedicada: <IC>performance_ratio</IC>, <IC>energia_por_arreglo</IC> y <IC>temperatura_por_arreglo</IC> ya devuelven ambos arreglos en una sola llamada.</p>
 
       <h2>Herramientas (8)</h2>
@@ -42,7 +42,7 @@ export function Analizador() {
       </Note>
 
       <h2>Endpoints HTTP</h2>
-      <p>Definidos en <IC>api.py</IC>. Los marcados exigen <IC>x-api-key</IC> solo si <IC>ANALIZADOR_API_KEY</IC> está en el entorno (comparación en tiempo constante).</p>
+      <p>Definidos en <IC>api.py</IC>. Los marcados exigen <IC>x-api-key</IC> solo si <IC>HISTORICO_API_KEY</IC> está en el entorno (comparación en tiempo constante).</p>
       <Table
         head={["Método · Path", "Auth", "Qué hace"]}
         rows={[
@@ -68,11 +68,11 @@ export function Analizador() {
   );
 }
 
-export function Pronostico() {
+export function Predictivo() {
   return (
     <Page
-      crumb="Agente Pronóstico"
-      title="Pronóstico ambiental"
+      crumb="Agente Predictivo"
+      title="Agente Predictivo"
       lead="Agente que pronostica irradiancia y humedad de suelo a corto plazo, y reconstruye honestamente el pasado (backtest). No usa machine learning: usa física del cielo despejado."
     >
       <Meta items={[

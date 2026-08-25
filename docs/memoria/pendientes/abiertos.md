@@ -35,7 +35,7 @@ depende de nosotros: está ofrecido, medido o identificado, y falta decidir o ha
 - **Separación fina de filas mezcladas (Paso 2).** Hoy esas filas se saltan y se acepta el hueco,
   en vez de recuperar el dato remapeando columnas. Spec y ground-truth en
   [correccion-filas-mezcladas](../datos/correccion-filas-mezcladas.md).
-- **Nada pusheado.** La rama `feat/agente-pronostico-humedad-etl-store` acumula **32 commits**
+- **Nada pusheado.** La rama `feat/agente-predictivo-humedad-etl-store` acumula **32 commits**
   por delante de `origin/master` al 21-ago. No se pushea sin pedirlo.
 
 ## Vale la pena investigar
@@ -44,4 +44,4 @@ depende de nosotros: está ofrecido, medido o identificado, y falta decidir o ha
   Solo histórico, pero arreglaría la limitación de fondo de la climatología del pronóstico, que
   hoy se calcula sobre **78 días** de serie. No se evaluó todavía.
 
-Relacionado: [[bloqueantes]], [[agente-pronostico]], [[mvp-debugger]].
+Relacionado: [[bloqueantes]], [[agente-predictivo]], [[mvp-debugger]].

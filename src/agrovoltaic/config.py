@@ -30,7 +30,7 @@ def _envf(key: str, default: float) -> float:
 
 
 # --- Sitio (para clear-sky, ver geometria-sistema) --------------------------
-# San Carlos, Costa Rica. Mismos valores que agente-pronostico/.../config.py.
+# San Carlos, Costa Rica. Mismos valores que agente-predictivo/.../config.py.
 SITE_LAT = _envf("SITE_LAT", 10.33)
 SITE_LON = _envf("SITE_LON", -84.42)
 SITE_ALT = _envf("SITE_ALT", 600.0)

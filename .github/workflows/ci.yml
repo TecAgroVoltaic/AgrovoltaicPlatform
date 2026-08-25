@@ -19,12 +19,12 @@ env:
   NODE_VERSION: "22"
 
 jobs:
-  pronostico:
-    name: Agente de pronóstico (pytest)
+  predictivo:
+    name: Agente Predictivo (pytest)
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: agente-pronostico
+        working-directory: agente-predictivo
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -36,12 +36,12 @@ jobs:
       - name: pytest
         run: pytest -q
 
-  analizador:
-    name: Agente analizador (pytest)
+  historico:
+    name: Agente Histórico (pytest)
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: agente-analizador
+        working-directory: agente-historico
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -78,7 +78,7 @@ jobs:
       - name: Smoke del gate de acceso
         run: ./scripts/smoke-auth.sh
       # El bloqueo del agente historico es una decision de producto con efecto
-      # en runtime (503 en /api/analizador/*): se verifica igual que el gate,
+      # en runtime (503 en /api/historico/*): se verifica igual que el gate,
       # con HTTP real, y se comprueba que encender el flag lo devuelve entero.
       - name: Smoke del bloqueo de agentes
         run: ./scripts/smoke-agentes.sh

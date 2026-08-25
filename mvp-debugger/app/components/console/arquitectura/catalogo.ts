@@ -60,7 +60,7 @@ export const HERRAMIENTAS: Record<string, Ficha> = {
       "`tests/test_forecast_tool.py`: 17 pruebas",
       "`tests/test_horizon.py`: 6 pruebas sobre la traducción de la frase a segundos",
     ],
-    archivo: "src/pronostico/tools/forecast_tool.py",
+    archivo: "src/predictivo/tools/forecast_tool.py",
   },
 
   backtest: {
@@ -83,7 +83,7 @@ export const HERRAMIENTAS: Record<string, Ficha> = {
       "`tests/test_backtest_mensajes.py`: 18 pruebas",
       "`test_el_modo_medicion_oculta_no_expone_backtest`: verifica que no esté en ese juego",
     ],
-    archivo: "src/pronostico/tools/backtest_tool.py",
+    archivo: "src/predictivo/tools/backtest_tool.py",
   },
 
   diagnosticar_condiciones: {
@@ -103,7 +103,7 @@ export const HERRAMIENTAS: Record<string, Ficha> = {
       "Con muy pocas lecturas útiles avisa, en lugar de inventar una estadística.",
     ],
     pruebas: ["`test_el_diagnostico_corta_los_datos_antes_del_horizonte`"],
-    archivo: "src/pronostico/tools/diagnostico_tool.py",
+    archivo: "src/predictivo/tools/diagnostico_tool.py",
   },
 
   contexto_historico: {
@@ -122,7 +122,7 @@ export const HERRAMIENTAS: Record<string, Ficha> = {
       "La cobertura no es continua. Los días sin dato se reportan como tales, no se rellenan.",
     ],
     pruebas: ["`test_el_contexto_historico_no_toca_el_dia_objetivo`"],
-    archivo: "src/pronostico/tools/diagnostico_tool.py",
+    archivo: "src/predictivo/tools/diagnostico_tool.py",
   },
 
   riesgo_de_nubes: {
@@ -148,7 +148,7 @@ export const HERRAMIENTAS: Record<string, Ficha> = {
       "`test_riesgo_de_nubes_no_devuelve_el_valor_medido`: mismo contrato que `predecir`, sin la medición",
       "`test_la_banda_es_mas_angosta_con_el_cielo_quieto`",
     ],
-    archivo: "src/pronostico/tools/riesgo_tool.py",
+    archivo: "src/predictivo/tools/riesgo_tool.py",
   },
 
   predecir: {
@@ -170,7 +170,7 @@ export const HERRAMIENTAS: Record<string, Ficha> = {
       "Sin argumento, el prompt le pide usar la configuración por defecto y decirlo. Mover perillas sin motivo es ruido, no criterio.",
     ],
     pruebas: ["`test_predecir_no_devuelve_el_valor_medido`: chequeo recursivo de claves prohibidas"],
-    archivo: "src/pronostico/tools/predecir_tool.py",
+    archivo: "src/predictivo/tools/predecir_tool.py",
   },
 };
 
@@ -231,7 +231,7 @@ export const NODOS_FIJOS: NodoFijo[] = [
         "La API key se pega en el nodo, como credencial del flujo.",
         "Sirve para demostrar que el agente no depende de la consola.",
       ],
-      archivo: "agente-pronostico/flujo-chat-visioneflow.json",
+      archivo: "agente-predictivo/flujo-chat-visioneflow.json",
     },
   },
   {
@@ -246,7 +246,7 @@ export const NODOS_FIJOS: NodoFijo[] = [
         "Presupuesto diario duro: al pasarse responde 429 en vez de seguir gastando.",
         "Antes existía el medidor de gasto pero no el freno. Un bucle o un error de integración podían disparar la factura.",
       ],
-      archivo: "app/api/pronostico/[...path]/route.ts",
+      archivo: "app/api/predictivo/[...path]/route.ts",
     },
   },
   {
@@ -259,7 +259,7 @@ export const NODOS_FIJOS: NodoFijo[] = [
         "Queda fuera del modo «medición oculta»: ahí no hay nada externo que consultar, y sí una tentación de buscar el dato.",
         "Los pasos de búsqueda quedan en la traza como `tipo: web`.",
       ],
-      archivo: "src/pronostico/agent/agent.py · WEB_SEARCH",
+      archivo: "src/predictivo/agent/agent.py · WEB_SEARCH",
     },
   },
   {
@@ -272,7 +272,7 @@ export const NODOS_FIJOS: NodoFijo[] = [
         "Canal de irradiancia fijado por identificador, para que la elección sea reproducible y no dependa del orden de las filas.",
         "Cambiar de sitio (San Carlos a Cartago) es cuestión de variables de entorno, no de código.",
       ],
-      archivo: "src/pronostico/etl.py",
+      archivo: "src/predictivo/etl.py",
     },
   },
 ];
@@ -289,7 +289,7 @@ export const CEREBRO = {
       "El prompt de sistema y el último esquema van con `cache_control: ephemeral`: no se pagan enteros en cada turno.",
       "El modelo elegido es liviano a propósito. El LLM solo orquesta; subir de gama es una variable de entorno.",
     ],
-    archivo: "src/pronostico/agent/agent.py",
+    archivo: "src/predictivo/agent/agent.py",
   } as Ficha,
 };
 
@@ -310,7 +310,7 @@ export const CAPA = {
           "Es justamente lo que la persistencia ingenua no sabe: si el objetivo cae más cerca del mediodía, el pronóstico sube aunque las nubes no cambien.",
         ],
         pruebas: ["`tests/test_physics.py`: 4 pruebas"],
-        archivo: "src/pronostico/physics.py",
+        archivo: "src/predictivo/physics.py",
       } as Ficha,
     },
     {
@@ -325,7 +325,7 @@ export const CAPA = {
           "`humidity_persistence`: el suelo cambia lento, se persiste la mediana reciente. No hay análogo de cielo despejado.",
           "La banda es ±1σ de kt* sobre la ventana, reexpandida al techo del objetivo.",
         ],
-        archivo: "src/pronostico/forecasters/",
+        archivo: "src/predictivo/forecasters/",
       } as Ficha,
     },
     {
@@ -346,7 +346,7 @@ export const CAPA = {
           "La ingesta está congelada: la última fecha de arriba es la última lectura que entró. `/salud/ingesta` responde 503 por dato viejo, que es el comportamiento correcto y no una falla del agente.",
           "La serie no es continua. Las herramientas reportan los huecos en vez de rellenarlos.",
         ],
-        archivo: "src/pronostico/data.py",
+        archivo: "src/predictivo/data.py",
       } as Ficha,
     },
   ],

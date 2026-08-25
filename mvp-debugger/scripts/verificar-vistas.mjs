@@ -130,21 +130,50 @@ const consola = require("node:fs").readFileSync(
   path.join(RAIZ, "app/components/console/Console.tsx"), "utf8");
 check("aparece en la navegación", /\["calidad", "Calidad de datos"/.test(consola));
 check("se renderiza cuando está activa", /view === "calidad" && <CalidadView \/>/.test(consola));
-check("la vista pertenece al comparador", /calidad:\s*"comparador"/.test(consola));
-check("el comparador está en el selector de agentes",
-  /id:\s*"comparador"/.test(consola));
-check("y declarado SIN chat",
-  /id:\s*"comparador"[^}]*chat:\s*false/.test(consola),
-  "no tiene /chat: es determinista y no lleva LLM a proposito");
-// El selector se dibuja desde la tabla. Antes eran dos botones escritos a mano y
-// dos `if (a === "...")` en goAgent; con tres agentes eso se multiplica y se
-// desincroniza. Si alguien vuelve a escribirlos, estas dos pruebas lo dicen.
-check("el selector se deriva de la tabla, no está escrito a mano",
-  /agentes\.map\(\(a\) =>/.test(consola) && !/goAgent\("pronostico"\)/.test(consola));
-check("goAgent no tiene pares de agentes quemados",
-  !/a === "pronostico" &&|a === "analizador" &&/.test(consola));
-check("el separador vuelve a «datos» (calidad ya no es transversal)",
-  /const SEPARADOR: View = "datos"/.test(consola));
+check("la vista de calidad pertenece al Histórico",
+  /historico: \[[\s\S]{0,200}\["calidad"/.test(consola));
+check("«Predicción vs Real» pertenece al Predictivo",
+  /predictivo: \[[\s\S]{0,120}\["pred"/.test(consola));
+check("«Arquitectura» está en los DOS agentes (mismo componente, otro mapa)",
+  (consola.match(/\["arq", "Arquitectura del agente"/g) || []).length === 2);
+
+// La barra tiene dos mitades y se arma sola. Antes era una lista unica filtrada a
+// mano; con dos agentes y vistas propias eso se desincroniza solo.
+check("la nav se arma de VISTAS_AGENTE + VISTAS_FIJAS",
+  /const vistas: \[View, string, Icono\]\[\] = \[\s*\.\.\.\(VISTAS_AGENTE\[agent\]/.test(consola));
+for (const fija of ["Base de datos", "Costo y uso", "Salud del sistema"]) {
+  check(`«${fija}» es fija (se ve con cualquier agente)`,
+    new RegExp(`VISTAS_FIJAS[\\s\\S]{0,300}"${fija}"`).test(consola));
+}
+check("el separador se calcula, no está quemado",
+  /v === VISTAS_FIJAS\[0\]\[0\]/.test(consola));
+
+// EL CHEQUEO QUE IMPORTA. Los agentes se llaman Histórico y Predictivo, y no hay
+// mas. Los nombres viejos (Analizador, Comparador, Pronóstico) se colaron una y
+// otra vez en renombres a medias; esto los caza en toda la consola de una.
+{
+  const fs = require("node:fs");
+  const path2 = require("node:path");
+  const viejos = [];
+  const mirar = (dir) => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      const f = path2.join(dir, e.name);
+      if (e.isDirectory()) { if (!/node_modules|\.next|\.verify/.test(f)) mirar(f); continue; }
+      if (!/\.tsx?$/.test(e.name)) continue;
+      const txt = fs.readFileSync(f, "utf8");
+      for (const m of txt.matchAll(/Analizador|Comparador|Pron[óo]stico ambiental|analizadorActivo|\bANALIZADOR_|\bCOMPARADOR_|\bPRONOSTICO_|\/api\/(analizador|pronostico|comparador)/g)) {
+        viejos.push(`${path2.relative(RAIZ, f)}: ${m[0]}`);
+      }
+    }
+  };
+  mirar(path2.join(RAIZ, "app"));
+  check("no queda NINGÚN nombre viejo de agente en la consola", viejos.length === 0,
+    [...new Set(viejos)].slice(0, 8).join(" | "));
+}
+check("los dos agentes se llaman Histórico y Predictivo",
+  /nombre: "Agente Histórico"/.test(consola) && /nombre: "Agente Predictivo"/.test(consola));
+check("y son exactamente DOS",
+  (consola.match(/^\s*\{ id: "/gm) || []).length === 2);
 
 // ── 4. Resultado ──────────────────────────────────────────────────────────────
 rmSync(OUT, { recursive: true, force: true });

@@ -36,7 +36,7 @@ lo recrea cada 6 h. 56 MB por arranque en frio, ~235 MB/dia medidos. Eso era el 
 ## Lo que se hizo (migracion 002)
 
 Separar la dimension (11 filas) de los hechos (885.606). Detalle y justificacion de cada
-decision en `agente-pronostico/sql/002_normalizar_lecturas_ambientales.sql`.
+decision en `agente-predictivo/sql/002_normalizar_lecturas_ambientales.sql`.
 
 - `series_ambientales`: 1 fila por canal. `sensor_id` pasa de texto a `uuid`.
 - `lecturas_ambientales`: `(serie_id, ts, ts_medicion, valor, origen_id)`, PK `(serie_id, ts)`.

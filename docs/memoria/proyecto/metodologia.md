@@ -8,7 +8,7 @@ categoria: proyecto
 
 Del doc del equipo `../../referencia/Metodologia-Agrivoltaic.docx` (jun 2026). Describe **cómo y
 qué se mide** en el agrivoltaico de San Carlos — es el marco de los datos que pasaron por el EDA
-y viven en Supabase. **Aplica al análisis de San Carlos, NO al Comparador de AgroDash/Cartago.**
+y viven en Supabase. **Aplica al análisis de San Carlos, NO al Agente Histórico de AgroDash/Cartago.**
 
 ## Variables medidas
 **Abióticas** (cada 15 min salvo nota): humedad del terreno (%), humedad ambiente (%),

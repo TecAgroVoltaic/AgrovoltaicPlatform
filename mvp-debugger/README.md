@@ -16,21 +16,21 @@ Por cada pregunta, el debugger renderiza la **traza completa** del agente:
 Regla de oro para verificar: **todo número de la respuesta final tiene que aparecer
 en la salida de alguna tool**. Si no, es una alerta (el modelo estaría alucinando).
 
-### Analizador PV (`/analizador`)
+### Agente Histórico (`/analizador`)
 - Q&A con traza sobre el histórico fotovoltaico (Supabase PV).
 - **KPIs**: llama las 6 tools con período abierto (estado actual del sistema).
 - **Runner manual de tools**: ejecuta una tool atómica sin el LLM, con tus params.
 - **Explorador de datos**: cobertura, filas crudas y series graficadas de cada
   relación (crudas, corregidas, calibradas, performance).
 
-### Pronóstico ambiental (`/pronostico`)
+### Agente Predictivo (`/pronostico`)
 - Q&A con traza (traduce el horizonte → `forecast` → redacta).
 - Series del store (irradiancia + humedad de suelo) con resumen y sparkline.
 - Detección de anomalías determinista.
 
 ### Calidad de datos (`Calidad de datos`)
 
-Lo que encontró el **Comparador** barriendo el histórico PV día por día: completitud,
+Lo que encontró el **Agente Histórico** barriendo el histórico PV día por día: completitud,
 validez, duplicados, y la caracterización del cielo. Es una vista **transversal**, no de un
 agente: describe los datos, no el comportamiento de un modelo.
 
@@ -68,9 +68,9 @@ coordenadas absolutas, presupuestos de contenido, y que el CSS que la vista usa 
 ## Arquitectura
 
 ```
-Browser ─► /api/analizador/*  (route handler, inyecta x-api-key)  ─► :8010  analizador.api  ─► Supabase PV (RO)
-        ├► /api/pronostico/*  (route handler, inyecta x-api-key)  ─► :8000  pronostico.api  ─► store parquet / Supabase (RO)
-        └► /api/comparador/*  (route handler, solo GET)           ─► :8020  comparador.api  ─► Supabase PV (RO)
+Browser ─► /api/historico/*  (route handler, inyecta x-api-key)  ─► :8010  analizador.api  ─► Supabase PV (RO)
+        ├► /api/predictivo/*  (route handler, inyecta x-api-key)  ─► :8000  predictivo.api  ─► store parquet / Supabase (RO)
+        └► /api/historico/*  (route handler, solo GET)           ─► :8020  comparador.api  ─► Supabase PV (RO)
 ```
 
 - El browser **nunca** habla directo con los servicios Python ni ve las API keys:
@@ -79,7 +79,7 @@ Browser ─► /api/analizador/*  (route handler, inyecta x-api-key)  ─► :80
 - Los endpoints nuevos que consume el debugger se agregaron a los propios agentes
   (una sola fuente de verdad del lazo LLM, no se reimplementa en Node):
   - `POST /preguntar` → corre el agente y devuelve la **traza**.
-  - Analizador: `GET /datos/tablas|columnas|muestra|serie` (peek read-only, allowlist).
+  - Histórico: `GET /datos/tablas|columnas|muestra|serie` (peek read-only, allowlist).
   - Pronóstico: `GET /serie` (peek del store).
 - Todo es **solo lectura** sobre las bases.
 
@@ -90,8 +90,8 @@ cd mvp-debugger
 ./dev.sh          # levanta analizador:8010 + pronostico:8000 + comparador:8020 + next:3000
 ```
 
-`dev.sh` toma la `ANTHROPIC_API_KEY` de `agente-pronostico/.env`, usa el venv de
-`agente-pronostico/.venv`, y abre <http://localhost:3000>. Ctrl-C cierra todo.
+`dev.sh` toma la `ANTHROPIC_API_KEY` de `agente-predictivo/.env`, usa el venv de
+`agente-predictivo/.venv`, y abre <http://localhost:3000>. Ctrl-C cierra todo.
 
 ### Contra los agentes de la EC2 (sin montar nada local)
 
@@ -119,15 +119,15 @@ la cookie: rotarlo cierra todas las sesiones sin cambiarle la contraseña al equ
 
 ```bash
 # 1) analizador (usa DATABASE_URL de la raíz + ANTHROPIC_API_KEY del entorno)
-cd ..; set -a; . agente-pronostico/.env; set +a
-PYTHONPATH=agente-analizador/src agente-pronostico/.venv/bin/python \
+cd ..; set -a; . agente-predictivo/.env; set +a
+PYTHONPATH=agente-historico/src agente-predictivo/.venv/bin/python \
   -m uvicorn analizador.api:app --port 8010
 
 # 2) pronostico
-cd agente-pronostico && .venv/bin/python -m uvicorn pronostico.api:app --port 8000
+cd agente-predictivo && .venv/bin/python -m uvicorn predictivo.api:app --port 8000
 
 # comparador (venv propio; sirve el store de hallazgos, no lo calcula)
-cd agente-comparador && .venv/bin/python -m uvicorn comparador.api:app --port 8020
+cd agente-historico && .venv/bin/python -m uvicorn comparador.api:app --port 8020
 
 # 3) web
 cd ../mvp-debugger && npm install && npm run dev
@@ -139,11 +139,11 @@ cd ../mvp-debugger && npm install && npm run dev
 
 | Var | Default | Para qué |
 |---|---|---|
-| `ANALIZADOR_URL` | `http://127.0.0.1:8010` | servicio del analizador |
-| `PRONOSTICO_URL` | `http://127.0.0.1:8000` | servicio del pronóstico |
-| `COMPARADOR_URL` | `http://127.0.0.1:8020` | servicio del comparador |
-| `ANALIZADOR_API_KEY` | (vacío) | si el servicio exige `x-api-key` |
-| `PRONOSTICO_API_KEY` | (vacío) | idem |
+| `HISTORICO_URL` | `http://127.0.0.1:8010` | servicio del analizador |
+| `PREDICTIVO_URL` | `http://127.0.0.1:8000` | servicio del pronóstico |
+| `HISTORICO_URL` | `http://127.0.0.1:8020` | servicio del comparador |
+| `HISTORICO_API_KEY` | (vacío) | si el servicio exige `x-api-key` |
+| `PREDICTIVO_API_KEY` | (vacío) | idem |
 
 En local los servicios corren sin key (dejá las keys vacías). Para apuntar a los
 servicios ya desplegados en la EC2, cambiá las URLs y pegá las keys.

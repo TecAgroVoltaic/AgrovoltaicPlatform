@@ -1,6 +1,6 @@
 """Clear-sky GHI teorico con pvlib (Ineichen + turbidez Linke climatologica).
 
-Mismo modelo que usa el agente de pronostico (agente-pronostico/.../physics.py).
+Mismo modelo que usa el agente de pronostico (agente-predictivo/.../physics.py).
 Sirve de referencia para calibrar/QC la irradiancia: kt* = medido / clear-sky.
 
 OJO CON EL TIMEZONE: los timestamps de la tabla de radiacion son el **reloj de

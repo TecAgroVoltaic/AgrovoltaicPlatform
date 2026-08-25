@@ -16,7 +16,7 @@ categoria: proyecto
 | Carga a Supabase | ✅ Corrió: 285 CSV → 36.630 filas en `monitoreo_agrovoltaic` |
 | Copia local de AgroDash (Cartago) | ✅ Dump de `control` descargado 2026-06-30 → `sql/dump/agrodash_control_2026-06-30.dump` (609 MB) — ver [[agrodash]] |
 | Restaurar dump AgroDash (entorno de pruebas) | ✅ Corriendo en `izack-rig` (Docker `agrodash-pg`, Tailscale `100.100.130.47:5432`, DB `agrodash_control`, 21.3M filas) — ver [[agrodash]] |
-| Explorar AgroDash para el Comparador | ⬜ Pendiente (ya consultable, ver [[capa-agentes]]) |
+| Explorar AgroDash para el Agente Histórico | ⬜ Pendiente (ya consultable, ver [[capa-agentes]]) |
 | Separación fina de filas mezcladas (Paso 2) | ⬜ Pendiente (hoy se saltan las ragged) |
 | Calibración de irradiancia / Performance Ratio | ⬜ Bloqueado por [[bloqueantes]] |
 | EDA notebook + tests | ⬜ Vacíos |
@@ -52,7 +52,7 @@ Dos riesgos que **no existían documentados** y ahora sí:
   público sin key → [[superficie-expuesta]].
 
 **Próximo paso:** decidir qué hacer con la cuota antes de cualquier backfill nuevo; explorar
-AgroDash para el Agente Comparador ([[capa-agentes]]); notebook EDA; Paso 2 (filas mezcladas).
+AgroDash para el Agente Histórico ([[capa-agentes]]); notebook EDA; Paso 2 (filas mezcladas).
 
 Relacionado: [[objetivo]], [[implementacion]], [[dataset-actual]], [[bloqueantes]],
 [[cuota-store-supabase]], [[superficie-expuesta]].

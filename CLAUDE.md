@@ -27,7 +27,7 @@ docs/memoria/
 - **Pipeline ETL implementado y corrido OK** (`src/agrovoltaic/`): 285 CSV → **36.630 filas** en la tabla `monitoreo_agrovoltaic` de Supabase. Idempotente e incremental. Detalle en `docs/memoria/proyecto/implementacion.md`
 - **2026-08-10 — Leo Cardinale validó el tratamiento (doc rev LCV).** Regla rectora nueva: **guardar el crudo en la DB y corregir en una capa de análisis** (superó 85→NULL, offset→0, resampleo-todo-a-5-min). Bloqueantes de geometría RESUELTOS. Implica **rediseñar el esquema Supabase + re-correr el ETL**. Fuente de verdad: `docs/memoria/decisiones/respuestas-leo-cardinale.md`
 - **Pendiente:** separacion fina de filas mezcladas (Paso 2) y **calibracion de irradiancia** (ya desbloqueada: clear-sky con lat/lon + tilt/azimut; ver `docs/memoria/datos/geometria-sistema.md`)
-- Siguiente fase en diseño: **capa de agentes** (Comparador + Analizador) sobre dos regiones — ver `docs/memoria/proyecto/capa-agentes.md`
+- Siguiente fase en diseño: **capa de agentes** (Agente Histórico + Agente Predictivo) sobre dos regiones — ver `docs/memoria/proyecto/capa-agentes.md`
 - **Verificacion 2026-06-01:** la carpeta `NEW` (285 CSVs) reproduce TODAS las inconsistencias del EDA. Es `OLD + 8 archivos nuevos` (2026-05-25 a 2026-06-01), sin limpiar
 
 ## Estructura del proyecto
@@ -85,12 +85,12 @@ Detalle y justificacion: `docs/memoria/decisiones/decisiones.md` y `docs/memoria
 - ✅ **Constante de calibración:** no existe ("celda calibrada" = nombre comercial) → calibrar por clear-sky
 - ✅ **Lat/lon:** la tiene Izack · ✅ **Timezone:** Costa Rica UTC−6
 
-Único bloqueante restante (no bloquea San Carlos PV, solo el Comparador entre regiones):
+Único bloqueante restante (no bloquea San Carlos PV, solo la comparación entre regiones):
 - **Mapeo caja→sitio fino en AgroDash** (que cajas son Cartago y cuales San Carlos)
 
 ## AgroDash — region Cartago (no fusionar a nivel de datos)
 
-`docs/_archivo/referencia_api_agrodash.pdf` (**DESACTUALIZADO**) documenta **AgroDash**. Realidad vigente (ver `docs/memoria/contexto-externo/agrodash.md` y `docs/memoria/datos/agrodash-esquema.md`): AgroDash es la **base de datos de la region Cartago** (PostgreSQL, app Rust/Axum) de sensores de **suelo/ambiente** (humedad, EC, temperatura, irradiancia, PAR) — **NO** fotovoltaica. A nivel de **almacenamiento** sigue separada de la Supabase PV de San Carlos (no se fusionan tablas), pero el **Agente Comparador SI la lee** y la data ambiental de San Carlos ya vive ahi (cajas con sufijo `SC`). Usar el esquema real (`docs/referencia/agrodash-control-schema.sql`), no el PDF.
+`docs/_archivo/referencia_api_agrodash.pdf` (**DESACTUALIZADO**) documenta **AgroDash**. Realidad vigente (ver `docs/memoria/contexto-externo/agrodash.md` y `docs/memoria/datos/agrodash-esquema.md`): AgroDash es la **base de datos de la region Cartago** (PostgreSQL, app Rust/Axum) de sensores de **suelo/ambiente** (humedad, EC, temperatura, irradiancia, PAR) — **NO** fotovoltaica. A nivel de **almacenamiento** sigue separada de la Supabase PV de San Carlos (no se fusionan tablas), pero el **Agente Histórico SI la lee** y la data ambiental de San Carlos ya vive ahi (cajas con sufijo `SC`). Usar el esquema real (`docs/referencia/agrodash-control-schema.sql`), no el PDF.
 
 ## Herramientas recomendadas
 

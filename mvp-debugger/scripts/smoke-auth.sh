@@ -50,12 +50,12 @@ done
 
 echo ">> gate de acceso"
 verificar "pagina sin sesion redirige"      "307" "$(codigo "$BASE/")"
-verificar "/api/* sin sesion rechaza"        "401" "$(codigo "$BASE/api/pronostico/health")"
+verificar "/api/* sin sesion rechaza"        "401" "$(codigo "$BASE/api/predictivo/health")"
 verificar "/login siempre accesible"         "200" "$(codigo "$BASE/login")"
 verificar "password incorrecta rechaza"      "401" "$(codigo -X POST "$BASE/api/login" \
     -H 'content-type: application/json' -d '{"password":"incorrecta"}')"
 verificar "cookie con firma invalida rechaza" "401" "$(codigo \
-    -H 'Cookie: agrovoltaic_sesion=99999999999.deadbeef' "$BASE/api/pronostico/health")"
+    -H 'Cookie: agrovoltaic_sesion=99999999999.deadbeef' "$BASE/api/predictivo/health")"
 
 echo ">> con sesion valida"
 verificar "login correcto emite sesion"      "200" "$(codigo -c "$COOKIES" -X POST "$BASE/api/login" \

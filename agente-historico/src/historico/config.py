@@ -21,7 +21,7 @@ load_dotenv(REPO / ".env")                    # fallback: DATABASE_URL del pipel
 def database_url() -> str:
     """Cadena de conexion a la Supabase PV (solo lectura). Perezosa (no exige al importar)."""
     url = (os.environ.get("HISTORICO_DB_URL")
-           or os.environ.get("ANALIZADOR_DB_URL")   # nombre anterior, respaldo
+           or os.environ.get("HISTORICO_DB_URL")   # nombre anterior, respaldo
            or os.environ.get("DATABASE_URL"))
     if not url:
         raise RuntimeError(

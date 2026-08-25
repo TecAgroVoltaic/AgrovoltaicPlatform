@@ -10,7 +10,7 @@ export function Ask({
   ejemplos,
   onResult,
 }: {
-  endpoint: string; // p.ej. "/api/analizador/preguntar"
+  endpoint: string; // p.ej. "/api/historico/preguntar"
   ejemplos: string[];
   onResult?: (traza: Traza) => void; // notifica cada traza (para acumular costo)
 }) {

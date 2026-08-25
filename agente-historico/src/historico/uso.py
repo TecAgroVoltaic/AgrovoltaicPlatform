@@ -19,7 +19,7 @@ from historico import config
 
 # Archivo de persistencia (no se versiona: ver .gitignore -> .uso/). Override por env.
 _RUTA = Path(os.environ.get("HISTORICO_USO_STORE")
-    or os.environ.get("ANALIZADOR_USO_STORE")   # nombre anterior, respaldo
+    or os.environ.get("HISTORICO_USO_STORE")   # nombre anterior, respaldo
     or str(config.ROOT / ".uso" / "uso.json"))
 _LOCK = threading.Lock()  # las tools corren en el threadpool de FastAPI -> serializar la escritura
 

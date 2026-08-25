@@ -1,7 +1,7 @@
 # Agente Histórico
 
 Responde **qué pasó** en el sistema fotovoltaico de San Carlos, y **si el dato en que
-se apoya la respuesta sirve**. Su par es el **Predictivo** (`agente-pronostico`), que
+se apoya la respuesta sirve**. Su par es el **Predictivo** (`agente-predictivo`), que
 responde qué va a pasar; entre los dos cubren pasado y futuro y son los dos únicos
 agentes del proyecto.
 
@@ -127,4 +127,4 @@ tiene mejor Performance Ratio?"*, *"¿cómo estuvo la irradiancia en abril 2026?
 *"¿qué datos hay disponibles?"*.
 
 Los datos son **históricos** (no en vivo). Para preguntas de pronóstico futuro está
-el otro agente (`agente-pronostico/`).
+el otro agente (`agente-predictivo/`).

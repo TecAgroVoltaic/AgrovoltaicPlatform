@@ -1,5 +1,5 @@
 "use client";
-// Vista «Calidad de datos» — lo que encontró el Comparador sobre el histórico PV.
+// Vista «Calidad de datos» — lo que encontró el Agente Histórico barriendo el histórico PV.
 //
 // Responsabilidad única: MOSTRAR. El veredicto de cada día lo decide el servicio
 // (`/calidad/dias`), no esta vista: si lo calculara el cliente, la consola y el
@@ -18,7 +18,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { jget, mensajeError, nfmt } from "@/app/lib/client";
 
-const RUTA = "/api/comparador";
+const RUTA = "/api/historico";
 
 type Veredicto = "ok" | "aviso" | "grave" | "sin_datos";
 
@@ -170,7 +170,7 @@ export function CalidadView() {
       <div className="card">
         <h3>Calidad del histórico</h3>
         <p className="hint">
-          Lo que encontró el Comparador barriendo día por día. La detección es
+          Lo que encontró el Agente Histórico barriendo día por día. La detección es
           determinista y corre por lotes; esta vista solo muestra el resultado.
         </p>
         <div className="kpi-grid">

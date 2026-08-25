@@ -99,7 +99,7 @@ export function ChatWidget({ agent, contexto, onTraza }: {
     setVerTraza(null);
   }
 
-  const nombreAgente = agent === "analizador" ? "Analizador PV" : "Pronóstico";
+  const nombreAgente = agent === "historico" ? "Agente Histórico" : "Pronóstico";
 
   if (!abierto) {
     return (

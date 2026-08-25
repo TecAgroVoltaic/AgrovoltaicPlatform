@@ -1,9 +1,9 @@
 # Arquitectura del agente Histórico
 
 **Estado:** propuesta de diseño, 2026-08-24. Nada de esto está construido todavía salvo la
-capa determinista de calidad, que existe suelta en `agente-comparador/` y hay que absorber.
+capa determinista de calidad, que existe suelta en `agente-historico/` y hay que absorber.
 
-**Para qué este documento:** el Comparador se construyó sin diseño previo y el resultado no
+**Para qué este documento:** el Agente Histórico se construyó sin diseño previo y el resultado no
 es un agente, es un script con endpoints. Este documento define qué es el Histórico antes de
 escribir código, para que se pueda discutir la arquitectura y no el diff.
 
@@ -16,8 +16,8 @@ escribir código, para que se pueda discutir la arquitectura y no el diff.
 - **¿Sirve el dato?** completitud, validez, duplicados, y cómo estuvo el cielo.
 - **¿Qué pasó?** energía generada, performance ratio, irradiancia, temperatura, tendencias.
 
-Su par es el **Predictivo** (`agente-pronostico`), que responde qué va a pasar. Entre los dos
-cubren pasado y futuro, y son **los dos únicos agentes**. El Analizador PV queda absorbido:
+Su par es el **Predictivo** (`agente-predictivo`), que responde qué va a pasar. Entre los dos
+cubren pasado y futuro, y son **los dos únicos agentes**. El Agente Histórico queda absorbido:
 sus 8 herramientas se mudan acá, que es su dominio natural.
 
 ### Qué NO es
@@ -31,7 +31,7 @@ sus 8 herramientas se mudan acá, que es su dominio natural.
 
 ## 2. La idea central: la calidad condiciona el análisis
 
-Esto es lo que hace que el Histórico sea más que "el Analizador con tres funciones nuevas".
+Esto es lo que hace que el Histórico sea más que "el Agente Histórico con tres funciones nuevas".
 
 Hoy `energia_por_arreglo` responde *"PV1 generó 47.300 Wh en enero"* sin decir que 15 de esos
 31 días son inservibles. El número es correcto y la respuesta es engañosa.
@@ -60,7 +60,7 @@ porque es la regla de diseño de la casa:
 
 > *"Restringir el juego es la única garantía real: un prompt se puede ignorar, una herramienta
 > que no está en la lista no se puede llamar."*
-> — `agente-pronostico/src/pronostico/agent/agent.py`
+> — `agente-predictivo/src/predictivo/agent/agent.py`
 
 Acá la traducción es: un dato de calidad que viaja dentro de la respuesta no se puede omitir.
 
@@ -68,7 +68,7 @@ Acá la traducción es: un dato de calidad que viaja dentro de la respuesta no s
 
 ## 3. El paquete
 
-Un agente = un paquete = un servicio = un nombre. `agente-analizador` se convierte en
+Un agente = un paquete = un servicio = un nombre. `agente-historico` se convierte en
 `agente-historico` y absorbe la capa de calidad.
 
 ```
@@ -97,7 +97,7 @@ agente-historico/
     cli.py                      barrido | cielo | sol | reporte
 ```
 
-`agente-comparador/` desaparece. Sus cuatro módulos de dominio se mudan a `calidad/`.
+`agente-historico/` desaparece. Sus cuatro módulos de dominio se mudan a `calidad/`.
 
 ---
 
@@ -105,7 +105,7 @@ agente-historico/
 
 Once, en dos familias. Cada una en su archivo, con su `SCHEMA` y su `run()`, igual que hoy.
 
-### Análisis: qué pasó (8, heredadas del Analizador)
+### Análisis: qué pasó (8, heredadas del Agente Histórico)
 
 | Herramienta | Responde | `confianza` |
 |---|---|:--:|
@@ -158,7 +158,7 @@ contra eso no es un modo, es el bloque `confianza` de la sección 2.
 
 ## 6. Barrido por lotes contra herramientas
 
-Distinción que ya existía en el Comparador pero nunca se dijo, y es la que más confusión causó:
+Distinción que ya existía en el Agente Histórico pero nunca se dijo, y es la que más confusión causó:
 
 | | Qué hace | Cuándo corre | Escribe |
 |---|---|---|---|
@@ -173,7 +173,7 @@ repetiría y dos personas podrían obtener veredictos distintos del mismo día.
 
 ## 7. Endpoints
 
-Espeja al Predictivo. Puerto **8010** (el que ya usa el Analizador; el 8020 se apaga).
+Espeja al Predictivo. Puerto **8010** (el que ya usa el Agente Histórico; el 8020 se apaga).
 
 | Endpoint | Para qué |
 |---|---|
@@ -214,13 +214,13 @@ en "el agente lo marca porque cubrió menos del 80 % de las horas de sol".
 
 ## 9. Migración
 
-1. `git mv agente-analizador agente-historico`; paquete `analizador` → `historico`.
-2. Mover `agente-comparador/src/comparador/{sol,calidad,cielo}.py` → `src/historico/calidad/`.
+1. `git mv agente-historico agente-historico`; paquete `analizador` → `historico`.
+2. Mover `agente-historico/src/comparador/{sol,calidad,cielo}.py` → `src/historico/calidad/`.
    `calidad.py` pasa a `barrido.py` (dice lo que hace).
 3. Escribir `calidad/contexto.py` y enchufar el bloque `confianza` en las 5 tools que agregan.
 4. Escribir las 3 tools de calidad sobre los módulos ya migrados.
 5. Escribir `arquitectura.py`.
-6. Borrar `agente-comparador/`.
+6. Borrar `agente-historico/`.
 7. Consola: `/api/historico/*` y `/api/predictivo/*`; dos agentes en el selector.
 8. `dev.sh` vuelve a levantar dos servicios, no tres.
 
@@ -231,13 +231,13 @@ como respaldo para no romper el `forecast.env` de la EC2 hasta que se actualice.
 
 ## 10. Decisiones abiertas
 
-- **El flag `AGENTE_ANALIZADOR` deja de tener sentido.** Bloqueaba al Analizador porque, en
+- **El flag `AGENTE_HISTORICO` deja de tener sentido.** Bloqueaba al Agente Histórico porque, en
   palabras de Hugo, funcionaría *"cuando ya tengamos una mejor arquitectura montada"*. El
   Histórico **es** esa arquitectura, así que el bloqueo se cae solo. Pero fue una decisión
   explícita de la reunión: hay que confirmarlo, no removerlo en silencio.
 - **El contenedor `analizador-analizador-1` lleva 13 días corriendo en la EC2.** Al renombrar
   el paquete hay que redesplegarlo o apagarlo.
 - **`graficar` devuelve datos para un gráfico.** Hay que revisar si su formato sigue calzando
-  con lo que la consola dibuja hoy, o quedó atado a vistas del Analizador que ya no existen.
-- **Nombre de las vistas heredadas.** «Reconciliación» y «Rendimiento» eran del Analizador.
+  con lo que la consola dibuja hoy, o quedó atado a vistas del Agente Histórico que ya no existen.
+- **Nombre de las vistas heredadas.** «Reconciliación» y «Rendimiento» eran del Agente Histórico.
   Hay que decidir si sobreviven como vistas del Histórico o se absorben en «Calidad de datos».

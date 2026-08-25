@@ -39,14 +39,14 @@ inclinado. Ahora fijo: **PV1 = Inclinado, PV2 = Vertical**. Cualquier comparaci�
 | Altitud | **600 m** | afina la turbidez Linke (refinamiento opcional) |
 | Timezone | **America/Costa_Rica** | UTC−6 fijo, sin horario de verano |
 
-Fuente: `agente-pronostico/src/pronostico/config.py` (overrideable por `SITE_LAT`/`SITE_LON`/`SITE_ALT`/`SITE_TZ`).
+Fuente: `agente-predictivo/src/predictivo/config.py` (overrideable por `SITE_LAT`/`SITE_LON`/`SITE_ALT`/`SITE_TZ`).
 
 ## Uso en calibración
 
 Con la lat/lon de arriba + estos tilt/azimut, el **modelo clear-sky (pvlib)** es el camino de
 calibración de irradiancia — necesario porque **no existe constante de calibración guardada**
-("celda calibrada" = nombre comercial, [[respuestas-leo-cardinale]]). El agente de pronóstico ya
-usa este modelo (Ineichen + Linke climatológica, `agente-pronostico/src/pronostico/physics.py`);
+("celda calibrada" = nombre comercial, [[respuestas-leo-cardinale]]). El Agente Predictivo ya
+usa este modelo (Ineichen + Linke climatológica, `agente-predictivo/src/predictivo/physics.py`);
 la calibración reutiliza ese enfoque. Ver [[irradiancia-sin-calibrar]].
 
 ## Performance Ratio + bifacialidad (2026-08-10)

@@ -1,7 +1,7 @@
 "use client";
 // Reconciliación: la respuesta del agente (traza) muestra los números que salen de
 // tools SQL = la verdad de la DB. Debajo, los datos crudos en vivo (buscables, con
-// cargar más) para cruzar a mano. Todo real, vía /api/analizador/*.
+// cargar más) para cruzar a mano. Todo real, vía /api/historico/*.
 import { useEffect, useState } from "react";
 import { jget, extraerLista, type Resp } from "@/app/lib/client";
 import { Estado } from "@/app/components/console/Estado";
@@ -31,8 +31,8 @@ export function ReconView() {
   useEffect(() => {
     setCargando(true); setErr(null);
     Promise.all([
-      jget("/api/analizador/datos/muestra?tabla=electrico_corregido&limit=400"),
-      jget("/api/analizador/datos/tablas"),
+      jget("/api/historico/datos/muestra?tabla=electrico_corregido&limit=400"),
+      jget("/api/historico/datos/tablas"),
     ]).then(([m, t]: Resp[]) => {
       const muestra = extraerLista(m, "filas");
       const tablas = extraerLista(t, "relaciones");

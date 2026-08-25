@@ -1,6 +1,6 @@
 {
-  "name": "Analizador PV Agrovoltaic — San Carlos (chat)",
-  "description": "Un nodo HTTP llama al agente analizador (/chat): Q&A del histórico PV + gráficos + web search, resueltos en el sidecar Python. Pegá la ANALIZADOR_API_KEY en el nodo 'chat'.",
+  "name": "Agente Histórico Agrovoltaic — San Carlos (chat)",
+  "description": "Un nodo HTTP llama al agente analizador (/chat): Q&A del histórico PV + gráficos + web search, resueltos en el sidecar Python. Pegá la HISTORICO_API_KEY en el nodo 'chat'.",
   "version": "1.0",
   "nodes": [
     {
@@ -20,9 +20,9 @@
         "url": "https://api.flow.visione-edge.com/analizador/chat",
         "authType": "apiKey",
         "apiKeyHeader": "x-api-key",
-        "apiKeyValue": "PEGAR_ANALIZADOR_API_KEY",
+        "apiKeyValue": "PEGAR_HISTORICO_API_KEY",
         "bodyType": "json",
-        "body": "{\"mensajes\":[{\"rol\":\"user\",\"texto\":\"{{$input}}\"}],\"contexto\":\"VisioneFlow · Analizador\"}",
+        "body": "{\"mensajes\":[{\"rol\":\"user\",\"texto\":\"{{$input}}\"}],\"contexto\":\"VisioneFlow · Historico\"}",
         "timeout": 120000
       }
     },

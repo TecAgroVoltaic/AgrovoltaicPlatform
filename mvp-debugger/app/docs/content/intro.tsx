@@ -4,9 +4,9 @@ import { ConceptChat } from "../ConceptChat";
 import { useAgenteDocs } from "../agenteCtx";
 
 export function Overview() {
-  // Con el agente historico bloqueado su seccion no existe: la tarjeta que
+  // Con el agente Historico bloqueado su seccion no existe: la tarjeta que
   // apunta ahi seria un enlace muerto que devuelve a este mismo overview.
-  const soloPronostico = useAgenteDocs() === "pronostico";
+  const soloPronostico = useAgenteDocs() === "predictivo";
   return (
     <Page
       crumb="Introducción"
@@ -33,7 +33,7 @@ export function Overview() {
         └───────────────┬───────────────────────────┬───────────────────┘
                         │  x-api-key                 │  x-api-key
           ┌─────────────▼─────────────┐   ┌──────────▼─────────────┐
-          │  agente-analizador  :8010 │   │  agente-pronostico :8000│
+          │  agente-historico  :8010 │   │  agente-predictivo :8000│
           │  Q&A del histórico PV     │   │  forecast + backtest    │
           │  Anthropic Haiku 4.5      │   │  Anthropic Haiku 4.5    │
           └─────────────┬─────────────┘   └──────────┬─────────────┘
@@ -57,8 +57,8 @@ export function Overview() {
       <Cards items={[
         { id: "arquitectura", title: "Topología del sistema", desc: "Cómo viaja una pregunta de la web a la respuesta, y qué habla con qué." },
         { id: "datos-esquema", title: "La base de datos PV", desc: "Tablas crudas + vistas de corrección. El modelo «crudo en la DB, corrección en capa de análisis»." },
-        ...(soloPronostico ? [] : [{ id: "analizador", title: "Agente Analizador PV", desc: "8 herramientas SQL sobre el histórico, endpoints y el lazo LLM." }]),
-        { id: "pronostico", title: "Agente Pronóstico", desc: "Persistencia de kt* × cielo despejado, backtest histórico y anomalías." },
+        ...(soloPronostico ? [] : [{ id: "historico", title: "Agente Histórico", desc: "8 herramientas SQL sobre el histórico, endpoints y el lazo LLM." }]),
+        { id: "predictivo", title: "Agente Predictivo", desc: "Persistencia de kt* × cielo despejado, backtest histórico y anomalías." },
         { id: "metodo", title: "Método y fórmulas", desc: "La matemática, fórmula por fórmula: clear-sky Ineichen, kt*, la banda, las métricas del backtest y el z robusto." },
         { id: "web-consola", title: "Vistas de la consola",
           desc: soloPronostico

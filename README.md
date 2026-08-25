@@ -10,24 +10,24 @@ dos **agentes LLM** (análisis histórico y pronóstico) y una **consola** para 
 | Qué | Dónde | Cómo se corre |
 |---|---|---|
 | **ETL de CSV → Supabase** | raíz (`main.py`) | `python3 main.py` (menú interactivo) |
-| **Agente de pronóstico** | `agente-pronostico/` | `python -m pronostico.cli "…"` · servicio: `uvicorn pronostico.api:app` |
-| **Agente analizador** | `agente-analizador/` | `analizador` · servicio: `uvicorn analizador.api:app --port 8010` |
+| **Agente de pronóstico** | `agente-predictivo/` | `python -m predictivo.cli "…"` · servicio: `uvicorn predictivo.api:app` |
+| **Agente analizador** | `agente-historico/` | `analizador` · servicio: `uvicorn analizador.api:app --port 8010` |
 | **Consola de depuración** | `mvp-debugger/` | `./dev.sh` (todo local) · `./consola.sh` (contra la EC2) |
-| **Ingesta AgroDash → Supabase** | `agente-pronostico/` | automática en la EC2 cada 15 min; a mano: `python -m pronostico.etl` |
-| **Réplica local de AgroDash** | `agente-pronostico/scripts/` | `./agrodash_local.sh` (restaura el dump si falta) |
+| **Ingesta AgroDash → Supabase** | `agente-predictivo/` | automática en la EC2 cada 15 min; a mano: `python -m predictivo.etl` |
+| **Réplica local de AgroDash** | `agente-predictivo/scripts/` | `./agrodash_local.sh` (restaura el dump si falta) |
 
 **Levantar todo desde cero:** `docs/RUNBOOK.md` — secretos que hacen falta, orden de
 arranque, cómo reconstruir la réplica de datos y qué mirar si algo se rompe.
 
 Cada carpeta tiene su README con el detalle. Lo que corre en producción está en la EC2
 (`52.1.28.77`): dos contenedores de agentes, la réplica de AgroDash y dos temporizadores
-systemd (`agente-pronostico/deploy/systemd/`).
+systemd (`agente-predictivo/deploy/systemd/`).
 
 ## Tests y CI
 
 ```bash
-cd agente-pronostico && pip install -e ".[dev,service]" && pytest -q   # 117 tests
-cd agente-analizador && pip install -e ".[dev,service]" && pytest -q   #  24 tests
+cd agente-predictivo && pip install -e ".[dev,service]" && pytest -q   # 117 tests
+cd agente-historico && pip install -e ".[dev,service]" && pytest -q   #  24 tests
 cd mvp-debugger      && npm ci && npm run build && ./scripts/smoke-auth.sh
 ```
 

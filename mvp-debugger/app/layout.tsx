@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "AgroVoltaic · Consola de evaluación de agentes",
-  description: "Debugger en vivo de los agentes (analizador PV + pronóstico ambiental)",
+  description: "Debugger en vivo de los dos agentes: Histórico y Predictivo",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

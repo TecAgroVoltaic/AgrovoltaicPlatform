@@ -8,7 +8,7 @@ categoria: proyecto
 
 Del doc del equipo `../../referencia/Evaluacion-de-datos.docx`. Es el **diseño del análisis y
 dashboard** sobre los datos PV de San Carlos (los que ya pasaron por el EDA y están en Supabase).
-⚠️ Es para **el análisis/agente que usa los datos de San Carlos**, NO para el Comparador de
+⚠️ Es para **el análisis/agente que usa los datos de San Carlos**, NO para el Agente Histórico de
 AgroDash/Cartago — mantener los dos tracks separados.
 
 Notebook de trabajo (Colab): https://colab.research.google.com/drive/1pvvlb1-og8nc04ffFB3F_VLT6w0ttuCa

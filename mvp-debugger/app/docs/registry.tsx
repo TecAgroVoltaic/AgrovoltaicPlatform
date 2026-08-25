@@ -5,7 +5,7 @@ import type { ComponentType } from "react";
 import { Overview, Glosario } from "./content/intro";
 import { Arquitectura } from "./content/arquitectura";
 import { DatosFuentes, DatosEsquema, DatosPipeline } from "./content/datos";
-import { Analizador, Pronostico } from "./content/agentes";
+import { Historico, Predictivo } from "./content/agentes";
 import { Metodo } from "./content/metodo";
 import { WebArquitectura, WebConsola, WebChat } from "./content/web";
 import { VfPlataforma, VfAgentes } from "./content/visioneflow";
@@ -15,7 +15,7 @@ export type Sec = { id: string; title: string; Comp: ComponentType };
 // `agente` marca los grupos que documentan UN agente concreto: si ese agente
 // esta bloqueado en la consola, su documentacion tampoco se muestra (si no, la
 // doc promete una seccion que no existe).
-export type Grp = { label: string; items: Sec[]; agente?: "analizador" | "pronostico" };
+export type Grp = { label: string; items: Sec[]; agente?: "historico" | "predictivo" };
 
 const GRUPOS_TODOS: Grp[] = [
   { label: "Introducción", items: [
@@ -30,11 +30,11 @@ const GRUPOS_TODOS: Grp[] = [
     { id: "datos-esquema", title: "Esquema de la base", Comp: DatosEsquema },
     { id: "datos-pipeline", title: "Pipeline ETL y calidad", Comp: DatosPipeline },
   ] },
-  { label: "Agente Analizador PV", agente: "analizador", items: [
-    { id: "analizador", title: "Analizador PV", Comp: Analizador },
+  { label: "Agente Histórico", agente: "historico", items: [
+    { id: "historico", title: "Agente Histórico", Comp: Historico },
   ] },
-  { label: "Agente Pronóstico", agente: "pronostico", items: [
-    { id: "pronostico", title: "Pronóstico ambiental", Comp: Pronostico },
+  { label: "Agente Predictivo", agente: "predictivo", items: [
+    { id: "predictivo", title: "Agente Predictivo", Comp: Predictivo },
   ] },
   // SIN `agente`: la matemática (clear-sky, kt*, metricas, z robusto) es el
   // fundamento del sistema y se documenta igual aunque un agente este bloqueado.
@@ -58,8 +58,8 @@ const GRUPOS_TODOS: Grp[] = [
 export const DEFAULT_ID = "overview";
 
 /** Grupos visibles segun que agentes estan habilitados en esta consola. */
-export function grupos(analizadorActivo: boolean): Grp[] {
-  return GRUPOS_TODOS.filter((g) => analizadorActivo || g.agente !== "analizador");
+export function grupos(historicoActivo: boolean): Grp[] {
+  return GRUPOS_TODOS.filter((g) => historicoActivo || g.agente !== "historico");
 }
 
 /** Secciones en orden + indice por id, derivados de los grupos visibles. */

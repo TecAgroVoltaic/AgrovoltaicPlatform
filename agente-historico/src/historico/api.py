@@ -23,7 +23,7 @@ ENV_API_KEY = "HISTORICO_API_KEY"
 # Nombre anterior. Se sigue leyendo porque el contenedor desplegado tiene el viejo
 # en su entorno, y aca la ausencia de clave no falla: DESACTIVA la verificacion.
 # O sea que un renombre sin respaldo no rompe el servicio, lo deja abierto.
-ENV_API_KEY_PREVIO = "ANALIZADOR_API_KEY"
+ENV_API_KEY_PREVIO = "HISTORICO_API_KEY"
 
 app = FastAPI(
     title="agente Historico San Carlos",

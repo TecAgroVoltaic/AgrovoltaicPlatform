@@ -1,5 +1,5 @@
 // Que agentes expone la consola. Fuente UNICA de verdad del bloqueo del agente
-// historico (Analizador PV): esta semana la demo es solo el agente predictivo.
+// historico (Agente Histórico): esta semana la demo es solo el agente predictivo.
 //
 // Por que un flag y no borrar codigo: el bloqueo es temporal. Volver a mostrar
 // el analizador tiene que ser una variable de entorno, no un revert.
@@ -11,15 +11,15 @@
 //
 //   AGENTE_ANALIZADOR=on|1|true   -> visible otra vez (vistas + chat + proxy)
 //   ausente o cualquier otro valor -> BLOQUEADO (default)
-export const ENV_ANALIZADOR = "AGENTE_ANALIZADOR";
+export const ENV_HISTORICO = "AGENTE_ANALIZADOR";
 
 /** ¿Esta habilitado el agente analizador (historico) en esta consola? */
-export function analizadorActivo(): boolean {
-  const v = (process.env[ENV_ANALIZADOR] || "").trim().toLowerCase();
+export function historicoActivo(): boolean {
+  const v = (process.env[ENV_HISTORICO] || "").trim().toLowerCase();
   return v === "on" || v === "1" || v === "true";
 }
 
 /** Mensaje unico para cuando alguien intenta usarlo estando bloqueado. */
 export const MSG_BLOQUEADO =
   `El agente analizador (histórico) está desactivado en esta consola. ` +
-  `Definí ${ENV_ANALIZADOR}=on para volver a habilitarlo.`;
+  `Definí ${ENV_HISTORICO}=on para volver a habilitarlo.`;

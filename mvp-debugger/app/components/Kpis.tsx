@@ -24,7 +24,7 @@ export function Kpis() {
     setCargando(true);
     const salidas = await Promise.all(
       TOOLS.map(async (nombre) => {
-        const r = await jpost(`/api/analizador/tool/${nombre}`, {});
+        const r = await jpost(`/api/historico/tool/${nombre}`, {});
         return { nombre, ok: r.ok, data: r.data } as Resultado;
       }),
     );

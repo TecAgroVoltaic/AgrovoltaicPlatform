@@ -7,8 +7,8 @@ categoria: proyecto
 # MVP Debugger — evaluación en vivo de los agentes
 
 Creado el **2026-08-10**. Web mínima en `mvp-debugger/` (Next 14, App Router, TS, sin libs de UI)
-para **probar y depurar** los dos agentes con datos reales: [[agente-analizador]] (Q&A sobre el
-histórico PV) y [[agente-pronostico]] (forecaster ambiental). No es diseño: es ver **qué consulta
+para **probar y depurar** los dos agentes con datos reales: [[agente-historico]] (Q&A sobre el
+histórico PV) y [[agente-predictivo]] (forecaster ambiental). No es diseño: es ver **qué consulta
 el agente, qué calcula y cómo redacta**, y cruzar cada número contra las bases.
 
 ## Decisión de diseño clave
@@ -20,7 +20,7 @@ mismo lazo pero registra cada paso; `preguntar()`/`ask()` quedan como azúcar (D
 - **`POST /preguntar`** (ambos) → corre el lazo LLM y devuelve la TRAZA:
   `{pregunta, respuesta, modelo, pasos[], usage, costo, ms_total}`. Cada paso es `modelo`
   (texto + tools que pide) o `tool` (input + **salida cruda** + ms + error).
-- **Analizador `GET /datos/{tablas,columnas,muestra,serie}`** — peek read-only con **allowlist**
+- **Agente Histórico `GET /datos/{tablas,columnas,muestra,serie}`** — peek read-only con **allowlist**
   de relaciones (anti-inyección; booleano→proporción; texto rechazado 400). Módulo `datos.py` (SRP).
 - **`GET /uso`** (ambos) — consumo acumulado del agente (extraíble): n consultas, tokens, USD, por modelo.
 - **Pronóstico `GET /serie`** — peek del store (resumen + puntos para graficar).
@@ -43,7 +43,7 @@ Browser ─► /api/<svc>/*  (route handler Next, inyecta x-api-key) ─► :801
 ```
 Las keys viven solo del lado servidor (`app/lib/config.ts`); el browser nunca las ve. Correr con
 `mvp-debugger/dev.sh` (levanta analizador:8010 + pronóstico:8000 + next:3000; toma la ANTHROPIC key de
-`agente-pronostico/.env`). Verificado end-to-end (trazas reales de ambos, costo exacto, `/uso` crece).
+`agente-predictivo/.env`). Verificado end-to-end (trazas reales de ambos, costo exacto, `/uso` crece).
 
 ## UI actual — consola única con barra lateral (2026-08-10)
 El `/` del Next es una **consola** (`app/components/console/`) con **barra lateral** (sin emojis,
@@ -68,7 +68,7 @@ ambos agentes (`chat()` en `agent/agent.py`):
   malforma, no arrastra JSON pesado → barato); cap ~8 turnos.
 - **web_search** nativa de Anthropic (verificado: Haiku 4.5 la soporta) con **barrera DB-first**
   en el system prompt: datos del sitio SIEMPRE de tools; web solo para conocimiento externo (cita).
-- Analizador: tool **`graficar`** → datos reales + marcador `_grafico` que el widget pinta inline
+- Agente Histórico: tool **`graficar`** → datos reales + marcador `_grafico` que el widget pinta inline
   (el LLM recibe solo el resumen → no gasta tokens en los arreglos).
 - Pronóstico: **DOS modalidades que el agente conoce de base** (system prompt) y rutea por intención:
   **`forecast`** (futuro, desde el último dato) y **`backtest`** (histórico: reconstruye cómo se
@@ -87,7 +87,7 @@ ambos agentes (`chat()` en `agent/agent.py`):
 (sidebar, pastel, sin emojis, hover, vista de costo). **Ya portado al Next real** (arriba); queda como
 referencia visual con datos snapshot.
 
-Relacionado: [[agente-analizador]], [[agente-pronostico]], [[capa-agentes]], [[evaluacion-datos]].
+Relacionado: [[agente-historico]], [[agente-predictivo]], [[capa-agentes]], [[evaluacion-datos]].
 
 ## 2026-08-14 — auth, panel de salud y estados de error
 
@@ -101,22 +101,22 @@ Relacionado: [[agente-analizador]], [[agente-pronostico]], [[capa-agentes]], [[e
   en "cargando…" para siempre. Ahora `extraerLista`/`mensajeError` + el bloque `Estado`.
 - **Verificación**: `scripts/smoke-auth.sh` (8 casos con HTTP real) corre en el CI.
 
-## 2026-08-19 — agente histórico BLOQUEADO (solo se muestra el predictivo)
+## 2026-08-19 — Agente Histórico BLOQUEADO (solo se muestra el predictivo)
 
-Pedido del usuario: esta semana la consola muestra **solo el agente de pronóstico**. El
-bloqueo es un flag de servidor, no un borrado: `AGENTE_ANALIZADOR=on` lo devuelve entero.
+Pedido del usuario: esta semana la consola muestra **solo el Agente Predictivo**. El
+bloqueo es un flag de servidor, no un borrado: `AGENTE_HISTORICO=on` lo devuelve entero.
 
 - **Fuente única**: `app/lib/agentes.ts` (`analizadorActivo()`), leído **solo del lado
   servidor** y bajado como prop. Nada de `NEXT_PUBLIC_*`: quedaría horneado en el bundle y
   habría dos fuentes de verdad (build vs. proceso).
-- **Se corta la puerta, no el botón**: `/api/analizador/*` responde **503** con el mensaje
+- **Se corta la puerta, no el botón**: `/api/historico/*` responde **503** con el mensaje
   de cómo revertirlo. Esconder la UI no alcanza — un `fetch` a mano igual consulta la
   Supabase PV y gasta tokens.
 - Alcance: vistas Reconciliación y Rendimiento fuera de la navegación · selector de agente
-  reemplazado por el rótulo «Pronóstico ambiental» · página suelta `/analizador` → **404** ·
-  grupo «Agente Analizador PV» fuera de `/docs` + tarjeta y enlace muertos degradados ·
+  reemplazado por el rótulo «Agente Predictivo» · página suelta `/analizador` → **404** ·
+  grupo «Agente Histórico» fuera de `/docs` + tarjeta y enlace muertos degradados ·
   el mini-chat del glosario (`ConceptChat`) ahora habla con el **agente activo** (antes
-  apuntaba duro a `/api/analizador/chat` y el bloqueo lo dejaba en 503).
+  apuntaba duro a `/api/historico/chat` y el bloqueo lo dejaba en 503).
 - **`export const dynamic = "force-dynamic"`** en `/`, `/docs` y `/analizador`: sin eso Next
   las prerenderiza y el flag queda congelado en el momento del build.
 - **Verificación**: `scripts/smoke-agentes.sh` (12 casos, HTTP real) prueba el bloqueo **y su
@@ -176,7 +176,7 @@ métrica. Ahora **todo lee del mismo backtest**: gráfico, KPI y agente.
   cielo despejado y las notas al pie; las métricas agregadas quedan en una línea.
 - `AnclaForecast.tsx` **eliminado**: su rol se absorbió. El pronóstico anclado sigue vivo en la
   API (`ahora` en `POST /forecast`), pero **ya no se muestra en esta vista** — volvería a meter
-  una segunda granularidad. Ver [[agente-pronostico]].
+  una segunda granularidad. Ver [[agente-predictivo]].
 - El KPI «Skill vs. ingenuo» muestra **n/a** en humedad de suelo: ahí el método *es* la
   persistencia, así que el 0 % era una tautología, no una falla del modelo.
 
@@ -245,7 +245,7 @@ código ahora se ve.
 ### La decisión que la hace confiable: la estructura se lee del servicio
 El error fácil era escribir un archivo con las herramientas a mano. Eso se desincroniza en
 silencio, y el pedido era justo lo contrario («debe ser a como lo tenemos construido»). En vez
-de eso hay un endpoint nuevo, **`GET /arquitectura`** (ver [[agente-pronostico]]), que **deriva**
+de eso hay un endpoint nuevo, **`GET /arquitectura`** (ver [[agente-predictivo]]), que **deriva**
 el mapa de `agent.MODOS` y de los `input_schema` reales — los mismos objetos que se le mandan
 al modelo. La vista pinta eso.
 
@@ -382,7 +382,7 @@ brevedad como aserción explícita, tooltips incluidos. **40 chequeos, 0 fallas.
 - **Los modos** pasan a `medicion_visible` / `medicion_oculta`, con etiquetas «Medición visible»
   y «Medición oculta» y botones «Evaluar» / «Predecir». El par anterior («con la respuesta» / «a
   ciegas») era informal para algo que se muestra fuera del equipo. Detalle y la tabla de
-  herramientas por modo en [[agente-pronostico]].
+  herramientas por modo en [[agente-predictivo]].
 - **La vista «Los datos» pasa a «Base de datos».** El id interno y la carpeta siguen siendo
   `datos/` (no son visibles en ninguna pantalla).
 - **Corregida una desactualización previa de la doc:** `docs/content/web.tsx` decía «las cuatro

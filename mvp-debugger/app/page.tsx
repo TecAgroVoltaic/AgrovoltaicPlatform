@@ -1,5 +1,5 @@
 import { Console } from "@/app/components/console/Console";
-import { analizadorActivo } from "@/app/lib/agentes";
+import { historicoActivo } from "@/app/lib/agentes";
 
 // Server component: lee el flag del entorno y lo BAJA como prop. El cliente
 // nunca lee process.env, asi hay una sola fuente de verdad (ver lib/agentes).
@@ -9,5 +9,5 @@ import { analizadorActivo } from "@/app/lib/agentes";
 export const dynamic = "force-dynamic";
 
 export default function Home() {
-  return <Console analizador={analizadorActivo()} />;
+  return <Console historico={historicoActivo()} />;
 }

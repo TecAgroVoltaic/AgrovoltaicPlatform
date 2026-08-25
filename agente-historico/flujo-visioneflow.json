@@ -1,5 +1,5 @@
 {
-  "name": "Analizador PV — San Carlos",
+  "name": "Agente Histórico — San Carlos",
   "description": "aiAgent (Haiku) que orquesta las tools de analisis del sidecar del analizador en la EC2.",
   "version": "1.0",
   "nodes": [
@@ -18,7 +18,7 @@
     {
       "id": "agent-1",
       "type": "aiAgent",
-      "label": "Analizador PV",
+      "label": "Agente Histórico",
       "config": {
         "provider": "anthropic",
         "model": "claude-haiku-4-5",
@@ -56,7 +56,7 @@
         "url": "https://api.flow.visione-edge.com/analizador/tool/energia_por_arreglo",
         "authType": "apiKey",
         "apiKeyHeader": "x-api-key",
-        "apiKeyValue": "PEGAR_ANALIZADOR_API_KEY",
+        "apiKeyValue": "PEGAR_HISTORICO_API_KEY",
         "toolSchema": {
           "properties": {
             "desde": {
@@ -88,7 +88,7 @@
         "url": "https://api.flow.visione-edge.com/analizador/tool/performance_ratio",
         "authType": "apiKey",
         "apiKeyHeader": "x-api-key",
-        "apiKeyValue": "PEGAR_ANALIZADOR_API_KEY",
+        "apiKeyValue": "PEGAR_HISTORICO_API_KEY",
         "toolSchema": {
           "properties": {
             "desde": {
@@ -120,7 +120,7 @@
         "url": "https://api.flow.visione-edge.com/analizador/tool/irradiancia_resumen",
         "authType": "apiKey",
         "apiKeyHeader": "x-api-key",
-        "apiKeyValue": "PEGAR_ANALIZADOR_API_KEY",
+        "apiKeyValue": "PEGAR_HISTORICO_API_KEY",
         "toolSchema": {
           "properties": {
             "desde": {
@@ -152,7 +152,7 @@
         "url": "https://api.flow.visione-edge.com/analizador/tool/temperatura_por_arreglo",
         "authType": "apiKey",
         "apiKeyHeader": "x-api-key",
-        "apiKeyValue": "PEGAR_ANALIZADOR_API_KEY",
+        "apiKeyValue": "PEGAR_HISTORICO_API_KEY",
         "toolSchema": {
           "properties": {
             "desde": {
@@ -184,7 +184,7 @@
         "url": "https://api.flow.visione-edge.com/analizador/tool/cobertura_datos",
         "authType": "apiKey",
         "apiKeyHeader": "x-api-key",
-        "apiKeyValue": "PEGAR_ANALIZADOR_API_KEY",
+        "apiKeyValue": "PEGAR_HISTORICO_API_KEY",
         "toolSchema": {
           "properties": {
             "desde": {
@@ -216,7 +216,7 @@
         "url": "https://api.flow.visione-edge.com/analizador/tool/catalogo_variables",
         "authType": "apiKey",
         "apiKeyHeader": "x-api-key",
-        "apiKeyValue": "PEGAR_ANALIZADOR_API_KEY",
+        "apiKeyValue": "PEGAR_HISTORICO_API_KEY",
         "toolSchema": {
           "properties": {},
           "required": []

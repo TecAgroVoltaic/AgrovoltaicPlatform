@@ -22,10 +22,10 @@ export function PerfView({ theme }: { theme: string }) {
 
   useEffect(() => {
     Promise.all([
-      jpost("/api/analizador/tool/energia_por_arreglo", {}),
-      jpost("/api/analizador/tool/performance_ratio", {}),
-      jpost("/api/analizador/tool/irradiancia_resumen", {}),
-      jpost("/api/analizador/tool/temperatura_por_arreglo", {}),
+      jpost("/api/historico/tool/energia_por_arreglo", {}),
+      jpost("/api/historico/tool/performance_ratio", {}),
+      jpost("/api/historico/tool/irradiancia_resumen", {}),
+      jpost("/api/historico/tool/temperatura_por_arreglo", {}),
     ]).then(([e, pr, g, t]: Resp[]) => {
       const fallidas = [e, pr, g, t].filter((r) => !r.ok);
       setErrKpi(fallidas.length ? mensajeError(fallidas[0]) : null);

@@ -7,12 +7,12 @@ import { DEFAULT_ID, grupos, indice } from "./registry";
 import { AgenteDocs } from "./agenteCtx";
 
 /**
- * `analizador` = ¿esta habilitado el agente historico? Llega del servidor
+ * `analizador` = ¿esta habilitado el Q&A del agente Historico? Llega del servidor
  * (app/docs/page.tsx -> lib/agentes). Con el apagado se caen sus secciones y el
  * mini-chat del glosario habla con el agente que SI esta activo.
  */
-export function DocsShell({ analizador = true }: { analizador?: boolean }) {
-  const GROUPS = useMemo(() => grupos(analizador), [analizador]);
+export function DocsShell({ historico = true }: { historico?: boolean }) {
+  const GROUPS = useMemo(() => grupos(historico), [historico]);
   const { orden: ORDER, porId: BY_ID } = useMemo(() => indice(GROUPS), [GROUPS]);
   const hashId = () => {
     const h = typeof window !== "undefined" ? window.location.hash.replace(/^#/, "") : "";
@@ -104,7 +104,7 @@ export function DocsShell({ analizador = true }: { analizador?: boolean }) {
 
       <main className="dx-content">
         <article className="dx-page">
-          <AgenteDocs.Provider value={analizador ? "analizador" : "pronostico"}>
+          <AgenteDocs.Provider value={historico ? "historico" : "predictivo"}>
             <Comp />
           </AgenteDocs.Provider>
           <div className="dx-nextprev">

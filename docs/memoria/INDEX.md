@@ -12,13 +12,13 @@ oculta recibía `backtest`. Ahora es 422, verificado en producción. Vista **«B
 recorrido del ETL en cinco actos con el dato a la vista, partido por la línea que separa lo
 irreversible (al cargar) de lo reescribible (al consultar), más once tratamientos numerados como el
 doc de Leo. Y las fichas de los tools ganaron **«En qué ayuda»**. Detalle en
-[agente-pronostico](proyecto/agente-pronostico.md) y [mvp-debugger](proyecto/mvp-debugger.md).
+[agente-predictivo](proyecto/agente-predictivo.md) y [mvp-debugger](proyecto/mvp-debugger.md).
 **La extensión de Chrome no conecta**, así que toda la UI se verifica con `react-dom/server` — ver
 [verificacion-consola](proyecto/verificacion-consola.md).)*
 
-**Anterior:** 2026-08-19 · *(**Solo el agente predictivo, y verificado end-to-end.**
-El agente histórico quedó bloqueado en la consola con un flag de servidor reversible
-(`AGENTE_ANALIZADOR=on`). 74 chequeos e2e, 0 fallas. Hallazgo que habría hundido la demo: el último
+**Anterior:** 2026-08-19 · *(**Solo el Agente Predictivo, y verificado end-to-end.**
+El Agente Histórico quedó bloqueado en la consola con un flag de servidor reversible
+(`AGENTE_HISTORICO=on`). 74 chequeos e2e, 0 fallas. Hallazgo que habría hundido la demo: el último
 dato es de madrugada → se agregó el instante de referencia (`ahora` en `/forecast`).)*
 
 **Previo:** 2026-08-18 · Cartago caído → el ETL lee una réplica del dump dentro de la EC2; llevaba
@@ -35,12 +35,12 @@ rediseñado, ETL re-corrido y capas de calibración y PR **en vivo**. Fuente de 
 - [estado.md](proyecto/estado.md) — pipeline implementado y corrido OK (36.630 filas en Supabase); falta calibración y Paso 2
 - [implementacion.md](proyecto/implementacion.md) — paquete `src/agrovoltaic`: diseño (cero columnas quemadas), estructura, idempotencia, bugs corregidos
 - [arquitectura-regiones.md](proyecto/arquitectura-regiones.md) — dos regiones (Cartago/AgroDash + San Carlos/Supabase), sin DB central; San Carlos está partido
-- [capa-agentes.md](proyecto/capa-agentes.md) — Comparador + Analizador; infraestructura consolidada (servicio Python aparte, batch, lee ambas DBs)
-- [agente-pronostico.md](proyecto/agente-pronostico.md) — agente LLM que pronostica irradiancia + humedad de suelo vía clear-sky + kt*; dos modos (`medicion_visible` / `medicion_oculta`) y `GET /arquitectura`, que **deriva** el mapa del agente de `agent.MODOS` y los esquemas reales; **verificado e2e contra producción el 19-ago (72 chequeos, 0 fallas · 159 tests)**; instante de referencia para pronosticar con sol pese al congelamiento; cobertura real de la serie
-- [comparador.md](proyecto/comparador.md) — **NUEVO (2026-08-24):** control de calidad determinista del histórico PV (completitud contra las **horas de sol**, no contra 24 h) + caracterización del cielo (kt y variabilidad). Las tres trampas que costaron una corrida cada una: el **VI medía la cadencia del logger** (4,15 vs 23,81 para el mismo kt), los **kt imposibles se disfrazaban de día soleado** (kt medio 5,67), y **«sensor plano» eran tres cosas distintas** (85, cero, o trabado de verdad). Store `hallazgos_calidad` + `cielo_diario` + reporte + **vista «Calidad de datos» en la consola** (servicio :8020, mapa de días como calendario y no tabla, dos tiras por fuente: radiación 126 días ok contra eléctrico 4)
-- [agente-analizador.md](proyecto/agente-analizador.md) — **NUEVO (2026-08-10):** agente Q&A sobre el histórico PV en Supabase; tools atómicas (SRP) sobre las vistas limpias; el LLM solo orquesta; MVP CLI, tools validadas contra la base
-- [mvp-debugger.md](proyecto/mvp-debugger.md) — web local (Next.js) para depurar en vivo los agentes; **desde el 19-ago solo muestra el predictivo** (flag `AGENTE_ANALIZADOR`): visor de traza (tools+salidas+respuesta), explorador de datos read-only, tokens+costo por consulta y acumulado (`/preguntar`, `/datos/*`, `/uso`); **vista «Arquitectura del agente»** (grafo de nodos leído de `/arquitectura`, con hover y modales por herramienta, cada uno con «En qué ayuda»); **vista «Base de datos»** (el recorrido del ETL en cinco actos, con el dato a la vista en cada paso); + artifact de diseño en iteración
-- [integracion-visioneflow.md](proyecto/integracion-visioneflow.md) — agente montándose en VisioneFlow: servicio FastAPI /forecast HECHO (53 tests) + modelos agregados + deploy preparado (runbook docs/pronostico/04); bloqueante: la EC2 no alcanza la DB AgroDash (sin Tailscale)
+- [capa-agentes.md](proyecto/capa-agentes.md) — Agente Histórico + Agente Predictivo; infraestructura consolidada (servicio Python aparte, batch, lee ambas DBs)
+- [agente-predictivo.md](proyecto/agente-predictivo.md) — agente LLM que pronostica irradiancia + humedad de suelo vía clear-sky + kt*; dos modos (`medicion_visible` / `medicion_oculta`) y `GET /arquitectura`, que **deriva** el mapa del agente de `agent.MODOS` y los esquemas reales; **verificado e2e contra producción el 19-ago (72 chequeos, 0 fallas · 159 tests)**; instante de referencia para pronosticar con sol pese al congelamiento; cobertura real de la serie
+- [agente-historico-calidad.md](proyecto/agente-historico-calidad.md) — **NUEVO (2026-08-24):** control de calidad determinista del histórico PV (completitud contra las **horas de sol**, no contra 24 h) + caracterización del cielo (kt y variabilidad). Las tres trampas que costaron una corrida cada una: el **VI medía la cadencia del logger** (4,15 vs 23,81 para el mismo kt), los **kt imposibles se disfrazaban de día soleado** (kt medio 5,67), y **«sensor plano» eran tres cosas distintas** (85, cero, o trabado de verdad). Store `hallazgos_calidad` + `cielo_diario` + reporte + **vista «Calidad de datos» en la consola** (servicio :8020, mapa de días como calendario y no tabla, dos tiras por fuente: radiación 126 días ok contra eléctrico 4)
+- [agente-historico.md](proyecto/agente-historico.md) — **NUEVO (2026-08-10):** agente Q&A sobre el histórico PV en Supabase; tools atómicas (SRP) sobre las vistas limpias; el LLM solo orquesta; MVP CLI, tools validadas contra la base
+- [mvp-debugger.md](proyecto/mvp-debugger.md) — web local (Next.js) para depurar en vivo los agentes; **desde el 19-ago solo muestra el predictivo** (flag `AGENTE_HISTORICO`): visor de traza (tools+salidas+respuesta), explorador de datos read-only, tokens+costo por consulta y acumulado (`/preguntar`, `/datos/*`, `/uso`); **vista «Arquitectura del agente»** (grafo de nodos leído de `/arquitectura`, con hover y modales por herramienta, cada uno con «En qué ayuda»); **vista «Base de datos»** (el recorrido del ETL en cinco actos, con el dato a la vista en cada paso); + artifact de diseño en iteración
+- [integracion-visioneflow.md](proyecto/integracion-visioneflow.md) — agente montándose en VisioneFlow: servicio FastAPI /forecast HECHO (53 tests) + modelos agregados + deploy preparado (runbook docs/predictivo/04); bloqueante: la EC2 no alcanza la DB AgroDash (sin Tailscale)
 - [conectividad-tailnet.md](proyecto/conectividad-tailnet.md) — malla Tailscale para acceso a datos: la EC2 (100.125.236.125) YA lee la DB viva de Cartago (100.101.177.71) por Postgres 5432, rol read-only `agrovoltaic_ro`, probado OK; pendiente: rotar la clave débil de prueba
 - [pipeline-tiempo-real.md](proyecto/pipeline-tiempo-real.md) — pipeline arquitectura A (AgroDash→ETL→Supabase store→forecaster multi-variable irradiancia+humedad); congelamiento SC 23-jul → "solo histórico"; desplegado en la EC2 con timers (~812k filas backfilleadas)
 - [agrodash-local.md](proyecto/agrodash-local.md) — **NUEVO (2026-08-14):** réplica del dump de AgroDash **restaurada en la EC2** (`agrodash-pg`, 127.0.0.1:5433) como fuente del ETL con Cartago caído; 5.045 MB / 21.3M filas → el dump completo NO cabe en la Supabase Free (500 MB); + script para levantarla local
@@ -78,7 +78,7 @@ rediseñado, ETL re-corrido y capas de calibración y PR **en vivo**. Fuente de 
 
 ## pendientes/ — lo que bloquea y lo que falta decidir
 - [abiertos.md](pendientes/abiertos.md) — **NUEVO (2026-08-21):** lo que depende de NOSOTROS: volumen del contenedor (885k filas cada 6 h), addon NWP apagado (−8 % MAE a 6 h), 32 commits sin pushear, NSRDB sin evaluar
-- [bloqueantes.md](pendientes/bloqueantes.md) — **2026-08-10 casi todo RESUELTO por Leo** (kWp, tilt/azimut, PV1/PV2, constante de calibración); solo queda el mapeo caja→sitio fino para el Comparador
+- [bloqueantes.md](pendientes/bloqueantes.md) — **2026-08-10 casi todo RESUELTO por Leo** (kWp, tilt/azimut, PV1/PV2, constante de calibración); solo queda el mapeo caja→sitio fino para el Agente Histórico
 
 ## contexto-externo/ — sistemas relacionados
 - [agrodash.md](contexto-externo/agrodash.md) — DB de Cartago y objetivo de comparación; suelo/riego/experimentos, NO fotovoltaica; contiene ambos sitios

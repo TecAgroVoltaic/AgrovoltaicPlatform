@@ -9,7 +9,7 @@
 > está en **`04-runbook-deploy-ec2.md`**. Diagrama: `img/04-arquitectura-visioneflow.png`.
 
 > **Para una sesión nueva.** Este plan es autónomo y ejecutable. Abarca **dos repos**:
-> - `/Users/izack/Visione/AgroVoltaic/agente-pronostico` — el agente Python (forecaster).
+> - `/Users/izack/Visione/AgroVoltaic/agente-predictivo` — el agente Python (forecaster).
 > - `/Users/izack/Visione/Apps/VisioneFlow` — la plataforma de flujos (Backend Fastify + agent-builder Next.js).
 >
 > **Contexto obligatorio antes de empezar:** leé `docs/memoria/proyecto/integracion-visioneflow.md`
@@ -20,7 +20,7 @@
 >
 > **Ya hecho (no rehacer):** la capa de datos del agente ya acepta `DATABASE_URL` vía
 > `config.conninfo()` y el sitio es configurable por env (`SITE_*`, `BOX_NAME`, `IRRADIANCE_CHANNEL`,
-> `WINDOW_*`, `CACHE_FILE`). `pytest` = 47 OK. Python del repo: `agente-pronostico/.venv/bin/python3`.
+> `WINDOW_*`, `CACHE_FILE`). `pytest` = 47 OK. Python del repo: `agente-predictivo/.venv/bin/python3`.
 
 ---
 
@@ -36,14 +36,14 @@ Cartago = cambiar `DATABASE_URL` + `SITE_*` del contenedor, **cero código**.
 **Único código realmente nuevo. Independiente de VisioneFlow: se puede terminar y probar solo.**
 
 ### 1.1 Dependencias
-Agregar `fastapi` y `uvicorn[standard]` al paquete. En `agente-pronostico/pyproject.toml`
+Agregar `fastapi` y `uvicorn[standard]` al paquete. En `agente-predictivo/pyproject.toml`
 (o requirements), como extra `service`. Instalar en el venv:
 ```bash
-cd /Users/izack/Visione/AgroVoltaic/agente-pronostico
+cd /Users/izack/Visione/AgroVoltaic/agente-predictivo
 ./.venv/bin/python3 -m pip install fastapi "uvicorn[standard]"
 ```
 
-### 1.2 Crear `src/pronostico/api.py`
+### 1.2 Crear `src/predictivo/api.py`
 Envuelve el `run_forecast` existente (NO reimplementar nada). API key opcional por header.
 ```python
 """API HTTP del forecaster: unico puente entre VisioneFlow y run_forecast."""
@@ -52,7 +52,7 @@ import os
 from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 
-from pronostico.tools.forecast_tool import run_forecast
+from predictivo.tools.forecast_tool import run_forecast
 
 API_KEY = os.environ.get("FORECAST_API_KEY")  # si esta definida, se exige en /forecast
 
@@ -84,15 +84,15 @@ es JSON-serializable.
 
 ### 1.3 Probar local (sin Docker, con el caché parquet existente)
 ```bash
-cd /Users/izack/Visione/AgroVoltaic/agente-pronostico
-PYTHONPATH=src ./.venv/bin/python3 -m uvicorn pronostico.api:app --host 127.0.0.1 --port 8000 &
+cd /Users/izack/Visione/AgroVoltaic/agente-predictivo
+PYTHONPATH=src ./.venv/bin/python3 -m uvicorn predictivo.api:app --host 127.0.0.1 --port 8000 &
 curl -s 127.0.0.1:8000/health
 curl -s -X POST 127.0.0.1:8000/forecast -H 'content-type: application/json' \
   -d '{"variable":"irradiancia","horizon_seconds":7200,"horizonte_texto":"dos horas"}'
 # Esperado: valor_esperado ~313 W/m2, banda ~[271,356], contexto con es_de_noche:false
 ```
 
-### 1.4 Dockerfile (`agente-pronostico/Dockerfile`)
+### 1.4 Dockerfile (`agente-predictivo/Dockerfile`)
 ```dockerfile
 FROM python:3.12-slim
 WORKDIR /app
@@ -101,7 +101,7 @@ COPY src ./src
 RUN pip install --no-cache-dir -e . fastapi "uvicorn[standard]"
 EXPOSE 8000
 # El servicio lee la DB por DATABASE_URL (no usa el caché parquet si conecta a DB en vivo).
-CMD ["uvicorn", "pronostico.api:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "predictivo.api:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 > **Verificar** que `pyproject.toml` declare las deps del paquete (pandas, numpy, pvlib, psycopg,
 > python-dotenv). Si no, agregarlas antes de construir la imagen.
@@ -122,7 +122,7 @@ en la EC2):
 ```yaml
   forecast:
     build:
-      context: /ruta/en/la/ec2/agente-pronostico
+      context: /ruta/en/la/ec2/agente-predictivo
       dockerfile: Dockerfile
     network_mode: host              # runtime es host-net -> lo alcanza en 127.0.0.1:8000
     env_file:
@@ -191,7 +191,7 @@ permitidos (y de paso Opus/Sonnet actuales). *Es actualizar la lista, nada más.
 2. **Nodo `aiAgent`**:
    - Modelo: `claude-haiku-4-5`.
    - System prompt: copiar **verbatim** el de
-     `agente-pronostico/src/pronostico/agent/prompts.py` (`SYSTEM_PROMPT`).
+     `agente-predictivo/src/predictivo/agent/prompts.py` (`SYSTEM_PROMPT`).
 3. **Nodo `httpRequestTool`** (el genérico), conectado al `aiAgent` por el handle **`tool`**. Config
    del nodo (`node.data`):
 ```json
@@ -258,5 +258,5 @@ el punto es que la plomería queda lista.)
 3. Fase 2 (deploy + nginx + API key).
 4. Fase 3.2 (armar el flujo en el canvas) y probar end-to-end.
 
-Relacionado: `docs/memoria/proyecto/integracion-visioneflow.md`, `docs/pronostico/01-validacion-fisica.md`,
-`docs/pronostico/02-forecaster-hindcast.md`.
+Relacionado: `docs/memoria/proyecto/integracion-visioneflow.md`, `docs/predictivo/01-validacion-fisica.md`,
+`docs/predictivo/02-forecaster-hindcast.md`.

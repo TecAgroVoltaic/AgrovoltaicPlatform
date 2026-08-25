@@ -29,7 +29,7 @@ Ninguno está en el repo. Antes de levantar nada, conseguí:
 | `DATABASE_URL` (raíz) | Supabase de AgroVoltaic (store) | `.env` de la raíz, gestor de secretos |
 | `ANTHROPIC_API_KEY` | los dos agentes | `forecast.env` en la EC2 |
 | `FORECAST_API_KEY` | proteger el sidecar | `forecast.env` en la EC2 |
-| `ANALIZADOR_API_KEY` | proteger el analizador | entorno del contenedor en la EC2 |
+| `HISTORICO_API_KEY` | proteger el analizador | entorno del contenedor en la EC2 |
 | `DEBUGGER_PASSWORD` | entrar a la consola | `.env.local` (local) |
 | `DEBUGGER_SESSION_SECRET` | firmar la cookie de sesión | idem |
 
@@ -58,7 +58,7 @@ Idempotente, seguro de correr N veces. Crea las tablas del agente y las vistas d
 
 ```bash
 set -a; . .env; set +a
-psql "$DATABASE_URL" -f agente-pronostico/sql/schema_supabase.sql
+psql "$DATABASE_URL" -f agente-predictivo/sql/schema_supabase.sql
 ```
 
 ## 4. Réplica de AgroDash (la fuente de la ingesta)
@@ -70,7 +70,7 @@ pedilo o traelo del servidor).
 **Local:**
 
 ```bash
-./agente-pronostico/scripts/agrodash_local.sh     # cluster en :5433, restaura si falta
+./agente-predictivo/scripts/agrodash_local.sh     # cluster en :5433, restaura si falta
 ```
 
 **En la EC2** (así está hoy):
@@ -97,10 +97,10 @@ Tarda ~1 min y ocupa **5 GB**. El puerto queda atado al loopback: no se expone.
 Local, para desarrollo:
 
 ```bash
-cd agente-pronostico && pip install -e ".[dev,service]"
-uvicorn pronostico.api:app --port 8000
+cd agente-predictivo && pip install -e ".[dev,service]"
+uvicorn predictivo.api:app --port 8000
 
-cd agente-analizador && pip install -e ".[dev,service]"
+cd agente-historico && pip install -e ".[dev,service]"
 uvicorn analizador.api:app --port 8010
 ```
 
@@ -109,12 +109,12 @@ En la EC2 se despliegan como contenedores. El del pronóstico:
 ```bash
 # 1) subir el código (no está en ningún remoto git)
 rsync -az -e "ssh -i ~/aws/visione-key.pem" --exclude .venv --exclude __pycache__ \
-  agente-pronostico/ ec2-user@52.1.28.77:/home/ec2-user/forecast/agente-pronostico/
+  agente-predictivo/ ec2-user@52.1.28.77:/home/ec2-user/forecast/agente-predictivo/
 
 # 2) reconstruir (en la EC2 el binario es docker-compose, con guion)
 ssh -i ~/aws/visione-key.pem ec2-user@52.1.28.77 '
   cd /home/ec2-user/runtime/Agent-Runtime
-  FORECAST_BUILD_CONTEXT=/home/ec2-user/forecast/agente-pronostico \
+  FORECAST_BUILD_CONTEXT=/home/ec2-user/forecast/agente-predictivo \
     docker-compose -f docker-compose.forecast.yml up -d --build'
 ```
 
@@ -125,7 +125,7 @@ ssh -i ~/aws/visione-key.pem ec2-user@52.1.28.77 '
 ## 6. Los temporizadores de la ingesta
 
 ```bash
-scp -i ~/aws/visione-key.pem agente-pronostico/deploy/systemd/*.{service,timer} \
+scp -i ~/aws/visione-key.pem agente-predictivo/deploy/systemd/*.{service,timer} \
   ec2-user@52.1.28.77:/tmp/
 ssh -i ~/aws/visione-key.pem ec2-user@52.1.28.77 '
   sudo cp /tmp/forecast-*.{service,timer} /etc/systemd/system/ &&
@@ -133,7 +133,7 @@ ssh -i ~/aws/visione-key.pem ec2-user@52.1.28.77 '
   sudo systemctl enable --now forecast-etl.timer forecast-refresh.timer'
 ```
 
-Detalle y diagnóstico: `agente-pronostico/deploy/systemd/README.md`.
+Detalle y diagnóstico: `agente-predictivo/deploy/systemd/README.md`.
 
 ## 7. La consola
 
@@ -151,8 +151,8 @@ desarrollo deja pasar). Para levantar **todo local** en vez de usar la EC2: `./d
 
 ```bash
 # tests (no necesitan credenciales ni red)
-cd agente-pronostico && pytest -q      # 117
-cd agente-analizador && pytest -q      #  24
+cd agente-predictivo && pytest -q      # 117
+cd agente-historico && pytest -q      #  24
 cd mvp-debugger && npm run build && ./scripts/smoke-auth.sh   # 9 casos
 
 # salud del sistema en producción

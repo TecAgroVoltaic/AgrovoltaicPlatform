@@ -27,57 +27,66 @@ import type { Traza } from "@/app/components/TraceViewer";
 
 type View = "recon" | "pred" | "arq" | "calidad" | "datos" | "perf" | "costo" | "salud";
 type Icono = ComponentType<{ size?: number }>;
-// Una sola tabla: rótulo + icono por vista. LABEL se deriva de acá para que no
-// existan dos listas que se puedan separar.
-const NAV: [View, string, Icono][] = [
-  ["recon", "Reconciliación", IconoReconciliar],
-  ["pred", "Predicción vs Real", IconoPrediccion],
-  ["arq", "Arquitectura del agente", IconoGrafo],
-  ["perf", "Rendimiento", IconoRendimiento],
-  ["calidad", "Calidad de datos", IconoCalidad],
+
+// DOS AGENTES. No hay más, y estos son sus nombres.
+type Agente = { id: string; nombre: string; inicial: string; sub: string };
+const AGENTES: Agente[] = [
+  { id: "historico",  nombre: "Agente Histórico",  inicial: "H",
+    sub: "qué pasó y si el dato sirve" },
+  { id: "predictivo", nombre: "Agente Predictivo", inicial: "P",
+    sub: "humedad e irradiancia" },
+];
+
+// La navegación tiene DOS mitades y se arma sola.
+//
+// Arriba, las vistas DEL AGENTE: cambian al cambiar de agente porque hablan de
+// ese agente. «Arquitectura» está en las dos y no es un duplicado: es la misma
+// vista mostrando el mapa de otro agente.
+//
+// Abajo, las FIJAS: se ven siempre, con cualquier agente, porque no son de
+// ninguno. La base de datos es una sola, el costo se mira junto y la salud del
+// sistema es del sistema.
+const VISTAS_AGENTE: Record<string, [View, string, Icono][]> = {
+  historico: [
+    ["calidad", "Calidad de datos", IconoCalidad],
+    ["recon", "Reconciliación", IconoReconciliar],
+    ["perf", "Rendimiento", IconoRendimiento],
+    ["arq", "Arquitectura del agente", IconoGrafo],
+  ],
+  predictivo: [
+    ["pred", "Predicción vs Real", IconoPrediccion],
+    ["arq", "Arquitectura del agente", IconoGrafo],
+  ],
+};
+const VISTAS_FIJAS: [View, string, Icono][] = [
   ["datos", "Base de datos", IconoDatos],
   ["costo", "Costo y uso", IconoCosto],
   ["salud", "Salud del sistema", IconoSalud],
 ];
-const LABEL = Object.fromEntries(NAV.map(([v, l]) => [v, l])) as Record<View, string>;
-const AGENT_OF: Partial<Record<View, string>> = {
-  recon: "analizador", perf: "analizador",
-  pred: "pronostico", arq: "pronostico",
-  calidad: "comparador",
-};
-// La navegación arranca un grupo nuevo acá (vistas transversales, no de un agente).
-const SEPARADOR: View = "datos";
 
-// Un agente = un servicio Python detrás de /api/<id>/*. UNA tabla, porque de acá
-// salen el selector, el ping de salud, el contexto del chat y a qué vista saltar
-// al cambiar de agente: con esto repartido, agregar el tercero habría multiplicado
-// los `if (a === "...")` que había en goAgent y los ternarios del rótulo.
-//
-// `chat` no es decorativo: el Comparador NO tiene /chat. Es determinista y no
-// lleva LLM a propósito (capa-agentes.md: el LLM no está en el camino de la
-// detección numérica), así que ofrecerle un chat sería ofrecer un 502.
-type Agente = { id: string; corto: string; largo: string; inicial: string; chat: boolean };
-const AGENTES: Agente[] = [
-  { id: "analizador", corto: "Analizador", largo: "Analizador PV", inicial: "A", chat: true },
-  { id: "pronostico", corto: "Pronóstico", largo: "Pronóstico ambiental", inicial: "P", chat: true },
-  { id: "comparador", corto: "Comparador", largo: "Comparador de calidad", inicial: "C", chat: false },
-];
-/** Primera vista del agente, derivada del orden de NAV (no una segunda lista). */
-function primeraVistaDe(id: string): View | undefined {
-  return NAV.find(([v]) => AGENT_OF[v] === id)?.[0];
+const LABEL = Object.fromEntries(
+  [...Object.values(VISTAS_AGENTE).flat(), ...VISTAS_FIJAS].map(([v, l]) => [v, l]),
+) as Record<View, string>;
+
+/** ¿A qué agente pertenece la vista? undefined = es fija (de ninguno). */
+function agenteDe(v: View): string | undefined {
+  return Object.keys(VISTAS_AGENTE).find((a) => VISTAS_AGENTE[a].some(([x]) => x === v));
 }
 
 /**
- * `analizador` = ¿está habilitado el agente histórico? Viene del servidor
- * (lib/agentes) via app/page.tsx. Con él apagado la consola muestra un solo
- * agente: se caen sus vistas, su hilo de chat y su selector, y el proxy
- * /api/analizador/* ya responde 503 por su cuenta.
+ * `historico` = ¿está habilitado el Q&A del Agente Histórico? Viene del servidor
+ * (lib/agentes) via app/page.tsx. Con él apagado se cae su hilo de chat y el proxy
+ * responde 503 a /preguntar y /chat. Lo que NO se cae son sus vistas de calidad ni
+ * su arquitectura: son deterministas, no gastan un centavo, y son justamente lo
+ * que se está construyendo.
  */
-export function Console({ analizador = true }: { analizador?: boolean }) {
-  const vistas = NAV.filter(([v]) => analizador || AGENT_OF[v] !== "analizador");
-  const agentes = AGENTES.filter((a) => analizador || a.id !== "analizador");
-  const [agent, setAgent] = useState(analizador ? "analizador" : "pronostico");
-  const [view, setView] = useState<View>(analizador ? "recon" : "pred");
+export function Console({ historico = true }: { historico?: boolean }) {
+  const [agent, setAgent] = useState("predictivo");
+  const [view, setView] = useState<View>("pred");
+  // La barra se rearma con el agente elegido: sus vistas arriba, las fijas abajo.
+  const vistas: [View, string, Icono][] = [
+    ...(VISTAS_AGENTE[agent] || []), ...VISTAS_FIJAS,
+  ];
   const [theme, setTheme] = useState("");
   const [sesion, setSesion] = useState<{ agent: string; traza: Traza }[]>([]);
   const [up, setUp] = useState(true);
@@ -100,20 +109,21 @@ export function Console({ analizador = true }: { analizador?: boolean }) {
 
   function goView(v: View) {
     setView(v);
-    const a = AGENT_OF[v];
+    const a = agenteDe(v);
     if (a) setAgent(a);
   }
   function goAgent(a: string) {
     setAgent(a);
     // Si la vista abierta es de OTRO agente, saltar a la primera del elegido. Las
-    // transversales (sin agente) se quedan: no pertenecen a nadie y cambiar de
-    // agente mirando «Base de datos» no debería moverte de pantalla.
-    const duenio = AGENT_OF[view];
+    // fijas se quedan: no son de nadie, y cambiar de agente mirando «Base de
+    // datos» no debería moverte de pantalla.
+    const duenio = agenteDe(view);
     if (duenio && duenio !== a) {
-      const destino = primeraVistaDe(a);
+      const destino = VISTAS_AGENTE[a]?.[0]?.[0];
       if (destino) setView(destino);
     }
   }
+
   function toggleTheme() {
     const eff = theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
     setTheme(eff === "dark" ? "light" : "dark");
@@ -121,7 +131,7 @@ export function Console({ analizador = true }: { analizador?: boolean }) {
   const addTraza = (ag: string, traza: Traza) => setSesion((s) => [...s, { agent: ag, traza }]);
   // El chat habla con el agente de la sección (goView ya sincroniza `agent`).
   const agenteActivo = AGENTES.find((a) => a.id === agent);
-  const contexto = `${agenteActivo?.largo ?? agent} · ${LABEL[view]}`;
+  const contexto = `${agenteActivo?.nombre ?? agent} · ${LABEL[view]}`;
 
   return (
     <div className="app">
@@ -146,23 +156,18 @@ export function Console({ analizador = true }: { analizador?: boolean }) {
           </button>
         </div>
         <div className="agent">
-          {agentes.length === 1 ? (
-            // Un solo agente: un rótulo, no un selector de una opción.
-            <button className="on" disabled data-tip={agentes[0].largo}>
-              {ancha ? agentes[0].largo : agentes[0].inicial}
-            </button>
-          ) : agentes.map((a) => (
+          {AGENTES.map((a) => (
             <button key={a.id} className={agent === a.id ? "on" : ""}
-                    onClick={() => goAgent(a.id)} data-tip={a.largo}
+                    onClick={() => goAgent(a.id)} data-tip={`${a.nombre}: ${a.sub}`}
                     aria-pressed={agent === a.id}>
-              {ancha ? a.corto : a.inicial}
+              {ancha ? a.nombre.replace("Agente ", "") : a.inicial}
             </button>
           ))}
         </div>
         <nav className="nav">
           {vistas.map(([v, l, Icono]) => (
             <Fragment key={v}>
-              {v === SEPARADOR && <div className="navsep" />}
+              {v === VISTAS_FIJAS[0][0] && <div className="navsep" />}
               <button className={"navitem" + (view === v ? " on" : "")} onClick={() => goView(v)}
                       data-tip={ancha ? undefined : l} aria-label={l}>
                 <Icono size={16} />
@@ -200,7 +205,7 @@ export function Console({ analizador = true }: { analizador?: boolean }) {
         </div>
       </main>
 
-      {agenteActivo?.chat && (
+      {(agent === "predictivo" || historico) && (
         <ChatWidget agent={agent} contexto={contexto} onTraza={addTraza} />
       )}
     </div>

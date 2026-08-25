@@ -46,7 +46,7 @@ export function CostoView({ agent, theme, sesion }: { agent: string; theme: stri
   return (
     <section>
       <div className="phead">
-        <h1>Costo y uso · {agent === "analizador" ? "Analizador" : "Pronóstico"}</h1>
+        <h1>Costo y uso · {agent === "historico" ? "Histórico" : "Predictivo"}</h1>
         <p>Cuánto cuesta operar el agente. Acumulado real de <span className="mono">GET /uso</span> (persistido) y el gasto de esta sesión.</p>
       </div>
 

@@ -20,7 +20,7 @@ export function q(tabla: string, columna: string, p: any): string {
   const u = new URLSearchParams({ tabla, columna, bucket: p.bucket, agg: "avg" });
   if (p.desde) u.set("desde", p.desde);
   if (p.hasta) u.set("hasta", p.hasta);
-  return `/api/analizador/datos/serie?${u}`;
+  return `/api/historico/datos/serie?${u}`;
 }
 
 /** Número formateado en es-CR; "—" si no es finito (dato ausente o error). */

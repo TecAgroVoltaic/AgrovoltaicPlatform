@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 #
 # Smoke del BLOQUEO de agentes: verifica con HTTP real que el agente histórico
-# (Analizador PV) esté cortado cuando el flag está apagado y vuelva entero
+# (Agente Histórico) esté cortado cuando el flag está apagado y vuelva entero
 # cuando se enciende. Mismo enfoque que smoke-auth.sh: la app ya buildeada, sin
 # runner de tests nuevo.
 #
 #   npm run build && scripts/smoke-agentes.sh
 #
 # Por qué existe: esconder botones no es bloquear. Lo que cuesta plata es
-# /api/analizador/* (consulta la Supabase PV y gasta tokens del LLM), así que lo
+# /api/historico/* (consulta la Supabase PV y gasta tokens del LLM), así que lo
 # que hay que probar es la puerta, no la UI. Y el flag tiene que ser reversible:
 # si encenderlo no devuelve el agente, el "bloqueo" fue en realidad un borrado.
 set -euo pipefail
@@ -79,14 +79,14 @@ contiene() {
 
 echo ">> flag APAGADO — el agente histórico debe estar bloqueado"
 levantar ""
-verificar "proxy del analizador responde 503"  "503" "$(codigo -b "$COOKIES" "$BASE/api/analizador/health")"
+verificar "proxy del analizador responde 503"  "503" "$(codigo -b "$COOKIES" "$BASE/api/historico/health")"
 verificar "el chat del analizador responde 503" "503" "$(codigo -b "$COOKIES" -X POST \
-    "$BASE/api/analizador/chat" -H 'content-type: application/json' \
+    "$BASE/api/historico/chat" -H 'content-type: application/json' \
     -d '{"mensajes":[{"rol":"user","texto":"hola"}]}')"
 verificar "la página suelta /analizador no existe" "404" "$(codigo -b "$COOKIES" "$BASE/analizador")"
-verificar "el agente de pronóstico sigue accesible" "200" "$(codigo -b "$COOKIES" "$BASE/api/pronostico/health")"
+verificar "el agente de pronóstico sigue accesible" "200" "$(codigo -b "$COOKIES" "$BASE/api/predictivo/health")"
 contiene "el 503 dice cómo revertirlo" "AGENTE_ANALIZADOR=on" \
-    "$(curl -s -b "$COOKIES" "$BASE/api/analizador/health")"
+    "$(curl -s -b "$COOKIES" "$BASE/api/historico/health")"
 
 consola="$(curl -s -b "$COOKIES" "$BASE/")"
 for vista in "Reconciliación" "Rendimiento"; do
@@ -105,7 +105,7 @@ levantar "on"
 # No se exige 200: acá (y en el CI) no hay ningún sidecar del analizador
 # corriendo, así que el proxy contesta 502 «servicio inaccesible». Lo que se
 # prueba es que el request LLEGA al proxy en vez de morir en el bloqueo.
-respuesta_proxy="$(curl -s -b "$COOKIES" "$BASE/api/analizador/health")"
+respuesta_proxy="$(curl -s -b "$COOKIES" "$BASE/api/historico/health")"
 if [[ "$respuesta_proxy" == *"AGENTE_ANALIZADOR=on"* ]]; then
     printf '  FALLA %-46s sigue bloqueado\n' "el proxy del analizador deja pasar"
     fallos=$((fallos + 1))

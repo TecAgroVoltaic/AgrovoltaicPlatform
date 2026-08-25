@@ -31,11 +31,11 @@ export function WebArquitectura() {
       />
 
       <h2>El proxy /api/* (por qué el browser nunca ve las keys)</h2>
-      <Diagram>{`  Browser ─► /api/analizador/*  (route handler, inyecta x-api-key) ─► :8010 ─► Supabase PV (RO)
-          └► /api/pronostico/*  (route handler, inyecta x-api-key) ─► :8000 ─► AgroDash / store (RO)`}</Diagram>
+      <Diagram>{`  Browser ─► /api/historico/*  (route handler, inyecta x-api-key) ─► :8010 ─► Supabase PV (RO)
+          └► /api/predictivo/*  (route handler, inyecta x-api-key) ─► :8000 ─► AgroDash / store (RO)`}</Diagram>
       <p>El browser <strong>nunca</strong> habla directo con los servicios Python ni ve las keys. Todo pasa por rutas catch-all del lado servidor:</p>
       <ul>
-        <li><IC>app/api/analizador/[...path]/route.ts</IC> y <IC>app/api/pronostico/[...path]/route.ts</IC> reenvían método + query + body al upstream.</li>
+        <li><IC>app/api/historico/[...path]/route.ts</IC> y <IC>app/api/predictivo/[...path]/route.ts</IC> reenvían método + query + body al upstream.</li>
         <li><IC>app/lib/upstream.ts</IC> hace el <IC>fetch</IC> e inyecta el header <IC>x-api-key</IC> solo si la key existe. Si el Python está caído, devuelve un 502 legible.</li>
         <li><IC>app/lib/config.ts</IC> es <strong>server-only</strong>: aquí viven las URLs y keys, nunca se serializan al cliente.</li>
       </ul>
@@ -48,10 +48,10 @@ export function WebArquitectura() {
       <Table
         head={["Variable (server)", "Default", "Para qué"]}
         rows={[
-          [<IC>ANALIZADOR_URL</IC>, <IC>http://127.0.0.1:8010</IC>, "servicio del analizador"],
-          [<IC>PRONOSTICO_URL</IC>, <IC>http://127.0.0.1:8000</IC>, "servicio del pronóstico"],
-          [<IC>ANALIZADOR_API_KEY</IC>, "(vacío en local)", "se inyecta como x-api-key al analizador"],
-          [<IC>PRONOSTICO_API_KEY</IC>, "(vacío en local)", "se inyecta como x-api-key al pronóstico"],
+          [<IC>HISTORICO_URL</IC>, <IC>http://127.0.0.1:8010</IC>, "servicio del analizador"],
+          [<IC>PREDICTIVO_URL</IC>, <IC>http://127.0.0.1:8000</IC>, "servicio del pronóstico"],
+          [<IC>HISTORICO_API_KEY</IC>, "(vacío en local)", "se inyecta como x-api-key al analizador"],
+          [<IC>PREDICTIVO_API_KEY</IC>, "(vacío en local)", "se inyecta como x-api-key al pronóstico"],
         ]}
       />
       <p>En local se corre todo con <IC>./dev.sh</IC> (levanta analizador:8010 + pronóstico:8000 + next:3000). Detalle en <a href="#infra">Despliegue</a>.</p>
@@ -66,19 +66,19 @@ export function WebConsola() {
       title="Vistas de la consola"
       lead="Qué muestra cada sección de la consola (ruta /), y de qué endpoint sale cada dato."
     >
-      <p>La consola (<IC>components/console/Console.tsx</IC>) es un shell con barra lateral: selector de agente (Analizador / Pronóstico), navegación de 7 vistas en dos grupos (las de cada agente y las transversales), indicador de salud de la DB (ping a <IC>/health</IC> cada 15 s) y toggle de tema. Abajo a la derecha, el chat flotante.</p>
+      <p>La consola (<IC>components/console/Console.tsx</IC>) es un shell con barra lateral: selector de agente (Histórico / Predictivo), navegación en dos mitades (las vistas del agente elegido y las fijas, que se ven siempre), indicador de salud de la DB (ping a <IC>/health</IC> cada 15 s) y toggle de tema. Abajo a la derecha, el chat flotante.</p>
 
       <h2>1 · Reconciliación</h2>
-      <p>La vista por defecto del analizador. Muestra los <strong>datos crudos en vivo</strong> (tabla <IC>electrico_corregido</IC>: timestamp, potencias PV1/PV2/AC, temperaturas) buscables y con «cargar más», más tres tarjetas de <strong>cobertura</strong> (eléctrica, radiación 15 s, performance). La idea: preguntale al chat y cruzá cada número de su respuesta contra estos datos. Sale de <IC>/api/analizador/datos/muestra</IC> y <IC>/datos/tablas</IC>.</p>
+      <p>La vista por defecto del analizador. Muestra los <strong>datos crudos en vivo</strong> (tabla <IC>electrico_corregido</IC>: timestamp, potencias PV1/PV2/AC, temperaturas) buscables y con «cargar más», más tres tarjetas de <strong>cobertura</strong> (eléctrica, radiación 15 s, performance). La idea: preguntale al chat y cruzá cada número de su respuesta contra estos datos. Sale de <IC>/api/historico/datos/muestra</IC> y <IC>/datos/tablas</IC>.</p>
 
       <h2>2 · Predicción vs Real</h2>
-      <p>La vista del pronóstico. Pinta un <strong>backtest</strong> (<IC>/api/pronostico/backtest?variable=&dias=&bucket=h</IC>) con tres series: Real (medido), Reconstrucción del método y Cielo despejado (techo). Controles: variable (irradiancia / humedad de suelo) y ventana (3/7/14 días). Debajo, KPIs de error (MAE, sesgo, error relativo, skill) y el desglose de mayores desvíos.</p>
+      <p>La vista del pronóstico. Pinta un <strong>backtest</strong> (<IC>/api/predictivo/backtest?variable=&dias=&bucket=h</IC>) con tres series: Real (medido), Reconstrucción del método y Cielo despejado (techo). Controles: variable (irradiancia / humedad de suelo) y ventana (3/7/14 días). Debajo, KPIs de error (MAE, sesgo, error relativo, skill) y el desglose de mayores desvíos.</p>
       <Note kind="warn">
         <div>El banner lo deja explícito: <b>es un backtest, no predicciones en vivo</b>. El agente no pronostica de forma continua: predice solo cuando se le llama.</div>
       </Note>
 
       <h2>3 · Rendimiento</h2>
-      <p>KPIs reales del sistema (energía por arreglo, PR, GHI media/kt*) llamando las tools <IC>energia_por_arreglo</IC>, <IC>performance_ratio</IC>, <IC>irradiancia_resumen</IC>, <IC>temperatura_por_arreglo</IC>. Series graficadas por período (todo / 2026 / mayo) y variable (potencia, irradiancia, kt*, PR), con comparación PV1 vs PV2. Incluye un scatter <strong>irradiancia → potencia PV1</strong>. Las series salen de <IC>/api/analizador/datos/serie</IC>.</p>
+      <p>KPIs reales del sistema (energía por arreglo, PR, GHI media/kt*) llamando las tools <IC>energia_por_arreglo</IC>, <IC>performance_ratio</IC>, <IC>irradiancia_resumen</IC>, <IC>temperatura_por_arreglo</IC>. Series graficadas por período (todo / 2026 / mayo) y variable (potencia, irradiancia, kt*, PR), con comparación PV1 vs PV2. Incluye un scatter <strong>irradiancia → potencia PV1</strong>. Las series salen de <IC>/api/historico/datos/serie</IC>.</p>
       <Note>
         <div>Honestidad sobre la cadencia variable: el gráfico de «potencia» es <b>potencia media por bucket</b> (robusta al muestreo que cambia de 2 s a 5 min); la energía real en kWh vive en el KPI.</div>
       </Note>

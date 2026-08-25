@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { DocsShell } from "./DocsShell";
-import { analizadorActivo } from "@/app/lib/agentes";
+import { historicoActivo } from "@/app/lib/agentes";
 
 export const metadata: Metadata = {
   title: "AgroVoltaic · Documentación del sistema",
@@ -14,5 +14,5 @@ export const dynamic = "force-dynamic";
 
 export default function DocsPage() {
   // Server component: el flag del entorno baja como prop (ver lib/agentes).
-  return <DocsShell analizador={analizadorActivo()} />;
+  return <DocsShell historico={historicoActivo()} />;
 }

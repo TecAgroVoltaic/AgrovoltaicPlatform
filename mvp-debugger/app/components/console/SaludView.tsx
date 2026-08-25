@@ -13,7 +13,7 @@ import { useEffect, useState } from "react";
 import { jget, mensajeError, nfmt } from "@/app/lib/client";
 import { IconoAlerta, IconoCheck } from "@/app/components/Iconos";
 
-const RUTA = "/api/pronostico/salud/panel";
+const RUTA = "/api/predictivo/salud/panel";
 const REFRESCO_MS = 30000;
 // Último panel leído, a nivel de módulo. La vista se desmonta al cambiar de
 // sección y se vuelve a montar al volver: sin esto, cada visita arrancaba en

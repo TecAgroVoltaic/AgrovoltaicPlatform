@@ -27,7 +27,7 @@ export function DataExplorer() {
   const [msg, setMsg] = useState<string>("");
 
   useEffect(() => {
-    jget<{ relaciones: Rel[] }>("/api/analizador/datos/tablas").then((r) => {
+    jget<{ relaciones: Rel[] }>("/api/historico/datos/tablas").then((r) => {
       if (r.ok) setRels(r.data.relaciones);
       else setMsg(JSON.stringify(r.data));
     });
@@ -39,8 +39,8 @@ export function DataExplorer() {
     setPuntos(null);
     setSerieCol("");
     const [m, c] = await Promise.all([
-      jget(`/api/analizador/datos/muestra?tabla=${clave}&limit=15`),
-      jget(`/api/analizador/datos/columnas?tabla=${clave}`),
+      jget(`/api/historico/datos/muestra?tabla=${clave}&limit=15`),
+      jget(`/api/historico/datos/columnas?tabla=${clave}`),
     ]);
     if (m.ok) setMuestra(m.data);
     if (c.ok) {
@@ -56,7 +56,7 @@ export function DataExplorer() {
     if (!sel || !serieCol) return;
     setPuntos(null);
     const r = await jget(
-      `/api/analizador/datos/serie?tabla=${sel}&columna=${serieCol}&bucket=${bucket}&agg=${agg}`,
+      `/api/historico/datos/serie?tabla=${sel}&columna=${serieCol}&bucket=${bucket}&agg=${agg}`,
     );
     if (r.ok) setPuntos(r.data.puntos.map((p: any) => ({ t: p.t, v: p.v })));
     else setMsg(JSON.stringify(r.data));

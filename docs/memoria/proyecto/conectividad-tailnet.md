@@ -15,7 +15,7 @@ de forma limpia y segura, vía **Tailscale** (malla WireGuard). Es la vía (a) d
 | Nodo | IP tailnet | Qué es |
 |------|-----------|--------|
 | `iot-cartago-agrovoltaic` | `100.101.177.71` | **Server LIVE de Cartago** (`iot-mainserver`, Ubuntu, user `embebidos`). Fuente VIVA: PostgreSQL 14 nativo, DB `control`. **NUEVO 2026-07-23: recién metido a la tailnet** (antes solo AnyDesk — ver [[agrodash]]). |
-| `izack-rig` | `100.100.130.47` | Rig con la **copia restaurada** del dump de AgroDash (contenedor `agrodash-pg`, DB `agrodash_control`, snapshot 2026-06-30). Entorno de pruebas del Comparador. |
+| `izack-rig` | `100.100.130.47` | Rig con la **copia restaurada** del dump de AgroDash (contenedor `agrodash-pg`, DB `agrodash_control`, snapshot 2026-06-30). Entorno de pruebas del Agente Histórico. |
 | `izacks-macbook-pro` | `100.122.165.37` | Mac del usuario. |
 | `iphone182` | `100.109.11.81` | Offline. |
 | `agrovoltaic-etl` (EC2 VisioneFlow) | `100.125.236.125` | `52.1.28.77` / `api.flow.visione-edge.com` (Amazon Linux, `ec2-user`). **En la tailnet desde 2026-07-23**, tagueada `tag:agrovoltaic-etl`. Consumidor read-only. |

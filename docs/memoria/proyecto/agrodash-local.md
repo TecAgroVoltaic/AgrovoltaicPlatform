@@ -30,7 +30,7 @@ resuelve la fuente por URL.
 ## La local (opcional, para trabajar aislado)
 
 ```bash
-~/AgrovoltaicPlatform/agente-pronostico/scripts/agrodash_local.sh
+~/AgrovoltaicPlatform/agente-predictivo/scripts/agrodash_local.sh
 ```
 
 Corre en **foreground**: Ctrl+C baja el server (la data persiste). El script es idempotente
@@ -58,7 +58,7 @@ El restore tarda ~1 min con `-j 4`.
 
 Esto **descarta meter el dump completo en Supabase**: el proyecto `jijklguopafevyucogro` es
 **Free tier (límite 500 MB)** y ya usa 365 MB — el dump es 10× el límite, y pasarse deja el
-proyecto en read-only. La vía correcta es la que ya implementa `pronostico/etl.py`: leer esta
+proyecto en read-only. La vía correcta es la que ya implementa `predictivo/etl.py`: leer esta
 réplica local y subir a Supabase **solo los targets de San Carlos**
 (`lecturas_ambientales_sc`), respetando la separación de regiones de
 [[arquitectura-regiones]].

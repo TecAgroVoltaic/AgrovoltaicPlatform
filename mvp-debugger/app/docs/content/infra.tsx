@@ -9,16 +9,16 @@ export function Infra() {
       lead="Cómo se levanta todo en local con un comando, y cómo viven los dos agentes como sidecars detrás de nginx en la EC2 de VisioneFlow."
     >
       <h2>Local: un solo comando</h2>
-      <p><IC>mvp-debugger/dev.sh</IC> levanta los tres procesos en <IC>127.0.0.1</IC> con el venv de <IC>agente-pronostico/.venv</IC>, y cierra todo con Ctrl-C.</p>
+      <p><IC>mvp-debugger/dev.sh</IC> levanta los tres procesos en <IC>127.0.0.1</IC> con el venv de <IC>agente-predictivo/.venv</IC>, y cierra todo con Ctrl-C.</p>
       <Table
         head={["Proceso", "Bind", "Comando"]}
         rows={[
-          ["Analizador PV", "127.0.0.1:8010", <IC>uvicorn analizador.api:app</IC>],
-          ["Pronóstico", "127.0.0.1:8000", <IC>uvicorn pronostico.api:app</IC>],
+          ["Agente Histórico", "127.0.0.1:8010", <IC>uvicorn analizador.api:app</IC>],
+          ["Pronóstico", "127.0.0.1:8000", <IC>uvicorn predictivo.api:app</IC>],
           ["Next dev", "localhost:3000", <IC>next dev -p 3000</IC>],
         ]}
       />
-      <p>La <IC>ANTHROPIC_API_KEY</IC> se exporta desde <IC>agente-pronostico/.env</IC> (no se imprime) y la heredan ambos procesos. En local los servicios corren <strong>sin</strong> API key. Los servicios leen las DBs en solo-lectura.</p>
+      <p>La <IC>ANTHROPIC_API_KEY</IC> se exporta desde <IC>agente-predictivo/.env</IC> (no se imprime) y la heredan ambos procesos. En local los servicios corren <strong>sin</strong> API key. Los servicios leen las DBs en solo-lectura.</p>
 
       <h2>Producción: EC2 (VisioneFlow «Agent-Runtime»)</h2>
       <Meta items={[
@@ -60,17 +60,17 @@ export function Infra() {
       </Note>
 
       <h2>Variables de entorno por servicio (solo nombres)</h2>
-      <h3>agente-analizador</h3>
+      <h3>agente-historico</h3>
       <Table
         head={["Variable", "Rol"]}
         rows={[
           [<IC>ANTHROPIC_API_KEY · ANTHROPIC_MODEL</IC>, "LLM (modelo default claude-haiku-4-5). En EC2 no hace falta si el cerebro vive en VisioneFlow"],
-          [<IC>ANALIZADOR_DB_URL / DATABASE_URL</IC>, "Supabase PV (Session pooler, RO). La primera manda"],
-          [<IC>ANALIZADOR_API_KEY</IC>, "Clave que exige /tool, /preguntar, /chat, /uso, /datos/* (header x-api-key)"],
+          [<IC>HISTORICO_DB_URL / DATABASE_URL</IC>, "Supabase PV (Session pooler, RO). La primera manda"],
+          [<IC>HISTORICO_API_KEY</IC>, "Clave que exige /tool, /preguntar, /chat, /uso, /datos/* (header x-api-key)"],
           [<IC>DATA_DESDE · DATA_HASTA</IC>, "Rango histórico informativo del system prompt"],
         ]}
       />
-      <h3>agente-pronostico</h3>
+      <h3>agente-predictivo</h3>
       <Table
         head={["Variable", "Rol"]}
         rows={[
@@ -82,18 +82,18 @@ export function Infra() {
         ]}
       />
       <Note kind="crit">
-        <div><b>Asimetría de nombres a tener en cuenta.</b> En el mvp-debugger la variable se llama <IC>PRONOSTICO_API_KEY</IC>, pero el servicio Python valida su clave contra <IC>FORECAST_API_KEY</IC>. El <b>valor</b> debe coincidir; solo cambia el nombre en cada extremo. En el analizador, <IC>ANALIZADOR_API_KEY</IC> es el mismo nombre en ambos lados.</div>
+        <div><b>Asimetría de nombres a tener en cuenta.</b> En el mvp-debugger la variable se llama <IC>PREDICTIVO_API_KEY</IC>, pero el servicio Python valida su clave contra <IC>FORECAST_API_KEY</IC>. El <b>valor</b> debe coincidir; solo cambia el nombre en cada extremo. En el analizador, <IC>HISTORICO_API_KEY</IC> es el mismo nombre en ambos lados.</div>
       </Note>
 
       <h2>Proceso de deploy (sidecars)</h2>
       <p>El código de los agentes no está en git del Backend: se sube por rsync a la EC2 y se levanta con compose.</p>
       <Pre>{`# 1. subir el código a la EC2 (rsync, excluye .venv/__pycache__)
-rsync -av .../agente-pronostico/ ec2-user@52.1.28.77:/home/ec2-user/forecast/agente-pronostico/
+rsync -av .../agente-predictivo/ ec2-user@52.1.28.77:/home/ec2-user/forecast/agente-predictivo/
 
 # 2. crear el .env del sidecar (DATABASE_URL + FORECAST_API_KEY con openssl rand -hex 32)
 
 # 3. levantar (docker-compose, con guion, en la EC2)
-FORECAST_BUILD_CONTEXT=/home/ec2-user/forecast/agente-pronostico \\
+FORECAST_BUILD_CONTEXT=/home/ec2-user/forecast/agente-predictivo \\
   docker-compose -f docker-compose.forecast.yml up -d --build
 
 # 4. verificar contra el dominio público
