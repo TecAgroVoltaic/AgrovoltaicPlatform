@@ -1,0 +1,13 @@
+[Unit]
+Description=Refresca el sidecar del Predictivo (recrea el contenedor -> re-consulta la DB)
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=ec2-user
+SupplementaryGroups=docker
+WorkingDirectory=/home/ec2-user/agrovoltaic/predictivo
+ExecStart=/usr/bin/docker compose -f docker-compose.predictivo.yml up -d --force-recreate
+TimeoutStartSec=10min
+SyslogIdentifier=predictivo-refresh

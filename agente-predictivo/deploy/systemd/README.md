@@ -6,25 +6,25 @@ saber desde el repo cada cuánto corría el ETL, ni reconstruir el server si se 
 
 | Unit | Qué hace | Cadencia |
 |---|---|---|
-| `forecast-etl.timer` → `.service` | corre `python -m predictivo.etl` dentro del sidecar | cada 15 min |
-| `forecast-refresh.timer` → `.service` | recrea el contenedor → re-lee la serie del store | cada 6 h |
+| `predictivo-etl.timer` → `.service` | corre `python -m predictivo.etl` dentro del sidecar | cada 15 min |
+| `predictivo-refresh.timer` → `.service` | recrea el contenedor → re-lee la serie del store | cada 6 h |
 
 ## Instalar / actualizar en la EC2
 
 ```bash
-scp -i ~/aws/visione-key.pem deploy/systemd/*.{service,timer} ec2-user@52.1.28.77:/tmp/
-ssh -i ~/aws/visione-key.pem ec2-user@52.1.28.77 '
-  sudo cp /tmp/forecast-*.{service,timer} /etc/systemd/system/ &&
+scp -i ~/.ssh/VisioneMetrics.pem deploy/systemd/predictivo-*.{service,timer} ec2-user@34.203.122.144:/tmp/
+ssh -i ~/.ssh/VisioneMetrics.pem ec2-user@34.203.122.144 '
+  sudo cp /tmp/predictivo-*.{service,timer} /etc/systemd/system/ &&
   sudo systemctl daemon-reload &&
-  sudo systemctl enable --now forecast-etl.timer forecast-refresh.timer'
+  sudo systemctl enable --now predictivo-etl.timer predictivo-refresh.timer'
 ```
 
 ## Verificar
 
 ```bash
-systemctl list-timers 'forecast-*' --no-pager     # próxima y última corrida
-systemctl status forecast-etl.service --no-pager  # resultado del último ciclo
-journalctl -t forecast-etl -n 50                  # log de la ingesta
+systemctl list-timers 'predictivo-*' --no-pager     # próxima y última corrida
+systemctl status predictivo-etl.service --no-pager  # resultado del último ciclo
+journalctl -t predictivo-etl -n 50                  # log de la ingesta
 ```
 
 ## Diagnóstico: el ETL falla

@@ -1,0 +1,42 @@
+# Sidecar del Agente Predictivo (FastAPI con el pronostico de irradiancia).
+#
+# Proyecto compose INDEPENDIENTE (name: predictivo). Hasta 2026-08-24 este
+# servicio se levantaba desde `docker-compose.forecast.yml`, que vivia DENTRO del
+# repo de VisioneFlow (Agent-Runtime) en la EC2 de produccion de la plataforma.
+# Eso ataba AgroVoltaic a un repo ajeno: cada deploy del Backend hacia
+# `git reset --hard` y habia que acordarse de no tocar este archivo. Ahora el
+# despliegue vive en ESTE repo, junto al codigo que despliega.
+#
+# Uso (en el server, desde /home/ec2-user/agrovoltaic/predictivo):
+#   docker compose -f docker-compose.predictivo.yml up -d --build
+#
+# Requiere: ./agente-predictivo (codigo, via rsync) y ./predictivo.env (NO se versiona).
+name: predictivo
+
+services:
+  predictivo:
+    build:
+      context: ${PREDICTIVO_BUILD_CONTEXT:-./agente-predictivo}
+      dockerfile: Dockerfile
+    image: predictivo-irradiancia:latest
+    # host-net: nginx corre en el HOST (no en un contenedor), asi que lo alcanza
+    # en 127.0.0.1:8000, y el contenedor hereda el acceso del host a la red de la
+    # DB (la replica local de AgroDash en 127.0.0.1:5433, y Tailscale si se instala).
+    network_mode: host
+    # Bind a LOOPBACK, no a 0.0.0.0. El agente no tiene por que ser alcanzable
+    # desde la VPC: quien lo publica es nginx, con TLS y con el gate de la consola
+    # delante. En la EC2 vieja escuchaba en 0.0.0.0 y lo unico que lo tapaba era
+    # el security group.
+    command: ["uvicorn", "predictivo.api:app", "--host", "127.0.0.1", "--port", "8000"]
+    env_file:
+      - predictivo.env
+    # SIN volumen de parquet montado: cargar_serie() consulta la DB en cada
+    # arranque y cachea dentro del contenedor. Por eso el refresco periodico es
+    # `up -d --force-recreate` (systemd: predictivo-refresh.timer) y no un job
+    # que borre archivos.
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3).status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

@@ -19,4 +19,4 @@ ENV DATA_DIR=/app/data
 USER appuser
 
 EXPOSE 8000
-CMD ["uvicorn", "pronostico.api:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "predictivo.api:app", "--host", "0.0.0.0", "--port", "8000"]
