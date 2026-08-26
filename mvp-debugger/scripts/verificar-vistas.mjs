@@ -450,6 +450,12 @@ check("y son exactamente DOS",
   check("se dice qué es un punto", /Cada punto es un mes/.test(cat.quéEsUnPunto({ grano: "mes" })));
   check("la serie dice qué es un punto", /quéEsUnPunto\(P\)/.test(perf));
   check("y la nube dice que el suyo es un día", /Un punto por <strong>día<\/strong>/.test(perf));
+  // El pie del gráfico se mantiene BREVE: creció a fuerza de explicar y terminó
+  // siendo un párrafo. Si vuelve a pasar, esto lo caza.
+  const pieNube = perf.match(/Un punto por <strong>día<\/strong>\.([\s\S]*?)\{ajuste \?/);
+  check("el pie de la nube no vuelve a ser un párrafo",
+    pieNube && pieNube[1].replace(/\s+/g, " ").trim().length <= 110,
+    pieNube ? `${pieNube[1].replace(/\s+/g, " ").trim().length} caracteres` : "no encontrado");
   check("y ya no dice el vago «por período»", !/media por período|un período:/.test(perf));
   check("el grano también se ve en el botón que lo elige", /\{p\.grano\}/.test(perf));
   check("existe la clase .chip-sub", css.includes(".chip-sub"));

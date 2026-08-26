@@ -139,11 +139,10 @@ export function PerfView({ theme }: { theme: string }) {
       </div>
 
       <div className="card" style={{ marginTop: 16 }}>
-        <h3>Días que rindieron menos de lo que su sol permitía</h3>
+        <h3>Potencia PV1 frente a irradiancia</h3>
         <p className="hint">
-          Un punto por <strong>día</strong>: su irradiancia media contra la potencia media
-          de PV1. La recta es lo que ese sol predice; los días marcados cayeron muy por
-          debajo, y son los que vale la pena mirar (suciedad, sombra, o el inversor).
+          Un punto por <strong>día</strong>. La recta es el ajuste por mínimos cuadrados;
+          los días marcados quedan muy por debajo.
           {ajuste ? <> · <b>R² {fmt(ajuste.r2, 2)}</b> sobre {ajuste.n} días
             {" "}· pendiente {fmt(ajuste.m, 2)} W por W/m²</> : null} · {P.label}
         </p>
@@ -160,23 +159,22 @@ export function PerfView({ theme }: { theme: string }) {
                 })) }) }} />
             {descartados.length ? (
               <p className="hint" style={{ marginTop: 10 }}>
-                <b>{descartados.length} {descartados.length === 1 ? "día excluido" : "días excluidos"}</b>{" "}
-                por irradiancia mayor que la constante solar ({CONSTANTE_SOLAR} W/m²): dato
-                inválido, no una nube.{" "}
+                <b>{descartados.length} {descartados.length === 1 ? "día excluido" : "días excluidos"}</b>:
+                {" "}irradiancia superior a la constante solar ({CONSTANTE_SOLAR} W/m²), dato
+                inválido.{" "}
                 {descartados.slice(0, 3).map((d) => `${d.etiqueta} (${fmt(d.x, 0)} W/m²)`).join(" · ")}.
-                Dejarlos dentro tuerce la recta y esconde los días que de verdad rindieron de menos.
               </p>
             ) : null}
             {bajos.length ? (
               <p className="hint" style={{ marginTop: 10 }}>
-                <b>{bajos.length} {bajos.length === 1 ? "día" : "días"} por debajo de lo
-                esperado:</b>{" "}
+                <b>{bajos.length} {bajos.length === 1 ? "día" : "días"} por debajo del
+                ajuste:</b>{" "}
                 {bajos.slice(0, 5).map((a) => `${a.punto.etiqueta} (−${fmt(a.faltante, 0)} W)`).join(" · ")}
                 {bajos.length > 5 ? ` y ${bajos.length - 5} más` : ""}.
               </p>
             ) : (
               <p className="hint" style={{ marginTop: 10 }}>
-                Ningún día se aparta lo bastante de la recta como para señalarlo.
+                Ningún día se aparta lo suficiente del ajuste.
               </p>
             )}
           </>
