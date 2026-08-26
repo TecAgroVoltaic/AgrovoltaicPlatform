@@ -40,8 +40,9 @@ const AGENTES: Agente[] = [
 // La navegación tiene DOS mitades y se arma sola.
 //
 // Arriba, las vistas DEL AGENTE: cambian al cambiar de agente porque hablan de
-// ese agente. «Arquitectura» está en las dos y no es un duplicado: es la misma
-// vista mostrando el mapa de otro agente.
+// ese agente. «Arquitectura» aparece en las dos y NO es la misma vista con otros
+// datos: cada agente tiene su propia pantalla porque no están organizados igual
+// (el Predictivo por modos, el Histórico por familias). `ArqView` despacha.
 //
 // Abajo, las FIJAS: se ven siempre, con cualquier agente, porque no son de
 // ninguno. La base de datos es una sola, el costo se mira junto y la salud del
@@ -193,7 +194,7 @@ export function Console({ historico = true }: { historico?: boolean }) {
       <main className="content">
         {view === "recon" && <ReconView />}
         {view === "pred" && <PredView theme={theme} />}
-        {view === "arq" && <ArqView />}
+        {view === "arq" && <ArqView agent={agent} />}
         {view === "calidad" && <CalidadView />}
         {view === "datos" && <DatosView />}
         {view === "perf" && <PerfView theme={theme} />}

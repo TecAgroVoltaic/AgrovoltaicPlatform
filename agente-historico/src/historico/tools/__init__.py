@@ -7,7 +7,8 @@ DOS FAMILIAS, y la division no es cosmetica: es la que `arquitectura.py` deriva
 para dibujar el agente, y la que dice de que trata cada pregunta.
 
   * ANALISIS  — que paso: energia, performance, irradiancia, temperatura, tendencia.
-  * CALIDAD   — si el dato sirve: veredicto del periodo, hallazgos, cielo.
+  * CALIDAD   — si el dato sirve: veredicto del periodo, hallazgos, cielo,
+                diagnostico de un dia suelto.
 
 La relacion entre las dos es lo que hace al Historico mas que ocho tools sueltas:
 las de analisis que agregan sobre un periodo incrustan el bloque `confianza`
@@ -21,6 +22,7 @@ from historico.tools import (
     catalogo,
     cielo_periodo,
     cobertura,
+    diagnostico_dia,
     energia,
     graficar,
     hallazgos,
@@ -32,7 +34,7 @@ from historico.tools import (
 
 ANALISIS = [energia, performance, irradiancia, temperatura, tendencia,
             cobertura, catalogo, graficar]
-CALIDAD = [calidad_periodo, hallazgos, cielo_periodo]
+CALIDAD = [calidad_periodo, hallazgos, cielo_periodo, diagnostico_dia]
 
 _TOOLS = ANALISIS + CALIDAD
 

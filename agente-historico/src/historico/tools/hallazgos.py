@@ -13,18 +13,18 @@ from historico.periodo import rango
 # prompt: el modelo no tiene por que saber que `saturado_85` es un DS18B20
 # desconectado, y una tool que devuelve jerga sin traducir obliga a adivinar.
 QUE_ES = {
-    "dia_incompleto": "el logger no grabo todas las horas de sol",
-    "hueco": "faltan muestras dentro de la ventana que si grabo",
-    "duplicado_timestamp": "el mismo instante aparece mas de una vez",
-    "cambio_de_cadencia": "el intervalo de muestreo cambio respecto al dia anterior",
-    "columna_ausente": "la columna no vino en el CSV de ese dia (variacion de esquema)",
+    "dia_incompleto": "el logger no grabó todas las horas de sol",
+    "hueco": "faltan muestras dentro de la ventana que sí grabó",
+    "duplicado_timestamp": "el mismo instante aparece más de una vez",
+    "cambio_de_cadencia": "el intervalo de muestreo cambió respecto al día anterior",
+    "columna_ausente": "la columna no vino en el CSV de ese día (variación de esquema)",
     "nulos": "faltan valores sueltos en la columna",
-    "fuera_de_rango": "valores fuera del rango fisico plausible",
-    "saturado_85": "85 C constante: el DS18B20 esta desconectado",
-    "constante_en_cero": "sin variacion en todo el dia; en lo electrico, no hubo generacion",
+    "fuera_de_rango": "valores fuera del rango físico plausible",
+    "saturado_85": "85 °C constante: el DS18B20 está desconectado",
+    "constante_en_cero": "sin variación en todo el día; en lo eléctrico, no hubo generación",
     "sensor_plano": "clavado en un valor que no es 0 ni 85: sensor trabado",
-    "offset_nocturno": "el offset del piranometro sin calibrar (-38,845)",
-    "kt_imposible": "mas energia que la de cielo despejado: dato invalido, no una nube",
+    "offset_nocturno": "el offset del piranómetro sin calibrar (-38,845)",
+    "kt_imposible": "más energía que la de cielo despejado: dato inválido, no una nube",
 }
 
 SCHEMA = {

@@ -134,8 +134,11 @@ check("la vista de calidad pertenece al Histórico",
   /historico: \[[\s\S]{0,200}\["calidad"/.test(consola));
 check("«Predicción vs Real» pertenece al Predictivo",
   /predictivo: \[[\s\S]{0,120}\["pred"/.test(consola));
-check("«Arquitectura» está en los DOS agentes (mismo componente, otro mapa)",
+check("«Arquitectura» está en los DOS agentes",
   (consola.match(/\["arq", "Arquitectura del agente"/g) || []).length === 2);
+check("y la vista recibe DE QUÉ agente es",
+  /view === "arq" && <ArqView agent={agent} \/>/.test(consola),
+  "sin el prop, los dos agentes vuelven a dibujar el mismo mapa");
 
 // La barra tiene dos mitades y se arma sola. Antes era una lista unica filtrada a
 // mano; con dos agentes y vistas propias eso se desincroniza solo.
@@ -218,6 +221,88 @@ check("y son exactamente DOS",
   check("trae las herramientas", Array.isArray(m.herramientas) && m.herramientas.length > 0);
   check("trae los limites", !!m.limites);
   check("y la ficha del agente", !!(m.agente && m.agente.nombre));
+}
+
+// ── 3d. Arquitectura: cada agente, SU mapa ────────────────────────────────────
+// El defecto que este bloque impide que vuelva: `ArqView` tenía la ruta del
+// Predictivo fija y la barra la ofrecía bajo los dos agentes, así que con el
+// Histórico seleccionado se dibujaba el mapa del OTRO agente con este rótulo. Y
+// como la vista cae a una copia guardada cuando el servicio no responde, el mapa
+// equivocado ni siquiera mostraba un error: se veía terminado.
+{
+  const fs = require("node:fs");
+  const leer = (f) => fs.readFileSync(path.join(RAIZ, f), "utf8");
+  const despachador = leer("app/components/console/arquitectura/ArqView.tsx");
+  const pred = leer("app/components/console/arquitectura/ArqPredictivo.tsx");
+  const hist = leer("app/components/console/arquitectura/ArqHistorico.tsx");
+
+  check("ArqView despacha por agente", /agent === "historico" \? <ArqHistorico/.test(despachador));
+  check("el Predictivo pide SU ruta", /RUTA = "\/api\/predictivo\/arquitectura"/.test(pred));
+  check("el Histórico pide SU ruta", /RUTA = "\/api\/historico\/arquitectura"/.test(hist));
+  check("ninguna vista pide la ruta del otro agente",
+    !/predictivo\/arquitectura/.test(hist) && !/historico\/arquitectura/.test(pred));
+
+  // La guarda que hace imposible el fallo silencioso.
+  const { esMapaHistorico } = require(path.join(OUT, "app/components/console/arquitectura/mapaHistorico.js"));
+  const { RESPALDO_HISTORICO } = require(path.join(OUT, "app/components/console/arquitectura/respaldoHistorico.js"));
+  const { MAPA_RESPALDO } = require(path.join(OUT, "app/components/console/arquitectura/mapaRespaldo.js"));
+
+  check("la copia del Histórico ES del Histórico", esMapaHistorico(RESPALDO_HISTORICO));
+  check("el mapa del PREDICTIVO no pasa por mapa del Histórico",
+    esMapaHistorico(MAPA_RESPALDO) === false,
+    "sin esta guarda, la copia del otro agente se dibujaría con el rótulo equivocado");
+  check("ni un JSON vacío o nulo", !esMapaHistorico(null) && !esMapaHistorico({}));
+
+  // Render REAL del panel con el mapa REAL del servicio.
+  const { PanelHistorico } = require(path.join(OUT, "app/components/console/arquitectura/ArqHistorico.js"));
+  const html = renderToStaticMarkup(React.createElement(PanelHistorico, { mapa: RESPALDO_HISTORICO }));
+
+  check("el panel del Histórico renderiza con el mapa real", html.length > 2000);
+  check("y se titula como el agente que es", /Arquitectura del Agente Histórico/.test(html));
+  check("no menciona al otro agente", !/Predictivo/.test(html));
+  check("dibuja la cadena: el LLM entra al final",
+    /1 · detección/.test(html) && /4 · redacción/.test(html));
+  check("dice que la detección corre SIN modelo de lenguaje", /Sin LLM/.test(html));
+  check("nombra las tres tablas del store",
+    ["hallazgos_calidad", "cielo_diario", "ventana_solar"].every((t) => html.includes(t)));
+  check("dice que el pool es de solo lectura", /solo lectura/.test(html));
+
+  // Los umbrales son el motivo de esta pantalla: son política, no física, y son
+  // lo que hay que poder discutir con el experto sin abrir el código.
+  for (const u of RESPALDO_HISTORICO.umbrales) {
+    check(`el umbral ${u.clave} se muestra`, html.includes(u.clave));
+    check(`  …y dice qué decide`, html.includes(u.que_decide.slice(0, 40)));
+  }
+  check("los umbrales se declaran discutibles, no verdad revelada",
+    /política/.test(html));
+
+  // Las 12 clases de hallazgo, que es lo que el agente sabe detectar.
+  check("están los 12 tipos de hallazgo",
+    RESPALDO_HISTORICO.hallazgos.tipos.every((t) => html.includes(t.tipo)),
+    "el barrido tipifica 12 clases; la vista tiene que mostrarlas todas");
+
+  // Catálogo contra servicio: la vista no puede callar la diferencia.
+  const { HERRAMIENTAS_HISTORICO } = require(path.join(OUT, "app/components/console/arquitectura/catalogoHistorico.js"));
+  const publicadas = RESPALDO_HISTORICO.herramientas.map((h) => h.nombre);
+  check("toda herramienta publicada tiene ficha en la consola",
+    publicadas.every((n) => HERRAMIENTAS_HISTORICO[n]),
+    publicadas.filter((n) => !HERRAMIENTAS_HISTORICO[n]).join(", "));
+  check("y cada herramienta publicada aparece en pantalla",
+    publicadas.every((n) => html.includes(n)));
+
+  // El catálogo de la consola tiene que cubrir las tools que hay EN EL CÓDIGO del
+  // agente, no solo las que el servidor desplegado ya expone: si el despliegue va
+  // detrás, la vista lo avisa, pero la ficha tiene que existir.
+  const registro = fs.readFileSync(
+    path.join(RAIZ, "../agente-historico/src/historico/tools/__init__.py"), "utf8");
+  const modulos = [...registro.matchAll(/^    (\w+),$/gm)].map((m) => m[1]);
+  check(`el agente registra ${modulos.length} herramientas`, modulos.length >= 12);
+
+  // El CSS que la vista necesita.
+  for (const clase of ["hist-cadena", "hist-paso", "hist-store", "hist-tools",
+                       "hist-modelo", "hist-tools-grid", "hist-marcas"]) {
+    check(`existe la clase .${clase}`, css.includes(`.${clase}`));
+  }
 }
 
 // ── 4. Resultado ──────────────────────────────────────────────────────────────

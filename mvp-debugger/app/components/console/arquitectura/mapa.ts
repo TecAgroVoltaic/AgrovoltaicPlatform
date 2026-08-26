@@ -10,19 +10,22 @@ export type Prop = {
   description?: string;
   minimum?: number;
   maximum?: number;
+  default?: unknown;
 };
 
 export type Esquema = {
   type?: string;
   properties?: Record<string, Prop>;
   required?: string[];
+  additionalProperties?: boolean;
 };
 
 export type Herramienta = {
   nombre: string;
   descripcion: string;
   input_schema: Esquema;
-  modos: string[];
+  /** Solo el Predictivo se organiza por modos; el Histórico no tiene. */
+  modos?: string[];
   ejecutor: string;
 };
 

@@ -80,7 +80,7 @@ function disponer(mapa: Mapa, modo: string): { grupos: Grupo[]; alto: number } {
         const top = y + i * (TOOL.h + TOOL.gap);
         return {
           h, ficha: HERRAMIENTAS[h.nombre], y: top, centro: top + TOOL.h / 2,
-          activa: h.modos.includes(modo),
+          activa: !!h.modos?.includes(modo),
         };
       }),
     });
@@ -215,7 +215,7 @@ export function Lienzo({ mapa, modo, onAbrir }: {
           activo={it.activa}
           onAbrir={() => onAbrir({
             titulo: it.h.nombre,
-            clase: `herramienta · modo ${it.h.modos.map(etiquetaModo).join(" y ")}`,
+            clase: `herramienta · modo ${(it.h.modos ?? []).map(etiquetaModo).join(" y ")}`,
             ficha: it.ficha,
             herramienta: it.h,
           })}

@@ -31,11 +31,11 @@ from historico.tools.hallazgos import QUE_ES
 # division, no la razon.
 OBJETIVO_FAMILIA = {
     "analisis": (
-        "Que paso: energia generada, performance ratio, irradiancia, temperatura y "
-        "tendencias sobre el historico ya corregido."
+        "Qué pasó: energía generada, performance ratio, irradiancia, temperatura y "
+        "tendencias sobre el histórico ya corregido."
     ),
     "calidad": (
-        "Si el dato sirve: completitud, validez, duplicados y como estuvo el cielo. "
+        "Si el dato sirve: completitud, validez, duplicados y cómo estuvo el cielo. "
         "Se responde LEYENDO el store de hallazgos, que escribe un barrido por lotes."
     ),
 }
@@ -86,23 +86,23 @@ def _umbrales() -> list[dict]:
     """
     return [
         {"clave": "COBERTURA_MINIMA", "valor": config.COBERTURA_MINIMA,
-         "que_decide": "debajo de esta fraccion de las horas de sol, el dia se marca incompleto"},
+         "que_decide": "debajo de esta fracción de las horas de sol, el día se marca incompleto"},
         {"clave": "DENSIDAD_MINIMA", "valor": config.DENSIDAD_MINIMA,
-         "que_decide": "faltan muestras dentro de la ventana que el logger si grabo"},
+         "que_decide": "faltan muestras dentro de la ventana que el logger sí grabó"},
         {"clave": "FACTOR_HUECO", "valor": config.FACTOR_HUECO,
-         "que_decide": "un salto de mas de N veces la cadencia del dia cuenta como hueco"},
+         "que_decide": "un salto de más de N veces la cadencia del día cuenta como hueco"},
         {"clave": "KT_DESPEJADO", "valor": config.KT_DESPEJADO,
-         "que_decide": "indice de cielo despejado a partir del cual el momento es despejado"},
+         "que_decide": "índice de cielo despejado a partir del cual el momento es despejado"},
         {"clave": "KT_CUBIERTO", "valor": config.KT_CUBIERTO,
          "que_decide": "por debajo, cubierto"},
         {"clave": "KT_IMPOSIBLE", "valor": config.KT_IMPOSIBLE,
-         "que_decide": "por encima es fisicamente imposible: dato invalido, no una nube"},
+         "que_decide": "por encima es físicamente imposible: dato inválido, no una nube"},
         {"clave": "VI_VARIABLE", "valor": config.VI_VARIABLE,
-         "que_decide": ("indice de variabilidad para llamar variable al dia. CALIBRADO sobre "
+         "que_decide": ("índice de variabilidad para llamar variable al día. CALIBRADO sobre "
                         "esta serie, no tomado de la literatura")},
         {"clave": "FRACCION_MATERIAL", "valor": contexto.FRACCION_MATERIAL,
-         "que_decide": ("que fraccion de las lecturas tiene que tocar un hallazgo grave para "
-                        "que el dia deje de ser utilizable")},
+         "que_decide": ("qué fracción de las lecturas tiene que tocar un hallazgo grave para "
+                        "que el día deje de ser utilizable")},
     ]
 
 
@@ -111,7 +111,7 @@ def mapa() -> dict:
     return {
         "agente": "historico",
         "nombre": "Histórico",
-        "objetivo": ("Responde que paso en el sistema PV de San Carlos, y si el dato en "
+        "objetivo": ("Responde qué pasó en el sistema PV de San Carlos, y si el dato en "
                      "que se apoya la respuesta sirve."),
         "modelo": config.MODEL,
         "familias": _familias(),
@@ -125,18 +125,18 @@ def mapa() -> dict:
         "deteccion": {
             "modo": "barrido por lotes",
             "escribe": ["hallazgos_calidad", "cielo_diario", "ventana_solar"],
-            "por_que": ("recorrer los dias es caro y el resultado no depende de quien "
-                        "pregunte: si la deteccion corriera dentro de una herramienta, cada "
-                        "pregunta la repetiria y dos personas podrian obtener veredictos "
-                        "distintos del mismo dia"),
+            "por_que": ("recorrer los días es caro y el resultado no depende de quién "
+                        "pregunte: si la detección corriera dentro de una herramienta, cada "
+                        "pregunta la repetiría y dos personas podrían obtener veredictos "
+                        "distintos del mismo día"),
         },
         "garantias": [
             {"que": "las herramientas no pueden escribir en la base",
              "como": "su pool de conexiones es de SOLO LECTURA (historico.db), no un permiso "
                      "que el prompt pueda pedir"},
-            {"que": "no se reporta un agregado sin decir sobre cuantos dias utiles se calculo",
+            {"que": "no se reporta un agregado sin decir sobre cuántos días útiles se calculó",
              "como": "el bloque `confianza` viaja DENTRO del payload de la herramienta, no en "
-                     "una instruccion del prompt"},
+                     "una instrucción del prompt"},
         ],
         "limites": {
             "historial_mensajes": HISTORIAL_MENSAJES,
