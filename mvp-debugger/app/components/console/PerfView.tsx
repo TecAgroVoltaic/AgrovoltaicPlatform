@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { jget, jpost, extraerLista, mensajeError, type Resp } from "@/app/lib/client";
 import { Estado } from "@/app/components/console/Estado";
 import { lineChart, scatter, palette } from "@/app/lib/charts";
+import { ajusteLineal, atipicosBajos, depurar, CONSTANTE_SOLAR, type Punto } from "@/app/lib/regresion";
 import { PERIODS, VARS, q, fmt, quéEsUnPunto, avisoParcial } from "@/app/components/console/perfCatalogo";
 
 export function PerfView({ theme }: { theme: string }) {
@@ -14,7 +15,7 @@ export function PerfView({ theme }: { theme: string }) {
   const [period, setPeriod] = useState("y2026");
   const [cmp, setCmp] = useState("ambos");
   const [series, setSeries] = useState<any>(null);
-  const [scat, setScat] = useState<[number, number][] | null>(null);
+  const [scat, setScat] = useState<Punto[] | null>(null);
   const [errKpi, setErrKpi] = useState<string | null>(null);
   const [errSerie, setErrSerie] = useState<string | null>(null);
   const [errScat, setErrScat] = useState<string | null>(null);
@@ -47,13 +48,24 @@ export function PerfView({ theme }: { theme: string }) {
     }).catch((e) => setErrSerie(String(e?.message || e)));
   }, [vari, period, intento]);
 
+  // La nube de puntos SIEMPRE va por día, aunque la serie de arriba esté en
+  // semanas o meses. No es una inconsistencia: promediando un mes, el día que
+  // generó de menos se diluye entre los otros veintinueve, y ese día es justo lo
+  // que este gráfico existe para encontrar. Un promedio no tiene dispersión que
+  // mirar.
+  const diario = { ...P, bucket: "day" };
   useEffect(() => {
     setScat(null); setErrScat(null);
-    Promise.all([jget(q("radiacion_calibrada", "irradiancia_incidente_wm2", P)), jget(q("electrico_corregido", "potencia_pv1_w", P))]).then(([g, pw]: Resp[]) => {
+    Promise.all([
+      jget(q("radiacion_calibrada", "irradiancia_incidente_wm2", diario)),
+      jget(q("electrico_corregido", "potencia_pv1_w", diario)),
+    ]).then(([g, pw]: Resp[]) => {
       const ghi = extraerLista(g, "puntos"), pot = extraerLista(pw, "puntos");
       if (ghi.error || pot.error) { setErrScat(ghi.error || pot.error); return; }
       const pm = Object.fromEntries(pot.lista.map((p: any) => [p.t, p.v]));
-      setScat(ghi.lista.filter((p: any) => pm[p.t] != null && p.v != null && pm[p.t] > 0).map((p: any) => [p.v, pm[p.t]] as [number, number]));
+      setScat(ghi.lista
+        .filter((p: any) => pm[p.t] != null && p.v != null && pm[p.t] > 0 && p.v > 0)
+        .map((p: any) => ({ x: p.v, y: pm[p.t], etiqueta: String(p.t).slice(0, 10) })));
     }).catch((e) => setErrScat(String(e?.message || e)));
   }, [period, intento]);
 
@@ -65,6 +77,12 @@ export function PerfView({ theme }: { theme: string }) {
     { l: "Performance Ratio", v: fmt(kpi.pr.pr_pv1_inclinado, 2), u: "", d: `PV1 ${fmt(kpi.pr.pr_pv1_inclinado, 3)} · PV2 ${fmt(kpi.pr.pr_pv2_vertical, 3)}` },
     { l: "GHI media · kt*", v: fmt(kpi.g.ghi_media_wm2, 0), u: "W/m²", d: `índice de claridad ${fmt(kpi.g.kt_star_medio, 2)}` },
   ] : [];
+
+  // El ajuste sale de los puntos, no del servidor: es aritmética sobre lo que ya
+  // se descargó, y hacerla acá evita un viaje y que dos sitios calculen distinto.
+  const { usables, descartados } = depurar(scat || []);
+  const ajuste = scat ? ajusteLineal(usables) : null;
+  const bajos = ajuste ? atipicosBajos(usables, ajuste) : [];
 
   const colors = [Pal.accent, Pal.real];
   let chart = "";
@@ -121,14 +139,51 @@ export function PerfView({ theme }: { theme: string }) {
       </div>
 
       <div className="card" style={{ marginTop: 16 }}>
-        <h3>Correlación irradiancia → potencia PV1</h3>
-        <p className="hint">{quéEsUnPunto(P)}, cruzado contra su irradiancia: cuánto explica el sol la generación. · {P.label}</p>
-        {scat && scat.length ? (
-          <figure dangerouslySetInnerHTML={{ __html: scatter(scat, { height: 320 }) }} />
+        <h3>Días que rindieron menos de lo que su sol permitía</h3>
+        <p className="hint">
+          Un punto por <strong>día</strong>: su irradiancia media contra la potencia media
+          de PV1. La recta es lo que ese sol predice; los días marcados cayeron muy por
+          debajo, y son los que vale la pena mirar (suciedad, sombra, o el inversor).
+          {ajuste ? <> · <b>R² {fmt(ajuste.r2, 2)}</b> sobre {ajuste.n} días
+            {" "}· pendiente {fmt(ajuste.m, 2)} W por W/m²</> : null} · {P.label}
+        </p>
+        {scat && usables.length && ajuste ? (
+          <>
+            <figure dangerouslySetInnerHTML={{ __html: scatter(
+              usables.map((p) => [p.x, p.y] as [number, number]),
+              { height: 320, xUnit: "W/m²", yUnit: "W", linea: ajuste,
+                etiquetas: usables.map((p) => p.etiqueta),
+                marcas: bajos.map((a) => ({
+                  x: a.punto.x, y: a.punto.y, etiqueta: a.punto.etiqueta,
+                  nota: `${fmt(a.punto.y, 0)} W con ${fmt(a.punto.x, 0)} W/m²: `
+                    + `${fmt(a.faltante, 0)} W por debajo de lo esperado`,
+                })) }) }} />
+            {descartados.length ? (
+              <p className="hint" style={{ marginTop: 10 }}>
+                <b>{descartados.length} {descartados.length === 1 ? "día excluido" : "días excluidos"}</b>{" "}
+                por irradiancia mayor que la constante solar ({CONSTANTE_SOLAR} W/m²): dato
+                inválido, no una nube.{" "}
+                {descartados.slice(0, 3).map((d) => `${d.etiqueta} (${fmt(d.x, 0)} W/m²)`).join(" · ")}.
+                Dejarlos dentro tuerce la recta y esconde los días que de verdad rindieron de menos.
+              </p>
+            ) : null}
+            {bajos.length ? (
+              <p className="hint" style={{ marginTop: 10 }}>
+                <b>{bajos.length} {bajos.length === 1 ? "día" : "días"} por debajo de lo
+                esperado:</b>{" "}
+                {bajos.slice(0, 5).map((a) => `${a.punto.etiqueta} (−${fmt(a.faltante, 0)} W)`).join(" · ")}
+                {bajos.length > 5 ? ` y ${bajos.length - 5} más` : ""}.
+              </p>
+            ) : (
+              <p className="hint" style={{ marginTop: 10 }}>
+                Ningún día se aparta lo bastante de la recta como para señalarlo.
+              </p>
+            )}
+          </>
         ) : (
           <Estado cargando={!scat && !errScat} error={errScat}
-                  vacio={!!scat && scat.length === 0} que="la correlación"
-                  pista="Puede que no haya solape entre irradiancia y potencia en este período."
+                  vacio={!!scat && !ajuste} que="la comparación con el sol"
+                  pista="Hacen falta al menos 3 días con irradiancia Y potencia el mismo día."
                   onReintentar={() => setIntento((i) => i + 1)} />
         )}
       </div>
