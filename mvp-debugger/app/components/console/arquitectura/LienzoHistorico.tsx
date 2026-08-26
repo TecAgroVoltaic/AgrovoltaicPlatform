@@ -75,13 +75,12 @@ function disponer(mapa: MapaHistorico): { grupos: Grupo[]; alto: number } {
   return { grupos, alto: Math.max(fondoTools, fondoBarrido) + LIENZO_H.margenInferior };
 }
 
-function Nodo({ clase, x, y, w, h, titulo, sub, tip, onAbrir, chip, extra }: {
+function Nodo({ clase, x, y, w, h, titulo, sub, tip, onAbrir, chip }: {
   clase: string; x: number; y: number; w: number; h: number;
   titulo: string; sub: string; tip: string; onAbrir: () => void;
-  /** Marca corta, a la derecha del título. Ahí y no debajo: abajo empujaba el
+  /** Marcas cortas, a la derecha del título. Ahí y no debajo: abajo empujaban el
    *  alto del nodo y terminaba tocando el de al lado. */
   chip?: ReactNode;
-  extra?: ReactNode;
 }) {
   return (
     <button className={`arq-nodo ${clase}`} style={{ left: x, top: y, width: w, height: h }}
@@ -91,7 +90,6 @@ function Nodo({ clase, x, y, w, h, titulo, sub, tip, onAbrir, chip, extra }: {
         {chip}
       </span>
       <span className="arq-n-s">{sub}</span>
-      {extra}
     </button>
   );
 }
@@ -200,10 +198,12 @@ export function LienzoHistorico({ mapa, onAbrir }: {
                 ficha: it.ficha,
                 herramienta: { ...it.h, modos: undefined },
               })}
-              chip={it.h.incrusta_confianza ? (
-                <span className="arq-chip" data-tip="Su respuesta viaja con el bloque «confianza»: sobre cuántos días utilizables se calculó el número.">confianza</span>
-              ) : undefined}
-              extra={it.ficha ? undefined : <span className="arq-sd">sin documentar</span>} />
+              chip={<>
+                {it.h.incrusta_confianza && (
+                  <span className="arq-chip" data-tip="Su respuesta viaja con el bloque «confianza»: sobre cuántos días utilizables se calculó el número.">confianza</span>
+                )}
+                {!it.ficha && <span className="arq-sd">sin documentar</span>}
+              </>} />
       )))}
 
       {/* A dónde lee cada familia */}

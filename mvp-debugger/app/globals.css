@@ -550,11 +550,22 @@ svg .hit { cursor:crosshair; }
   letter-spacing:.09em; color:var(--ceil); }
 .arq-edges path.arq-escribe { stroke:var(--ceil); stroke-width:2; stroke-dasharray:5 4; opacity:.85; }
 
-/* En los nodos del lienzo el título y su marca comparten fila; el subtítulo puede
-   ocupar dos renglones sin empujar nada. */
+/* Título y marca comparten la fila de arriba del nodo.
+   El título tiene que poder ENCOGERSE: en flex, un texto largo no baja de su
+   ancho de contenido salvo que se le diga, así que `temperatura_por_arreglo`
+   empujaba su chip fuera del borde del nodo. Con min-width:0 el título recorta
+   con puntos suspensivos (el nombre completo está en el hover y en la ficha) y
+   la marca queda SIEMPRE a la misma distancia del borde. */
+.arq-fam-analisis .arq-cer-h, .arq-fam-calidad .arq-cer-h { align-items:center; gap:8px; }
+.arq-fam-analisis .arq-n-t, .arq-fam-calidad .arq-n-t { flex:1 1 auto; min-width:0;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.arq-fam-analisis .arq-chip, .arq-fam-calidad .arq-chip { flex:0 0 auto; font-size:9px;
+  padding:1px 6px; line-height:1.5; }
 .arq-fam-analisis .arq-n-s, .arq-fam-calidad .arq-n-s { display:-webkit-box;
   -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
-.arq-fam-analisis .arq-chip, .arq-fam-calidad .arq-chip { font-size:9px; padding:1px 6px; }
+/* La marca de «sin documentar» comparte fila con el título igual que el chip: en
+   una fila propia empujaba el subtítulo fuera del nodo. */
+.arq-fam-analisis .arq-sd, .arq-fam-calidad .arq-sd { flex:0 0 auto; margin-top:0; }
 
 
 /* Modal de nodo */

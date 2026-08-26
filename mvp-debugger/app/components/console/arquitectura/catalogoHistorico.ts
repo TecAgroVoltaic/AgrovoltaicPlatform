@@ -104,6 +104,16 @@ export const HERRAMIENTAS_HISTORICO: Record<string, Ficha> = {
     ],
     archivo: "tools/diagnostico_dia.py",
   },
+  arquitectura_agente: {
+    resumen: "el agente explicándose a sí mismo",
+    hover: "Devuelve cómo está construido el agente: herramientas, umbrales, tipos de hallazgo y garantías, derivados del código.",
+    hace: "Devuelve el mismo mapa que dibuja esta pantalla: las familias con sus herramientas, los umbrales con qué decide cada uno, los tipos de hallazgo, cómo corre la detección y qué garantías da.",
+    ayuda: "Sin ella, «¿qué herramientas tenés?» o «¿qué umbral usás para decir que un día está incompleto?» se contestaban **de memoria**, que en un modelo de lenguaje es un sinónimo educado de inventar. Y son preguntas legítimas: quien evalúa el agente necesita poder auditarlo hablándole. Como el mapa se deriva del código, el agente no puede describirse distinto de como está construido ni quedarse desactualizado cuando alguien agrega una herramienta.",
+    limites: [
+      "Poda los `input_schema` de las herramientas. No por tamaño: el modelo **ya los tiene delante**, son la definición de sus propias herramientas. Repetirlos sería pagar dos veces por el mismo dato.",
+    ],
+    archivo: "tools/arquitectura_agente.py",
+  },
 };
 
 /** Qué aporta cada familia, dicho para un lector y no para el modelo. */

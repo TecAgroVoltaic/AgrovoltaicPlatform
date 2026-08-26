@@ -5,21 +5,27 @@
 // el código). Dejar la pantalla vacía a las 20:00 sería perder información que ya
 // se tenía. La vista dibuja esta copia y lo dice con un cartel.
 //
-// Cómo se regenera, con el servicio arriba:
+// Se genera del CÓDIGO del agente, no de lo que responde el servidor. Los dos
+// pueden diferir (el contenedor desplegado suele ir detrás), y de las dos verdades
+// esta es la útil: la copia solo se usa cuando el servicio no contesta, y entonces
+// no hay nada con qué compararla. Además así el arnés puede exigir que TODA
+// herramienta del código tenga su ficha en la consola, cosa que una captura del
+// servidor viejo no permitía.
 //
-//   curl -s https://agro.visione-edge.com/historico/arquitectura \
-//     | python3 -c 'import json,sys; print(json.dumps(json.load(sys.stdin), ensure_ascii=False, indent=2))'
+// Cómo se regenera, desde la raíz de agente-historico:
 //
-// y se pega abajo. Si queda vieja, la vista lo delata sola: compara el catálogo de
-// prosa contra las herramientas del mapa y avisa de las diferencias en pantalla.
+//   python -c "import sys,json; sys.path.insert(0,'src'); \
+//     from historico.arquitectura import mapa; \
+//     print(json.dumps(mapa(), ensure_ascii=False, indent=2))"
 //
-// Capturada del servicio en producción el 2026-08-26.
+// Si queda vieja, la vista lo delata sola: compara el catálogo de prosa contra las
+// herramientas del mapa y avisa de las diferencias en pantalla.
 import type { MapaHistorico } from "./mapaHistorico";
 
 export const RESPALDO_HISTORICO: MapaHistorico = {
   "agente": "historico",
   "nombre": "Histórico",
-  "objetivo": "Responde que paso en el sistema PV de San Carlos, y si el dato en que se apoya la respuesta sirve.",
+  "objetivo": "Responde qué pasó en el sistema PV de San Carlos, y si el dato en que se apoya la respuesta sirve.",
   "modelo": "claude-haiku-4-5",
   "familias": {
     "analisis": {
@@ -33,15 +39,17 @@ export const RESPALDO_HISTORICO: MapaHistorico = {
         "catalogo_variables",
         "graficar"
       ],
-      "objetivo": "Que paso: energia generada, performance ratio, irradiancia, temperatura y tendencias sobre el historico ya corregido."
+      "objetivo": "Qué pasó: energía generada, performance ratio, irradiancia, temperatura y tendencias sobre el histórico ya corregido."
     },
     "calidad": {
       "herramientas": [
         "calidad_periodo",
         "hallazgos_calidad",
-        "cielo_periodo"
+        "cielo_periodo",
+        "diagnostico_dia",
+        "arquitectura_agente"
       ],
-      "objetivo": "Si el dato sirve: completitud, validez, duplicados y como estuvo el cielo. Se responde LEYENDO el store de hallazgos, que escribe un barrido por lotes."
+      "objetivo": "Si el dato sirve: completitud, validez, duplicados y cómo estuvo el cielo. Se responde LEYENDO el store de hallazgos, que escribe un barrido por lotes."
     }
   },
   "herramientas": [
@@ -362,28 +370,60 @@ export const RESPALDO_HISTORICO: MapaHistorico = {
       },
       "incrusta_confianza": false,
       "ejecutor": "historico"
+    },
+    {
+      "nombre": "diagnostico_dia",
+      "familia": "calidad",
+      "descripcion": "Todo lo que se sabe de UN dia concreto del historico: cuantas lecturas grabo cada fuente contra cuantas deberia haber grabado, el veredicto de calidad, la lista COMPLETA de hallazgos de ese dia con su significado, como estuvo el cielo, los dias vecinos y -si falta dato- de cuando a cuando va el hueco al que pertenece el dia y cual fue el ultimo dia con datos antes de el. Usala SIEMPRE que pregunten por un dia puntual: 'que paso el 2025-05-20', 'por que no hay datos ese dia', 'que problema tiene esa fecha'. Es la unica fuente para explicar un dia: lo que esta tool no dice, no se sabe.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "fecha": {
+            "type": "string",
+            "description": "El dia en ISO (YYYY-MM-DD), hora local de Costa Rica."
+          }
+        },
+        "required": [
+          "fecha"
+        ],
+        "additionalProperties": false
+      },
+      "incrusta_confianza": true,
+      "ejecutor": "historico"
+    },
+    {
+      "nombre": "arquitectura_agente",
+      "familia": "calidad",
+      "descripcion": "Como esta construido ESTE agente: que herramientas tiene y para que sirve cada una, las dos familias en que se dividen, los umbrales que deciden si un dato sirve (con que decide cada numero), los tipos de hallazgo que detecta, como corre la deteccion y que garantias da. Usala cuando pregunten por el agente en si: sus capacidades, sus limites, sus criterios, como funciona o por que decide lo que decide. NO la uses para datos del sistema fotovoltaico.",
+      "input_schema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "incrusta_confianza": false,
+      "ejecutor": "historico"
     }
   ],
   "umbrales": [
     {
       "clave": "COBERTURA_MINIMA",
       "valor": 0.8,
-      "que_decide": "debajo de esta fraccion de las horas de sol, el dia se marca incompleto"
+      "que_decide": "debajo de esta fracción de las horas de sol, el día se marca incompleto"
     },
     {
       "clave": "DENSIDAD_MINIMA",
       "valor": 0.9,
-      "que_decide": "faltan muestras dentro de la ventana que el logger si grabo"
+      "que_decide": "faltan muestras dentro de la ventana que el logger sí grabó"
     },
     {
       "clave": "FACTOR_HUECO",
       "valor": 3.0,
-      "que_decide": "un salto de mas de N veces la cadencia del dia cuenta como hueco"
+      "que_decide": "un salto de más de N veces la cadencia del día cuenta como hueco"
     },
     {
       "clave": "KT_DESPEJADO",
       "valor": 0.7,
-      "que_decide": "indice de cielo despejado a partir del cual el momento es despejado"
+      "que_decide": "índice de cielo despejado a partir del cual el momento es despejado"
     },
     {
       "clave": "KT_CUBIERTO",
@@ -393,40 +433,40 @@ export const RESPALDO_HISTORICO: MapaHistorico = {
     {
       "clave": "KT_IMPOSIBLE",
       "valor": 1.2,
-      "que_decide": "por encima es fisicamente imposible: dato invalido, no una nube"
+      "que_decide": "por encima es físicamente imposible: dato inválido, no una nube"
     },
     {
       "clave": "VI_VARIABLE",
       "valor": 6.0,
-      "que_decide": "indice de variabilidad para llamar variable al dia. CALIBRADO sobre esta serie, no tomado de la literatura"
+      "que_decide": "índice de variabilidad para llamar variable al día. CALIBRADO sobre esta serie, no tomado de la literatura"
     },
     {
       "clave": "FRACCION_MATERIAL",
       "valor": 0.2,
-      "que_decide": "que fraccion de las lecturas tiene que tocar un hallazgo grave para que el dia deje de ser utilizable"
+      "que_decide": "qué fracción de las lecturas tiene que tocar un hallazgo grave para que el día deje de ser utilizable"
     }
   ],
   "hallazgos": {
     "tipos": [
       {
         "tipo": "dia_incompleto",
-        "que_es": "el logger no grabo todas las horas de sol"
+        "que_es": "el logger no grabó todas las horas de sol"
       },
       {
         "tipo": "hueco",
-        "que_es": "faltan muestras dentro de la ventana que si grabo"
+        "que_es": "faltan muestras dentro de la ventana que sí grabó"
       },
       {
         "tipo": "duplicado_timestamp",
-        "que_es": "el mismo instante aparece mas de una vez"
+        "que_es": "el mismo instante aparece más de una vez"
       },
       {
         "tipo": "cambio_de_cadencia",
-        "que_es": "el intervalo de muestreo cambio respecto al dia anterior"
+        "que_es": "el intervalo de muestreo cambió respecto al día anterior"
       },
       {
         "tipo": "columna_ausente",
-        "que_es": "la columna no vino en el CSV de ese dia (variacion de esquema)"
+        "que_es": "la columna no vino en el CSV de ese día (variación de esquema)"
       },
       {
         "tipo": "nulos",
@@ -434,15 +474,15 @@ export const RESPALDO_HISTORICO: MapaHistorico = {
       },
       {
         "tipo": "fuera_de_rango",
-        "que_es": "valores fuera del rango fisico plausible"
+        "que_es": "valores fuera del rango físico plausible"
       },
       {
         "tipo": "saturado_85",
-        "que_es": "85 C constante: el DS18B20 esta desconectado"
+        "que_es": "85 °C constante: el DS18B20 está desconectado"
       },
       {
         "tipo": "constante_en_cero",
-        "que_es": "sin variacion en todo el dia; en lo electrico, no hubo generacion"
+        "que_es": "sin variación en todo el día; en lo eléctrico, no hubo generación"
       },
       {
         "tipo": "sensor_plano",
@@ -450,11 +490,11 @@ export const RESPALDO_HISTORICO: MapaHistorico = {
       },
       {
         "tipo": "offset_nocturno",
-        "que_es": "el offset del piranometro sin calibrar (-38,845)"
+        "que_es": "el offset del piranómetro sin calibrar (-38,845)"
       },
       {
         "tipo": "kt_imposible",
-        "que_es": "mas energia que la de cielo despejado: dato invalido, no una nube"
+        "que_es": "más energía que la de cielo despejado: dato inválido, no una nube"
       }
     ],
     "severidades": [
@@ -476,7 +516,7 @@ export const RESPALDO_HISTORICO: MapaHistorico = {
       "cielo_diario",
       "ventana_solar"
     ],
-    "por_que": "recorrer los dias es caro y el resultado no depende de quien pregunte: si la deteccion corriera dentro de una herramienta, cada pregunta la repetiria y dos personas podrian obtener veredictos distintos del mismo dia"
+    "por_que": "recorrer los días es caro y el resultado no depende de quién pregunte: si la detección corriera dentro de una herramienta, cada pregunta la repetiría y dos personas podrían obtener veredictos distintos del mismo día"
   },
   "garantias": [
     {
@@ -484,8 +524,8 @@ export const RESPALDO_HISTORICO: MapaHistorico = {
       "como": "su pool de conexiones es de SOLO LECTURA (historico.db), no un permiso que el prompt pueda pedir"
     },
     {
-      "que": "no se reporta un agregado sin decir sobre cuantos dias utiles se calculo",
-      "como": "el bloque `confianza` viaja DENTRO del payload de la herramienta, no en una instruccion del prompt"
+      "que": "no se reporta un agregado sin decir sobre cuántos días útiles se calculó",
+      "como": "el bloque `confianza` viaja DENTRO del payload de la herramienta, no en una instrucción del prompt"
     }
   ],
   "limites": {

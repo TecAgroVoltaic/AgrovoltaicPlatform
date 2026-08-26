@@ -290,9 +290,21 @@ check("y son exactamente DOS",
     `gap=${TOOL_H.gap}px: por debajo de 12 se tocan`);
   check("y el nodo es lo bastante alto para su contenido", TOOL_H.h >= 56,
     `h=${TOOL_H.h}px`);
-  check("la marca de confianza va en la fila del título, no debajo",
+  check("las marcas van en la fila del título, no debajo",
     /<span class="arq-cer-h"><span class="arq-n-t">[a-z_]+<\/span><span class="arq-chip"/.test(html),
-    "debajo empujaba el alto del nodo y terminaba tocando el de al lado");
+    "debajo empujaban el alto del nodo y terminaba tocando el de al lado");
+  // El título tiene que poder encogerse: en flex, un texto largo no baja de su
+  // ancho de contenido, y `temperatura_por_arreglo` empujaba su chip fuera del
+  // borde del nodo.
+  check("el título del nodo se recorta antes de empujar la marca",
+    /\.arq-fam-analisis \.arq-n-t[^{]*\{[^}]*min-width:0/.test(css)
+    && /\.arq-fam-analisis \.arq-n-t[^{]*\{[^}]*text-overflow:ellipsis/.test(css),
+    "sin min-width:0 el nombre largo saca la marca del nodo");
+  check("y la marca no se encoge", /\.arq-fam-analisis \.arq-chip[^{]*\{[^}]*flex:0 0 auto/.test(css));
+
+  // Ninguna herramienta del agente puede quedar sin explicación en el lienzo.
+  check("no hay ninguna herramienta «sin documentar»", !/sin documentar/.test(html),
+    "toda tool publicada necesita su ficha en catalogoHistorico.ts");
 
   // Los umbrales son el motivo de esta pantalla: son política, no física, y son
   // lo que hay que poder discutir con el experto sin abrir el código.
