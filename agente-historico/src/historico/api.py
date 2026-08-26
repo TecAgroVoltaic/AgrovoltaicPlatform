@@ -17,7 +17,7 @@ import secrets
 from fastapi import Body, Depends, FastAPI, Header, HTTPException, Query, status
 from pydantic import BaseModel
 
-from historico import datos, tools, uso
+from historico import datos, limites, tools, uso
 
 ENV_API_KEY = "HISTORICO_API_KEY"
 # Nombre anterior. Se sigue leyendo porque el contenedor desplegado tiene el viejo
@@ -65,6 +65,35 @@ class ChatBody(BaseModel):
     contexto: str | None = None
 
 
+def _identidad(x_api_key: str | None) -> str:
+    """Con quien se lleva la cuenta del ritmo. La clave se hashea: el limitador
+    guarda identidades en memoria y no tiene por que tener el secreto en claro."""
+    import hashlib
+    return hashlib.sha256((x_api_key or "anonimo").encode()).hexdigest()[:16]
+
+
+def _frenar_consumo(x_api_key: str | None = Header(default=None)) -> None:
+    """Los dos frenos de los endpoints que gastan tokens del LLM.
+
+    Va como dependencia y no dentro del handler para que sea imposible agregar
+    una ruta conversacional sin freno: se ve en la firma del endpoint.
+    """
+    if not limites.LIMITADOR_LLM.permitir(_identidad(x_api_key)):
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=(f"limite de {limites.LIMITE_LLM_POR_MIN} consultas por minuto. "
+                    f"Reintenta en unos segundos."),
+            headers={"Retry-After": str(limites.LIMITADOR_LLM.espera_seg())},
+        )
+    agotado, gastado, tope = limites.presupuesto_agotado()
+    if agotado:
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=(f"presupuesto diario agotado: US$ {gastado:.4f} de US$ {tope:.2f}. "
+                    f"Las vistas deterministas siguen funcionando."),
+        )
+
+
 def _verificar_api_key(x_api_key: str | None = Header(default=None)) -> None:
     """Exige la API key SOLO si esta configurada. Comparacion en tiempo constante."""
     esperada = os.environ.get(ENV_API_KEY) or os.environ.get(ENV_API_KEY_PREVIO)
@@ -103,7 +132,7 @@ def ejecutar_tool(nombre: str, params: dict = Body(default={})) -> dict:
 
 
 # ── Agente completo (con TRAZA) — para el debugger ────────────────────────────
-@app.post("/preguntar", dependencies=[Depends(_verificar_api_key)])
+@app.post("/preguntar", dependencies=[Depends(_verificar_api_key), Depends(_frenar_consumo)])
 def preguntar(cuerpo: Pregunta) -> dict:
     """Corre el lazo LLM completo y devuelve la TRAZA (pasos + tools + respuesta + costo).
 
@@ -121,7 +150,7 @@ def preguntar(cuerpo: Pregunta) -> dict:
     return traza
 
 
-@app.post("/chat", dependencies=[Depends(_verificar_api_key)])
+@app.post("/chat", dependencies=[Depends(_verificar_api_key), Depends(_frenar_consumo)])
 def chat(cuerpo: ChatBody) -> dict:
     """Turno de CHAT multi-turno (para el widget). Recibe el historial de texto y el
     contexto de la vista; devuelve la respuesta + traza (tools/web) + costo."""
@@ -135,8 +164,14 @@ def chat(cuerpo: ChatBody) -> dict:
 
 @app.get("/uso", dependencies=[Depends(_verificar_api_key)])
 def consumo() -> dict:
-    """Consumo acumulado del agente (tokens + costo USD + nº consultas, por modelo)."""
-    return uso.resumen()
+    """Consumo acumulado del agente (tokens + costo USD + nº consultas, por modelo).
+
+    Incluye el estado del tope diario: de nada sirve saber cuanto se gasto si no
+    se ve contra que se compara.
+    """
+    agotado, gastado, tope = limites.presupuesto_agotado()
+    return {**uso.resumen(),
+            "hoy": {"usd": round(gastado, 6), "tope_usd": tope, "agotado": agotado}}
 
 
 # ── Peek de datos read-only — para cruzar lo que el agente calculo ────────────

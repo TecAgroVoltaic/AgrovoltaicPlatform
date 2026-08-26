@@ -31,7 +31,15 @@ _VACIO = {
     "total_output_tokens": 0,
     "total_usd": 0.0,
     "por_modelo": {},
+    # Gasto por dia (clave = fecha UTC ISO). Existe para poder TOPAR el gasto y no
+    # solo contarlo: un acumulado desde el principio de los tiempos no sirve de
+    # freno, porque nunca baja.
+    "por_dia": {},
 }
+
+# Cuantos dias de detalle diario se conservan. El acumulado total no se toca; lo
+# que se poda es el desglose, que solo se usa para el tope del dia en curso.
+DIAS_RETENIDOS = 60
 
 
 def _leer() -> dict:
@@ -73,8 +81,27 @@ def registrar(traza: dict) -> dict:
         pm["output_tokens"] += int(usage.get("output_tokens", 0) or 0)
         if usd is not None:
             pm["usd_total"] = round(pm["usd_total"] + float(usd), 6)
+        if usd is not None:
+            hoy = _hoy()
+            dia = d["por_dia"].setdefault(hoy, {"n_consultas": 0, "usd": 0.0})
+            dia["n_consultas"] += 1
+            dia["usd"] = round(dia["usd"] + float(usd), 6)
+            if len(d["por_dia"]) > DIAS_RETENIDOS:
+                for viejo in sorted(d["por_dia"])[:-DIAS_RETENIDOS]:
+                    del d["por_dia"][viejo]
         _escribir(d)
         return d
+
+
+def _hoy() -> str:
+    """La fecha UTC de hoy. El tope es por dia natural, no por ventana movil."""
+    return datetime.now(timezone.utc).date().isoformat()
+
+
+def usd_hoy() -> float:
+    """Cuanto se lleva gastado HOY. Es lo que mira el tope de presupuesto."""
+    with _LOCK:
+        return float((_leer()["por_dia"].get(_hoy()) or {}).get("usd", 0.0))
 
 
 def resumen() -> dict:

@@ -333,6 +333,52 @@ check("y son exactamente DOS",
   }
 }
 
+// ── 3e. El chat: visible siempre y atado al agente de la vista ────────────────
+// El defecto: el flag del chat del Histórico leía `AGENTE_ANALIZADOR` y el entorno
+// tenía `AGENTE_HISTORICO`. No coincidían, así que el chat NO SALÍA, y como el
+// valor por defecto era apagado, el síntoma era una pantalla a la que le falta
+// algo en silencio. Un renombre a medias no puede volver a costar eso.
+{
+  const fs = require("node:fs");
+  const agentes = require(path.join(OUT, "app/lib/agentes.js"));
+  const widget = fs.readFileSync(path.join(RAIZ, "app/components/chat/ChatWidget.tsx"), "utf8");
+
+  const antes = process.env[agentes.ENV_HISTORICO];
+  delete process.env[agentes.ENV_HISTORICO];
+  check("sin variable de entorno, el chat del Histórico ESTÁ",
+    agentes.historicoActivo() === true,
+    "apagado por defecto ya escondió el chat una vez sin decir nada");
+  process.env[agentes.ENV_HISTORICO] = "off";
+  check("y se puede apagar a propósito", agentes.historicoActivo() === false);
+  process.env[agentes.ENV_HISTORICO] = "on";
+  check("«on» también lo enciende", agentes.historicoActivo() === true);
+  if (antes === undefined) delete process.env[agentes.ENV_HISTORICO];
+  else process.env[agentes.ENV_HISTORICO] = antes;
+
+  check("la variable se llama como el agente",
+    agentes.ENV_HISTORICO === "AGENTE_HISTORICO",
+    `es ${agentes.ENV_HISTORICO}: si no coincide con el entorno, el chat desaparece`);
+
+  check("el chat se monta atado al agente de la vista",
+    /<ChatWidget agent={agent}/.test(consola));
+
+  // Las claves de los hilos son los IDs REALES. Estuvieron mal y, como el acceso
+  // es por índice, no falló nada: simplemente no salía ni un ejemplo.
+  const claves = [...widget.matchAll(/^\s{2}(\w+): \[$/gm)].map((m) => m[1]);
+  check("los ejemplos del chat están bajo los IDs reales de los agentes",
+    claves.length === 2 && claves.includes("historico") && claves.includes("predictivo"),
+    `claves: ${claves.join(", ") || "ninguna"}`);
+  check("el hilo se inicializa con esos mismos IDs",
+    /useState<Threads>\(\{ historico: \[\], predictivo: \[\] \}\)/.test(widget));
+  check("el agente predictivo se llama por su nombre en la cabecera del chat",
+    /"Agente Predictivo"/.test(widget), "decía «Pronóstico», de un renombre a medias");
+
+  // Lo que el usuario pidió: que el agente conteste de todo, incluido sobre sí mismo.
+  check("hay un ejemplo que pregunta por el agente mismo",
+    /herramientas tenés|Cómo estás construido/.test(widget));
+  check("y el chat lo anuncia", /cómo está construido/.test(widget));
+}
+
 // ── 4. Resultado ──────────────────────────────────────────────────────────────
 rmSync(OUT, { recursive: true, force: true });
 console.log(`\n${ok} chequeos OK`);

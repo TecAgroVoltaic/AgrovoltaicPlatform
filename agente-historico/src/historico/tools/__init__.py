@@ -18,6 +18,7 @@ sin ver sobre cuantos dias utilizables se calculo.
 from __future__ import annotations
 
 from historico.tools import (
+    arquitectura_agente,
     calidad_periodo,
     catalogo,
     cielo_periodo,
@@ -34,7 +35,10 @@ from historico.tools import (
 
 ANALISIS = [energia, performance, irradiancia, temperatura, tendencia,
             cobertura, catalogo, graficar]
-CALIDAD = [calidad_periodo, hallazgos, cielo_periodo, diagnostico_dia]
+# El agente hablando de si mismo. Va en CALIDAD y no en ANALISIS porque responde
+# "se puede confiar en esto", que es la misma pregunta que el resto de la familia.
+CALIDAD = [calidad_periodo, hallazgos, cielo_periodo, diagnostico_dia,
+           arquitectura_agente]
 
 _TOOLS = ANALISIS + CALIDAD
 

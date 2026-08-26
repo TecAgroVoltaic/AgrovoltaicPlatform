@@ -22,9 +22,25 @@ const FRASES = [
   "Buscando en la web…",
   "Armando la respuesta…",
 ];
+// Arranques de conversación por agente. Las claves son los IDs REALES de los
+// agentes: estuvieron mal (`analizador`/`pronostico`, de un renombre a medias) y
+// como el acceso es por índice, no fallaba nada: simplemente no salía ni un
+// ejemplo, y el hilo se guardaba bajo una clave que nadie leía.
+//
+// Hay uno de cada clase a propósito: sobre los datos, y sobre el AGENTE. El
+// segundo no es relleno, es lo que hace evidente que se le puede auditar
+// preguntándole, que es de lo que va esta consola.
 const EJEMPLOS: Record<string, string[]> = {
-  analizador: ["¿Cuál arreglo rinde mejor?", "Graficá la potencia por mes del 2026", "¿Qué PR es bueno en la industria?"],
-  pronostico: ["¿Cuánta irradiancia en dos horas?", "Pronosticá la humedad de suelo en 1 hora"],
+  historico: [
+    "¿Cuál arreglo rinde mejor?",
+    "¿Por qué no hay datos en febrero de 2025?",
+    "¿Qué herramientas tenés y qué umbrales usás?",
+  ],
+  predictivo: [
+    "¿Cuánta irradiancia en dos horas?",
+    "Pronosticá la humedad de suelo en 1 hora",
+    "¿Cómo estás construido?",
+  ],
 };
 
 const serieColor = (P: any, i: number) => [P.accent, P.real, P.pred, P.ceil][i % 4];
@@ -41,7 +57,7 @@ export function ChatWidget({ agent, contexto, onTraza }: {
   agent: string; contexto: string; onTraza?: (agent: string, t: Traza) => void;
 }) {
   const [abierto, setAbierto] = useState(false);
-  const [threads, setThreads] = useState<Threads>({ analizador: [], pronostico: [] });
+  const [threads, setThreads] = useState<Threads>({ historico: [], predictivo: [] });
   const [input, setInput] = useState("");
   const [cargando, setCargando] = useState(false);
   const [frase, setFrase] = useState(0);
@@ -53,7 +69,7 @@ export function ChatWidget({ agent, contexto, onTraza }: {
   useEffect(() => {
     try {
       const raw = localStorage.getItem("agrov-chat");
-      if (raw) setThreads({ analizador: [], pronostico: [], ...JSON.parse(raw) });
+      if (raw) setThreads({ historico: [], predictivo: [], ...JSON.parse(raw) });
     } catch { /* ignore */ }
   }, []);
   // Persistir.
@@ -99,7 +115,7 @@ export function ChatWidget({ agent, contexto, onTraza }: {
     setVerTraza(null);
   }
 
-  const nombreAgente = agent === "historico" ? "Agente Histórico" : "Pronóstico";
+  const nombreAgente = agent === "historico" ? "Agente Histórico" : "Agente Predictivo";
 
   if (!abierto) {
     return (
@@ -129,7 +145,12 @@ export function ChatWidget({ agent, contexto, onTraza }: {
       <div className="chat-body">
         {cur.length === 0 && (
           <div className="chat-empty">
-            <p className="muted small">Preguntá sobre los datos de <b>{nombreAgente}</b>. El agente usa las tools (nunca inventa) y puede mostrar gráficos y buscar en la web para contexto.</p>
+            <p className="muted small">
+              Preguntá lo que quieras sobre <b>{nombreAgente}</b>: sus datos, y también
+              cómo está construido (qué herramientas tiene, qué umbrales usa, por qué
+              decide lo que decide). Todo sale de sus tools, nunca de su memoria; puede
+              mostrar gráficos y buscar en la web para contexto externo.
+            </p>
             <div className="chat-ej">
               {(EJEMPLOS[agent] || []).map((e) => (
                 <button key={e} className="chip" onClick={() => enviar(e)}>{e}</button>
