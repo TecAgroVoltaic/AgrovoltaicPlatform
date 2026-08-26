@@ -117,3 +117,128 @@ export const FAMILIAS: Record<string, { titulo: string; nota: string }> = {
     nota: "Si el dato sirve. No calculan: LEEN el store que dejó el barrido.",
   },
 };
+
+// ── Geometría del lienzo ────────────────────────────────────────────────────
+// Mismas columnas y proporciones que el mapa del Predictivo, a propósito: son dos
+// agentes del mismo sistema y cambiar el lenguaje visual entre uno y otro obliga a
+// releer la pantalla desde cero. Lo que cambia es el RELATO, no el vocabulario.
+//
+// Lo único que se posiciona a mano es lo que no varía nunca. La pila de
+// herramientas se calcula desde lo que publica el servicio (ver LienzoHistorico),
+// así que si mañana hay trece, entra sola y el lienzo crece.
+export const LIENZO_H = { w: 1140, margenInferior: 34 };
+export const COL_H = { entrada: 16, puerta: 216, cerebro: 332, tool: 620, dato: 908 };
+export const ANCHO_H = { entrada: 172, puerta: 88, cerebro: 240, tool: 248, dato: 216 };
+// Alto y separación de la pila. El alto da para dos renglones MÁS la marca de
+// `confianza`, que va en la fila del título y no debajo: apretados, el chip se
+// comía el borde del nodo siguiente.
+export const TOOL_H = { h: 58, gap: 14, y0: 76, entreGrupos: 62, encabezado: 22 };
+
+export type NodoFijoH = {
+  id: string; grupo: "entrada" | "puerta";
+  x: number; y: number; w: number; h: number;
+  titulo: string; sub: string; ficha: Ficha;
+};
+
+export const NODOS_FIJOS_H: NodoFijoH[] = [
+  {
+    id: "h-consola", grupo: "entrada", x: COL_H.entrada, y: 76, w: ANCHO_H.entrada, h: 60,
+    titulo: "Consola", sub: "Calidad de datos · mapa de días",
+    ficha: {
+      hover: "Las vistas de calidad leen el store directamente por HTTP, sin pasar por el modelo.",
+      hace: "«Calidad de datos» pide tres lecturas del store (`/calidad/resumen`, `/calidad/dias`, `/calidad/hallazgos`) y las dibuja. No hay LLM en ese camino y por eso no cuesta un centavo.",
+      ayuda: "Que la vista NO pase por el agente es lo que la hace comparable con el reporte del CLI: los dos leen la misma tabla con el mismo criterio. Si la consola calculara el veredicto por su cuenta, podría discrepar del agente sobre si un día sirve, y eso no se nota hasta que alguien ya decidió algo con él.",
+      archivo: "app/components/console/CalidadView.tsx",
+    },
+  },
+  {
+    id: "h-chat", grupo: "entrada", x: COL_H.entrada, y: 150, w: ANCHO_H.entrada, h: 60,
+    titulo: "Chat flotante", sub: "hilo multiturno + contexto de la vista",
+    ficha: {
+      hover: "Hilo multiturno. Manda el historial de texto limpio más el contexto de la vista activa.",
+      hace: "Conversación libre. El historial viaja como texto plano (barato y sin poder malformarse) y se recorta a los últimos mensajes.",
+      puntos: [
+        "El contexto de la vista se inyecta en el turno del usuario, **fuera** de la parte cacheada del prompt: cambiar de filtro no invalida la caché.",
+        "Si una herramienta devuelve un gráfico, se pinta inline; ese payload no va al modelo.",
+      ],
+      archivo: "app/components/chat/ChatWidget.tsx",
+    },
+  },
+  {
+    id: "h-flow", grupo: "entrada", x: COL_H.entrada, y: 224, w: ANCHO_H.entrada, h: 60,
+    titulo: "VisioneFlow", sub: "un httpRequestTool por herramienta",
+    ficha: {
+      hover: "El orquestador externo cablea cada herramienta como un nodo HTTP y pone su propio LLM.",
+      hace: "VisioneFlow no usa el agente: usa sus **herramientas**. Cada una se cablea como una instancia del nodo genérico `httpRequestTool` contra `POST /tool/<nombre>`, y el modelo lo pone el canvas.",
+      ayuda: "Es la prueba de que el reparto «cerebro vs manos» es real y no una figura retórica: los números salen igual con otro cerebro encima, porque el cálculo nunca estuvo en el modelo.",
+      archivo: "src/historico/api.py",
+    },
+  },
+  {
+    id: "h-puerta", grupo: "puerta", x: COL_H.puerta, y: 150, w: ANCHO_H.puerta, h: 64,
+    titulo: "x-api-key", sub: "salvo /health y /arquitectura",
+    ficha: {
+      hover: "Comparación en tiempo constante. Sin la clave configurada, la verificación se desactiva: la ausencia no falla, abre.",
+      hace: "Exige el header `x-api-key` en todo lo que toca datos. La comparación es en tiempo constante (`secrets.compare_digest`).",
+      limites: [
+        "`/health`, `/tools` y `/arquitectura` quedan **abiertos a propósito**: describen al agente, no sus datos, y la consola dibuja el mapa sin credencial.",
+        "Si la variable de entorno no está, la verificación **se desactiva** en vez de fallar. Un renombre sin respaldo no tumba el servicio: lo deja abierto.",
+      ],
+      archivo: "src/historico/api.py",
+    },
+  },
+];
+
+/** El modelo. Su contenido sale del mapa; acá solo vive el «por qué». */
+export const CEREBRO_H = {
+  x: COL_H.cerebro, y: 60, w: ANCHO_H.cerebro, h: 250,
+  ficha: {
+    hover: "El lazo tool-use manual. El modelo elige qué herramienta llamar; el lazo la ejecuta y le devuelve el JSON crudo; el modelo redacta.",
+    hace: "Orquesta y nada más. **No sabe SQL ni física**: manda la pregunta al modelo con el juego de herramientas, ejecuta la que pida, le devuelve la salida cruda y repite hasta que cierra el turno.",
+    ayuda: "Es genérico sobre el registro de herramientas: no hay lógica de ninguna de ellas acá. Agregar una es crear su archivo e importarlo, sin tocar el lazo.",
+    puntos: [
+      "Patrón manual y no el *tool-runner* beta: control del ciclo y sin filtrar el razonamiento interno.",
+      "Cada turno devuelve la **traza**: pasos del modelo, cada herramienta con entrada y salida cruda, tokens, milisegundos y US$.",
+      "El modelo es liviano a propósito. Solo orquesta; subir de gama es una variable de entorno.",
+    ],
+    archivo: "src/historico/agent/agent.py",
+  } as Ficha,
+};
+
+/** A dónde va a leer cada familia. Es la mitad del relato de este agente. */
+export const DESTINO: Record<string, { titulo: string; sub: string; filas: string[]; ficha: Ficha }> = {
+  analisis: {
+    titulo: "Vistas corregidas",
+    sub: "el crudo sigue crudo; la corrección vive en vistas",
+    filas: ["v_sc_electrico_corregido", "v_sc_radiacion_calibrada", "v_sc_performance"],
+    ficha: {
+      hover: "Las herramientas de análisis nunca leen la tabla cruda: leen las vistas donde ya se aplicaron las correcciones.",
+      hace: "Vistas de PostgreSQL sobre las tablas base. Ahí es donde los 85 °C pasan a NULL, la irradiancia negativa queda en cero y la potencia se recorta a un rango físico.",
+      ayuda: "Es la regla rectora del proyecto, validada con Leo Cardinale: **se guarda el crudo y se corrige en una capa de análisis**. Corregir al insertar destruye la evidencia y hace irrepetible cualquier revisión del criterio; corregir en una vista deja las dos versiones disponibles y permite cambiar de opinión sin re-cargar 285 CSV.",
+      archivo: "docs/memoria/decisiones/respuestas-leo-cardinale.md",
+    },
+  },
+  calidad: {
+    titulo: "Store de hallazgos",
+    sub: "un renglón por (día, fuente, variable, tipo)",
+    filas: ["hallazgos_calidad", "cielo_diario", "ventana_solar"],
+    ficha: {
+      hover: "Las herramientas de calidad no detectan nada: leen lo que el barrido ya dejó escrito.",
+      hace: "Tres tablas. `hallazgos_calidad` con PK `(fecha, fuente, variable, tipo)`, así que re-correr el barrido actualiza en vez de duplicar; `cielo_diario` con la caracterización del cielo; `ventana_solar` con el amanecer y el atardecer de cada día.",
+      ayuda: "`ventana_solar` es una tabla y no un cálculo al vuelo por un motivo que decide todo lo demás: el logger **solo graba de día**, así que «el día está completo» no se mide contra 24 h sino contra las horas de sol de ese día. Y sin una tabla con TODOS los días del calendario, los días sin ninguna fila serían invisibles, que es justo el hallazgo más grande del histórico.",
+      archivo: "sql/001_calidad_y_cielo.sql",
+    },
+  },
+};
+
+/** El barrido: la pieza que hace que el agente no tenga que detectar nada. */
+export const BARRIDO = {
+  titulo: "Barrido por lotes",
+  sub: "determinista · sin LLM · escribe el store",
+  ficha: {
+    hover: "Recorre el histórico día por día y tipifica lo que encuentra. Corre por cron, fuera de cualquier pregunta.",
+    hace: "Recorre día por día las dos fuentes, aplica los umbrales y escribe un renglón por cada `(día, fuente, variable, tipo)` que encuentra. Es el único que usa el pool de escritura.",
+    ayuda: "Que corra **antes** y no dentro de una pregunta es lo que hace reproducible el veredicto. Si la detección viviera en una herramienta, cada pregunta la repetiría (caro) y dos personas podrían obtener veredictos distintos del mismo día (peor). Acá el resultado está escrito: la misma pregunta da la misma respuesta.",
+    archivo: "src/historico/calidad/barrido.py",
+  } as Ficha,
+};

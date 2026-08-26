@@ -260,12 +260,39 @@ check("y son exactamente DOS",
   check("el panel del Histórico renderiza con el mapa real", html.length > 2000);
   check("y se titula como el agente que es", /Arquitectura del Agente Histórico/.test(html));
   check("no menciona al otro agente", !/Predictivo/.test(html));
-  check("dibuja la cadena: el LLM entra al final",
-    /1 · detección/.test(html) && /4 · redacción/.test(html));
-  check("dice que la detección corre SIN modelo de lenguaje", /Sin LLM/.test(html));
+  // El lienzo, que es lo que hace legible la arquitectura de un vistazo.
+  check("se dibuja como grafo y no como lista", /arq-lienzo/.test(html));
+  check("hay aristas de verdad", (html.match(/<path/g) || []).length > 10);
+  check("las cuatro calles están rotuladas",
+    ["Entradas", "El agente", "Herramientas", "Datos"].every((l) => html.includes(l)));
+  check("cada herramienta es un nodo del lienzo",
+    (html.match(/class="arq-nodo/g) || []).length >= RESPALDO_HISTORICO.herramientas.length);
+
+  // Lo que el dibujo tiene que dejar dicho, y una lista no puede.
+  check("las DOS familias llegan a destinos distintos",
+    /arq-dest-analisis/.test(html) && /arq-dest-calidad/.test(html),
+    "si las dos leyeran del mismo sitio, no serían dos familias");
+  check("análisis lee las vistas corregidas", /Vistas corregidas/.test(html));
+  check("calidad lee el store", /Store de hallazgos/.test(html));
   check("nombra las tres tablas del store",
     ["hallazgos_calidad", "cielo_diario", "ventana_solar"].every((t) => html.includes(t)));
-  check("dice que el pool es de solo lectura", /solo lectura/.test(html));
+  check("el barrido está en el dibujo", /arq-barrido/.test(html) && /Barrido por lotes/.test(html));
+  check("y se ve que NO pasa por el modelo", /no pasa por el modelo/.test(html),
+    "es toda la garantía: el veredicto ya estaba escrito antes de que nadie preguntara");
+  check("la flecha del barrido va aparte de las demás", /arq-escribe/.test(html));
+  check("el modelo declara que no calcula", /No calcula/.test(html));
+  check("el pool es de solo lectura", /solo lectura/.test(html));
+
+  // Los nodos quedaron pegados una vez y el chip de «confianza» se comía el borde
+  // del de abajo. El aire entre nodos es un requisito, no una preferencia.
+  const { TOOL_H } = require(path.join(OUT, "app/components/console/arquitectura/catalogoHistorico.js"));
+  check("hay aire entre nodos del lienzo", TOOL_H.gap >= 12,
+    `gap=${TOOL_H.gap}px: por debajo de 12 se tocan`);
+  check("y el nodo es lo bastante alto para su contenido", TOOL_H.h >= 56,
+    `h=${TOOL_H.h}px`);
+  check("la marca de confianza va en la fila del título, no debajo",
+    /<span class="arq-cer-h"><span class="arq-n-t">[a-z_]+<\/span><span class="arq-chip"/.test(html),
+    "debajo empujaba el alto del nodo y terminaba tocando el de al lado");
 
   // Los umbrales son el motivo de esta pantalla: son política, no física, y son
   // lo que hay que poder discutir con el experto sin abrir el código.
@@ -299,8 +326,9 @@ check("y son exactamente DOS",
   check(`el agente registra ${modulos.length} herramientas`, modulos.length >= 12);
 
   // El CSS que la vista necesita.
-  for (const clase of ["hist-cadena", "hist-paso", "hist-store", "hist-tools",
-                       "hist-modelo", "hist-tools-grid", "hist-marcas"]) {
+  for (const clase of ["arq-fam-analisis", "arq-fam-calidad", "arq-grp-analisis",
+                       "arq-grp-calidad", "arq-destino", "arq-dest-filas",
+                       "arq-barrido", "arq-sinllm", "arq-escribe"]) {
     check(`existe la clase .${clase}`, css.includes(`.${clase}`));
   }
 }

@@ -13,18 +13,16 @@
 // `GET /historico/arquitectura`, que la deriva de `tools.SCHEMAS` y de los propios
 // módulos. La prosa del «por qué» vive en `catalogoHistorico.ts`, y cuando el
 // catálogo y el servicio se separan, la vista lo dice en pantalla.
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { jget, mensajeError } from "@/app/lib/client";
 import { IconoAlerta } from "@/app/components/Iconos";
 import { Estado } from "@/app/components/console/Estado";
 import { FAMILIAS, HERRAMIENTAS_HISTORICO } from "./catalogoHistorico";
+import { LienzoHistorico } from "./LienzoHistorico";
 import { NodoModal, type Detalle } from "./NodoModal";
 import { RESPALDO_HISTORICO } from "./respaldoHistorico";
-import {
-  esMapaHistorico, familiasOrdenadas, valorUmbral,
-  type HerramientaHist, type MapaHistorico,
-} from "./mapaHistorico";
+import { esMapaHistorico, valorUmbral, type MapaHistorico } from "./mapaHistorico";
 
 const RUTA = "/api/historico/arquitectura";
 
@@ -72,7 +70,6 @@ export function ArqHistorico() {
       </section>
     );
   }
-
   return <PanelHistorico mapa={mapa} esRespaldo={esRespaldo} />;
 }
 
@@ -89,110 +86,79 @@ export function PanelHistorico({ mapa, esRespaldo = false }: {
   mapa: MapaHistorico; esRespaldo?: boolean;
 }) {
   const [detalle, setDetalle] = useState<Detalle | null>(null);
-  const porNombre = new Map(mapa.herramientas.map((h) => [h.nombre, h]));
-  const publicadas = new Set(porNombre.keys());
+  const marco = useRef<HTMLDivElement>(null);
+
+  const pantallaCompleta = useCallback(() => {
+    const el = marco.current;
+    if (!el) return;
+    if (document.fullscreenElement) document.exitFullscreen();
+    else el.requestFullscreen?.().catch(() => { /* el navegador puede negarlo */ });
+  }, []);
+
+  const publicadas = new Set(mapa.herramientas.map((h) => h.nombre));
   // Fichas del catálogo sin herramienta viva, y herramientas vivas sin ficha. Las
   // dos se avisan: una vista de arquitectura que calla la diferencia con el
   // servicio deja de servir para lo único que sirve, que es confiar en ella.
   const huerfanas = Object.keys(HERRAMIENTAS_HISTORICO).filter((n) => !publicadas.has(n));
   const sinDocumentar = mapa.herramientas.filter((h) => !HERRAMIENTAS_HISTORICO[h.nombre]);
-
-  function abrir(h: HerramientaHist) {
-    const fam = FAMILIAS[h.familia]?.titulo ?? h.familia;
-    setDetalle({
-      titulo: h.nombre,
-      clase: `herramienta · familia ${fam.toLowerCase()}`,
-      ficha: HERRAMIENTAS_HISTORICO[h.nombre],
-      // NodoModal deriva la tabla «qué recibe» del `input_schema`, que es el mismo
-      // objeto que ve el modelo. `modos` es del Predictivo y acá no aplica.
-      herramienta: { ...h, modos: undefined },
-    });
-  }
+  const cobertura = mapa.umbrales.find((u) => u.clave === "COBERTURA_MINIMA")?.valor ?? 0;
 
   return (
     <section className="vista">
-      <div className="phead">
-        <h1>Arquitectura del Agente Histórico</h1>
-        <p>
-          {mapa.objetivo} El modelo no calcula: elige qué herramienta llamar y redacta.
-          Este mapa se lee del servicio en cada carga, así que muestra el agente como
-          está hoy, no como se documentó alguna vez.
-        </p>
-        {esRespaldo && (
-          <p className="hint" style={{ marginTop: 6 }}>
-            <strong>Copia guardada.</strong> El servicio no respondió, así que este mapa
-            sale de la última captura y no del agente en vivo.
+      <div className="phead phead-row">
+        <div>
+          <h1>Arquitectura del Agente Histórico</h1>
+          <p>
+            {mapa.objetivo} El modelo no calcula: elige qué herramienta llamar y redacta.
+            Las dos familias no leen del mismo sitio, y el barrido escribe el store sin
+            pasar por él. Este mapa se lee del servicio en cada carga, así que muestra el
+            agente como está hoy, no como se documentó alguna vez.
           </p>
-        )}
+          {esRespaldo && (
+            <p className="hint" style={{ marginTop: 6 }}>
+              <strong>Copia guardada.</strong> El servicio no respondió, así que este mapa
+              sale de la última captura y no del agente en vivo.
+            </p>
+          )}
+        </div>
+        <button className="btn-sm" onClick={pantallaCompleta}>Pantalla completa</button>
       </div>
 
-      {/* ── La cadena: lo que hace confiable al agente es DÓNDE entra el LLM ── */}
-      <div className="card">
-        <h3>La cadena</h3>
-        <p className="hint">
-          La detección no corre dentro del agente. Corre antes, por lotes y sin modelo
-          de lenguaje, y deja su resultado escrito. Las herramientas solo leen. El LLM
-          aparece al final, y para entonces los números ya están decididos.
-        </p>
-        <div className="hist-cadena">
-          <div className="hist-paso">
-            <span className="lbl">1 · detección</span>
-            <b>Barrido por lotes</b>
-            <p>Sin LLM. Recorre día por día y tipifica lo que encuentra.</p>
-          </div>
-          <span className="hist-flecha" aria-hidden="true">→</span>
-          <div className="hist-paso hist-store">
-            <span className="lbl">2 · store</span>
-            <b>Hallazgos escritos</b>
-            <ul>{mapa.deteccion.escribe.map((t) => <li key={t} className="mono">{t}</li>)}</ul>
-          </div>
-          <span className="hist-flecha" aria-hidden="true">→</span>
-          <div className="hist-paso hist-tools">
-            <span className="lbl">3 · herramientas</span>
-            <b>{mapa.herramientas.length} herramientas</b>
-            <p>Pool de conexiones de <strong>solo lectura</strong>: no pueden escribir.</p>
-          </div>
-          <span className="hist-flecha" aria-hidden="true">→</span>
-          <div className="hist-paso hist-modelo">
-            <span className="lbl">4 · redacción</span>
-            <b className="mono">{mapa.modelo}</b>
-            <p>Orquesta y explica. Nunca calcula.</p>
-          </div>
+      <div className="card arq-marco" ref={marco}>
+        {/* El scroll horizontal vive SOLO acá dentro: con la leyenda dentro del
+            scroller, al desplazarse el lienzo la leyenda se iba con él. */}
+        <div className="arq-scroll">
+          <LienzoHistorico mapa={mapa} onAbrir={setDetalle} />
         </div>
-        <p className="note" style={{ margin: "16px 0 0" }}>
-          <b>Por qué por lotes.</b> {mapa.deteccion.por_que}.
-        </p>
+        <div className="arq-leyenda">
+          <span><i style={{ background: "var(--ceil)" }} /> entrada · consola</span>
+          <span><i style={{ background: "var(--warn)" }} /> puerta de acceso</span>
+          <span><i style={{ background: "var(--accent)" }} /> el modelo</span>
+          <span><i style={{ background: "var(--pred)" }} /> herramienta de análisis</span>
+          <span><i style={{ background: "var(--real)" }} /> herramienta de calidad</span>
+          <span><i style={{ background: "var(--muted)" }} /> datos · solo lectura</span>
+          <span className="arq-ayuda">Pasá el mouse para el resumen · hacé clic para el detalle</span>
+        </div>
       </div>
 
-      {/* ── Las familias y sus herramientas ─────────────────────────────── */}
-      {familiasOrdenadas(mapa).map(([clave, fam]) => (
-        <div className="card" key={clave}>
-          <h3>{FAMILIAS[clave]?.titulo ?? clave}</h3>
-          <p className="hint">{FAMILIAS[clave]?.nota ?? fam.objetivo}</p>
-          <div className="hist-tools-grid">
-            {fam.herramientas.map((nombre) => {
-              const h = porNombre.get(nombre);
-              const ficha = HERRAMIENTAS_HISTORICO[nombre];
-              if (!h) return null;
-              return (
-                <button key={nombre} className="arq-fila" onClick={() => abrir(h)}
-                        data-tip={ficha?.hover ?? h.descripcion.slice(0, 140)}>
-                  <span className="arq-n-t">{nombre}</span>
-                  <span className="arq-n-s">{ficha?.resumen ?? "—"}</span>
-                  <span className="hist-marcas">
-                    {h.incrusta_confianza && (
-                      <span className="arq-chip" data-tip="Su respuesta viaja con el bloque «confianza»: sobre cuántos días utilizables se calculó.">
-                        confianza
-                      </span>
-                    )}
-                    {!ficha && <span className="arq-sd">sin documentar</span>}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      ))}
+      {(huerfanas.length > 0 || sinDocumentar.length > 0) && (
+        <p className="arq-aviso">
+          <IconoAlerta size={14} />
+          {huerfanas.length > 0 && (
+            <span>
+              La consola documenta {huerfanas.join(", ")}, que el servicio todavía no
+              expone: el agente desplegado va detrás del código.
+              {sinDocumentar.length > 0 ? " " : ""}
+            </span>
+          )}
+          {sinDocumentar.length > 0 && (
+            <span>
+              {sinDocumentar.map((h) => h.nombre).join(", ")} corre en el servicio sin
+              ficha en la consola: se dibuja con su contrato, sin explicación.
+            </span>
+          )}
+        </p>
+      )}
 
       {/* ── Los umbrales: la parte discutible, y por eso la más visible ── */}
       <div className="card">
@@ -201,8 +167,8 @@ export function PanelHistorico({ mapa, esRespaldo = false }: {
           No son física, son <strong>política</strong>: alguien los eligió y se pueden
           discutir sin abrir el código. Salen leídos de donde se aplican, así que esta
           tabla no puede quedar desactualizada respecto del agente. Verlos es lo que
-          convierte «el agente dice que el día es malo» en «lo marca porque cubrió
-          menos del {Math.round((mapa.umbrales.find((u) => u.clave === "COBERTURA_MINIMA")?.valor ?? 0) * 100)} % de las horas de sol».
+          convierte «el agente dice que el día es malo» en «lo marca porque cubrió menos
+          del {Math.round(cobertura * 100)} % de las horas de sol».
         </p>
         <div className="tbl-scroll">
           <table className="tbl">
@@ -228,7 +194,8 @@ export function PanelHistorico({ mapa, esRespaldo = false }: {
         <p className="hint">
           Los {mapa.hallazgos.tipos.length} tipos de hallazgo que el barrido tipifica.
           Cada uno se guarda con su severidad ({mapa.hallazgos.severidades.join(" · ")}) y
-          con cuántas lecturas afecta, que es lo que después decide el veredicto del día.
+          con cuántas lecturas afecta, que es lo que después decide el veredicto del día
+          ({mapa.hallazgos.veredictos.join(" · ")}).
         </p>
         <div className="tbl-scroll">
           <table className="tbl">
@@ -244,11 +211,11 @@ export function PanelHistorico({ mapa, esRespaldo = false }: {
         </div>
       </div>
 
-      {/* ── Garantías: por qué son estructurales y no promesas del prompt ── */}
+      {/* ── Garantías: estructurales, no promesas del prompt ────────────── */}
       <div className="card">
         <h3>Garantías</h3>
         <p className="hint">
-          Ninguna de estas depende de que el modelo obedezca una instrucción. Todas son
+          Ninguna depende de que el modelo obedezca una instrucción. Todas son
           consecuencia de cómo está armado el sistema, que es la única clase de garantía
           que sigue valiendo cuando el modelo se equivoca.
         </p>
@@ -259,24 +226,11 @@ export function PanelHistorico({ mapa, esRespaldo = false }: {
         </ul>
       </div>
 
-      {(huerfanas.length > 0 || sinDocumentar.length > 0) && (
-        <p className="arq-aviso">
-          <IconoAlerta size={14} />
-          {huerfanas.length > 0 && (
-            <span>
-              La consola documenta {huerfanas.join(", ")}, que el servicio todavía no
-              expone: el agente desplegado va detrás del código.
-              {sinDocumentar.length > 0 ? " " : ""}
-            </span>
-          )}
-          {sinDocumentar.length > 0 && (
-            <span>
-              {sinDocumentar.map((h) => h.nombre).join(", ")} corre en el servicio sin
-              ficha en la consola: se dibuja con su contrato, sin explicación.
-            </span>
-          )}
-        </p>
-      )}
+      <p className="note">
+        <b>Las dos familias no son una agrupación cosmética.</b>{" "}
+        {FAMILIAS.analisis.nota} {FAMILIAS.calidad.nota} Por eso llegan a destinos
+        distintos en el mapa: leen de sitios distintos.
+      </p>
 
       <NodoModal detalle={detalle} onCerrar={() => setDetalle(null)} />
     </section>
