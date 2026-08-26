@@ -2,12 +2,12 @@
 // Rendimiento: KPIs reales (tools del analizador) + series vía /datos/serie.
 // Honesto: el gráfico de "potencia" es potencia media por bucket (robusta a la
 // cadencia variable); la energía real en kWh vive en el KPI.
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { jget, jpost, extraerLista, mensajeError, type Resp } from "@/app/lib/client";
 import { Estado } from "@/app/components/console/Estado";
 import { lineChart, scatter, palette } from "@/app/lib/charts";
 import { ajusteLineal, atipicosBajos, depurar, CONSTANTE_SOLAR, type Punto } from "@/app/lib/regresion";
-import { agrupar, alinear, completar, divergencias, type PuntoSerie } from "@/app/lib/serie";
+import { agrupar, alinear, completar, divergencias, recortar, type PuntoSerie } from "@/app/lib/serie";
 import { PERIODS, VARS, q, fmt, quéEsUnPunto, avisoParcial } from "@/app/components/console/perfCatalogo";
 
 export function PerfView({ theme }: { theme: string }) {
@@ -15,12 +15,22 @@ export function PerfView({ theme }: { theme: string }) {
   const [vari, setVari] = useState("pot");
   const [period, setPeriod] = useState("y2026");
   const [cmp, setCmp] = useState("ambos");
-  const [series, setSeries] = useState<any>(null);
   const [scat, setScat] = useState<Punto[] | null>(null);
-  // Series DIARIAS crudas. De acá salen tres cosas: la nube de puntos, el ajuste
-  // de cada arreglo, y la referencia «lo que su sol predice» reagrupada al grano
-  // que esté eligido arriba. Una sola descarga para los tres usos.
-  const [diarias, setDiarias] = useState<Record<string, PuntoSerie[]> | null>(null);
+  // ── Una sola descarga por columna, y siempre DIARIA y de todo el histórico ──
+  //
+  // Antes cada cambio de período o de variable disparaba de nuevo las series al
+  // grano elegido: cinco viajes por clic, para datos que ya estaban. Ahora se
+  // baja la serie diaria completa de cada columna una vez y TODO lo demás se
+  // deriva acá: recortar el período es filtrar, y reagrupar a semana o mes es
+  // promediar ponderando por lecturas.
+  //
+  // Derivar es EXACTO, no una aproximación: como `n` es cuántas lecturas tuvo
+  // cada día, el promedio ponderado de los promedios diarios da el mismo número
+  // que el promedio del tramo entero. La consola no puede discrepar del servicio.
+  //
+  // Y son datos chicos: una columna diaria de todo el histórico son unos cientos
+  // de filas. Lo caro era la cantidad de viajes, no el tamaño.
+  const [diarias, setDiarias] = useState<Record<string, PuntoSerie[]>>({});
   const [errKpi, setErrKpi] = useState<string | null>(null);
   const [errSerie, setErrSerie] = useState<string | null>(null);
   const [errScat, setErrScat] = useState<string | null>(null);
@@ -40,53 +50,70 @@ export function PerfView({ theme }: { theme: string }) {
   }, [intento]);
 
   const V = VARS[vari], P = PERIODS[period];
-  useEffect(() => {
-    setSeries(null); setErrSerie(null);
-    Promise.all(V.cols.map(([c]) => jget(q(V.tabla, c, P)))).then((rs: Resp[]) => {
-      const extraidas = rs.map((r) => extraerLista(r, "puntos"));
-      const fallida = extraidas.find((e) => e.error);
-      if (fallida) { setErrSerie(fallida.error); return; }
-      // Completar ANTES de sacar las etiquetas: un tramo sin datos tiene que
-      // ocupar su lugar en el eje, si no el hueco no mide nada y la línea lo
-      // cruza de largo como si ahí hubiera algo.
-      const llenas = extraidas.map((e) => completar(
-        e.lista.map((p: any) => ({ t: String(p.t).slice(0, 10), v: p.v, n: p.n ?? 0 })),
-        P.bucket));
-      setSeries({
-        fechas: llenas[0].map((p) => p.t),
-        labels: llenas[0].map((p) => p.t.slice(2)),
-        cols: llenas.map((l) => l.map((p) => p.v)),
-        muestras: llenas[0].map((p) => p.n),
-      });
-    }).catch((e) => setErrSerie(String(e?.message || e)));
-  }, [vari, period, intento]);
 
-  // La nube de puntos SIEMPRE va por día, aunque la serie de arriba esté en
-  // semanas o meses. No es una inconsistencia: promediando un mes, el día que
-  // generó de menos se diluye entre los otros veintinueve, y ese día es justo lo
-  // que este gráfico existe para encontrar. Un promedio no tiene dispersión que
-  // mirar.
-  const diario = { ...P, bucket: "day" };
+  // Las columnas que hacen falta. Las tres primeras van siempre: la nube de
+  // puntos y la referencia «lo que su sol predice» las necesitan con cualquier
+  // variable elegida.
+  const necesarias: [string, string][] = [
+    ["radiacion_calibrada", "irradiancia_incidente_wm2"],
+    ["electrico_corregido", "potencia_pv1_w"],
+    ["electrico_corregido", "potencia_pv2_w"],
+    ...V.cols.map(([c]) => [V.tabla, c] as [string, string]),
+  ];
+  const clave = (t: string, c: string) => `${t}.${c}`;
+  // Sin deduplicar, con la variable «Potencia» las dos columnas del arreglo
+  // aparecen dos veces (van en la lista fija Y en las de la variable) y se
+  // pedirían por duplicado en la primera carga.
+  const faltan = [...new Set(necesarias.map(([t, c]) => clave(t, c)))]
+    .filter((k) => !(k in diarias));
+  const pendiente = faltan.join(",");
+
   useEffect(() => {
-    setScat(null); setDiarias(null); setErrScat(null);
-    Promise.all([
-      jget(q("radiacion_calibrada", "irradiancia_incidente_wm2", diario)),
-      jget(q("electrico_corregido", "potencia_pv1_w", diario)),
-      jget(q("electrico_corregido", "potencia_pv2_w", diario)),
-    ]).then(([g, p1, p2]: Resp[]) => {
-      const ghi = extraerLista(g, "puntos");
-      const pv1 = extraerLista(p1, "puntos"), pv2 = extraerLista(p2, "puntos");
-      const fallo = ghi.error || pv1.error || pv2.error;
-      if (fallo) { setErrScat(fallo); return; }
-      const norm = (l: any[]): PuntoSerie[] =>
-        l.map((p: any) => ({ t: String(p.t).slice(0, 10), v: p.v, n: p.n ?? 0 }));
-      setDiarias({ ghi: norm(ghi.lista), pv1: norm(pv1.lista), pv2: norm(pv2.lista) });
-      const pm = Object.fromEntries(pv1.lista.map((p: any) => [p.t, p.v]));
-      setScat(ghi.lista
-        .filter((p: any) => pm[p.t] != null && p.v != null && pm[p.t] > 0 && p.v > 0)
-        .map((p: any) => ({ x: p.v, y: pm[p.t], etiqueta: String(p.t).slice(0, 10) })));
-    }).catch((e) => setErrScat(String(e?.message || e)));
-  }, [period, intento]);
+    if (!pendiente) return;
+    const pedir = pendiente.split(",").map((k) => k.split("."));
+    Promise.all(pedir.map(([t, c]) => jget(q(t, c, { bucket: "day" }))))
+      .then((rs: Resp[]) => {
+        const nuevas: Record<string, PuntoSerie[]> = {};
+        for (let i = 0; i < rs.length; i++) {
+          const e = extraerLista(rs[i], "puntos");
+          if (e.error) { setErrSerie(e.error); setErrScat(e.error); return; }
+          nuevas[pedir[i].join(".")] = e.lista.map((p: any) =>
+            ({ t: String(p.t).slice(0, 10), v: p.v, n: p.n ?? 0 }));
+        }
+        setErrSerie(null); setErrScat(null);
+        setDiarias((d) => ({ ...d, ...nuevas }));
+      })
+      .catch((e) => { setErrSerie(String(e?.message || e)); });
+  }, [pendiente, intento]);
+
+  const ghiDiaria = diarias[clave("radiacion_calibrada", "irradiancia_incidente_wm2")];
+  const listo = !faltan.length;
+
+  // La serie que se dibuja: recortar al período, reagrupar al grano y completar
+  // los tramos vacíos. Sin red: es aritmética sobre lo ya descargado, así que
+  // cambiar de período o de variable ya no espera nada.
+  const series = useMemo(() => {
+    if (!listo) return null;
+    const llenas = V.cols.map(([c]) =>
+      completar(agrupar(recortar(diarias[clave(V.tabla, c)], P.desde, P.hasta), P.bucket), P.bucket));
+    if (!llenas[0]?.length) return null;
+    return {
+      fechas: llenas[0].map((p) => p.t),
+      labels: llenas[0].map((p) => p.t.slice(2)),
+      cols: llenas.map((l) => l.map((p) => p.v)),
+      muestras: llenas[0].map((p) => p.n),
+    };
+  }, [listo, diarias, vari, period]);
+
+  // La nube de puntos: siempre por día, siempre del período elegido.
+  useEffect(() => {
+    if (!listo) { setScat(null); return; }
+    const pv1 = new Map(recortar(diarias[clave("electrico_corregido", "potencia_pv1_w")],
+                                 P.desde, P.hasta).map((p) => [p.t, p.v]));
+    setScat(recortar(ghiDiaria, P.desde, P.hasta)
+      .filter((g) => g.v != null && g.v > 0 && (pv1.get(g.t) ?? 0) > 0)
+      .map((g) => ({ x: g.v as number, y: pv1.get(g.t) as number, etiqueta: g.t })));
+  }, [listo, diarias, period]);
 
   void theme;
   const Pal = typeof window !== "undefined" ? palette() : ({} as any);
@@ -114,12 +141,14 @@ export function PerfView({ theme }: { theme: string }) {
   // irradiancia del tramo. Vale hacerlo así porque la recta es lineal: el
   // promedio de `m·x + b` es `m·(promedio de x) + b`, así que ajustar por día y
   // evaluar por semana es exacto, no una aproximación.
-  const referencia = (() => {
-    if (vari !== "pot" || !diarias || !series) return null;
-    const ghiTramo = alinear(agrupar(diarias.ghi, P.bucket), series.fechas);
-    const rectas = (["pv1", "pv2"] as const).map((k) => {
-      const pot = new Map(diarias[k].map((p) => [p.t, p.v]));
-      const pares: Punto[] = diarias.ghi
+  const referencia = useMemo(() => {
+    if (vari !== "pot" || !listo || !series) return null;
+    const ghiPeriodo = recortar(ghiDiaria, P.desde, P.hasta);
+    const ghiTramo = alinear(agrupar(ghiPeriodo, P.bucket), series.fechas);
+    const rectas = (["potencia_pv1_w", "potencia_pv2_w"] as const).map((col) => {
+      const pot = new Map(recortar(diarias[clave("electrico_corregido", col)], P.desde, P.hasta)
+        .map((p) => [p.t, p.v]));
+      const pares: Punto[] = ghiPeriodo
         .filter((g) => g.v != null && g.v <= CONSTANTE_SOLAR && (pot.get(g.t) ?? 0) > 0)
         .map((g) => ({ x: g.v as number, y: pot.get(g.t) as number, etiqueta: g.t }));
       return ajusteLineal(pares);
@@ -130,7 +159,7 @@ export function PerfView({ theme }: { theme: string }) {
         r ? ghiTramo.map((g) => (g == null ? null : r.m * g + r.b)) : null),
       rectas,
     };
-  })();
+  }, [vari, listo, series, diarias, period]);
 
   // Tramos donde lo medido se despegó de lo esperado. Solo se miran los arreglos
   // que están en pantalla: señalar una caída de PV2 mientras se mira «Solo PV1»

@@ -552,8 +552,8 @@ check("y son exactamente DOS",
 
   const perfSrc = require("node:fs").readFileSync(
     path.join(RAIZ, "app/components/console/PerfView.tsx"), "utf8");
-  check("la nube pide grano DIARIO aunque el período sea otro",
-    /const diario = \{ \.\.\.P, bucket: "day" \}/.test(perfSrc),
+  check("la nube usa el grano DIARIO aunque el período esté en meses",
+    /setScat\(recortar\(ghiDiaria/.test(perfSrc),
     "promediando un mes, el día que generó de menos se diluye entre los otros 29");
   check("y se publica el R² para no prometer lo que no se mide", /ajuste\.r2/.test(perfSrc));
 }
@@ -620,17 +620,51 @@ check("y son exactamente DOS",
   check("y los nulos no cuentan como caída",
     S.divergencias([null, 100], [100, 100], ["x", "y"]).length === 0);
 
+  // Derivar en el cliente en vez de volver a pedir tiene que dar EXACTAMENTE lo
+  // mismo que el servidor, o la consola y el agente discreparían sobre el mismo
+  // número. Verificado contra la base: 51 semanas y 14 meses, con una diferencia
+  // relativa máxima de 2,5e-13 %, que es ruido de coma flotante.
+  {
+    const dia = DIAS.map(([t, , v]) => pt(t, v, 100));
+    const sem = S.agrupar(dia, "week");
+    const suma = new Map();
+    for (const d of dia) {
+      const k = S.tramoDe(new Date(`${d.t}T00:00:00Z`), "week").toISOString().slice(0, 10);
+      const a = suma.get(k) || { s: 0, n: 0 };
+      a.s += d.v * d.n; a.n += d.n; suma.set(k, a);
+    }
+    check("reagrupar da el mismo número que promediar el tramo entero",
+      sem.every((p) => Math.abs(p.v - suma.get(p.t).s / suma.get(p.t).n) < 1e-9),
+      "si difiere, la consola y el agente dirían cosas distintas del mismo tramo");
+    check("y no se pierde ni un tramo", sem.length === suma.size);
+  }
+
   // La vista.
   const perfSrc = require("node:fs").readFileSync(
     path.join(RAIZ, "app/components/console/PerfView.tsx"), "utf8");
   check("la vista completa los huecos ANTES de sacar las etiquetas",
-    /const llenas = extraidas\.map\(\(e\) => completar\(/.test(perfSrc));
-  check("la serie de potencia trae su referencia", /const referencia = \(\(\) => \{/.test(perfSrc));
+    /completar\(agrupar\(recortar\(/.test(perfSrc),
+    "recortar al período, reagrupar al grano y recién ahí rellenar los vacíos");
+  check("la serie de potencia trae su referencia", /const referencia = useMemo\(/.test(perfSrc));
   check("la referencia se dibuja punteada, no como una medición más",
     /dash: true, width: 1\.4/.test(perfSrc));
   check("y solo se señalan los arreglos que están en pantalla",
     /visibles\.flatMap/.test(perfSrc),
     "marcar una caída de PV2 mirando «Solo PV1» manda a revisar algo que no se ve");
+
+  // Rendimiento: la vista tardaba porque volvía a pedir lo que ya tenía.
+  check("las series se bajan UNA vez por columna y se cachean",
+    /!\(k in diarias\)/.test(perfSrc));
+  check("y siempre en grano diario y de todo el histórico",
+    /jget\(q\(t, c, \{ bucket: "day" \}\)\)/.test(perfSrc),
+    "bajar el grano fino una vez permite derivar los demás sin más viajes");
+  check("cambiar de período NO dispara red",
+    /const series = useMemo\(/.test(perfSrc) && !/setSeries/.test(perfSrc),
+    "recortar y reagrupar es aritmética sobre lo ya descargado");
+  check("las columnas pedidas se deduplican",
+    /\[\.\.\.new Set\(necesarias\.map/.test(perfSrc),
+    "con «Potencia» las dos del arreglo aparecen dos veces y se pedirían duplicadas");
+  check("queda un solo sitio que pide series", (perfSrc.match(/jget\(q\(/g) || []).length === 1);
 }
 
 // ── 4. Resultado ──────────────────────────────────────────────────────────────

@@ -95,6 +95,11 @@ export function agrupar(diarios: PuntoSerie[], bucket: string): PuntoSerie[] {
     .map(([t, a]) => ({ t, v: a.suma / a.n, n: a.n }));
 }
 
+/** Recorta a [desde, hasta). Los límites vienen en ISO; ausentes = sin límite. */
+export function recortar(puntos: PuntoSerie[], desde?: string, hasta?: string): PuntoSerie[] {
+  return puntos.filter((p) => (!desde || p.t >= desde) && (!hasta || p.t < hasta));
+}
+
 /** Alinea una serie contra las etiquetas de otra. Lo que no esté, queda en null. */
 export function alinear(puntos: PuntoSerie[], etiquetas: string[]): (number | null)[] {
   const m = new Map(puntos.map((p) => [p.t, p.v]));
