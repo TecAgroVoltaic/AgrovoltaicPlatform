@@ -132,7 +132,10 @@ export function ChatWidget({ agent, contexto, onTraza }: {
       <div className="chat-head">
         <div>
           <b>Asistente</b>
-          <div className="chat-sub mono">{nombreAgente} · {contexto}</div>
+          {/* `contexto` YA empieza con el nombre del agente (lo arma Console para
+              mandárselo al modelo). Anteponerlo acá lo repetía: «Agente Histórico ·
+              Agente Histórico · Arquitectura del agente». */}
+          <div className="chat-sub mono">{contexto}</div>
         </div>
         <div className="chat-headbtns">
           <button className="chat-icon" onClick={limpiar} title="Limpiar conversación" aria-label="Limpiar">↺</button>

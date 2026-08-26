@@ -57,7 +57,13 @@ button, input, textarea, select { font-family:inherit; }
 .app { display:flex; align-items:flex-start; min-height:100vh; transition:padding-right .22s ease; }
 /* Con el chat abierto en pantallas anchas: reserva la franja derecha y el
    contenido se re-centra en el espacio restante (no queda tapado por el panel). */
-@media (min-width:1300px){ body.chat-abierto .app { padding-right:580px; } }
+/* El chat abierto solo APARTA el contenido cuando lo que queda sigue siendo
+   usable. El umbral no es redondo a ojo: el lienzo de arquitectura mide 1140 px
+   fijos, más la barra lateral y los márgenes; por debajo de ~1900 px, reservarle
+   580 px al panel dejaba el lienzo en media columna y había que leerlo a través
+   de una rendija. En pantallas más chicas el panel FLOTA por encima, que tapa
+   parte del contenido pero no lo deforma. */
+@media (min-width:1900px){ body.chat-abierto .app { padding-right:580px; } }
 .side { width:230px; flex:0 0 230px; align-self:stretch; background:var(--panel);
   border-right:1px solid var(--line); position:sticky; top:0; height:100vh;
   display:flex; flex-direction:column; gap:18px; padding:22px 16px;

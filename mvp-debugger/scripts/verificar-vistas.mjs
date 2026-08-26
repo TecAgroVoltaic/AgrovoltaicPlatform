@@ -377,6 +377,19 @@ check("y son exactamente DOS",
   check("hay un ejemplo que pregunta por el agente mismo",
     /herramientas tenés|Cómo estás construido/.test(widget));
   check("y el chat lo anuncia", /cómo está construido/.test(widget));
+
+  // El panel abierto no puede deformar la página. Reservarle 580 px en una
+  // pantalla de 1400 dejaba el lienzo de arquitectura (1140 px fijos) en media
+  // columna: había que leerlo por una rendija.
+  const reserva = css.match(/@media \(min-width:(\d+)px\)\{ body\.chat-abierto/);
+  check("el chat solo aparta el contenido si lo que queda es usable",
+    reserva && Number(reserva[1]) >= 1900,
+    reserva ? `reserva desde ${reserva[1]}px, y el lienzo solo mide 1140` : "no hay regla");
+  check("por debajo de eso el panel flota", /\.chat-panel \{ position:fixed/.test(css));
+
+  check("la cabecera del chat no repite el nombre del agente",
+    !/\{nombreAgente\} · \{contexto\}/.test(widget),
+    "`contexto` ya empieza con el nombre: salía «Agente Histórico · Agente Histórico · …»");
 }
 
 // ── 4. Resultado ──────────────────────────────────────────────────────────────
