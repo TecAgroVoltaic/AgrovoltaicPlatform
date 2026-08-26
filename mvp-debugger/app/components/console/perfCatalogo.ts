@@ -2,11 +2,33 @@
 // variables, con su tabla y columnas. Es CONFIGURACIÓN, no lógica de vista:
 // agregar una variable no debería obligar a tocar el componente.
 
-export const PERIODS: Record<string, { label: string; desde?: string; hasta?: string; bucket: string }> = {
-  todo: { label: "Todo el histórico", bucket: "month" },
-  y2026: { label: "2026", desde: "2026-01-01", hasta: "2027-01-01", bucket: "week" },
-  mayo: { label: "Mayo 2026", desde: "2026-05-01", hasta: "2026-06-02", bucket: "day" },
+// El GRANO no es un detalle de implementación: es qué representa cada punto del
+// gráfico, y sin decirlo la curva se lee como si fuera diaria. Un período largo
+// con grano diario serían cientos de puntos ilegibles, así que cada período trae
+// el suyo; lo que no se puede es callarlo.
+export const PERIODS: Record<string, {
+  label: string; desde?: string; hasta?: string; bucket: string; grano: string;
+}> = {
+  todo: { label: "Todo el histórico", bucket: "month", grano: "mes" },
+  y2026: { label: "2026", desde: "2026-01-01", hasta: "2027-01-01", bucket: "week", grano: "semana" },
+  mayo: { label: "Mayo 2026", desde: "2026-05-01", hasta: "2026-06-02", bucket: "day", grano: "día" },
 };
+
+/** Qué es un punto del gráfico, dicho para quien lo mira. */
+export function quéEsUnPunto(p: { grano: string }): string {
+  return `Cada punto es un ${p.grano}: el promedio de todas sus lecturas`;
+}
+
+/** Aviso de bucket parcial. `date_trunc` alinea a la semana/mes NATURAL, así que
+ *  con un filtro de fechas el primer y el último punto pueden cubrir menos días
+ *  que el resto. Es visible en los datos: la semana del 2025-12-29 del período
+ *  «2026» tiene 4 días y 520 lecturas, contra 7 días y ~920 de una completa. */
+export function avisoParcial(p: { grano: string; desde?: string }): string | null {
+  return p.grano === "día" || !p.desde
+    ? null
+    : `El primer y el último punto pueden ser parciales: los tramos se alinean a la `
+      + `${p.grano} natural, no al filtro de fechas.`;
+}
 
 export const VARS: Record<string, { label: string; tabla: string; cols: [string, string][]; unit: string; dec: number; cmp: boolean }> = {
   pot: { label: "Potencia", tabla: "electrico_corregido", cols: [["potencia_pv1_w", "PV1"], ["potencia_pv2_w", "PV2"]], unit: "W", dec: 0, cmp: true },

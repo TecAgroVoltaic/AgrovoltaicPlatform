@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { jget, jpost, extraerLista, mensajeError, type Resp } from "@/app/lib/client";
 import { Estado } from "@/app/components/console/Estado";
 import { lineChart, scatter, palette } from "@/app/lib/charts";
-import { PERIODS, VARS, q, fmt } from "@/app/components/console/perfCatalogo";
+import { PERIODS, VARS, q, fmt, quéEsUnPunto, avisoParcial } from "@/app/components/console/perfCatalogo";
 
 export function PerfView({ theme }: { theme: string }) {
   const [kpi, setKpi] = useState<any>(null);
@@ -94,7 +94,7 @@ export function PerfView({ theme }: { theme: string }) {
 
       <div className="controls">
         <div className="ctl"><span className="lbl">Período</span>
-          <div className="chips">{Object.entries(PERIODS).map(([k, p]) => <button key={k} className={"chip" + (period === k ? " on" : "")} onClick={() => setPeriod(k)}>{p.label}</button>)}</div>
+          <div className="chips">{Object.entries(PERIODS).map(([k, p]) => <button key={k} className={"chip" + (period === k ? " on" : "")} onClick={() => setPeriod(k)}>{p.label} <span className="chip-sub">{p.grano}</span></button>)}</div>
         </div>
         <div className="ctl"><span className="lbl">Variable</span>
           <div className="chips">{Object.entries(VARS).map(([k, v]) => <button key={k} className={"chip" + (vari === k ? " on" : "")} onClick={() => setVari(k)}>{v.label}</button>)}</div>
@@ -106,7 +106,11 @@ export function PerfView({ theme }: { theme: string }) {
 
       <div className="card">
         <h3>{V.label}{vari === "pot" ? " media por arreglo" : " diaria"}</h3>
-        <p className="hint">{vari === "pot" ? "Potencia media por período (robusta a la cadencia variable de muestreo)." : "Promedio por período."} · {P.label}</p>
+        <p className="hint">
+          {quéEsUnPunto(P)}
+          {vari === "pot" ? ", que es robusto a la cadencia variable de muestreo" : ""}. · {P.label}
+          {avisoParcial(P) ? <><br />{avisoParcial(P)}</> : null}
+        </p>
         {chart ? <><figure dangerouslySetInnerHTML={{ __html: chart }} />
           <div className="legend">{(cmp === "ambos" || !V.cmp ? V.cols : cmp === "pv1" ? [V.cols[0]] : [V.cols[1]]).map(([, name], i) => <span key={i}><span className="sw" style={{ background: colors[V.cols.findIndex((c) => c[1] === name)] }} />{name}</span>)}</div>
         </> : (
@@ -118,7 +122,7 @@ export function PerfView({ theme }: { theme: string }) {
 
       <div className="card" style={{ marginTop: 16 }}>
         <h3>Correlación irradiancia → potencia PV1</h3>
-        <p className="hint">Cada punto es un período: cuánto explica el sol la generación. · {P.label}</p>
+        <p className="hint">{quéEsUnPunto(P)}, cruzado contra su irradiancia: cuánto explica el sol la generación. · {P.label}</p>
         {scat && scat.length ? (
           <figure dangerouslySetInnerHTML={{ __html: scatter(scat, { height: 320 }) }} />
         ) : (

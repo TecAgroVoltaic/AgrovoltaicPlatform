@@ -432,6 +432,37 @@ check("y son exactamente DOS",
     "`contexto` ya empieza con el nombre: salía «Agente Histórico · Agente Histórico · …»");
 }
 
+// ── 3f. Rendimiento: qué representa un punto ──────────────────────────────────
+// La curva de «2026» se lee como si fuera diaria y son promedios SEMANALES; el eje
+// además rotula solo ~7 marcas, así que las fechas saltan de 21 en 21 días y
+// parece que faltan datos. No falta ninguno: lo que faltaba era decirlo.
+{
+  const cat = require(path.join(OUT, "app/components/console/perfCatalogo.js"));
+  const perf = require("node:fs").readFileSync(
+    path.join(RAIZ, "app/components/console/PerfView.tsx"), "utf8");
+
+  for (const [k, p] of Object.entries(cat.PERIODS)) {
+    check(`el período «${p.label}» declara su grano`, !!p.grano, `falta grano en ${k}`);
+  }
+  check("los granos son los tres esperados",
+    ["mes", "semana", "día"].every((g) => Object.values(cat.PERIODS).some((p) => p.grano === g)));
+  check("se dice qué es un punto", /Cada punto es un mes/.test(cat.quéEsUnPunto({ grano: "mes" })));
+  check("la vista lo usa en el gráfico y en la dispersión",
+    (perf.match(/quéEsUnPunto\(P\)/g) || []).length === 2);
+  check("y ya no dice el vago «por período»", !/media por período|un período:/.test(perf));
+  check("el grano también se ve en el botón que lo elige", /\{p\.grano\}/.test(perf));
+  check("existe la clase .chip-sub", css.includes(".chip-sub"));
+
+  // date_trunc alinea a la semana/mes natural: con filtro de fechas, el primer y
+  // el último punto cubren menos días. Verificado en la base: la semana del
+  // 2025-12-29 del período «2026» tiene 4 días, no 7.
+  check("se avisa del tramo parcial cuando el grano es semana o mes",
+    !!cat.avisoParcial(cat.PERIODS.y2026) && !!cat.avisoParcial(cat.PERIODS.todo === undefined ? cat.PERIODS.y2026 : { grano: "mes", desde: "x" }));
+  check("y NO se avisa cuando el grano es diario", cat.avisoParcial(cat.PERIODS.mayo) === null,
+    "un bucket de un día no puede ser parcial");
+  check("ni cuando no hay filtro de fechas", cat.avisoParcial({ grano: "mes" }) === null);
+}
+
 // ── 4. Resultado ──────────────────────────────────────────────────────────────
 rmSync(OUT, { recursive: true, force: true });
 console.log(`\n${ok} chequeos OK`);

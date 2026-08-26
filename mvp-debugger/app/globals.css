@@ -141,6 +141,11 @@ button, input, textarea, select { font-family:inherit; }
 .controls { display:flex; flex-wrap:wrap; gap:14px 30px; align-items:flex-end; margin:22px 0; }
 .ctl { display:flex; flex-direction:column; gap:7px; }
 .chips { display:flex; gap:6px; flex-wrap:wrap; }
+/* El grano del período, dentro del propio botón: es donde se elige, y es la
+   diferencia entre leer la curva como diaria o como semanal. */
+.chip-sub { font-family:var(--mono); font-size:9.5px; text-transform:uppercase;
+  letter-spacing:.08em; color:var(--muted); margin-left:5px; }
+.chip.on .chip-sub { color:var(--accent); }
 .chip { border:1px solid var(--line2); background:var(--panel); color:var(--ink2); border-radius:7px; padding:5px 11px; font-size:12.5px; cursor:pointer; font-weight:500; letter-spacing:-.01em; transition:border-color .12s,color .12s; }
 .chip:hover { border-color:var(--accent); }
 .chip.on { background:var(--panel2); border-color:var(--accent); color:var(--ink); }
