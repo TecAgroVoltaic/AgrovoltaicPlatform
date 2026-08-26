@@ -146,6 +146,8 @@ button, input, textarea, select { font-family:inherit; }
 .chip-sub { font-family:var(--mono); font-size:9.5px; text-transform:uppercase;
   letter-spacing:.08em; color:var(--muted); margin-left:5px; }
 .chip.on .chip-sub { color:var(--accent); }
+/* La muestra de la referencia: punteada, porque no es una medición más. */
+.sw-ref { background:transparent !important; border-top:2px dashed var(--muted); height:0; }
 .chip { border:1px solid var(--line2); background:var(--panel); color:var(--ink2); border-radius:7px; padding:5px 11px; font-size:12.5px; cursor:pointer; font-weight:500; letter-spacing:-.01em; transition:border-color .12s,color .12s; }
 .chip:hover { border-color:var(--accent); }
 .chip.on { background:var(--panel2); border-color:var(--accent); color:var(--ink); }

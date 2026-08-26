@@ -558,6 +558,81 @@ check("y son exactamente DOS",
   check("y se publica el R² para no prometer lo que no se mide", /ajuste\.r2/.test(perfSrc));
 }
 
+// ── 3h. Huecos de la serie: el gráfico ya no los tapa ─────────────────────────
+// `/datos/serie` devuelve SOLO los tramos con datos. Como el eje X va por índice
+// y no por tiempo, dos puntos separados por cuatro meses de nada quedaban pegados
+// y unidos por una recta: el gráfico dibujaba una línea continua sobre el hueco
+// de enero a abril de 2025.
+{
+  const S = require(path.join(OUT, "app/lib/serie.js"));
+  const pt = (t, v, n = 100) => ({ t, v, n });
+
+  // Los meses REALES de la base: 14 con datos para 20 de calendario.
+  const meses = [
+    pt("2024-11-01", 176.8, 174), pt("2024-12-01", 182.9, 114),
+    pt("2025-05-01", 364.5, 2515), pt("2025-06-01", 320.2, 2609),
+    pt("2025-09-01", 266.2, 902), pt("2025-10-01", 293.8, 2627),
+    pt("2025-11-01", 256.6, 3510), pt("2025-12-01", 345.3, 4013),
+    pt("2026-01-01", 321.8, 4124), pt("2026-02-01", 267.0, 3733),
+    pt("2026-03-01", 396.7, 4010), pt("2026-04-01", 342.4, 4297),
+    pt("2026-05-01", 323.4, 3686), pt("2026-06-01", 176.4, 155),
+  ];
+  const lleno = S.completar(meses, "month");
+  check("los meses sin datos pasan a existir como vacíos",
+    lleno.length === 20, `${meses.length} -> ${lleno.length}, esperaba 20 meses de calendario`);
+  check("y el hueco de ene-abr 2025 son cuatro nulos seguidos",
+    ["2025-01-01", "2025-02-01", "2025-03-01", "2025-04-01"]
+      .every((t) => lleno.find((p) => p.t === t)?.v === null));
+  check("también el de jul-ago 2025",
+    ["2025-07-01", "2025-08-01"].every((t) => lleno.find((p) => p.t === t)?.v === null));
+  check("no se inventa ni se pierde ningún dato real",
+    meses.every((m) => lleno.find((p) => p.t === m.t)?.v === m.v));
+  check("el gráfico corta la línea en un null",
+    /if \(!p\) \{ st = false; return; \}/.test(
+      require("node:fs").readFileSync(path.join(RAIZ, "app/lib/charts.ts"), "utf8")),
+    "sin esto, llenar de nulos no serviría de nada");
+
+  // Semanas: date_trunc arranca el LUNES.
+  check("la semana arranca el lunes, como date_trunc",
+    S.tramoDe(new Date("2026-01-01T00:00:00Z"), "week").toISOString().slice(0, 10) === "2025-12-29",
+    "el 1 de enero de 2026 fue jueves");
+  const sems = S.completar([pt("2026-01-05", 1), pt("2026-01-26", 2)], "week");
+  check("los tramos semanales que faltan se completan", sems.length === 4);
+  check("meses de distinto largo no descuadran",
+    S.siguiente(new Date("2026-01-31T00:00:00Z"), "month").toISOString().slice(0, 10) === "2026-02-01");
+
+  // Reagrupar pesa por lecturas: un día con 4 no vale lo mismo que uno con 288.
+  const dias = [pt("2026-01-05", 100, 4), pt("2026-01-06", 200, 396)];
+  const sem = S.agrupar(dias, "week");
+  check("reagrupar pondera por cuántas lecturas tuvo cada día",
+    sem.length === 1 && Math.abs(sem[0].v - 199) < 0.01,
+    `dio ${sem[0]?.v?.toFixed(2)}, el promedio simple daría 150`);
+  check("y no altera una serie que ya es diaria",
+    S.agrupar(dias, "day").length === 2);
+
+  // Despegues: lo medido muy por debajo de su referencia.
+  const et = ["a", "b", "c"];
+  const d = S.divergencias([100, 40, 90], [100, 100, 100], et);
+  check("se señala el tramo que se despegó de su referencia",
+    d.length === 1 && d[0].t === "b", `señaló ${d.map((x) => x.t).join(",")}`);
+  check("un tramo POR ENCIMA de la referencia no se señala",
+    S.divergencias([160], [100], ["x"]).length === 0);
+  check("y los nulos no cuentan como caída",
+    S.divergencias([null, 100], [100, 100], ["x", "y"]).length === 0);
+
+  // La vista.
+  const perfSrc = require("node:fs").readFileSync(
+    path.join(RAIZ, "app/components/console/PerfView.tsx"), "utf8");
+  check("la vista completa los huecos ANTES de sacar las etiquetas",
+    /const llenas = extraidas\.map\(\(e\) => completar\(/.test(perfSrc));
+  check("la serie de potencia trae su referencia", /const referencia = \(\(\) => \{/.test(perfSrc));
+  check("la referencia se dibuja punteada, no como una medición más",
+    /dash: true, width: 1\.4/.test(perfSrc));
+  check("y solo se señalan los arreglos que están en pantalla",
+    /visibles\.flatMap/.test(perfSrc),
+    "marcar una caída de PV2 mirando «Solo PV1» manda a revisar algo que no se ve");
+}
+
 // ── 4. Resultado ──────────────────────────────────────────────────────────────
 rmSync(OUT, { recursive: true, force: true });
 console.log(`\n${ok} chequeos OK`);
