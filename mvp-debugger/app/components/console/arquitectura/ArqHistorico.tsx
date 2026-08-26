@@ -13,53 +13,18 @@
 // `GET /historico/arquitectura`, que la deriva de `tools.SCHEMAS` y de los propios
 // módulos. La prosa del «por qué» vive en `catalogoHistorico.ts`, y cuando el
 // catálogo y el servicio se separan, la vista lo dice en pantalla.
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
-import { jget, mensajeError } from "@/app/lib/client";
 import { IconoAlerta } from "@/app/components/Iconos";
-import { Estado } from "@/app/components/console/Estado";
-import { FAMILIAS, HERRAMIENTAS_HISTORICO } from "./catalogoHistorico";
+import { HERRAMIENTAS_HISTORICO } from "./catalogoHistorico";
 import { LienzoHistorico } from "./LienzoHistorico";
 import { NodoModal, type Detalle } from "./NodoModal";
-import { RESPALDO_HISTORICO } from "./respaldoHistorico";
-import { esMapaHistorico, valorUmbral, type MapaHistorico } from "./mapaHistorico";
-
-const RUTA = "/api/historico/arquitectura";
+import { useMapaHistorico } from "./useMapaHistorico";
+import type { MapaHistorico } from "./mapaHistorico";
 
 export function ArqHistorico() {
-  const [mapa, setMapa] = useState<MapaHistorico | null>(null);
-  const [esRespaldo, setEsRespaldo] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { mapa, esRespaldo } = useMapaHistorico();
 
-  useEffect(() => {
-    let vivo = true;
-    jget<MapaHistorico>(RUTA).then((r) => {
-      if (!vivo) return;
-      // El mapa describe la FORMA del agente, no datos medidos: no cambia con la
-      // hora. Si el servicio no está (el servidor se apaga de noche), se dibuja la
-      // copia. Pero solo si de verdad es el mapa de ESTE agente: `esMapaHistorico`
-      // está para que un JSON de otra forma nunca se cuele con este rótulo.
-      if (esMapaHistorico(r.data)) {
-        setMapa(r.data);
-        setEsRespaldo(false);
-      } else if (esMapaHistorico(RESPALDO_HISTORICO)) {
-        setMapa(RESPALDO_HISTORICO);
-        setEsRespaldo(true);
-      } else {
-        setError(mensajeError(r));
-      }
-    });
-    return () => { vivo = false; };
-  }, []);
-
-  if (error) {
-    return (
-      <section className="vista">
-        <div className="phead"><h1>Arquitectura del Agente Histórico</h1></div>
-        <div className="card"><Estado error={error} que="el mapa del agente" /></div>
-      </section>
-    );
-  }
   if (!mapa) {
     return (
       <section className="vista">
@@ -101,7 +66,6 @@ export function PanelHistorico({ mapa, esRespaldo = false }: {
   // servicio deja de servir para lo único que sirve, que es confiar en ella.
   const huerfanas = Object.keys(HERRAMIENTAS_HISTORICO).filter((n) => !publicadas.has(n));
   const sinDocumentar = mapa.herramientas.filter((h) => !HERRAMIENTAS_HISTORICO[h.nombre]);
-  const cobertura = mapa.umbrales.find((u) => u.clave === "COBERTURA_MINIMA")?.valor ?? 0;
 
   return (
     <section className="vista">
@@ -160,76 +124,13 @@ export function PanelHistorico({ mapa, esRespaldo = false }: {
         </p>
       )}
 
-      {/* ── Los umbrales: la parte discutible, y por eso la más visible ── */}
-      <div className="card">
-        <h3>Umbrales: los números que deciden si un dato sirve</h3>
-        <p className="hint">
-          No son física, son <strong>política</strong>: alguien los eligió y se pueden
-          discutir sin abrir el código. Salen leídos de donde se aplican, así que esta
-          tabla no puede quedar desactualizada respecto del agente. Verlos es lo que
-          convierte «el agente dice que el día es malo» en «lo marca porque cubrió menos
-          del {Math.round(cobertura * 100)} % de las horas de sol».
-        </p>
-        <div className="tbl-scroll">
-          <table className="tbl">
-            <thead>
-              <tr><th>umbral</th><th style={{ textAlign: "right" }}>valor</th><th>qué decide</th></tr>
-            </thead>
-            <tbody>
-              {mapa.umbrales.map((u) => (
-                <tr key={u.clave}>
-                  <td className="mono">{u.clave}</td>
-                  <td className="mono" style={{ textAlign: "right" }}>{valorUmbral(u.valor)}</td>
-                  <td>{u.que_decide}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* ── Qué sabe detectar ───────────────────────────────────────────── */}
-      <div className="card">
-        <h3>Qué sabe detectar</h3>
-        <p className="hint">
-          Los {mapa.hallazgos.tipos.length} tipos de hallazgo que el barrido tipifica.
-          Cada uno se guarda con su severidad ({mapa.hallazgos.severidades.join(" · ")}) y
-          con cuántas lecturas afecta, que es lo que después decide el veredicto del día
-          ({mapa.hallazgos.veredictos.join(" · ")}).
-        </p>
-        <div className="tbl-scroll">
-          <table className="tbl">
-            <tbody>
-              {mapa.hallazgos.tipos.map((t) => (
-                <tr key={t.tipo}>
-                  <td className="mono" style={{ whiteSpace: "nowrap" }}>{t.tipo}</td>
-                  <td>{t.que_es}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* ── Garantías: estructurales, no promesas del prompt ────────────── */}
-      <div className="card">
-        <h3>Garantías</h3>
-        <p className="hint">
-          Ninguna depende de que el modelo obedezca una instrucción. Todas son
-          consecuencia de cómo está armado el sistema, que es la única clase de garantía
-          que sigue valiendo cuando el modelo se equivoca.
-        </p>
-        <ul className="arq-cer-l">
-          {mapa.garantias.map((g, i) => (
-            <li key={i}><b>{g.que}</b> — {g.como}.</li>
-          ))}
-        </ul>
-      </div>
-
       <p className="note">
-        <b>Las dos familias no son una agrupación cosmética.</b>{" "}
-        {FAMILIAS.analisis.nota} {FAMILIAS.calidad.nota} Por eso llegan a destinos
-        distintos en el mapa: leen de sitios distintos.
+        <b>Los criterios están en la documentación.</b> Los ocho{" "}
+        <a href="/docs#historico">umbrales que deciden si un dato sirve</a> y los{" "}
+        {mapa.hallazgos.tipos.length} tipos de hallazgo que el barrido tipifica se leen
+        mejor de corrido que al pie de un mapa, y se leen del mismo servicio que este
+        dibujo, así que dicen lo mismo. Esta pantalla es la forma del agente; aquella,
+        sus criterios.
       </p>
 
       <NodoModal detalle={detalle} onCerrar={() => setDetalle(null)} />

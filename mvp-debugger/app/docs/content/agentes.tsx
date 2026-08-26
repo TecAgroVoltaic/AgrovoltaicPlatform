@@ -1,5 +1,83 @@
 "use client";
 import { Page, Note, IC, Table, Meta, Pre, Diagram } from "../ui";
+import { useMapaHistorico } from "@/app/components/console/arquitectura/useMapaHistorico";
+import { valorUmbral, type MapaHistorico } from "@/app/components/console/arquitectura/mapaHistorico";
+
+/** Los umbrales y los tipos de hallazgo, LEÍDOS DEL AGENTE.
+ *
+ * No están transcritos acá a propósito. Una tabla escrita a mano envejece sin que
+ * nadie se entere, y entonces el documento y el agente discrepan sobre el número
+ * que decide si un dato sirve: quien lea la doc creerá que el criterio es uno y
+ * el agente aplicará otro. Salen del mismo `GET /arquitectura` que dibuja el mapa
+ * de la consola, que a su vez se deriva del código.
+ */
+function CriteriosDelHistorico() {
+  const { mapa, esRespaldo, cargando } = useMapaHistorico();
+  if (cargando) return <p className="dx-muted">Leyendo los criterios del agente…</p>;
+  if (!mapa) return null;
+  return <TablasCriterios mapa={mapa} esRespaldo={esRespaldo} />;
+}
+
+/** Las tablas, sin carga de red.
+ *
+ * Separadas del componente de arriba para que se puedan RENDERIZAR con un mapa
+ * real en `scripts/verificar-vistas.mjs`: el efecto que trae los datos no corre
+ * en un render estático, así que dentro del wrapper lo único verificable sería
+ * la línea de «cargando». No hay navegador con el que mirar esto.
+ */
+export function TablasCriterios({ mapa, esRespaldo = false }: {
+  mapa: MapaHistorico; esRespaldo?: boolean;
+}) {
+  return (
+    <>
+      <h2>Umbrales: los números que deciden si un dato sirve</h2>
+      <p>
+        No son física, son <strong>política</strong>: alguien los eligió y se pueden
+        discutir sin abrir el código. Salen leídos de donde se aplican, así que esta
+        tabla no puede quedar desactualizada respecto del agente. Verlos es lo que
+        convierte «el agente dice que el día es malo» en «lo marca porque cubrió menos
+        del {Math.round((mapa.umbrales.find((u) => u.clave === "COBERTURA_MINIMA")?.valor ?? 0) * 100)}
+        {" "}% de las horas de sol».
+      </p>
+      <Table
+        head={["Umbral", "Valor", "Qué decide"]}
+        rows={mapa.umbrales.map((u) => [
+          <IC>{u.clave}</IC>, valorUmbral(u.valor), u.que_decide,
+        ])}
+      />
+
+      <h2>Qué sabe detectar ({mapa.hallazgos.tipos.length} tipos)</h2>
+      <p>
+        Lo que el barrido tipifica. Cada hallazgo se guarda con su severidad
+        ({mapa.hallazgos.severidades.join(" · ")}) y con cuántas lecturas afecta, que es
+        lo que después decide el veredicto del día ({mapa.hallazgos.veredictos.join(" · ")}).
+      </p>
+      <Table
+        head={["Tipo", "Qué es"]}
+        rows={mapa.hallazgos.tipos.map((t) => [<IC>{t.tipo}</IC>, t.que_es])}
+      />
+
+      <h2>Garantías</h2>
+      <p>
+        Ninguna depende de que el modelo obedezca una instrucción. Todas son
+        consecuencia de cómo está armado el sistema, que es la única clase de garantía
+        que sigue valiendo cuando el modelo se equivoca.
+      </p>
+      <Table
+        head={["Qué se garantiza", "Cómo"]}
+        rows={mapa.garantias.map((g) => [g.que, g.como])}
+      />
+      {esRespaldo && (
+        <Note kind="warn">
+          <div>
+            <b>Copia guardada.</b> El servicio no respondió, así que estas tablas salen
+            de la última captura del código y no del agente en vivo.
+          </div>
+        </Note>
+      )}
+    </>
+  );
+}
 
 export function Historico() {
   return (
@@ -13,7 +91,7 @@ export function Historico() {
         ["Puerto", "8010"],
         ["Modelo", "claude-haiku-4-5"],
         ["max_tokens", "2048"],
-        ["Entrypoint", "analizador.api:app"],
+        ["Entrypoint", "historico.api:app"],
         ["Fuente", "Supabase PV (RO)"],
       ]} />
 
@@ -21,8 +99,9 @@ export function Historico() {
       <p>Clase <IC>Historico</IC> (<IC>agent/agent.py</IC>): tool-use manual con el SDK de Anthropic (no el tool-runner beta) para control total y no filtrar el razonamiento interno. El agente se construye de forma <strong>perezosa</strong> en el primer <IC>/preguntar</IC> o <IC>/chat</IC>: así <IC>/health</IC> y <IC>/tool</IC> no dependen de la <IC>ANTHROPIC_API_KEY</IC>.</p>
       <p>La <strong>barrera anti-invención</strong> es estructural + de prompt: el modelo no tiene acceso a la DB (toda cifra pasa por el <IC>DISPATCH</IC> de tools) y el system prompt ordena «NUNCA calcules ni inventes números». La comparación PV1 vs PV2 no necesita tool dedicada: <IC>performance_ratio</IC>, <IC>energia_por_arreglo</IC> y <IC>temperatura_por_arreglo</IC> ya devuelven ambos arreglos en una sola llamada.</p>
 
-      <h2>Herramientas (8)</h2>
-      <p>Registro en <IC>tools/__init__.py</IC>: cada módulo expone un <IC>SCHEMA</IC> (lo que ve el LLM) y un <IC>run(**params)</IC>. Las 6 atómicas comparten firma <IC>run(desde?, hasta?)</IC>.</p>
+      <h2>Herramientas</h2>
+      <p>Registro en <IC>tools/__init__.py</IC>: cada módulo expone un <IC>SCHEMA</IC> (lo que ve el LLM) y un <IC>run(**params)</IC>. Se dividen en <strong>dos familias</strong>, y la división no es cosmética: llegan a destinos distintos. Las de <b>análisis</b> leen las vistas corregidas y responden <i>qué pasó</i>; las de <b>calidad</b> no calculan nada, leen el store que dejó el barrido y responden <i>si el dato sirve</i>. El mapa vivo de las dos familias, con el contrato de cada herramienta, está en la <a href="/#arq">vista de arquitectura de la consola</a>.</p>
+      <p>Las de análisis que agregan sobre un período incrustan el bloque <IC>confianza</IC> en su propia respuesta: dice sobre cuántos días <i>utilizables</i> se calculó el número. Va dentro del payload y no en el prompt, así que el modelo no puede reportar la cifra sin ver su fiabilidad.</p>
       <Table
         head={["Tool", "Devuelve", "Relación DB"]}
         rows={[
@@ -58,6 +137,8 @@ export function Historico() {
           [<IC>GET /datos/serie</IC>, "sí", "Serie temporal agregada de una columna (bucket + agg)"],
         ]}
       />
+
+      <CriteriosDelHistorico />
 
       <h2>Conexión a datos</h2>
       <p>Pool <IC>psycopg_pool.ConnectionPool</IC> (perezoso, <IC>min=1, max=6</IC>) forzado a <strong>solo-lectura</strong> (<IC>SET SESSION ... READ ONLY</IC>). Motivo: abrir conexión al pooler de Supabase cuesta ~700 ms; reusar evita pagarlo por request. El commit <IC>4261062</IC> («pool + cobertura en 1 consulta») bajó una consulta de 8 s a 0,3 s.</p>

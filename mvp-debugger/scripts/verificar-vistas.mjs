@@ -238,9 +238,10 @@ check("y son exactamente DOS",
 
   check("ArqView despacha por agente", /agent === "historico" \? <ArqHistorico/.test(despachador));
   check("el Predictivo pide SU ruta", /RUTA = "\/api\/predictivo\/arquitectura"/.test(pred));
-  check("el Histórico pide SU ruta", /RUTA = "\/api\/historico\/arquitectura"/.test(hist));
+  const hook = leer("app/components/console/arquitectura/useMapaHistorico.ts");
+  check("el Histórico pide SU ruta", /RUTA = "\/api\/historico\/arquitectura"/.test(hook));
   check("ninguna vista pide la ruta del otro agente",
-    !/predictivo\/arquitectura/.test(hist) && !/historico\/arquitectura/.test(pred));
+    !/predictivo\/arquitectura/.test(hist + hook) && !/historico\/arquitectura/.test(pred));
 
   // La guarda que hace imposible el fallo silencioso.
   const { esMapaHistorico } = require(path.join(OUT, "app/components/console/arquitectura/mapaHistorico.js"));
@@ -306,19 +307,12 @@ check("y son exactamente DOS",
   check("no hay ninguna herramienta «sin documentar»", !/sin documentar/.test(html),
     "toda tool publicada necesita su ficha en catalogoHistorico.ts");
 
-  // Los umbrales son el motivo de esta pantalla: son política, no física, y son
-  // lo que hay que poder discutir con el experto sin abrir el código.
-  for (const u of RESPALDO_HISTORICO.umbrales) {
-    check(`el umbral ${u.clave} se muestra`, html.includes(u.clave));
-    check(`  …y dice qué decide`, html.includes(u.que_decide.slice(0, 40)));
-  }
-  check("los umbrales se declaran discutibles, no verdad revelada",
-    /política/.test(html));
-
-  // Las 12 clases de hallazgo, que es lo que el agente sabe detectar.
-  check("están los 12 tipos de hallazgo",
-    RESPALDO_HISTORICO.hallazgos.tipos.every((t) => html.includes(t.tipo)),
-    "el barrido tipifica 12 clases; la vista tiene que mostrarlas todas");
+  // Los umbrales y los tipos de hallazgo ya NO van en el lienzo: se leen mejor de
+  // corrido y viven en la documentación. Lo que el mapa tiene que hacer es
+  // mandar ahí, no repetirlos.
+  check("el lienzo no repite las tablas de criterios",
+    !/COBERTURA_MINIMA/.test(html) && !/FRACCION_MATERIAL/.test(html));
+  check("pero manda a la documentación", /\/docs#historico/.test(html));
 
   // Catálogo contra servicio: la vista no puede callar la diferencia.
   const { HERRAMIENTAS_HISTORICO } = require(path.join(OUT, "app/components/console/arquitectura/catalogoHistorico.js"));
@@ -343,6 +337,40 @@ check("y son exactamente DOS",
                        "arq-barrido", "arq-sinllm", "arq-escribe"]) {
     check(`existe la clase .${clase}`, css.includes(`.${clase}`));
   }
+}
+
+// ── 3d-bis. Los criterios, en la documentación ────────────────────────────────
+// Las tablas NO están transcritas en la doc: se leen del agente. Una tabla de
+// umbrales escrita a mano envejece sin que nadie se entere, y entonces el
+// documento y el agente discrepan sobre el número que decide si un dato sirve.
+{
+  const { TablasCriterios } = require(path.join(OUT, "app/docs/content/agentes.js"));
+  const { RESPALDO_HISTORICO: m } = require(path.join(OUT, "app/components/console/arquitectura/respaldoHistorico.js"));
+  const doc = renderToStaticMarkup(React.createElement(TablasCriterios, { mapa: m }));
+
+  for (const u of m.umbrales) {
+    check(`la doc publica el umbral ${u.clave}`, doc.includes(u.clave));
+    check(`  …con qué decide`, doc.includes(u.que_decide.slice(0, 40)));
+  }
+  check("y dice que son política, no física", /política/.test(doc),
+    "quien los lee suele estar evaluando si el criterio le sirve");
+  check("la doc publica los 12 tipos de hallazgo",
+    m.hallazgos.tipos.every((t) => doc.includes(t.tipo)));
+  check("y las garantías", m.garantias.every((g) => doc.includes(g.que)));
+
+  // La prueba de que no están transcritas: ningún umbral aparece escrito en el
+  // fuente de la doc. Si alguien copia uno a mano, esto lo caza.
+  const fuenteDoc = require("node:fs").readFileSync(
+    path.join(RAIZ, "app/docs/content/agentes.tsx"), "utf8");
+  const transcritos = m.umbrales.map((u) => u.clave).filter((k) => fuenteDoc.includes(k));
+  check("los umbrales NO están escritos a mano en la doc",
+    // COBERTURA_MINIMA es la excepción declarada: la prosa la NOMBRA para buscar
+    // su valor y redactar el ejemplo. Los demás no pueden aparecer.
+    transcritos.length === 0 || (transcritos.length === 1 && transcritos[0] === "COBERTURA_MINIMA"),
+    `transcritos: ${transcritos.join(", ")} — envejecen sin que nadie se entere`);
+  check("la sección del Histórico ya no dice «Herramientas (8)»",
+    !/Herramientas \(8\)/.test(fuenteDoc), "hay 13");
+  check("ni apunta al entrypoint viejo", !/analizador\.api:app/.test(fuenteDoc));
 }
 
 // ── 3e. El chat: visible siempre y atado al agente de la vista ────────────────
