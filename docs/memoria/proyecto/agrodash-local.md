@@ -1,10 +1,21 @@
 ---
 name: agrodash-local
-description: Réplica de AgroDash restaurada desde el dump — VIVE EN LA EC2 (contenedor agrodash-pg, 127.0.0.1:5433) y es la fuente del ETL mientras Cartago está caído; el script local sirve para trabajar de forma aislada
+description: Réplica de AgroDash restaurada desde el dump (contenedor agrodash-pg, 127.0.0.1:5433). DEJÓ DE SER la fuente del ETL el 2026-08-26; queda como vuelta atrás y para trabajar aislado
 categoria: proyecto
 ---
 
-# Réplica de AgroDash (fuente del ETL con Cartago off)
+# Réplica de AgroDash (ex fuente del ETL)
+
+> **SUPERADA el 2026-08-26.** La fuente del ETL es ahora la **API pública** de
+> AgroDash ([[agrodash-api]]): dato vivo, sin tailnet y sin los 6 GB de réplica.
+> Esta réplica **no se retiró**: queda como vuelta atrás (descomentar una línea en
+> `predictivo.env`) y para trabajar aislado. Retirarla, y recuperar ~6 GB del disco
+> del servidor, es una decisión posterior.
+>
+> Lo que este arreglo costó, y conviene no repetir: tuvo al store **33 días sin
+> avanzar** mientras el ETL corría verde trayendo cero filas, y la premisa que lo
+> sostenía (*"Cartago está caído"*) era falsa. Lo inalcanzable era el puerto Postgres
+> por tailnet, no la app de Cartago, que estuvo sirviendo todo el tiempo.
 
 **Creada 2026-08-14.** Ni el server vivo de Cartago (`100.101.177.71`) ni la réplica del
 rig (`100.100.130.47`) están accesibles. Sin fuente, el ETL de [[pipeline-tiempo-real]]
@@ -112,5 +123,5 @@ reportar — son dos problemas distintos y esta réplica no resuelve ninguno.
 
 Resumen ejecutivo de todo el cambio: `../../analisis/cambios-2026-08-18.html`.
 
-Relacionado: [[agrodash]], [[pipeline-tiempo-real]], [[arquitectura-regiones]],
+Relacionado: [[agrodash-api]], [[agrodash]], [[pipeline-tiempo-real]], [[arquitectura-regiones]],
 [[conectividad-tailnet]], [[estado]], [[cuota-store-supabase]], [[superficie-expuesta]].

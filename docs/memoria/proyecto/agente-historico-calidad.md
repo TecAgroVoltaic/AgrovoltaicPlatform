@@ -1,8 +1,8 @@
 ---
 name: comparador
-description: El Agente Histórico (control de calidad determinista del historico PV + caracterizacion del cielo) implementado el 2026-08-24; incluye los tres bugs que se encontraron corriendolo y por que importan
+description: El Agente Histórico (control de calidad determinista del historico PV + caracterizacion del cielo) implementado el 2026-08-24; incluye los tres bugs que se encontraron corriendolo y por que importan, mas los tres fallos silenciosos hallados el 2026-08-28, el alcance real del barrido (14 de 26 variables) y la corrida completa en produccion del 2026-08-28 (23.533 hallazgos, cero dias en verde)
 categoria: proyecto
-actualizado: 2026-08-24
+actualizado: 2026-09-01
 tags: [comparador, calidad, nubes, kt, agentes]
 ---
 
@@ -23,7 +23,9 @@ Alcance decidido con el usuario: **San Carlos PV primero** (`radiacion_sc_15s` +
   completo" se mide contra las **horas de sol** (tabla `ventana_solar`, pvlib) y no contra 24 h.
   `radiacion_sc_clearsky` NO sirve para eso: solo tiene timestamps donde ya hay dato.
 - **El nombre `radiacion_sc_15s` engaña**: el regimen real dominante es de 5 minutos (196 de
-  274 dias). Hay 33 cadencias distintas en el historico.
+  274 dias). Hay 33 cadencias distintas en el historico. **Medido por mes el 2026-08-28:**
+  **octubre 2025 es el UNICO mes realmente a 15 s**; el resto va de 2 s (dic-2024) a 315 s
+  (nov-2025 a feb-2026). Ver [[muestreo-variable]].
 - **Cero timestamps duplicados y cero nulos de fila** en radiacion: el ETL ya deduplico. El
   problema de completitud es otro (cobertura: 274 dias con datos de 569 de calendario, 48 %).
 
@@ -57,6 +59,31 @@ y se llevaba puesto el `kt_imposible` que escribe `cielo.py` sobre la misma fuen
 silencio**: el resumen de la corrida seguia dando los mismos numeros. Ahora el borrado se acota
 a `TIPOS_PROPIOS`.
 
+## Tres fallos silenciosos mas, encontrados el 2026-08-28
+
+Al construir la capa de algoritmos ([[algoritmos-antes-que-agente]]) aparecieron tres fallos que
+seguian **vivos** en este barrido, y los tres fallaban en la direccion peligrosa: **afirmar que el
+dato esta bien cuando no lo esta**. El patron que comparten esta en
+[[silencio-leido-como-salud]]. En corto:
+
+1. **`contexto.confianza` no encontraba los hallazgos de irradiancia.** Buscaba por el nombre
+   calibrado (`irradiancia_incidente_wm2`) mientras `hallazgos_calidad` guarda el crudo
+   (`irradiancia_incidente`): **321 hallazgos invisibles**, y las tres temperaturas perdian
+   **837** por lo mismo. Cero hallazgos se lee como dato impecable, asi que la confianza salia
+   perfecta justo cuando la irradiancia estaba rota.
+2. **La familia de validez fisica se aprobaba a si misma.** Leida contra las vistas corregidas
+   (que anulan lo que cae fuera de rango) da siempre cero valores imposibles: no porque el sensor
+   este bien, sino porque la vista ya los borro.
+3. **Cualquier hallazgo sobre una fuente cuyas filas nadie cuenta invalidaba el dia.** La
+   condicion de materialidad `n_afectadas >= 0,20 x n_dia` con `n_dia = 0` es cierta siempre. Es
+   la contracara del criterio que se explica mas abajo (un dia no deja de servir por 3 de 144
+   lecturas): sin denominador, el criterio se da vuelta.
+
+Y una cuarta cosa de la misma familia, medida contra `hallazgos_calidad`: **el barrido vigila 14
+de las 26 variables**. No mira `albedo`, las cuatro del SP722, `cs_ghi_wm2`, `kt_star` ni las dos
+POA. Para esas, "cero hallazgos" no dice que esten limpias: dice que nadie las miro. Ver
+[[pruebas-calidad-umbrales]].
+
 ## Umbrales calibrados, no importados
 
 `VI_VARIABLE = 6.0`. Medido sobre los 228 dias: min 0,76 · p25 3,09 · mediana 4,29 · p75 5,62 ·
@@ -74,6 +101,53 @@ Lo mas grave: `fuera_de_rango` en 256 dias y 11 variables, `columna_ausente` en 
 variables, `saturado_85` en 117 dias. Y **`kt_imposible` en 82 de los 228 dias
 caracterizados**, que dice algo incomodo sobre la calibracion de la irradiancia: ver
 [[irradiancia-sin-calibrar]].
+
+**Actualizacion 2026-08-28 (consulta directa a produccion).** Los 295 dias sin datos de 569 se
+agrupan en **26 tramos**, el mayor de **125 dias** (2024-12-30 a 2025-05-03). Y la completitud del
+electrico son **dos numeros distintos que no hay que mezclar: 0,444 contra el calendario y 0,926
+sobre los dias en que el logger si grabo**. De nov-2025 a jun-2026 va de **0,84 a 1,02**; el 0,05
+que daba antes era el artefacto de medir contra una cadencia nominal fija en vez de la moda de los
+saltos reales ([[muestreo-variable]]). Ver [[gaps-temporales]].
+
+## El barrido completo se corrió en produccion (2026-08-28)
+
+**Los conteos de la seccion anterior quedaron superados.** Con las cuatro familias de pruebas ya
+implementadas ([[capa-analitica]], [[pruebas-calidad-umbrales]]) el barrido se corrio entero
+sobre produccion y `hallazgos_calidad` paso de **3.158 filas y 10 tipos** a **23.533 filas, 23
+tipos y 6 fuentes** (4.071 graves · 8.498 avisos · 10.964 info). Idempotencia verificada: dos
+corridas sobre el mismo rango, conteo identico.
+
+Y volvio a aparecer el problema que esta vista ya habia resuelto una vez: el veredicto por dia
+quedo **`ok = 0`**, aviso 16, grave 258, sin_datos 295. Ningun dia en verde no informa de nada, y
+es el mismo fallo que `FRACCION_MATERIAL` se introdujo para corregir. Causas medidas, el falso
+positivo de `voltaje_vac = 0` (238 dias) y la conclusion de diseño (**la señal util de este
+dataset es el bloque `confianza` por variable, no el veredicto del dia**) estan en
+[[store-hallazgos-calidad]].
+
+> ⚠️ **Corregido el 2026-08-31:** el falso positivo del `voltaje_vac = 0` **marcaba** 238 dias pero
+> **no era la causa** de que estuvieran en rojo (quitarlo deja el veredicto en 206 y 206). Los
+> bloqueantes reales, en orden: la columna AC ausente (**129 dias**), el DS18B20 muerto (**111**) y
+> **`ruido_excesivo` en severidad `aviso`**, que hace el verde imposible por construccion. Y el
+> veredicto **electrico** real, sobre los 274 dias con dato, es **206 grave / 68 aviso / 0 ok**: la
+> tabla de arriba es el global sobre el calendario entero. Ver [[store-hallazgos-calidad]] y
+> [[inversor-sin-acoplar]].
+
+## 2026-09-01: la tabla `ventana_solar` resultó ser una dependencia oculta
+
+La carga de 57 días nuevos ([[dataset-actual]]) sacó a la luz algo que esta nota describía como un
+acierto de diseño y que también es un riesgo: **el veredicto mide la completitud contra
+`ventana_solar`, así que esa tabla es su calendario**. Cuando se corrió solo el barrido, el
+veredicto **siguió informando 274 días con datos con la base ya en 331**, porque `ventana_solar`
+terminaba el 2026-06-01 y para él los días nuevos no existían. Sin error ni advertencia
+([[silencio-leido-como-salud]]).
+
+Regla operativa adoptada, con las cifras del arreglo: [[regla-post-carga]]. Estado después del
+recorrido completo: `ventana_solar` **660 días**, `cielo_diario` **285**, `hallazgos_calidad`
+**34.408** ([[store-hallazgos-calidad]]).
+
+Y dos números de esta nota que la carga movió: los **82 de 228 días con `kt_imposible`** pasan a
+**102** sobre 285 días caracterizados, o sea que el problema de calibración **se sigue manifestando
+en el dato nuevo** y no es solo del histórico viejo ([[irradiancia-sin-calibrar]]).
 
 ## En la consola (2026-08-24)
 
@@ -127,5 +201,9 @@ anotada en [[abiertos]]. Ver [[verificacion-consola]].
   temperaturas son EFECTO de la irradiancia, no causa.
 - **Programarlo** (hoy se corre a mano) y **la capa de lenguaje natural** sobre el store.
 
-Relacionado: [[capa-agentes]], [[irradiancia-sin-calibrar]], [[temperatura-85]],
-[[schemas-multiples]], [[muestreo-variable]], [[agente-historico]].
+Relacionado: [[regla-post-carga]], [[dataset-actual]], [[capa-agentes]],
+[[irradiancia-sin-calibrar]], [[temperatura-85]],
+[[schemas-multiples]], [[muestreo-variable]], [[agente-historico]],
+[[silencio-leido-como-salud]], [[pruebas-calidad-umbrales]], [[gaps-temporales]],
+[[algoritmos-antes-que-agente]], [[fuentes-fisicas]], [[capa-analitica]],
+[[store-hallazgos-calidad]], [[emparejamiento-por-timestamp]].

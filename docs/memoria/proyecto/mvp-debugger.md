@@ -1,7 +1,8 @@
 ---
 name: mvp-debugger
-description: Web local (Next.js) para probar/depurar en vivo los dos agentes; visor de traza (tools+salidas+respuesta), explorador de datos read-only y medición de tokens/costo por consulta y acumulado
+description: Web local (Next.js) para probar/depurar en vivo los dos agentes; visor de traza (tools+salidas+respuesta), explorador de datos read-only y medición de tokens/costo por consulta y acumulado. Desde el 2026-08-28 la consola vive en /consola y la sección principal es el sistema de análisis
 categoria: proyecto
+actualizado: 2026-08-28
 ---
 
 # MVP Debugger — evaluación en vivo de los agentes
@@ -10,6 +11,12 @@ Creado el **2026-08-10**. Web mínima en `mvp-debugger/` (Next 14, App Router, T
 para **probar y depurar** los dos agentes con datos reales: [[agente-historico]] (Q&A sobre el
 histórico PV) y [[agente-predictivo]] (forecaster ambiental). No es diseño: es ver **qué consulta
 el agente, qué calcula y cómo redacta**, y cruzar cada número contra las bases.
+
+> ⚠️ **Se mudó el 2026-08-28.** Todo lo que este archivo describe **sigue existiendo entero**,
+> pero ya no está en `/`: la consola de agentes vive ahora en **`/consola`**. La raíz y las rutas
+> `/series`, `/estadistica`, `/calidad` y `/comparativa` son el **sistema de análisis**, que pasó
+> a ser la sección principal de la herramienta. Fundaciones, primitivas de gráfico y decisiones de
+> tipos en [[consola-analitica]]. Donde este archivo diga "el `/` del Next", léase `/consola`.
 
 ## Decisión de diseño clave
 En vez de reimplementar el lazo del agente en Node, se **instrumentaron los loops Python** para que
@@ -388,3 +395,25 @@ brevedad como aserción explícita, tooltips incluidos. **40 chequeos, 0 fallas.
 - **Corregida una desactualización previa de la doc:** `docs/content/web.tsx` decía «las cuatro
   secciones de la consola» y listaba 4, cuando ya son 7. Se agregaron Arquitectura, Base de datos
   y Salud, y se corrigió el conteo.
+
+## 2026-08-28 — la consola se muda a `/consola` y llega ESLint
+
+El sistema de análisis toma la raíz y la consola de agentes pasa entera a `/consola`. No se
+recortó nada: se movió, porque quien entra a la herramienta viene a mirar los datos y el
+depurador de agentes es una vista de trabajo interno. Las seis primitivas de gráfico, el contrato
+de tipos que **exige un motivo para todo gráfico vacío**, el rango de fechas en la URL y las
+mediciones de peso de ECharts están en [[consola-analitica]].
+
+Lo que toca directamente a lo descrito arriba:
+
+- **Se instaló ESLint** (el proyecto no tenía). Apareció **una violación real de
+  `rules-of-hooks`**: una función `usePreset` que no era un hook. Corregida.
+- La deuda preexistente quedó **medida y separada**: **187 errores** (182 de `react/jsx-key` en
+  `app/docs/content`, 5 de `react-hooks/exhaustive-deps` en la consola vieja). `npm run lint`
+  cubre el sistema nuevo y debe estar en cero; `npm run lint:todo` muestra la deuda vieja. Un
+  linter que siempre falla es un linter que nadie mira.
+- El arnés sin navegador creció a **194 chequeos** (`npm run verificar`), con `tsc` limpio,
+  `npm run build` en **13 rutas** y **30 tests**.
+
+Relacionado: [[consola-analitica]], [[capa-analitica]], [[graficos-evaluacion]],
+[[verificacion-consola]].

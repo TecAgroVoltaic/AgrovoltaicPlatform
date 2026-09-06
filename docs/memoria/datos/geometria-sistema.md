@@ -1,7 +1,8 @@
 ---
 name: geometria-sistema
-description: Geometría y specs físicas del sistema San Carlos confirmadas por Leo (kWp por arreglo, tilt/azimut, mapeo PV1/PV2↔inclinado/vertical, bifacial); insumo para calibración clear-sky y Performance Ratio
+description: Geometría y specs físicas del sistema San Carlos confirmadas por Leo (kWp por arreglo, tilt/azimut, mapeo PV1/PV2↔inclinado/vertical, bifacial); insumo para calibración clear-sky y Performance Ratio. 2026-08-30: Leo confirma el principio de trabajar con irradiancia por plano, pero la ecuación de transposición la define Hugo
 categoria: datos
+actualizado: 2026-08-30
 ---
 
 # Geometría del sistema fotovoltaico (San Carlos)
@@ -69,5 +70,77 @@ POA trasera, geometría de filas (GCR/altura/pitch).*
 Capa implementada: tabla `radiacion_sc_poa` (POA frontal + bifacial por arreglo, pvlib) + vista
 `v_sc_performance` (`pr_pv1`, `pr_pv2`). Módulo `performance.py`. Ver [[implementacion]].
 
-Relacionado: [[respuestas-leo-cardinale]], [[bloqueantes]], [[irradiancia-sin-calibrar]],
-[[diccionario-variables]], [[metodologia]], [[implementacion]].
+> ⚠️ **La convergencia queda EN REVISIÓN desde el 2026-08-28.** Los PR de arriba salieron de
+> `v_sc_performance`, que unía potencia con POA **por timestamp exacto** y por eso conservaba
+> **4.369 de 28.996 lecturas (15 %)**, con el 69 % de la muestra concentrada en octubre 2025 y
+> mayo 2026. Al emparejar por bin de 5 min (19.482 pares) los PR **dejan de converger**:
+> **PV1 = 0,664 · PV2 = 0,633**. El argumento de "ambos convergen, luego φ ≈ 0,80" se apoyaba en
+> esa muestra sesgada, así que **no vale como está**. No dice que φ = 0,80 sea falso: dice que
+> queda **sin validar**, y re-estimarlo con el emparejamiento corregido **no alcanza**, porque el
+> argumento era además circular (ver la sección siguiente). Evidencia completa en
+> [[emparejamiento-por-timestamp]]; la migración está escrita y **no aplicada**, a la espera de
+> que Leo y Hugo confirmen.
+>
+> Segundo hallazgo del mismo día, y afecta a cualquier comparación entre arreglos: **el
+> piranómetro está en horizontal**, así que comparar el vertical (90°) contra GHI le da pendiente
+> **0,547** y contra su propia POA **0,906**. Cada arreglo se compara contra la irradiancia de su
+> propio plano.
+
+> **2026-08-30: Leo confirma el principio de la transposición, pero no la ecuación.**
+> Preguntado si cada arreglo se compara contra la irradiancia de su propio plano, respondió:
+> *"idealmente debemos trabajar para la radiacion en el plano, pero como lo que tenemos es
+> radiacion horizontal, debemos aplicar un modelo matematico que hace el ajuste, entonces tendremos
+> una radiacion para cada uno en particular. Sobre esto podrias consultar a Hugo cual ecuacion
+> utilizar."*
+>
+> O sea que la POA por arreglo **es el camino correcto** y el segundo hallazgo del 2026-08-28 queda
+> avalado. Lo que falta es **cuál modelo de transposición**: el nuestro es `pvlib` y **Hugo tiene
+> que confirmarlo o cambiarlo** antes de publicar PR por arreglo. Único pendiente abierto de esa
+> ronda ([[respuestas-lcv-consultas-agosto]], [[bloqueantes]]).
+>
+> La misma ronda cambió además la **unidad** del PR: pasa a ser **diario y mensual**, con los
+> acumuladores de energía contra la radiación integrada del día. Los PR de la tabla de arriba
+> (0,62 / 0,62) y los del emparejamiento por bin (0,664 / 0,633) son ambos **de la definición
+> vieja**. ✅ **El PR con la definición nueva se calculó el 2026-08-31**
+> ([[performance-ratio-diario]]): con POA bifacial da **PV1 0,648 contra PV2 0,612**, gana el
+> inclinado, y es la **tercera metodología independiente** que llega a esa conclusión. Y confirma
+> con el PR anual lo que esta nota dice de φ: el PR del **vertical se duplica** según se use POA
+> frontal o bifacial (0,612 a 1,217, un 99 %) mientras que el del **inclinado se mueve un 14 %**,
+> y su posición en el ranking depende enteramente de esa cantidad modelada (gana 46 días con POA
+> bifacial y 163 con frontal). Que el 1,217 sea **imposible** prueba que el aporte trasero existe,
+> y a la vez que **la mitad del denominador de PV2 no se midió**.
+
+## Casi la mitad de la irradiancia del vertical es modelo, no medición (2026-08-28)
+
+Medido sobre `radiacion_sc_poa`, promediando solo donde la frontal supera 100 W/m² (para no
+contar la noche):
+
+| Arreglo | POA frontal | POA efectiva | Aporte de la cara trasera |
+|---|---|---|---|
+| PV1 inclinado | 493,1 W/m² | 564,4 W/m² | **+15 %** |
+| PV2 vertical | 201,2 W/m² | 398,3 W/m² | **+109 %** |
+
+**En el arreglo vertical la cara trasera modelada aporta más que la frontal.** Casi la mitad de
+su irradiancia efectiva no es una medición: es el resultado de aplicar φ y un albedo de suelo
+supuesto.
+
+**La consecuencia importa más que el valor exacto de φ.** El PR del vertical es casi
+proporcionalmente sensible a ese factor y el del inclinado casi no lo es: un error del **10 % en
+φ** mueve el PR del vertical alrededor de un **5 %** y el del inclinado un **0,7 %**. O sea que la
+comparación vertical contra inclinado no descansa solo en el emparejamiento
+([[emparejamiento-por-timestamp]]): descansa además en un modelo que **solo el vertical usa de
+forma significativa**.
+
+**Y por eso la validación vieja era circular.** Se tomaba como prueba de que φ estaba bien el
+hecho de que los dos PR convergieran, cuando esa convergencia se conseguía **ajustando la
+irradiancia del vertical con el propio φ**. El argumento se apoyaba en su propia conclusión.
+
+**Estado: φ ≈ 0,80 queda SIN VALIDAR, no refutado.** No hay un número nuevo que lo reemplace. Lo
+que sí queda establecido es que **hace falta una validación independiente**, porque la que había
+no valía. Sigue siendo pendiente del equipo el factor de bifacialidad real (datasheet) y, para
+afinar la POA trasera, la geometría de filas (GCR, altura, pitch).
+
+Relacionado: [[respuestas-leo-cardinale]], [[respuestas-lcv-consultas-agosto]],
+[[performance-ratio-diario]], [[bloqueantes]], [[irradiancia-sin-calibrar]],
+[[diccionario-variables]], [[metodologia]], [[implementacion]],
+[[emparejamiento-por-timestamp]].

@@ -1,10 +1,17 @@
 ---
 name: respuestas-leo-cardinale
-description: Respuestas oficiales de Leo Cardinale (LCV) a las 12 preguntas de tratamiento de datos + los 4 datos pendientes; fuente de verdad verbatim (doc rev LCV, 2026-08-10)
+description: Respuestas oficiales de Leo Cardinale (LCV) a las 12 preguntas de tratamiento de datos + los 4 datos pendientes; fuente de verdad verbatim (doc rev LCV, 2026-08-10). PRIMERA ronda; la segunda es del 2026-08-30 y trata cómo se calculan las métricas, no cómo se tratan los datos
 categoria: decision
+actualizado: 2026-08-30
 ---
 
 # Respuestas de Leo Cardinale — tratamiento de datos San Carlos
+
+> **Esta es la PRIMERA ronda (2026-08-10) y trata el TRATAMIENTO de los datos.** Hay una segunda,
+> del **2026-08-30**, que trata **cómo se calculan las métricas** sobre los datos ya tratados
+> (Performance Ratio diario y mensual, energía del tablero en AC, voltaje AC en cero):
+> [[respuestas-lcv-consultas-agosto]]. **No se contradicen** y ninguna respuesta de abajo queda
+> superada por la segunda ronda.
 
 Fuente: PDF **«Decisiones-Datos Energía Agrovoltaic rev LCV»** (respuestas dentro de las
 anotaciones del PDF, autor `lcardinale`). Extraídas el **2026-08-10**. El documento base es la

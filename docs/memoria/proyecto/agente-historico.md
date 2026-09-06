@@ -40,7 +40,23 @@ run()) · `tools/__init__.py` (registro: schemas + dispatch, sin lógica) · `ag
 | `catalogo_variables` | `diccionario_variables` | definiciones de columnas |
 
 ## Estado
-- **Tools validadas contra la base real:** energía histórica PV1≈921 kWh / PV2≈602 kWh; PR 0,62/0,63;
+
+> **2026-08-28: el catálogo de tools pasó de 6 a 23** (16 de análisis, 7 de calidad), con 10
+> endpoints GET nuevos bajo `/analitica/*` y `/calidad/pruebas`. Las 6 de la tabla de arriba
+> siguen existiendo; ya no son todas. Ver [[capa-analitica]].
+>
+> **Dos deudas que hoy bloquean al agente**, no a las tools: `tools/hallazgos.py::QUE_ES`
+> conserva los **12 tipos viejos** contra los 23 que ya guarda el store
+> ([[store-hallazgos-calidad]]), y **`agent/prompts.py` nombra a mano las tools viejas** sin
+> mencionar las diez nuevas, así que el agente no las usaría aunque estén registradas.
+>
+> **Y el PR de la tool `performance_ratio` está afectado por un sesgo de emparejamiento:** lee
+> `v_sc_performance`, que une por timestamp exacto y conserva el 15 % de la muestra. Con
+> emparejamiento por bin da **0,664 / 0,633** y **gana el inclinado, no el vertical**. Ver
+> [[emparejamiento-por-timestamp]].
+
+- **Tools validadas contra la base real:** energía histórica PV1≈921 kWh / PV2≈602 kWh; PR 0,62/0,63
+  (⚠️ ese par es el sesgado, ver el aviso de arriba);
   temp media PV1 31,9 / PV2 31,6 °C; GHI media 293 W/m², kt* 0,46. La tool `energia` reporta cobertura
   por columna (`n_ac` vs `n_pv1/n_pv2`): en el histórico la AC sale menor que la DC por **cobertura
   distinta** (n_ac≈19,9k vs n_pv1≈34,4k), NO por pérdidas — la nota lo explica.
@@ -84,4 +100,6 @@ Ver [[integracion-visioneflow]].
 Wrapper `/preguntar` (agente completo) si se quiere el lazo LLM en Python; tools de correlación
 (temp vs rendimiento); tests unitarios por tool.
 
-Relacionado: [[agente-predictivo]], [[capa-agentes]], [[evaluacion-datos]], [[geometria-sistema]], [[implementacion]].
+Relacionado: [[agente-predictivo]], [[capa-agentes]], [[evaluacion-datos]], [[geometria-sistema]],
+[[implementacion]], [[capa-analitica]], [[consola-analitica]], [[store-hallazgos-calidad]],
+[[emparejamiento-por-timestamp]], [[algoritmos-antes-que-agente]].
