@@ -2,8 +2,11 @@ import "./globals.css";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "AgroVoltaic · Consola de evaluación de agentes",
-  description: "Debugger en vivo de los dos agentes: Histórico y Predictivo",
+  // El título por defecto es el del sistema de evaluación de datos, que pasó a
+  // ser la sección principal. La consola de agentes pone el suyo en su página.
+  title: "AgroVoltaic · Sistema de evaluación de datos",
+  description:
+    "Análisis del histórico fotovoltaico por rango de fechas, y consola de los agentes",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -82,7 +82,7 @@ export function DocsShell({ historico = true }: { historico?: boolean }) {
             </svg>
             <div><b>AgroVoltaic</b><div className="sub">documentación</div></div>
           </div>
-          <a className="dx-back" href="/">← volver a la consola</a>
+          <a className="dx-back" href="/consola">← volver a la consola</a>
         </div>
 
         <nav className="dx-nav">

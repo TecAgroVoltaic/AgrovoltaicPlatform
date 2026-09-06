@@ -7,12 +7,19 @@
 // una columna de 230 px de texto que nunca cambia les roba ancho a las gráficas.
 // Compacta, el icono ES la etiqueta; el nombre completo aparece al pasar el mouse
 // (`data-tip`, atendido por ChartTooltip, que ya está montado acá).
+//
+// Eso vale EN ESCRITORIO. En una pantalla angosta la barra se vuelve cajón y ahí
+// va siempre ancha: adentro de un cajón de 284 px no hay ancho que ahorrar, y el
+// mouse que mostraba los nombres no existe. Ver `useBarraEnCajon` para por qué la
+// condición se evalúa en JS y no solo con una media query.
 import { Fragment, useEffect, useState, type ComponentType } from "react";
 import { jget } from "@/app/lib/client";
 import { ChartTooltip } from "@/app/components/ChartTooltip";
+import { ConsoleDrawer } from "@/app/components/console/ConsoleDrawer";
+import { useBarraEnCajon } from "@/app/components/console/useBarraEnCajon";
 import {
   IconoCalidad, IconoCosto, IconoDatos, IconoDocs, IconoGrafo, IconoPanel,
-  IconoPrediccion, IconoReconciliar, IconoRendimiento, IconoSalud,
+  IconoPrediccion, IconoReconciliar, IconoRendimiento, IconoSalud, IconoTablero,
 } from "@/app/components/Iconos";
 import { CalidadView } from "@/app/components/console/CalidadView";
 import { ReconView } from "@/app/components/console/ReconView";
@@ -93,7 +100,13 @@ export function Console({ historico = true }: { historico?: boolean }) {
   const [up, setUp] = useState(true);
   // Compacta en cada carga: expandir es deliberado y dura lo que dura la sesión
   // de pantalla, no se persiste.
-  const [ancha, setAncha] = useState(false);
+  const [anchaPorPreferencia, setAnchaPorPreferencia] = useState(false);
+  const enCajon = useBarraEnCajon();
+  // Una sola verdad para las dos mitades del plegado. Antes el CSS escondía las
+  // etiquetas con `.compacta` mientras este componente seguía escribiendo el
+  // nombre del agente, así que en un teléfono convivían un menú de iconos mudos
+  // con un selector en «H»/«P»: dos idiomas para la misma barra.
+  const ancha = enCajon || anchaPorPreferencia;
 
   useEffect(() => {
     if (theme) document.documentElement.setAttribute("data-theme", theme);
@@ -135,9 +148,18 @@ export function Console({ historico = true }: { historico?: boolean }) {
   const contexto = `${agenteActivo?.nombre ?? agent} · ${LABEL[view]}`;
 
   return (
-    <div className="app">
+    // `consola` marca a este cascarón como uno de los que tienen cajón. No reusa
+    // `has-drawer` del cascarón de análisis porque esa clase además adelgaza la
+    // barra a 184 px en tablet, y acá la barra ya arranca plegada a 60 px: quien
+    // la ensancha lo pidió a propósito y no querría las etiquetas partidas en dos
+    // renglones a cambio de 46 px.
+    <div className="app consola">
       <ChartTooltip />
-      <aside className={"side" + (ancha ? "" : " compacta")}>
+      <ConsoleDrawer
+        titulo={LABEL[view]}
+        claveActiva={`${agent}·${view}`}
+        claseBarra={ancha ? "" : "compacta"}
+      >
         <div className="brand">
           <svg className="mark" viewBox="0 0 40 40" aria-hidden="true">
             <circle cx="20" cy="20" r="7" fill="none" stroke="var(--accent)" strokeWidth="2.4" />
@@ -146,15 +168,19 @@ export function Console({ historico = true }: { historico?: boolean }) {
             </g>
           </svg>
           <div className="solo-ancha"><b>AgroVoltaic</b><div className="sub muted mono">consola de evaluación</div></div>
-          <button
-            className="plegar"
-            onClick={() => setAncha((a) => !a)}
-            data-tip={ancha ? "Plegar la barra" : "Desplegar la barra"}
-            aria-label={ancha ? "Plegar la barra lateral" : "Desplegar la barra lateral"}
-            aria-expanded={ancha}
-          >
-            <IconoPanel size={15} />
-          </button>
+          {/* Dentro del cajón NO se dibuja: plegar ahí no ahorraría nada y solo
+              taparía las etiquetas del menú que se acaba de abrir para leer. */}
+          {!enCajon && (
+            <button
+              className="plegar"
+              onClick={() => setAnchaPorPreferencia((a) => !a)}
+              data-tip={ancha ? "Plegar la barra" : "Desplegar la barra"}
+              aria-label={ancha ? "Plegar la barra lateral" : "Desplegar la barra lateral"}
+              aria-expanded={ancha}
+            >
+              <IconoPanel size={15} />
+            </button>
+          )}
         </div>
         <div className="agent">
           {AGENTES.map((a) => (
@@ -177,6 +203,11 @@ export function Console({ historico = true }: { historico?: boolean }) {
             </Fragment>
           ))}
         </nav>
+        <a className="navitem" href="/" data-tip={ancha ? undefined : "Evaluación de datos"}
+           aria-label="Evaluación de datos">
+          <IconoTablero size={16} />
+          <span className="solo-ancha">Evaluación de datos ↗</span>
+        </a>
         <a className="navitem" href="/docs" data-tip={ancha ? undefined : "Documentación"}
            aria-label="Documentación">
           <IconoDocs size={16} />
@@ -189,7 +220,7 @@ export function Console({ historico = true }: { historico?: boolean }) {
           </span>
           <button className="tgl" onClick={toggleTheme} data-tip="Cambiar tema" aria-label="Cambiar tema">◐</button>
         </div>
-      </aside>
+      </ConsoleDrawer>
 
       <main className="content">
         {view === "recon" && <ReconView />}

@@ -16,3 +16,6 @@ out
 .verify
 .vercel
 .env*
+
+# Credenciales de produccion en texto plano. NUNCA se versionan.
+CREDENCIALES-*.txt

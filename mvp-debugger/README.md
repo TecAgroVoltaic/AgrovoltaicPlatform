@@ -4,7 +4,23 @@ Web mínima (Next.js) para **probar y depurar en vivo** los dos agentes del proy
 con datos reales. La idea no es diseño: es ver **qué consulta el agente, qué calcula
 y cómo redacta**, y poder cruzar cada número contra los datos de las bases.
 
-## Qué muestra
+## Dos secciones, una sola aplicación
+
+- **Sistema de evaluación de datos** (`/`, sección principal): análisis del
+  histórico fotovoltaico por rango de fechas. Secciones: Tablero (`/`), Series
+  (`/series`), Estadística (`/estadistica`), Calidad (`/calidad`) y Comparativa
+  (`/comparativa`). El rango vive en la URL (`?desde=&hasta=&granularidad=`), así
+  que una pantalla se comparte tal como se está mirando. `hasta` es **exclusivo**.
+- **Consola de agentes** (`/consola`, sección secundaria): el debugger que
+  documenta el resto de este archivo. Estaba en `/` y solo cambió de dirección.
+
+Los algoritmos se calculan en Python (`agente-historico/src/historico/analitica/`)
+y el frontend **no calcula estadística**: recibe los números y los pinta. Las
+fundaciones del sistema de análisis viven en `app/lib/analitica/` (contratos Zod,
+rango de la URL, cliente tipado) y `app/components/charts/` (primitivas de
+gráfico sobre ECharts, con carga, error y vacío resueltos).
+
+## Qué muestra la consola de agentes
 
 Por cada pregunta, el debugger renderiza la **traza completa** del agente:
 
@@ -52,6 +68,16 @@ La detección **no corre desde acá**: es por lotes (`python -m comparador todo`
 hallazgos en la base. Si la consola pudiera dispararla, cada visita recorrería los 274 días y
 el resultado dependería de quién mire y cuándo. Por eso el proxy solo expone `GET`.
 
+## Pruebas
+
+```bash
+npm test        # vitest: lógica del rango, contratos Zod y estados de los gráficos
+npm run verificar   # renderiza las vistas de la consola (ver abajo)
+```
+
+Son dos cosas distintas y las dos hacen falta: `npm test` prueba comportamiento en
+jsdom; `npm run verificar` afirma propiedades del HTML de las vistas ya escritas.
+
 ## Verificar la UI sin navegador
 
 La extensión de Chrome que daría control del navegador **no conecta**, así que las vistas se
@@ -64,6 +90,31 @@ npm run verificar
 No es un mock: es el mismo componente con los mismos datos. Lo que se afirma no es «compila»
 sino **propiedades del resultado**: que no vuelva el vocabulario viejo, que no queden
 coordenadas absolutas, presupuestos de contenido, y que el CSS que la vista usa exista.
+
+## Linting y deuda conocida
+
+```bash
+npm run lint        # el sistema de analisis: tiene que quedar en CERO
+npm run lint:todo   # la app entera: ensena la deuda que ya estaba
+```
+
+La separacion es deliberada. `next lint` sobre todo el repositorio devuelve **187
+errores preexistentes**, ninguno introducido por el sistema de analisis:
+
+| Cuantos | Regla | Donde |
+|---|---|---|
+| 176 | `react/jsx-key` | `app/docs/content/**` (arrays de JSX en la documentacion) |
+| 6 | `react/no-unescaped-entities` | idem |
+| 5 | `react-hooks/exhaustive-deps` | `Health.tsx`, `Uso.tsx`, `PerfView.tsx` |
+
+Meterlos en la misma puerta que el codigo nuevo tendria el efecto contrario al que
+se busca: la puerta estaria siempre en rojo, y una puerta que siempre esta en rojo
+no frena nada. Por eso `lint` acota el alcance a lo que si podemos mantener limpio
+y `lint:todo` deja la cuenta a la vista para saldarla aparte.
+
+Los cinco `exhaustive-deps` son los unicos con riesgo real (un `useEffect` con
+dependencias incompletas lee valores viejos sin avisar). Los 182 de `docs/content`
+son de una vista que se renderiza una vez y no cambia.
 
 ## Arquitectura
 

@@ -7,17 +7,30 @@
     "dev": "next dev -p 3000",
     "build": "next build",
     "start": "next start -p 3000",
-    "verificar": "node scripts/verificar-vistas.mjs"
+    "verificar": "node scripts/verificar-vistas.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint \"app/(analisis)\" app/components/analitica app/components/charts app/lib/analitica --ext .ts,.tsx --max-warnings 0",
+    "lint:todo": "eslint app --ext .ts,.tsx"
   },
   "dependencies": {
+    "echarts": "^6.1.0",
     "next": "14.2.35",
     "react": "18.3.1",
-    "react-dom": "18.3.1"
+    "react-dom": "18.3.1",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@types/node": "20.14.10",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.3",
+    "@types/node": "^20.19.43",
     "@types/react": "18.3.3",
     "@types/react-dom": "18.3.0",
-    "typescript": "5.5.4"
+    "@vitejs/plugin-react": "^6.1.1",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "^14.2.35",
+    "jsdom": "^29.1.1",
+    "typescript": "5.5.4",
+    "vitest": "^4.1.11"
   }
 }

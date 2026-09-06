@@ -16,5 +16,6 @@
     "paths": { "@/*": ["./*"] }
   },
   "include": ["app/**/*.ts", "app/**/*.tsx"],
-  "exclude": ["node_modules", ".next", ".verify"]
+  "//exclude": "Las pruebas de vitest quedan fuera: este arnes compila VISTAS para renderizarlas, y los .test.tsx solo anadirian ruido (sus matchers de jest-dom se tipan con el setup de vitest, que aca no se carga).",
+  "exclude": ["node_modules", ".next", ".verify", "app/**/*.test.ts", "app/**/*.test.tsx"]
 }

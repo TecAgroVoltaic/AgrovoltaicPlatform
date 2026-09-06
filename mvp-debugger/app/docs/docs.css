@@ -39,7 +39,14 @@
 .dx-page { width:100%; max-width:820px; padding:46px 56px 120px; }
 .dx-crumb { font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:.1em; color:var(--accent); margin-bottom:14px; }
 .dx-crumb span { color:var(--muted); }
-.dx-h1 { font-size:34px; font-weight:640; letter-spacing:-.03em; margin:0 0 4px; line-height:1.1; }
+/* El tamaño acompaña al ancho en vez de ser un número fijo: a 34 px la palabra
+   «Documentación» sola mide más de 220 px, y en un teléfono el título se comía
+   tres renglones antes de que empezara el texto. El techo es el mismo 34 px de
+   siempre, así que en escritorio no cambia nada. `overflow-wrap` es el seguro
+   para cualquier título futuro con una palabra que no quepa entera: preferimos
+   partirla a que se salga de la pantalla, donde no hay forma de leerla. */
+.dx-h1 { font-size:clamp(26px, 7vw, 34px); font-weight:640; letter-spacing:-.03em;
+  margin:0 0 4px; line-height:1.1; overflow-wrap:break-word; }
 .dx-lead { font-size:16.5px; color:var(--ink2); line-height:1.6; margin:14px 0 8px; max-width:70ch; }
 .dx-page h2 { font-size:23px; font-weight:620; letter-spacing:-.02em; margin:44px 0 6px; padding-top:8px; scroll-margin-top:20px; }
 .dx-page h3 { font-size:16.5px; font-weight:620; letter-spacing:-.01em; margin:30px 0 4px; color:var(--ink); }
@@ -123,14 +130,34 @@
 /* barra superior móvil */
 .dx-topbar { display:none; }
 @media (max-width:900px){
-  .dx-side { position:fixed; left:0; top:0; z-index:50; transform:translateX(-100%); transition:transform .2s ease; box-shadow:0 0 40px #00000030; }
-  .dx-side.open { transform:translateX(0); }
+  /* `display:block` NO es cosmético y es el arreglo de fondo de esta pantalla.
+     `.dx-app` es una fila flex, y al encender la barra superior esta entraba
+     como UNA COLUMNA MÁS al lado del contenido en vez de como una banda arriba:
+     se llevaba 134 px de ancho, así que a 390 px el texto quedaba en 220 px y a
+     360 px la página entera se desplazaba de lado. Con la barra lateral fija
+     (fuera de flujo) no queda nada que repartir en fila. */
+  .dx-app { display:block; }
+
+  .dx-side { position:fixed; left:0; top:0; z-index:50; width:min(288px,84vw);
+    transform:translateX(-100%); box-shadow:0 0 40px #00000030;
+    /* `visibility` además del desplazamiento: un cajón corrido fuera de pantalla
+       sigue siendo enfocable, y con el teclado se cae dentro de un menú que no
+       se ve. Al abrir aparece al instante; al cerrar espera a que termine el
+       deslizamiento, si no desaparecería de golpe. */
+    visibility:hidden; transition:transform .2s ease, visibility 0s linear .2s; }
+  .dx-side.open { transform:translateX(0); visibility:visible;
+    transition:transform .2s ease, visibility 0s; }
   .dx-topbar { display:flex; align-items:center; gap:12px; position:sticky; top:0; z-index:40;
     background:var(--panel); border-bottom:1px solid var(--line); padding:10px 14px; }
-  .dx-burger { border:1px solid var(--line2); background:var(--panel2); color:var(--ink); border-radius:7px; width:34px; height:30px; cursor:pointer; font-size:15px; }
-  .dx-topbar b { font-size:13px; }
+  .dx-burger { flex:0 0 auto; border:1px solid var(--line2); background:var(--panel2); color:var(--ink); border-radius:7px; width:34px; height:30px; cursor:pointer; font-size:15px; }
+  /* El nombre de la sección se recorta con puntos suspensivos en vez de empujar:
+     es una etiqueta de ubicación, y ninguna vale deformar la pantalla. */
+  .dx-topbar b { font-size:13px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .dx-page { padding:22px 18px 90px; }
   .dx-scrim { position:fixed; inset:0; z-index:45; background:#0006; }
+}
+@media (prefers-reduced-motion:reduce){
+  .dx-side, .dx-side.open { transition:none; }
 }
 
 /* ── Chat de conceptos (glosario) ────────────────────────────────────────── */

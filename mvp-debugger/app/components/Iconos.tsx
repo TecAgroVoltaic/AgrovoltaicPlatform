@@ -207,3 +207,42 @@ export function IconoCalidad({ size = 16, className }: P) {
     </svg>
   );
 }
+
+/* ── Sistema de evaluación de datos ─────────────────────────────────────────
+   Los iconos de la sección de análisis. Se añaden acá y no en un archivo aparte
+   para que el juego de iconos siga siendo uno solo. */
+
+/** Tablero: las casillas de indicadores. */
+export function IconoTablero({ size = 16, className }: P) {
+  return (
+    <svg {...base(size)} className={className}>
+      <rect x="3" y="3" width="7.5" height="7.5" rx="1.5" />
+      <rect x="13.5" y="3" width="7.5" height="4.5" rx="1.5" />
+      <rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5" />
+      <rect x="13.5" y="10.5" width="7.5" height="10.5" rx="1.5" />
+    </svg>
+  );
+}
+
+/** Series de tiempo: una curva sobre sus ejes. */
+export function IconoSerie({ size = 16, className }: P) {
+  return (
+    <svg {...base(size)} className={className}>
+      <path d="M3 4v16h18" />
+      <path d="M6.5 15.5l4-5 3.5 3 4.5-6.5" />
+    </svg>
+  );
+}
+
+/** Estadística: la distribución de una variable. */
+export function IconoEstadistica({ size = 16, className }: P) {
+  return (
+    <svg {...base(size)} className={className}>
+      <path d="M3 20V4M3 20h18" />
+      <rect x="6.5" y="13" width="3.5" height="4.5" rx="1" />
+      <path d="M8.25 10v3M8.25 17.5v1.5" />
+      <rect x="14" y="8" width="3.5" height="6.5" rx="1" />
+      <path d="M15.75 5v3M15.75 14.5v2.5" />
+    </svg>
+  );
+}
