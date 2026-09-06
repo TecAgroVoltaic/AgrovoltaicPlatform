@@ -68,8 +68,17 @@ RESAMPLE_RADIACION = "15s"
 OFFSET_NOCTURNO = -38.845008416418494  # offset nocturno del piranometro -> 0 (en la vista)
 TEMP_SENSOR_ERROR = 85.0            # DS18B20 desconectado (codigo de error)
 TEMP_VALID_RANGE = (10.0, 80.0)     # Leo (P9): temperaturas validas 10-80 C
-FREQ_VALID_RANGE = (55.0, 65.0)     # P9: frecuencia de red
-VAC_VALID_RANGE = (100.0, 280.0)
+# Las dos AC llevan piso 0,0 y NO 55/100: un 0 es el inversor sin acoplarse a la
+# red, y eso es DATO VALIDO, no una lectura imposible (Leo Cardinale, R3 del
+# 2026-08-30). Con el piso viejo la vista anulaba 7.873 ceros de voltaje_vac y
+# 3.761 de frecuencia_hz, o sea que cualquier analisis leido de la vista era
+# incapaz de ver un inversor caido a mediodia, que es justo lo que hay que ver.
+# El piso no se queda en 55/100 con una excepcion para el cero porque el tramo
+# intermedio tambien es bueno: son 82 lecturas de voltaje_vac en (0, 100) y 120
+# de frecuencia_hz en (0, 55), la rampa de arranque al amanecer (99,79 V con
+# 28,0 Hz y 0 W de salida). Los TECHOS se conservan como guarda de lo imposible.
+FREQ_VALID_RANGE = (0.0, 65.0)      # P9: frecuencia de red (el 0 es valido, ver arriba)
+VAC_VALID_RANGE = (0.0, 280.0)      # el 0 es valido, ver arriba
 VOLT_STRING_RANGE = (0.0, 600.0)    # P9: voltaje por string
 CORR_STRING_RANGE = (0.0, 20.0)     # P9: corriente por string
 POT_STRING_RANGE = (0.0, 5000.0)    # P9 provisional (kWp real: 1420 Wp/arreglo, ver geometria-sistema)
