@@ -15,6 +15,8 @@ dependencies = [
     "python-dotenv",
     "pvlib",    # ventana solar y clear-sky de la capa de calidad
     "pandas",   # idem
+    "numpy",    # estadistica de `analitica` (cuartiles, OLS, crestas, MAD)
+    "scipy",    # densidades KDE del grafico de crestas
 ]
 
 [project.optional-dependencies]

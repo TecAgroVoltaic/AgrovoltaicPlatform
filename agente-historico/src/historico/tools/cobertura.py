@@ -1,7 +1,14 @@
-"""Tool `cobertura_datos` — que datos hay: rango disponible y conteos en un periodo.
+"""Tool `cobertura_datos` — los TOTALES rapidos: rango disponible y conteo de filas.
 
 Responde "de cuando a cuando hay datos" y "cuantas filas hay" en el periodo pedido,
-para que el analisis sepa si una respuesta se apoya en muchos o pocos datos.
+con dos conteos y nada mas. Es la pregunta previa a cualquier analisis: si el
+periodo esta vacio no hace falta seguir.
+
+NO confundir con `completitud_datos`, que es su vecina cara y responde otra cosa:
+esta cuenta filas y no sabe cuantas DEBERIA haber; aquella mide lo real contra lo
+esperado a la cadencia del periodo, periodo por periodo, y devuelve los tramos sin
+datos con fecha de inicio y fin. Se separan porque el 90% de las preguntas solo
+necesitan saber si hay algo, y esa respuesta tiene que costar dos conteos.
 """
 from __future__ import annotations
 
@@ -11,9 +18,11 @@ from historico.periodo import rango
 SCHEMA = {
     "name": "cobertura_datos",
     "description": (
-        "Cobertura de datos: rango de fechas disponible y cuantas filas hay (electrico "
-        "5 min y radiacion 15 s) en el periodo. Sirve para saber si hay suficientes datos. "
-        "Omiti desde/hasta para contar todo el historico."
+        "Totales rapidos de datos: entre que fechas hay historico y cuantas filas cayeron "
+        "en el periodo (electrico y radiacion). Una sola cuenta, sin serie ni huecos. "
+        "Usala para saber SI hay datos antes de pedir un analisis. Si preguntan cuanto "
+        "dato FALTA, donde estan los huecos o desde cuando dejo de reportar algo, la que "
+        "responde eso es `completitud_datos`. Omiti desde/hasta para todo el historico."
     ),
     "input_schema": {
         "type": "object",

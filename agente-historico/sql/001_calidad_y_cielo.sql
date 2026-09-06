@@ -40,8 +40,19 @@ CREATE TABLE IF NOT EXISTS hallazgos_calidad (
 );
 COMMENT ON TABLE hallazgos_calidad IS
     'Store de hallazgos del Comparador. PK (fecha, fuente, variable, tipo) -> re-correr el barrido actualiza, no duplica.';
+-- Un tipo por DETECTOR, y ninguno se repite entre detectores: la PK es
+-- (fecha, fuente, variable, tipo), asi que dos detectores que compartieran tipo se
+-- pisarian la fila en el ON CONFLICT y uno de los dos desapareceria sin error.
+-- Cada bloque de abajo se limpia por separado en su barrido (ver TIPOS_PROPIOS en
+-- calidad/barrido.py y TIPOS en calidad/pruebas/registro.py).
 COMMENT ON COLUMN hallazgos_calidad.tipo IS
-    'dia_incompleto | hueco | duplicado_timestamp | cambio_de_cadencia | columna_ausente | nulos | fuera_de_rango | saturado_85 | constante_en_cero | sensor_plano | offset_nocturno | kt_imposible';
+    'Barrido por lotes (calidad/barrido.py): dia_incompleto | hueco | duplicado_timestamp | cambio_de_cadencia | columna_ausente | nulos | fuera_de_rango | saturado_85 | constante_en_cero | sensor_plano | offset_nocturno. '
+    'Cielo (calidad/cielo.py): kt_imposible. '
+    'Pruebas del documento de evaluacion (calidad/pruebas) - completitud: valor_nan | valor_nulo | timestamp_faltante | minuto_faltante | parametro_faltante | dispositivo_faltante; '
+    'validez fisica: bajo_minimo_fisico | sobre_maximo_fisico | irradiancia_nocturna; '
+    'consistencia temporal: timestamp_duplicado | intervalo_excesivo | marca_inestable; '
+    'anomalias estadisticas: salto_excesivo | flatline | outlier_iqr | ruido_excesivo; '
+    'estructural: sin_fuente (el documento pide la prueba y ninguna tabla tiene el dato; se anota con fuente = sin_fuente para que el hueco no se lea como un aprobado).';
 
 CREATE INDEX IF NOT EXISTS idx_hallazgos_tipo  ON hallazgos_calidad (tipo, fecha DESC);
 CREATE INDEX IF NOT EXISTS idx_hallazgos_grave ON hallazgos_calidad (fecha DESC) WHERE severidad = 'grave';

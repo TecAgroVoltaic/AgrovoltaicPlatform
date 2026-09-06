@@ -104,3 +104,107 @@ def test_advertencia_escalonada_segun_cuanto_se_pierde():
     r_medio = reducir(DIAS, FILAS, medio, ["potencia_pv1_w"], ELE)
     assert "NO representan el periodo" in r_pocos["advertencia"]
     assert "como parciales" in r_medio["advertencia"]
+
+
+def test_una_fuente_sin_filas_contadas_no_invalida_el_dia():
+    """Given un hallazgo grave sobre una fuente cuyas filas nadie cuenta
+    (`radiacion_sc_poa` y `radiacion_sc_clearsky` no estan en el CTE `filas_dia`,
+    y las pruebas nuevas escriben hallazgos con esas fuentes),
+    When se reduce el periodo,
+    Then el dia sigue siendo utilizable.
+
+    Sin la guarda `n_dia > 0`, el denominador cero hacia cierta la comparacion
+    `n_afectadas >= 0.20 * 0` para CUALQUIER hallazgo, y estrenar esas pruebas
+    habria puesto en rojo dias sanos sin ninguna evidencia.
+    """
+    poa = {"fecha": DIAS[0], "fuente": "radiacion_sc_poa", "variable": "poa_pv1_wm2",
+           "tipo": "fuera_de_rango", "severidad": "grave", "n_afectadas": 1}
+
+    r = reducir(DIAS, FILAS, [poa], ["poa_pv1_wm2"], None)
+
+    assert r["dias_utilizables"] == 31
+
+
+def test_un_tipo_que_invalida_si_pega_aunque_no_haya_denominador():
+    """Given un hallazgo de los que matan el dia por su naturaleza, sobre una
+    fuente sin filas contadas,
+    When se reduce el periodo,
+    Then el dia SI queda fuera.
+
+    La guarda del denominador acota la regla de la fraccion, no la lista de tipos
+    que invalidan: esos nunca miraron cuantas lecturas tocaban.
+    """
+    duplicado = {"fecha": DIAS[0], "fuente": "radiacion_sc_poa", "variable": "*",
+                 "tipo": "timestamp_duplicado", "severidad": "grave", "n_afectadas": 2}
+
+    r = reducir(DIAS, FILAS, [duplicado], ["poa_pv1_wm2"], None)
+
+    assert r["dias_utilizables"] == 30
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# El CABLEADO de la consulta unica: la forma que devuelve `json_agg`
+# ══════════════════════════════════════════════════════════════════════════
+# Los tres insumos de `confianza` viajaban en tres consultas y ahora van en una
+# sola, porque contra el pooler eran tres viajes de ~225 ms para un bloque que va
+# dentro de casi toda respuesta. La fusion trae un modo de fallo nuevo y SILENCIOSO:
+# `json_agg` devuelve las fechas como texto ISO, igual que `db.query`, y si algun
+# dia devolviera `date` las claves de `filas` y las fechas de `hallazgos` dejarian
+# de cruzar. No revienta nada: todos los dias saldrian utilizables, que es
+# exactamente el veredicto complaciente que este modulo existe para evitar.
+def test_la_consulta_de_confianza_es_UNA_sola(monkeypatch):
+    # Given una base que cuenta cuantas veces la consultan
+    from historico import db
+    from historico.calidad import contexto
+    viajes = []
+
+    def falsa(sql, params=()):
+        viajes.append(sql)
+        return [{"calendario": [], "filas": [], "hallazgos": []}]
+
+    monkeypatch.setattr(db, "query", falsa)
+
+    # When se pide el bloque
+    contexto._consultar("2026-01-01", "2026-02-01", ["potencia_pv1_w"], ELE)
+
+    # Then hubo UN viaje. Cada uno de mas cuesta 225 ms en TODOS los endpoints.
+    assert len(viajes) == 1
+
+
+def test_la_fila_unica_se_desarma_con_la_forma_que_manda_json_agg(monkeypatch):
+    # Given la fila tal como la arma la base: fechas ISO, filas como tripletas y
+    # hallazgos como objetos
+    from historico import db
+    from historico.calidad import contexto
+    fila = {
+        "calendario": ["2026-01-01", "2026-01-02"],
+        "filas": [["2026-01-01", ELE, 144], ["2026-01-02", ELE, 144]],
+        "hallazgos": [{"fecha": "2026-01-01", "fuente": ELE,
+                       "variable": "potencia_pv1_w", "tipo": "fuera_de_rango",
+                       "severidad": "grave", "n_afectadas": 144}],
+    }
+    monkeypatch.setattr(db, "query", lambda sql, p=(): [fila])
+
+    # When se reduce
+    r = contexto._consultar("2026-01-01", "2026-01-03", ["potencia_pv1_w"], ELE)
+
+    # Then el hallazgo cruza con su dia y lo invalida. Si las fechas no casaran, el
+    # dia saldria utilizable y nadie se enteraria de que el filtro dejo de acertar.
+    assert r["dias_en_rango"] == 2
+    assert r["dias_con_datos"] == 2
+    assert r["dias_utilizables"] == 1
+
+
+def test_sin_calendario_no_se_inventa_nada(monkeypatch):
+    # Given un rango sin un solo dia en `ventana_solar`
+    from historico import db
+    from historico.calidad import contexto
+    monkeypatch.setattr(db, "query", lambda sql, p=(): [
+        {"calendario": [], "filas": [], "hallazgos": []}])
+
+    # When se pide el bloque
+    r = contexto._consultar("2100-01-01", "2100-02-01", ["potencia_pv1_w"], ELE)
+
+    # Then se dice que el rango esta vacio, no que todo esta bien
+    assert r["dias_en_rango"] == 0 and r["dias_utilizables"] == 0
+    assert "no hay ni un dia de calendario" in r["advertencia"]

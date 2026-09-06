@@ -45,7 +45,7 @@ HISTORIAL_MENSAJES = 16
 
 
 def _catalogo_herramientas() -> list[dict]:
-    """Las once herramientas con su esquema COMPLETO, el mismo que ve el modelo.
+    """Cada herramienta con su esquema COMPLETO, el mismo que ve el modelo.
 
     `incrusta_confianza` no se escribe a mano: se detecta mirando si el modulo de
     la tool importa `contexto`. Asi, si alguien agrega una tool de agregacion y se

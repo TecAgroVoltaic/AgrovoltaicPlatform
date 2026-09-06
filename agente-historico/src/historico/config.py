@@ -59,6 +59,27 @@ TZ = os.environ.get("SITE_TZ", "America/Costa_Rica")   # UTC-6 fijo, sin horario
 # Mismos que ya aplica la capa de correccion (`v_sc_electrico_corregido`), aca en
 # un solo lugar para que el detector y la correccion no se desincronicen.
 # El de temperatura es el 10-80 C que fijo Leo Cardinale, no el -10..60 de AgroDash.
+#
+# EL RANGO VIVE EN TRES SITIOS Y LOS TRES SE MUEVEN JUNTOS:
+#   1. este diccionario                     -> lo lee el barrido (`fuera_de_rango`)
+#   2. `analitica.catalogo` (minimo/maximo)  -> lo lee la validez fisica
+#   3. `sql/003_electrico_sin_falsos_positivos.sql` -> la vista corregida
+# `tests/test_rangos_fisicos.py` verifica que coincidan. Olvidar cualquiera de
+# los tres falla EN SILENCIO: nada revienta, el sistema solo deja de ver.
+#
+# EL 0 DE LAS VARIABLES AC NO ES UNA VIOLACION DE RANGO (Leo Cardinale, R3,
+# 2026-08-30). El piso de `voltaje_vac` era 100,0 y el de `frecuencia_hz` 55,0, y
+# con eso el barrido marcaba como `fuera_de_rango` grave los 7.873 ceros de
+# tension y los 3.761 de frecuencia. Un 0 ahi no es dato malo: es el inversor que
+# no se esta acoplando a la red, o sea dato BUENO sobre un equipo MALO, que es
+# justo el fenomeno que Leo pidio detectar entre las 7 y las 17.
+# Los dos pisos pasan a 0,0. Los TECHOS se conservan porque siguen siendo la
+# guarda de lo genuinamente imposible (un 400 V no es dato), aunque hoy no se
+# disparen: el maximo historico de `voltaje_vac` es 218,84 V y el de
+# `frecuencia_hz` 60,06 Hz. No hay ni una lectura negativa en 36.469 filas.
+# El piso no se queda en 100 con una excepcion para el 0 porque el dato de la
+# rampa de arranque tambien es bueno: 82 lecturas de `voltaje_vac` en (0, 100) y
+# 120 de `frecuencia_hz` en (0, 55), casi todas del amanecer.
 RANGOS = {
     "radiacion_sc_15s": {
         "irradiancia_incidente": (-50.0, 1500.0),
@@ -72,8 +93,9 @@ RANGOS = {
         "potencia_pv1_w": (0.0, 5000.0),
         "potencia_pv2_w": (0.0, 5000.0),
         "potencia_total_wac": (0.0, 5000.0),
-        "frecuencia_hz": (55.0, 65.0),
-        "voltaje_vac": (100.0, 280.0),
+        # Piso 0,0 (eran 55,0 y 100,0): ver la nota del 2026-08-30 sobre el cero.
+        "frecuencia_hz": (0.0, 65.0),
+        "voltaje_vac": (0.0, 280.0),
         "temperatura_inversor_c": (10.0, 80.0),
         "temp_vertical": (10.0, 80.0),
         "temp_inclinado": (10.0, 80.0),
