@@ -246,3 +246,14 @@ export function IconoEstadistica({ size = 16, className }: P) {
     </svg>
   );
 }
+
+/** Descargas: una flecha que baja hacia la bandeja. */
+export function IconoDescarga({ size = 16, className }: P) {
+  return (
+    <svg {...base(size)} className={className}>
+      <path d="M12 3.5v11" />
+      <path d="M7.5 10.5l4.5 4.5 4.5-4.5" />
+      <path d="M4 17.5v1.5a1.5 1.5 0 0 0 1.5 1.5h13a1.5 1.5 0 0 0 1.5-1.5v-1.5" />
+    </svg>
+  );
+}

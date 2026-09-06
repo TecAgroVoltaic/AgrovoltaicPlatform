@@ -5,6 +5,7 @@ import type { ComponentType } from "react";
 
 import {
   IconoCalidad,
+  IconoDescarga,
   IconoEstadistica,
   IconoReconciliar,
   IconoSerie,
@@ -55,6 +56,13 @@ export const ANALYSIS_SECTIONS: readonly AnalysisSection[] = [
     description:
       "El arreglo Inclinado (PV1) contra el Vertical (PV2): energía, rendimiento y estacionalidad.",
     Icon: IconoReconciliar,
+  },
+  {
+    path: "/descargas",
+    label: "Descargas",
+    description:
+      "Los datos del período en .csv, .dat o .mat: se elige la tabla, las columnas y el formato.",
+    Icon: IconoDescarga,
   },
 ];
 
