@@ -4,7 +4,10 @@ ETL AgroDash (Cartago, SOLO LECTURA) -> Supabase store `lecturas_ambientales`.
 Arquitectura A: trae la data ambiental de San Carlos (que hoy vive en AgroDash)
 al store propio del agente, para que el forecaster la lea local y quede historia.
 
-  SOURCE : config.conninfo()        -> AgroDash (read-only). Cartago via tailnet.
+  SOURCE : config.conninfo()        -> AgroDash (read-only). El ESQUEMA de la URL
+                                       elige el camino: postgresql:// = DB directa
+                                       o replica; https:// = API publica de Cartago.
+                                       Ver `ingesta/`.
   STORE  : os.environ['STORE_URL']  -> Supabase de AgroVoltaic (Session pooler).
 
 Propiedades:
@@ -12,11 +15,13 @@ Propiedades:
     y luego INSERT ... SELECT ... ON CONFLICT (serie_id, ts) DO NOTHING.
     Re-correr nunca duplica, aunque haya lecturas con el mismo created_at: el
     canal (serie_id) desambigua las que comparten timestamp por venir del mismo
-    lote. readings.id se conserva en `origen_id` para trazabilidad, sin indice.
+    lote. readings.id se conserva en `origen_id` para trazabilidad, sin indice
+    (NULL cuando la fuente es la API publica, que no lo expone).
   * INCREMENTAL: arranca desde max(ts) del store (menos un solape). Con --full
     re-escanea desde BACKFILL_SINCE (el conflicto igual protege de duplicar).
-  * ESCALABLE EN MEMORIA: la fuente se lee con cursor SERVER-SIDE (streaming) y
-    se vuelca por COPY -> nunca carga 1.6M filas en RAM.
+  * ESCALABLE EN MEMORIA: la fuente streamea (cursor SERVER-SIDE en Postgres,
+    paginado por ventanas en HTTP) y se vuelca por COPY -> nunca carga 1.6M
+    filas en RAM.
   * SIN FUGA DE TZ: created_at/timestamp_real de AgroDash son NAIVE hora LOCAL
     (UTC-6); se etiquetan explicitamente America/Costa_Rica antes de insertar.
   * OBSERVABLE: cada corrida deja filas en `agente_log` (componente 'etl').
@@ -37,7 +42,7 @@ from zoneinfo import ZoneInfo
 
 import psycopg
 
-from predictivo import config
+from predictivo import config, ingesta
 
 CR = ZoneInfo("America/Costa_Rica")
 
@@ -53,25 +58,12 @@ OVERLAP = timedelta(hours=2)
 # Piso del backfill --full (configurable). ~2.7 meses hasta el congelamiento del
 # 2026-07-23: de sobra para persistencia + climatologia, y liviano en storage.
 BACKFILL_SINCE = os.environ.get("BACKFILL_SINCE", "2026-05-01")
-# Cuantas filas trae por viaje el cursor server-side (control de memoria).
-ITERSIZE = 20000
 # Tamaño de lote de escritura: COPY+upsert+commit por bloque. Chico para no chocar
 # con el statement_timeout de Supabase ni retener locks/temp grandes.
 BATCH = 50000
 # Corte rapido si la fuente no responde (fuente caida). El timer corre cada 15
 # min: colgarse dos minutos por corrida no aporta nada.
 CONNECT_TIMEOUT_SEG = int(os.environ.get("SOURCE_CONNECT_TIMEOUT", "15"))
-
-_SQL_SOURCE = """
-    SELECT r.id::text, b.name, s.id::text, s.type,
-           r.created_at, r.timestamp_real, r.value
-    FROM readings r
-    JOIN sensors s ON s.id = r.sensor_id
-    JOIN boxes   b ON b.id = s.box_id
-    WHERE b.name = %s AND s.type = %s
-      AND r.created_at >= %s
-    ORDER BY r.created_at
-"""
 
 _TMP_DDL = """
     CREATE TEMP TABLE _stage (
@@ -162,29 +154,32 @@ def _flush(store: psycopg.Connection, rows: list[tuple]) -> None:
     store.commit()                             # dispara ON COMMIT DROP de _stage
 
 
-def _ingest(src: psycopg.Connection, store: psycopg.Connection,
+def _ingest(src: ingesta.FuenteLecturas, store: psycopg.Connection,
             tgt: dict, desde: datetime) -> dict:
-    """Vuelca (streaming + COPY por lotes) las lecturas de un target, idempotente."""
+    """Vuelca (streaming + COPY por lotes) las lecturas de un target, idempotente.
+
+    `src` puede ser Postgres o la API publica: el ETL no distingue. Lo unico que
+    le pide es el iterable de `lecturas()`, y lo que llegue con `ts_medicion` u
+    `origen_id` en None se guarda asi (la API no expone ninguno de los dos).
+    """
     var = tgt["variable"]
     before = _count(store, var)
     leidas = 0
     buf: list[tuple] = []
-    # Cursor SERVER-SIDE en la fuente: streamea de a ITERSIZE, no carga todo en RAM.
-    with src.cursor(name=f"src_{var}") as cur:
-        cur.itersize = ITERSIZE
-        cur.execute(_SQL_SOURCE, (tgt["caja"], tgt["tipo"], desde))
-        for rid, box, sid, styp, cat, tsr, val in cur:
-            buf.append((
-                rid, box, var, styp, sid,
-                _localizar(cat), _localizar(tsr),
-                float(val) if val is not None else None, tgt["unidad"],
-            ))
-            leidas += 1
-            if len(buf) >= BATCH:
-                _flush(store, buf)
-                buf.clear()
-        _flush(store, buf)                     # ultimo lote parcial
-    src.rollback()                             # cierra la txn read-only de la fuente
+    # La fuente STREAMEA (cursor server-side o paginado por ventanas): nunca se
+    # carga todo en RAM. Cual de las dos es, lo decidio `ingesta.abrir` por la URL.
+    for rid, box, sid, styp, creado, medido, valor in src.lecturas(
+            tgt["caja"], tgt["tipo"], desde):
+        buf.append((
+            rid, box, var, styp, sid,
+            _localizar(creado), _localizar(medido),
+            float(valor) if valor is not None else None, tgt["unidad"],
+        ))
+        leidas += 1
+        if len(buf) >= BATCH:
+            _flush(store, buf)
+            buf.clear()
+    _flush(store, buf)                         # ultimo lote parcial
     after = _count(store, var)
     return {
         "leidas": leidas,
@@ -213,7 +208,7 @@ def _targets(variables: list[str] | None) -> list[dict]:
     return [t for t in TARGETS if t["variable"] in variables]
 
 
-def _ingestar_targets(src: psycopg.Connection, store: psycopg.Connection,
+def _ingestar_targets(src: ingesta.FuenteLecturas, store: psycopg.Connection,
                       full: bool, variables: list[str] | None = None) -> dict:
     """Corre cada target. Un fallo de UN target no aborta los demas: se loguea
     y se sigue (el corte total lo maneja run(), que cubre la conexion)."""
@@ -258,12 +253,11 @@ def run(full: bool = False, variables: list[str] | None = None) -> dict:
         store.commit()
 
         try:
-            # connect_timeout explicito: si la fuente no responde, cortar rapido
-            # en vez de colgarse hasta el default del sistema (el timer corre
-            # cada 15 min; no tiene sentido esperar mas).
-            with psycopg.connect(src_dsn, connect_timeout=CONNECT_TIMEOUT_SEG) as src:
-                src.execute("SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY")
-                src.commit()
+            # El esquema de la URL elige Postgres o la API publica. El timeout
+            # explicito vale para las dos: si la fuente no responde hay que cortar
+            # rapido, no colgarse hasta el default del sistema (el timer corre cada
+            # 15 min; esperar mas no aporta nada).
+            with ingesta.abrir(src_dsn, timeout_seg=CONNECT_TIMEOUT_SEG) as src:
                 resumen = _ingestar_targets(src, store, full, variables)
         except Exception as exc:                             # noqa: BLE001
             store.rollback()

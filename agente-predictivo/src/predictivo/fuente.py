@@ -19,12 +19,13 @@ from __future__ import annotations
 
 from urllib.parse import urlsplit
 
-from predictivo import config, etl
+from predictivo import config, etl, ingesta
 
 # Que clase de base es la fuente. Determina si los datos pueden avanzar.
 TIPO_REPLICA_DUMP = "replica_dump"        # copia restaurada de un dump: congelada
 TIPO_BASE_VIVA = "base_viva"              # la DB que ingiere de los sensores
 TIPO_REPLICA_REMOTA = "replica_remota"    # copia en otra maquina de la tailnet
+TIPO_API_PUBLICA = "api_publica"          # la app de Cartago por HTTP: base viva
 TIPO_DESCONOCIDO = "desconocido"
 
 # Loopback: la base corre en la MISMA maquina que el ETL.
@@ -41,6 +42,7 @@ HOSTS_AGRODASH: dict[str, tuple[str, str, bool | None]] = {
 }
 
 ETIQUETA_DUMP = "Replica del dump de AgroDash restaurada junto al ETL"
+ETIQUETA_API = "AgroDash Cartago — API publica (base viva)"
 ETIQUETA_DESCONOCIDA = "Base PostgreSQL no reconocida"
 
 # El criterio se devuelve al cliente A PROPOSITO: es una heuristica sobre el host,
@@ -51,6 +53,12 @@ CRITERIO_LOOPBACK = (
     "local solo puede ser la replica restaurada del dump."
 )
 CRITERIO_HOST_CONOCIDO = "El host coincide con una direccion conocida de AgroDash."
+# La API la sirve la MISMA app que ingiere de los sensores, asi que lo que entrega
+# es la base viva por definicion: no puede ser una copia congelada.
+CRITERIO_API = (
+    "La URL es HTTP(S): la fuente es la API publica de AgroDash, servida por la "
+    "misma app que ingiere de los sensores. Por eso no puede ser un snapshot."
+)
 CRITERIO_SIN_IDENTIFICAR = (
     "El host no es de loopback ni coincide con ninguna direccion conocida de "
     "AgroDash: no se puede afirmar si es la base viva o una copia."
@@ -76,8 +84,16 @@ def _partes(dsn: str) -> dict:
     }
 
 
-def _clasificar(host: str | None) -> tuple[str, str, bool | None, str]:
-    """(tipo, etiqueta, es_snapshot, criterio) a partir del host."""
+def _clasificar(esquema: str | None, host: str | None) -> tuple[str, str, bool | None, str]:
+    """(tipo, etiqueta, es_snapshot, criterio) a partir del esquema y el host.
+
+    El ESQUEMA manda: es lo mismo que usa `ingesta.abrir` para elegir el camino, y
+    con HTTP el host ya no dice nada util (la API puede estar detras de cualquier
+    proxy). Recien si no es HTTP se mira el host, que es lo que distingue una
+    replica local de la base viva por tailnet.
+    """
+    if (esquema or "").lower() in ingesta.ESQUEMAS_HTTP:
+        return TIPO_API_PUBLICA, ETIQUETA_API, False, CRITERIO_API
     if host in HOSTS_LOOPBACK:
         return TIPO_REPLICA_DUMP, ETIQUETA_DUMP, True, CRITERIO_LOOPBACK
     conocido = HOSTS_AGRODASH.get(host or "")
@@ -108,7 +124,7 @@ def fuente() -> dict:
     None = no se pudo determinar (no se afirma lo que no se sabe).
     """
     try:
-        partes = _partes(config.conninfo())
+        dsn = config.conninfo()
     except Exception as exc:  # noqa: BLE001 — sin config no hay identidad, no hay panel caido
         # Solo el TIPO de excepcion: su mensaje podria arrastrar la cadena de
         # conexion, que es justo lo que este modulo existe para no exponer.
@@ -117,7 +133,8 @@ def fuente() -> dict:
                 "es_snapshot": None, "criterio": CRITERIO_SIN_IDENTIFICAR,
                 "definida_en": _definida_en(), "targets": _targets(),
                 "error": type(exc).__name__}
-    tipo, etiqueta, es_snapshot, criterio = _clasificar(partes["host"])
+    partes = _partes(dsn)
+    tipo, etiqueta, es_snapshot, criterio = _clasificar(urlsplit(dsn).scheme, partes["host"])
     return {**partes, "tipo": tipo, "etiqueta": etiqueta,
             "es_snapshot": es_snapshot, "criterio": criterio,
             "definida_en": _definida_en(), "targets": _targets()}

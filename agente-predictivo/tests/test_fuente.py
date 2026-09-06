@@ -57,6 +57,27 @@ def test_la_base_viva_de_cartago_no_se_confunde_con_un_snapshot(monkeypatch):
     assert identidad["es_snapshot"] is False
 
 
+def test_la_api_publica_es_base_viva_y_no_un_snapshot(monkeypatch):
+    # Given: la fuente pasa a ser la API publica de Cartago (2026-08-25)
+    identidad = _con_fuente(monkeypatch, "https://agrodash.ejemplo/api/v1")
+
+    # Then: la sirve la misma app que ingiere de los sensores, asi que los datos
+    # SI pueden avanzar. El panel deja de decir "replica congelada".
+    assert identidad["tipo"] == fuente.TIPO_API_PUBLICA
+    assert identidad["es_snapshot"] is False
+    assert "API publica" in identidad["etiqueta"]
+
+
+def test_la_api_publica_no_se_confunde_con_la_replica_local(monkeypatch):
+    # Given: una API servida en la propia maquina (host de loopback)
+    identidad = _con_fuente(monkeypatch, "http://127.0.0.1:8080/api/v1")
+
+    # Then: manda el ESQUEMA, no el host. Con HTTP el host no dice nada: la API
+    # puede estar detras de cualquier proxy, y seguir siendo la base viva.
+    assert identidad["tipo"] == fuente.TIPO_API_PUBLICA
+    assert identidad["es_snapshot"] is False
+
+
 def test_un_host_desconocido_no_inventa_identidad(monkeypatch):
     # Given: alguien apunta la fuente a una base que nadie registro
     identidad = _con_fuente(monkeypatch, _dsn("db.example.org"))

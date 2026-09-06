@@ -34,8 +34,9 @@ El `.service` es `Type=oneshot`; si el ETL sale con código ≠ 0, la unidad que
 `nivel='error'`). Las dos señales tienen que coincidir — si systemd dice `failed`
 pero no hay fila, el fallo ocurrió antes de poder conectarse al store (Supabase caído).
 
-Atajo sin entrar al server: `GET /forecast/salud/ingesta` devuelve **503** si la
-ingesta está `stale` o `sin_datos`, con el último error del ETL en el cuerpo.
+Atajo sin entrar al server: `GET /predictivo/salud/ingesta` (alias viejo:
+`/forecast/salud/ingesta`) devuelve **503** si la ingesta está `stale` o `sin_datos`,
+con el último error del ETL en el cuerpo.
 
 > Regresión conocida (2026-08-14): con Cartago apagado, el ETL falló cada 15 min
 > durante 9 días sin registrar nada, porque la conexión a la fuente quedaba fuera del
@@ -43,7 +44,17 @@ ingesta está `stale` o `sin_datos`, con el último error del ETL en el cuerpo.
 
 ## Fuente de datos
 
-El ETL lee la fuente de `DATABASE_URL` (en `forecast.env`, **no versionado**). Desde el
-2026-08-14 apunta a la réplica local del dump (`127.0.0.1:5433`, contenedor
-`agrodash-pg`) porque el server de Cartago está caído; la URL original quedó comentada
-en ese mismo archivo. Ver `docs/memoria/proyecto/agrodash-local.md`.
+El ETL lee la fuente de `DATABASE_URL` (en `predictivo.env`, **no versionado**). El
+**esquema de la URL** elige el camino, sin tocar código (ver `src/predictivo/ingesta/`):
+
+| Esquema | Camino | Estado |
+|---|---|---|
+| `https://` | API pública de AgroDash | **la de hoy** desde 2026-08-26. Base viva, ~30 s de rezago |
+| `postgresql://` | DB directa o réplica del dump | vuelta atrás; las URLs quedaron comentadas en el `.env` |
+
+Entre el 2026-08-14 y el 2026-08-26 la fuente fue la réplica del dump, congelada el
+2026-06-30. El ETL corrió **verde** todo ese tiempo trayendo **cero filas**: el timer
+en `SUCCESS` no prueba que entren datos. Lo que sí lo prueba es
+`/predictivo/salud/ingesta`, que mira la **edad del último dato**.
+
+Ver `docs/memoria/proyecto/agrodash-api.md`.
