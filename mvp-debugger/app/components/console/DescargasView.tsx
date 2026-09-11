@@ -144,7 +144,14 @@ export function DescargasView() {
   useEffect(() => {
     setErrCat(null); setCat(null);
     jget("/api/analizador/datos/exportables").then((r: Resp) => {
-      if (!r.ok || !Array.isArray(r.data?.fuentes)) { setErrCat(r.ok ? 'respuesta inesperada: falta "fuentes"' : mensajeError(r)); return; }
+      if (!r.ok || !Array.isArray(r.data?.fuentes)) {
+        // 404 = el servicio del analizador es una versión anterior, sin exportación:
+        // decirlo, porque "Not Found" a secas parece un error de la consola.
+        setErrCat(r.status === 404
+          ? "el analizador desplegado es una versión anterior sin exportación de datos: hay que reconstruir su contenedor en el servidor"
+          : r.ok ? 'respuesta inesperada: falta "fuentes"' : mensajeError(r));
+        return;
+      }
       const c: Catalogo = r.data;
       setCat(c);
       const f = c.fuentes.find((x) => x.clave === "supabase" && x.disponible) || c.fuentes.find((x) => x.disponible) || c.fuentes[0];
