@@ -151,3 +151,20 @@ agente analizador) + módulo `exportar.py` del analizador (no es tool del LLM) c
 - **Pendiente para producción:** reconstruir la imagen del analizador en la EC2 (deps nuevas
   `numpy`/`scipy`): `docker compose -f docker-compose.analizador.yml up -d --build`. AgroDash no
   necesita configuración (API pública; override opcional `AGRODASH_API_URL`).
+
+## 2026-09-11 — deploy de la consola en Vercel (cómo se hace)
+
+- Proyecto **`agrovoltaic-consola`** (team `izackk26-4583s-projects`), producción en
+  https://agrovoltaic-consola.vercel.app · Root Directory `.` de `mvp-debugger/`, Next.js, Node 24.
+  **No hay integración Git**: se despliega por CLI desde `mvp-debugger/`:
+  `npx vercel login` (una vez) → `npx vercel link --yes --project agrovoltaic-consola` → `npx vercel --prod --yes`.
+  `.vercel/` y `.env.local` quedan ignorados.
+- **Variables en Vercel (Production):** `HISTORICO_URL`, `HISTORICO_API_KEY` (= analizador),
+  `PREDICTIVO_URL`, `PREDICTIVO_API_KEY` (= pronóstico), `DEBUGGER_PASSWORD`, `DEBUGGER_SESSION_SECRET`.
+  Todas *Sensitive* (no se pueden leer con `vercel env pull`). `config.ts` acepta esos nombres además de
+  `ANALIZADOR_*`/`PRONOSTICO_*` (fix 0eb004e: antes en prod caía al localhost por defecto).
+- Deploy del 2026-09-11 (PR #19, rama `feat/descargas-por-rango`): **Ready**. No se pudo verificar el
+  camino consola→agentes en producción desde acá (la contraseña de prod es sensible y distinta a la local).
+  **La sección Descargas en producción NO funciona hasta reconstruir el analizador en la EC2**
+  (endpoints `/datos/exportar*` nuevos + deps numpy/scipy): requiere `~/aws/visione-key.pem`, que no está
+  en esta Mac.
