@@ -100,3 +100,54 @@ Relacionado: [[agente-analizador]], [[agente-pronostico]], [[capa-agentes]], [[e
 - **Estados de error/vacío**: las vistas validaban nada y un 200 con otra forma las dejaba
   en "cargando…" para siempre. Ahora `extraerLista`/`mensajeError` + el bloque `Estado`.
 - **Verificación**: `scripts/smoke-auth.sh` (8 casos con HTTP real) corre en el CI.
+
+## 2026-09-11 — vista "Descargas": exportar por rango de fechas, dos fuentes (csv / dat / mat)
+
+Pedido de Isaac (WhatsApp 9-sep): *"descargar data de rangos de fechas de x a y tiempo… csv o
+.dat .mat"*; luego en sesión: *"debe permitir descargar tanto del Supabase… como de AgroDash y
+mejora la interfaz"*. Implementado como **vista "Descargas"** en la consola (`DescargasView.tsx`,
+agente analizador) + módulo `exportar.py` del analizador (no es tool del LLM) con cuatro endpoints:
+`/datos/exportables` (catálogo por fuente), `/datos/exportar/estimar`, `/datos/exportar/previa`
+(primeras filas tal como saldrán) y `/datos/exportar` (adjunto, `Content-Disposition`).
+
+- **Dos fuentes, dos vías:** `supabase` (SQL; las 9 relaciones de `datos.py` + `ambiental_crudo` =
+  `lecturas_ambientales_sc`) y `agrodash` (**API pública** de AgroDash, `agrodash_api.py`, sin
+  credenciales → funciona desde cualquier máquina; datasets `lecturas` —filtrable por **caja** y **tipo
+  de sensor**, con **resolución** `paso` 0/60/300/900/3600/86400 s, 0 = crudo— y `sensores`). Isaac
+  descartó la vía DB (réplica en la EC2): la API estaba documentada en el PDF del proyecto y está viva.
+  Si la API no responde, el catálogo la marca `disponible:false` y el resto sigue. La API no cuenta
+  filas: `estimar` devuelve una **cota** (sensores × intervalos) y la UI lo dice.
+- **UI (v3, tras feedback de Isaac: "demasiada data en pantalla"):** dos columnas. Izquierda, un
+  **acordeón** de pasos (fuente → datos → filtros → rango → formato → columnas): un solo paso abierto a
+  la vez y los cerrados resumen su valor en una línea; las listas largas (43 cajas, 69 tipos, columnas)
+  van en un **selector con búsqueda y paginación** (`Picker`, 10–12 por página). Derecha, fija: nombre
+  de archivo, **filas estimadas + tamaño**, botón y **vista previa plegable** (5 filas). Descripciones
+  largas quedan como tooltip. Sin verificación visual automatizada (la hace Isaac en :3123).
+- **Descarga con feedback (v3.1, tras "no me descarga nada"):** el botón ya no es un `<a download>`
+  (no avisa nada mientras el servidor arma el archivo y esconde errores) sino un `fetch` que lee el
+  stream, muestra **bytes recibidos**, permite **cancelar** y muestra el error (400/413/429/503) en el
+  panel. Causa del "nada": un `.mat` de AgroDash en crudo (10 días, 8 sensores) tardaba minutos sin
+  emitir un byte. Ahora `agrodash_api` es **adaptativo** (medido: la API devuelve ≤~5000 buckets POR LLAMADA a
+  ~0.7 s fijos, los sensores leen cada 1–3 min): una llamada gruesa por sensor da el **conteo exacto**
+  (suma de `n`), se parte en `ceil(N/2500)` ventanas en paralelo y solo se biseca si un bucket mezcla
+  lecturas; 4 sensores a la vez × 4 tramos. 10 días crudos de 8 sensores: **6 s csv / 15 s mat**
+  (antes 28/35 s en paralelo simple, minutos en serie); 30 días de 5 sensores densos (272k filas): 17 s.
+  `estimar` con ≤24 sensores es **exacto** (2.8 s). La API tiene **tope de 3 descargas simultáneas** (429). Calendario: «Hasta»
+  no puede ser menor que «Desde» (min/max cruzados + corrección automática).
+- **Formatos:** `csv` (coma, nulo vacío) · `dat` (tabulador, nulo `NaN`, booleano 1/0, `<t>_unix`) ·
+  `mat` (scipy `savemat`: variable por columna, `<t>_unix`, `<t>_datenum`, struct `meta`).
+- **Memoria/egress:** CSV/DAT por lotes con **cursor de servidor** (`db.iterar`, sin tope); MAT en RAM
+  → **tope 500.000 filas** (413). Solo lectura: no gasta almacenamiento, sí egress (5 GB/mes Free).
+- **Horas:** todo sale en **hora local CR sin sufijo**; las bases mezclan tres convenciones →
+  ver [[reloj-timestamps]] (hallazgo nuevo de este trabajo).
+- **Proxy:** `upstream.ts` reenvía el cuerpo como **stream de bytes** y propaga `content-disposition`.
+- **Verificado:** 60 tests del analizador (mock de DB y de la API); smoke por el proxy autenticado;
+  **contra la Supabase real** (10 datasets, cobertura hasta 31-ago-2026; csv/dat/mat OK) y **contra la
+  API real de AgroDash** (catálogo 43 cajas, estimar, previa, csv de 1 día/1 caja en 3 s, mat crudo con
+  n=1, sensores); cursor de servidor con 300k filas en Docker. Build + typecheck OK.
+  **Sin verificación visual automatizada** (Isaac la hace en http://localhost:3123).
+- Deps nuevas del analizador: `numpy`, `scipy`. Credencial de la Supabase ahora en
+  `agente-analizador/.env` (gitignored) como `ANALIZADOR_DB_URL` (pooler `aws-1-us-east-1`).
+- **Pendiente para producción:** reconstruir la imagen del analizador en la EC2 (deps nuevas
+  `numpy`/`scipy`): `docker compose -f docker-compose.analizador.yml up -d --build`. AgroDash no
+  necesita configuración (API pública; override opcional `AGRODASH_API_URL`).

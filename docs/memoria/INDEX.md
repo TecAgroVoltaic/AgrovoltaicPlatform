@@ -3,7 +3,9 @@
 Sistema de memoria jerárquico. Un tema por archivo, agrupados por carpeta. Empieza aquí
 para ubicar qué buscas; cada línea apunta al archivo de detalle.
 
-**Última actualización:** 2026-08-18 · *(**Cartago caído → la fuente del ETL es ahora una réplica
+**Última actualización:** 2026-09-11 · *(**Descargas por rango de fechas** (csv/dat/mat) en la consola, desde **dos fuentes** (Supabase PV + **API pública de AgroDash**, que está VIVA de nuevo) con filtros por caja/tipo, resolución, estimación y vista previa; endpoints `/datos/exportar*` del analizador; ver [mvp-debugger](proyecto/mvp-debugger.md) §2026-09-11. **Hallazgo:** las bases mezclan tres convenciones de reloj → [reloj-timestamps](inconsistencias/reloj-timestamps.md). Datos PV en Supabase llegan ya al **31-ago-2026**.)*
+
+**Anterior:** 2026-08-18 · *(**Cartago caído → la fuente del ETL es ahora una réplica
 del dump dentro de la EC2** (`agrodash-pg`, `127.0.0.1:5433`, 21,3 M filas). El ETL llevaba 9 días
 fallando en silencio: corregido, con `/salud/ingesta` que lo hace visible (hoy **503, stale**, dato
 congelado desde el 23-jul). Jonathan cerró además **6 tareas de confiabilidad** —auth de la consola
@@ -32,7 +34,7 @@ multi-variable VIVO en la EC2, fuente SC congelada 23-jul → "solo histórico".
 - [capa-agentes.md](proyecto/capa-agentes.md) — Comparador + Analizador; infraestructura consolidada (servicio Python aparte, batch, lee ambas DBs)
 - [agente-pronostico.md](proyecto/agente-pronostico.md) — MVP: agente LLM que pronostica irradiancia (Caja Irradiancia SC) vía clear-sky + kt*; rival estadístico; Fase 0-1 hecha + auditada (Haiku, sin fuga, 47 tests); próximo: montar en VisioneFlow (DB por URL)
 - [agente-analizador.md](proyecto/agente-analizador.md) — **NUEVO (2026-08-10):** agente Q&A sobre el histórico PV en Supabase; tools atómicas (SRP) sobre las vistas limpias; el LLM solo orquesta; MVP CLI, tools validadas contra la base
-- [mvp-debugger.md](proyecto/mvp-debugger.md) — **NUEVO (2026-08-10):** web local (Next.js) para depurar en vivo los dos agentes: visor de traza (tools+salidas+respuesta), explorador de datos read-only, tokens+costo por consulta y acumulado (`/preguntar`, `/datos/*`, `/uso`); + artifact de diseño en iteración
+- [mvp-debugger.md](proyecto/mvp-debugger.md) — **NUEVO (2026-08-10):** web local (Next.js) para depurar en vivo los dos agentes: visor de traza (tools+salidas+respuesta), explorador de datos read-only, tokens+costo por consulta y acumulado (`/preguntar`, `/datos/*`, `/uso`); **2026-09-11: vista Descargas** (rango de fechas → csv/dat/mat, fuentes Supabase + AgroDash, vista previa)
 - [integracion-visioneflow.md](proyecto/integracion-visioneflow.md) — agente montándose en VisioneFlow: servicio FastAPI /forecast HECHO (53 tests) + modelos agregados + deploy preparado (runbook docs/pronostico/04); bloqueante: la EC2 no alcanza la DB AgroDash (sin Tailscale)
 - [conectividad-tailnet.md](proyecto/conectividad-tailnet.md) — malla Tailscale para acceso a datos: la EC2 (100.125.236.125) YA lee la DB viva de Cartago (100.101.177.71) por Postgres 5432, rol read-only `agrovoltaic_ro`, probado OK; pendiente: rotar la clave débil de prueba
 - [pipeline-tiempo-real.md](proyecto/pipeline-tiempo-real.md) — pipeline arquitectura A (AgroDash→ETL→Supabase store→forecaster multi-variable irradiancia+humedad); congelamiento SC 23-jul → "solo histórico"; desplegado en la EC2 con timers (~812k filas backfilleadas)
@@ -61,6 +63,7 @@ multi-variable VIVO en la EC2, fuente SC congelada 23-jul → "solo histórico".
 - [gaps-temporales.md](inconsistencias/gaps-temporales.md) — gaps de 126 y 71 días + nuevos
 - [duplicados.md](inconsistencias/duplicados.md) — archivos `(N)` duplicados y fragmentos
 - [typos-headers.md](inconsistencias/typos-headers.md) — `Energì`, `POTencia`, `Corriente PV2[A]`
+- [reloj-timestamps.md](inconsistencias/reloj-timestamps.md) — **NUEVO (2026-09-11):** tres convenciones de reloj en las bases (PV = local etiquetado +00; store ambiental = UTC real; AgroDash = naive UTC); convertir las PV a CR corre 6 h
 
 ## decisiones/ — qué decidimos y por qué
 - [decisiones.md](decisiones/decisiones.md) — resampleo, gaps, duplicados, schema destino; **2026-08-10 giro a "crudo en DB + corrección en análisis"** (superó 85→NULL, offset→0, resampleo-todo)
@@ -70,7 +73,7 @@ multi-variable VIVO en la EC2, fuente SC congelada 23-jul → "solo histórico".
 - [bloqueantes.md](pendientes/bloqueantes.md) — **2026-08-10 casi todo RESUELTO por Leo** (kWp, tilt/azimut, PV1/PV2, constante de calibración); solo queda el mapeo caja→sitio fino para el Comparador
 
 ## contexto-externo/ — sistemas relacionados
-- [agrodash.md](contexto-externo/agrodash.md) — DB de Cartago y objetivo de comparación; suelo/riego/experimentos, NO fotovoltaica; contiene ambos sitios
+- [agrodash.md](contexto-externo/agrodash.md) — DB de Cartago y objetivo de comparación; suelo/riego/experimentos, NO fotovoltaica; contiene ambos sitios; **2026-09-11: API pública viva** (hora local, buckets n/min/max/std)
 
 ---
 

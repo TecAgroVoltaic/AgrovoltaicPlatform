@@ -85,3 +85,14 @@ Wrapper `/preguntar` (agente completo) si se quiere el lazo LLM en Python; tools
 (temp vs rendimiento); tests unitarios por tool.
 
 Relacionado: [[agente-pronostico]], [[capa-agentes]], [[evaluacion-datos]], [[geometria-sistema]], [[implementacion]].
+
+## 2026-09-11 — exportación por rango (`exportar.py`), dos fuentes
+
+Módulo aparte (SRP, no es tool del LLM): descarga de un rango `[desde, hasta]` de un **dataset** en
+`csv` / `dat` / `mat`, desde **dos fuentes**: `supabase` (PV San Carlos, SQL) y `agrodash` (API pública
+de la plataforma de sensores de la región, `agrodash_api.py`, sin credenciales). Modelo `Dataset` (origen SQL, columna temporal, convención de
+reloj, columnas estáticas o de `information_schema`, filtros declarados). Misma regla de seguridad que
+`datos.py` (catálogo antes de interpolar; valores parametrizados; sesión RO). `db.py` ganó `iterar()`
+(cursor de servidor por lotes) y un parámetro `fuente` (hoy solo `supabase`).
+Endpoints: `/datos/exportables`, `/datos/exportar/estimar`, `/datos/exportar/previa`, `/datos/exportar`.
+Detalle en [[mvp-debugger]] (§2026-09-11) y README del paquete; relojes en [[reloj-timestamps]].
