@@ -13,18 +13,20 @@ from __future__ import annotations
 
 import os
 import secrets
+import threading
 
 from fastapi import Body, Depends, FastAPI, Header, HTTPException, Query, status
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from analizador import datos, tools, uso
+from analizador import datos, exportar, tools, uso
 
 ENV_API_KEY = "ANALIZADOR_API_KEY"
 
 app = FastAPI(
     title="Analizador PV San Carlos",
     description="Tools de analisis del historico fotovoltaico como endpoints HTTP.",
-    version="1.1.0",
+    version="1.2.0",
 )
 
 # Agente perezoso: solo se construye al primer /preguntar (anthropic.Anthropic()
@@ -170,3 +172,104 @@ def datos_serie(tabla: str = Query(...), columna: str = Query(...),
         return datos.serie(tabla, columna, bucket, agg, desde, hasta)
     except ValueError as exc:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+# ── Exportacion por rango de fechas (csv / dat / mat) — descarga para el humano ─
+def _lista(csv_: str | None) -> list[str] | None:
+    return [c.strip() for c in csv_.split(",") if c.strip()] if csv_ else None
+
+
+def _filtros(caja: str | None, sensor_tipo: str | None) -> dict[str, list[str]]:
+    """Filtros opcionales (solo los datasets que los declaran los aceptan)."""
+    out: dict[str, list[str]] = {}
+    if caja:
+        out["caja"] = _lista(caja) or []
+    if sensor_tipo:
+        out["sensor_tipo"] = _lista(sensor_tipo) or []
+    return out
+
+
+def _http(exc: Exception) -> HTTPException:
+    """Traduce los errores de exportar.py a codigos: 400 cliente, 413 muy grande,
+    503 fuente sin configurar (RuntimeError de config)."""
+    if isinstance(exc, exportar.ExportacionDemasiadoGrande):
+        return HTTPException(413, detail=str(exc))
+    if isinstance(exc, ValueError):
+        return HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    if isinstance(exc, RuntimeError):
+        return HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc))
+    raise exc
+
+
+@app.get("/datos/exportables", dependencies=[Depends(_verificar_api_key)])
+def datos_exportables() -> dict:
+    """Que se puede exportar, por fuente: datasets, columnas reales, cobertura, filtros."""
+    return exportar.catalogo()
+
+
+@app.get("/datos/exportar/estimar", dependencies=[Depends(_verificar_api_key)])
+def datos_exportar_estimar(tabla: str = Query(...), desde: str | None = Query(None),
+                           hasta: str | None = Query(None), fuente: str = Query("supabase"),
+                           caja: str | None = Query(None), sensor_tipo: str | None = Query(None),
+                           paso: int = Query(0)) -> dict:
+    """Cuantas filas caeran en el rango (para avisar antes de descargar)."""
+    try:
+        return exportar.estimar(tabla, desde, hasta, fuente, _filtros(caja, sensor_tipo), paso)
+    except Exception as exc:  # noqa: BLE001
+        raise _http(exc) from exc
+
+
+@app.get("/datos/exportar/previa", dependencies=[Depends(_verificar_api_key)])
+def datos_exportar_previa(tabla: str = Query(...), desde: str | None = Query(None),
+                          hasta: str | None = Query(None), columnas: str | None = Query(None),
+                          fuente: str = Query("supabase"), caja: str | None = Query(None),
+                          sensor_tipo: str | None = Query(None), n: int = Query(8),
+                          paso: int = Query(0)) -> dict:
+    """Primeras filas del rango, tal como saldran en el archivo (vista previa)."""
+    try:
+        return exportar.previa(tabla, desde, hasta, _lista(columnas), fuente,
+                               _filtros(caja, sensor_tipo), n, paso)
+    except Exception as exc:  # noqa: BLE001
+        raise _http(exc) from exc
+
+
+# Descargas simultaneas: cada una ocupa un hilo del threadpool mientras dura (y, via
+# API, hasta PARALELO llamadas a AgroDash). Un tope evita que clics repetidos agoten
+# el servicio para todos. Se libera al terminar de emitir (o al cortar el cliente).
+MAX_EXPORTACIONES = int(os.environ.get("MAX_EXPORTACIONES", "3"))
+_exportaciones = threading.BoundedSemaphore(MAX_EXPORTACIONES)
+
+
+def _con_cupo(cuerpo):
+    """Envuelve el iterador de bytes para devolver el cupo cuando se agota o se cierra."""
+    try:
+        yield from cuerpo
+    finally:
+        _exportaciones.release()
+
+
+@app.get("/datos/exportar", dependencies=[Depends(_verificar_api_key)])
+def datos_exportar(tabla: str = Query(...), formato: str = Query("csv"),
+                   desde: str | None = Query(None), hasta: str | None = Query(None),
+                   columnas: str | None = Query(None), fuente: str = Query("supabase"),
+                   caja: str | None = Query(None), sensor_tipo: str | None = Query(None),
+                   paso: int = Query(0)) -> StreamingResponse:
+    """Descarga el rango [desde, hasta] de un dataset como archivo adjunto.
+
+    `columnas`, `caja` y `sensor_tipo` son listas separadas por comas (opcionales);
+    `paso` (seg, solo AgroDash) es el ancho del bucket: 0 = crudo.
+    El cuerpo se emite por lotes: la respuesta empieza antes de leer todo. `def` ->
+    threadpool (el cursor de servidor es I/O sincrono)."""
+    if not _exportaciones.acquire(blocking=False):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS,
+                            detail=f"ya hay {MAX_EXPORTACIONES} descargas en curso: espera a que terminen")
+    try:
+        ex = exportar.exportar(tabla, formato, desde, hasta, _lista(columnas), fuente,
+                               _filtros(caja, sensor_tipo), paso)
+    except Exception as exc:  # noqa: BLE001
+        _exportaciones.release()
+        raise _http(exc) from exc
+    return StreamingResponse(
+        _con_cupo(ex.cuerpo), media_type=ex.content_type,
+        headers={"Content-Disposition": f'attachment; filename="{ex.nombre}"'},
+    )

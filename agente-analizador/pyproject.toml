@@ -13,6 +13,8 @@ dependencies = [
     "psycopg-pool",
     "anthropic",
     "python-dotenv",
+    "numpy",
+    "scipy",            # exportar.py: escribir .mat (MATLAB)
 ]
 
 [project.optional-dependencies]

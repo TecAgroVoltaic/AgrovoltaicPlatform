@@ -55,7 +55,7 @@ export function Overview() {
         { id: "datos-esquema", title: "La base de datos PV", desc: "Tablas crudas + vistas de corrección. El modelo «crudo en la DB, corrección en capa de análisis»." },
         { id: "analizador", title: "Agente Analizador PV", desc: "8 herramientas SQL sobre el histórico, endpoints y el lazo LLM." },
         { id: "pronostico", title: "Agente Pronóstico", desc: "Persistencia de kt* × cielo despejado, backtest histórico y anomalías." },
-        { id: "web-consola", title: "Vistas de la consola", desc: "Reconciliación, Predicción vs Real, Rendimiento y Costo — qué muestra cada una." },
+        { id: "web-consola", title: "Vistas de la consola", desc: "Reconciliación, Predicción vs Real, Rendimiento, Descargas, Costo y Salud — qué muestra cada una." },
         { id: "visioneflow", title: "Infra de agentes (VisioneFlow)", desc: "El modelo de flujo, los nodos y cómo se cablean los mismos endpoints como tools." },
       ]} />
 

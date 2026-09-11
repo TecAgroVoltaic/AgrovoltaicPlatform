@@ -70,3 +70,22 @@ respecto a esta realidad; usar el esquema real, no el PDF.
 - **Timezone:** confirmado **Costa Rica (UTC−6) para ambos sitios** ([[bloqueantes]]).
 
 Relacionado: [[arquitectura-regiones]], [[agrodash-esquema]], [[capa-agentes]], [[bloqueantes]], [[temperatura-85]], [[conectividad-tailnet]].
+
+
+## 2026-09-11 — la API pública está VIVA y al día (fuente de "Descargas")
+
+Verificado en vivo: `https://agrodash.nm.35-208-114-233.nip.io/api/v1` responde (último dato = ahora
+mismo), o sea **Cartago volvió** (la memoria del 18-ago la daba caída). El PDF `referencia_api_agrodash.pdf`
+sigue siendo válido como mapa de endpoints, con **dos cambios**:
+- `from`/`to` de `/readings` van en **hora local de Costa Rica, naive** (`2026-09-09T06:00:00`); con
+  `Z` responde 400 *"trailing input"*. Los `bucket` devueltos también son hora local (el PDF decía UTC).
+  Verificado cruzando valores con `lecturas_ambientales_sc` (que sí guarda UTC real): coinciden 1:1.
+- Cada bucket trae `{bucket, value, n, min, max, std}`; `n=0` ⇒ `value=null`. El servidor emite hasta
+  ~5000 buckets **por llamada** (sin importar el rango) a ~0,6–0,9 s casi fijos por llamada; aguanta
+  ≥12 llamadas simultáneas. Con buckets más finos que la cadencia, `n=1` ⇒ dato crudo. La suma de `n`
+  de una llamada gruesa = conteo exacto de lecturas del rango (truco que usa la exportación).
+- No hay endpoint de lecturas crudas ni de exportación. 43 cajas / 69 tipos de sensor (texto sucio:
+  `Humedad1..7` como alias de `humedad`, `Caja B` vs `Caja-B`).
+
+La consola la consume como segunda fuente de Descargas vía `agente-analizador/src/analizador/agrodash_api.py`
+(solo lectura, sin credenciales). Relacionado: [[reloj-timestamps]], [[mvp-debugger]].

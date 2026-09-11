@@ -9,13 +9,16 @@ import { PredView } from "@/app/components/console/PredView";
 import { PerfView } from "@/app/components/console/PerfView";
 import { CostoView } from "@/app/components/console/CostoView";
 import { SaludView } from "@/app/components/console/SaludView";
+import { DescargasView } from "@/app/components/console/DescargasView";
 import { ChatWidget } from "@/app/components/chat/ChatWidget";
 import type { Traza } from "@/app/components/TraceViewer";
 
-type View = "recon" | "pred" | "perf" | "costo" | "salud";
-const NAV: [View, string][] = [["recon", "Reconciliación"], ["pred", "Predicción vs Real"], ["perf", "Rendimiento"], ["costo", "Costo y uso"], ["salud", "Salud del sistema"]];
-const LABEL: Record<View, string> = { recon: "Reconciliación", pred: "Predicción vs Real", perf: "Rendimiento", costo: "Costo y uso", salud: "Salud del sistema" };
-const AGENT_OF: Partial<Record<View, string>> = { recon: "analizador", perf: "analizador", pred: "pronostico" };
+type View = "recon" | "pred" | "perf" | "descargas" | "costo" | "salud";
+const NAV: [View, string][] = [["recon", "Reconciliación"], ["pred", "Predicción vs Real"], ["perf", "Rendimiento"], ["descargas", "Descargas"], ["costo", "Costo y uso"], ["salud", "Salud del sistema"]];
+const LABEL: Record<View, string> = { recon: "Reconciliación", pred: "Predicción vs Real", perf: "Rendimiento", descargas: "Descargas", costo: "Costo y uso", salud: "Salud del sistema" };
+const AGENT_OF: Partial<Record<View, string>> = { recon: "analizador", perf: "analizador", descargas: "analizador", pred: "pronostico" };
+// Índice de NAV a partir del cual va el separador (vistas de sistema).
+const SEP_ANTES_DE = 4;
 
 export function Console() {
   const [agent, setAgent] = useState("analizador");
@@ -44,7 +47,7 @@ export function Console() {
   }
   function goAgent(a: string) {
     setAgent(a);
-    if (a === "pronostico" && (view === "recon" || view === "perf")) setView("pred");
+    if (a === "pronostico" && (view === "recon" || view === "perf" || view === "descargas")) setView("pred");
     if (a === "analizador" && view === "pred") setView("recon");
   }
   function toggleTheme() {
@@ -75,7 +78,7 @@ export function Console() {
         <nav className="nav">
           {NAV.map(([v, l], i) => (
             <Fragment key={v}>
-              {i === 3 && <div className="navsep" />}
+              {i === SEP_ANTES_DE && <div className="navsep" />}
               <button className={"navitem" + (view === v ? " on" : "")} onClick={() => goView(v)}>{l}</button>
             </Fragment>
           ))}
@@ -91,6 +94,7 @@ export function Console() {
         {view === "recon" && <ReconView />}
         {view === "pred" && <PredView theme={theme} />}
         {view === "perf" && <PerfView theme={theme} />}
+        {view === "descargas" && <DescargasView />}
         {view === "costo" && <CostoView agent={agent} theme={theme} sesion={sesion} />}
         {view === "salud" && <SaludView />}
         <div className="foot">

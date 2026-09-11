@@ -14,13 +14,19 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from decimal import Decimal
+from uuid import uuid4
 
 from psycopg_pool import ConnectionPool
 
 from analizador import config
 
-# Pool perezoso (se abre en la 1.ª consulta, no al importar -> no exige DB en tests).
-_pool: ConnectionPool | None = None
+# Un pool perezoso POR FUENTE (se abre en la 1.ª consulta, no al importar -> no
+# exige DB en tests). Hoy la unica DB es 'supabase' (la PV de San Carlos); AgroDash
+# se lee por su API HTTP (agrodash_api.py), no por Postgres.
+FUENTES: dict[str, callable] = {
+    "supabase": config.database_url,
+}
+_pools: dict[str, ConnectionPool] = {}
 
 
 def _solo_lectura(conn) -> None:
@@ -28,18 +34,21 @@ def _solo_lectura(conn) -> None:
     conn.execute("SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY")
 
 
-def _get_pool() -> ConnectionPool:
-    global _pool
-    if _pool is None:
-        _pool = ConnectionPool(
-            config.database_url(),
+def _get_pool(fuente: str = "supabase") -> ConnectionPool:
+    url_de = FUENTES.get(fuente)
+    if url_de is None:
+        raise ValueError(f"fuente desconocida: {fuente!r} (validas: {', '.join(FUENTES)})")
+    pool = _pools.get(fuente)
+    if pool is None:
+        pool = _pools[fuente] = ConnectionPool(
+            url_de(),
             min_size=1, max_size=6, timeout=15,
-            kwargs={"autocommit": True},
+            kwargs={"autocommit": True, "connect_timeout": 10},
             configure=_solo_lectura,
             check=ConnectionPool.check_connection,  # valida (SELECT 1) antes de prestar
-            name="analizador-ro",
+            name=f"analizador-ro-{fuente}",
         )
-    return _pool
+    return pool
 
 
 def _limpiar(v):
@@ -51,18 +60,38 @@ def _limpiar(v):
     return v
 
 
-def query(sql: str, params: tuple = ()) -> list[dict]:
+def query(sql: str, params: tuple = (), fuente: str = "supabase") -> list[dict]:
     """Ejecuta una consulta de SOLO LECTURA y devuelve filas como lista de dicts.
 
-    Toma una conexion prestada del pool (se devuelve sola al salir del `with`)."""
-    with _get_pool().connection() as conn:
+    Toma una conexion prestada del pool de `fuente` (se devuelve sola al salir del `with`)."""
+    with _get_pool(fuente).connection() as conn:
         with conn.cursor() as cur:
             cur.execute(sql, params)
             cols = [d.name for d in cur.description]
             return [{c: _limpiar(v) for c, v in zip(cols, row)} for row in cur.fetchall()]
 
 
-def uno(sql: str, params: tuple = ()) -> dict:
+def uno(sql: str, params: tuple = (), fuente: str = "supabase") -> dict:
     """Como query() pero para consultas de UNA fila (agregados). {} si vacio."""
-    filas = query(sql, params)
+    filas = query(sql, params, fuente)
     return filas[0] if filas else {}
+
+
+def iterar(sql: str, params: tuple = (), lote: int = 5000, fuente: str = "supabase"):
+    """Itera una consulta GRANDE por lotes con un cursor de servidor (sin cargar todo).
+
+    Para exportaciones: cientos de miles de filas no caben comodas en memoria ni
+    conviene mandarlas de golpe. Devuelve un generador de tuplas CRUDAS (sin
+    `_limpiar`: quien exporta decide como serializar cada tipo). La conexion
+    queda prestada del pool mientras el generador vive; se devuelve al agotarlo
+    o cerrarlo. El cursor con nombre exige una transaccion (la conexion esta en
+    autocommit), por eso se abre una explicita; sigue siendo de SOLO LECTURA."""
+    with _get_pool(fuente).connection() as conn:
+        with conn.transaction():
+            with conn.cursor(name=f"exportar_{uuid4().hex}") as cur:
+                cur.itersize = lote
+                cur.execute(sql, params)
+                columnas = [d.name for d in cur.description]
+                yield columnas
+                for fila in cur:
+                    yield fila
