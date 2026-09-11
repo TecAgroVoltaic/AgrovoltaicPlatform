@@ -3,7 +3,7 @@
 Sistema de memoria jerárquico. Un tema por archivo, agrupados por carpeta. Empieza aquí
 para ubicar qué buscas; cada línea apunta al archivo de detalle.
 
-**Última actualización:** 2026-09-11 · *(**Descargas por rango de fechas** (csv/dat/mat) en la consola, desde **dos fuentes** (Supabase PV + **API pública de AgroDash**, que está VIVA de nuevo) con filtros por caja/tipo, resolución, estimación y vista previa; endpoints `/datos/exportar*` del analizador; ver [mvp-debugger](proyecto/mvp-debugger.md) §2026-09-11. **Hallazgo:** las bases mezclan tres convenciones de reloj → [reloj-timestamps](inconsistencias/reloj-timestamps.md). Datos PV en Supabase llegan ya al **31-ago-2026**.)*
+**Última actualización:** 2026-09-11 · *(**⚠ EC2: el forecaster, la réplica de AgroDash y los timers ya no existen** (desde ~25-ago); el analizador se restauró hoy y Vercel apunta a él → [estado-ec2-2026-09-11](proyecto/estado-ec2-2026-09-11.md). **Descargas por rango de fechas** (csv/dat/mat) en la consola, desde **dos fuentes** (Supabase PV + **API pública de AgroDash**, que está VIVA de nuevo) con filtros por caja/tipo, resolución, estimación y vista previa; endpoints `/datos/exportar*` del analizador; ver [mvp-debugger](proyecto/mvp-debugger.md) §2026-09-11. **Hallazgo:** las bases mezclan tres convenciones de reloj → [reloj-timestamps](inconsistencias/reloj-timestamps.md). Datos PV en Supabase llegan ya al **31-ago-2026**.)*
 
 **Anterior:** 2026-08-18 · *(**Cartago caído → la fuente del ETL es ahora una réplica
 del dump dentro de la EC2** (`agrodash-pg`, `127.0.0.1:5433`, 21,3 M filas). El ETL llevaba 9 días
@@ -40,6 +40,7 @@ multi-variable VIVO en la EC2, fuente SC congelada 23-jul → "solo histórico".
 - [pipeline-tiempo-real.md](proyecto/pipeline-tiempo-real.md) — pipeline arquitectura A (AgroDash→ETL→Supabase store→forecaster multi-variable irradiancia+humedad); congelamiento SC 23-jul → "solo histórico"; desplegado en la EC2 con timers (~812k filas backfilleadas)
 - [agrodash-local.md](proyecto/agrodash-local.md) — **NUEVO (2026-08-14):** réplica del dump de AgroDash **restaurada en la EC2** (`agrodash-pg`, 127.0.0.1:5433) como fuente del ETL con Cartago caído; 5.045 MB / 21.3M filas → el dump completo NO cabe en la Supabase Free (500 MB); + script para levantarla local
 - [cuota-store-supabase.md](proyecto/cuota-store-supabase.md) — **NUEVO (2026-08-18):** el store está al **79 % del Free tier** (395/500 MB) y `lecturas_ambientales_sc` se lleva el 89 %; pasarse = solo-lectura; opciones sin decidir
+- [estado-ec2-2026-09-11.md](proyecto/estado-ec2-2026-09-11.md) — **NUEVO (2026-09-11):** en la EC2 solo corría el runtime; forecaster/réplica/timers desaparecidos; analizador restaurado (cómo redesplegar, llave `~/.ssh/visione-ec2`); falta `ANTHROPIC_API_KEY` en su env
 - [superficie-expuesta.md](proyecto/superficie-expuesta.md) — **NUEVO (2026-08-18):** qué escucha y qué es alcanzable en la EC2 (verificado desde fuera); 8000/8010 bindean `0.0.0.0` y solo los frena el security group; `/forecast/salud/ingesta` es público
 - [metodologia.md](proyecto/metodologia.md) — metodología del equipo (San Carlos): variables, puntos de medición, arquitectura HW, frecuencias, periodos
 - [evaluacion-datos.md](proyecto/evaluacion-datos.md) — plan de análisis/dashboard San Carlos: DataViz/Stats/Mining, 7 objetivos energéticos, Ridge, Colab
