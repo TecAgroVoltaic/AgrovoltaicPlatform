@@ -7,3 +7,5 @@ out
 
 # build info de TypeScript
 *.tsbuildinfo
+.vercel
+.env.local
