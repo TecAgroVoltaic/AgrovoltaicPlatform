@@ -10,7 +10,7 @@ import type { Servicio } from "@/app/lib/config";
 
 // Headers de la respuesta que tienen sentido de cara al browser. El resto
 // (server, date, connection…) es del upstream y no se propaga.
-const HEADERS_RESPUESTA = ["content-type", "content-disposition", "content-length"];
+const HEADERS_RESPUESTA = ["content-type", "content-disposition", "content-length", "x-informe-lectura"];
 
 export async function proxy(
   svc: Servicio,

@@ -16,10 +16,10 @@ import secrets
 import threading
 
 from fastapi import Body, Depends, FastAPI, Header, HTTPException, Query, status
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel
 
-from historico import datos, db, errores, exportar, limites, tools, uso
+from historico import datos, db, errores, exportar, informe, limites, tools, uso
 from historico.analitica import (
     carpeta, catalogo, comparativa, completitud, correlacion, crestas,
     distribucion, fuente, rendimiento, resumen, series, ventana,
@@ -317,6 +317,44 @@ def datos_exportar(tabla: str = Query(...), formato: str = Query("csv"),
     return StreamingResponse(
         _con_cupo(ex.cuerpo), media_type=ex.content_type,
         headers={"Content-Disposition": f'attachment; filename="{ex.nombre}"'},
+    )
+
+
+# ── Informe en Excel ─────────────────────────────────────────────────────────
+# El frontend no puede leer el cuerpo de un .xlsx para saber si trae lectura, y un
+# informe que sale sin ella tiene que decirlo en pantalla. Va en una cabecera.
+CABECERA_LECTURA = "X-Informe-Lectura"
+CON_LECTURA, SIN_LECTURA = "ok", "sin_lectura"
+
+
+@app.get("/informe", dependencies=[Depends(_verificar_api_key)])
+def informe_excel(desde: str | None = Query(None), hasta: str | None = Query(None),
+                  foco: str | None = Query(None, max_length=tools.preparar_informe.MAX_FOCO),
+                  lectura: bool = Query(True),
+                  x_api_key: str | None = Header(default=None)) -> Response:
+    """El informe del periodo [desde, hasta] (los dos dias incluidos) como .xlsx.
+
+    Las tablas son deterministas; `lectura=true` agrega la redaccion del modelo,
+    verificada cifra por cifra contra los hechos del propio libro. Si la lectura
+    falla o no pasa la verificacion, el libro sale igual y lo dice.
+
+    El freno de consumo se llama a mano y no como dependencia porque depende de un
+    parametro: con `lectura=false` no se gasta un token y el informe tiene que
+    seguir saliendo con el presupuesto agotado, como el resto de lo determinista.
+    """
+    if lectura:
+        _frenar_consumo(x_api_key)
+    resultado_ = informe.generar(desde, hasta, foco, con_lectura=lectura)
+    if resultado_.lectura.get("intentos"):
+        try:
+            uso.registrar(resultado_.lectura)   # best-effort, igual que /preguntar
+        except Exception:
+            pass
+    return Response(
+        content=resultado_.cuerpo, media_type=informe.libro.MIME,
+        headers={"Content-Disposition": f'attachment; filename="{resultado_.nombre}"',
+                 CABECERA_LECTURA: (CON_LECTURA if resultado_.lectura["parrafos"]
+                                    else SIN_LECTURA)},
     )
 
 
