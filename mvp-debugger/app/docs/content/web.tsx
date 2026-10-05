@@ -25,7 +25,7 @@ export function WebArquitectura() {
       <Table
         head={["Ruta", "Superficie", "Para qué"]}
         rows={[
-          [<IC>/</IC>, <><b>Consola de evaluación</b></>, "La pulida: 4 vistas (Reconciliación, Predicción vs Real, Rendimiento, Costo) + chat flotante. Ver «Vistas de la consola»."],
+          [<IC>/</IC>, <><b>Consola de evaluación</b></>, "La pulida: 6 vistas (Reconciliación, Predicción vs Real, Rendimiento, Descargas, Costo, Salud) + chat flotante. Ver «Vistas de la consola»."],
           [<><IC>/analizador</IC> · <IC>/pronostico</IC></>, <><b>Debugger crudo</b> (legacy)</>, "Health, caja de preguntas con traza completa, runner manual de tools, explorador de datos. Ver «Chat, traza y componentes»."],
         ]}
       />
@@ -94,6 +94,13 @@ export function WebConsola() {
 
       <h2>7 · Salud del sistema</h2>
       <p>Diagnóstico del servicio y de la cobertura de datos: qué variables tiene el store, hasta cuándo llegan, cuál fue la última predicción guardada y si algo dejó de responder.</p>
+
+      <h2>8 · Descargas</h2>
+      <p>Exportar un <strong>rango de fechas</strong> como <strong>CSV</strong>, <strong>DAT</strong> (texto tabulado, nulo = NaN, con columna <IC>*_unix</IC>) o <strong>MAT</strong> (MATLAB: una variable por columna + <IC>*_unix</IC>, <IC>*_datenum</IC> y struct <IC>meta</IC>), desde <strong>dos fuentes</strong>: la Supabase PV de San Carlos (eléctrico crudo/corregido, radiación 15 s cruda/corregida/calibrada, clear-sky, POA, performance, diccionario, store ambiental) y la <strong>API pública de AgroDash</strong> (lecturas de sensores de Cartago y San Carlos, filtrables por caja y tipo de sensor, con resolución elegible: crudo, 1 min, 5 min, 15 min, 1 h, 1 día; más el catálogo de cajas). Formulario a la izquierda (fuente → datos → filtros → rango con barra de cobertura → formato → columnas) y a la derecha el resumen fijo: nombre del archivo, filas estimadas, tamaño aproximado, <strong>vista previa real</strong> de las primeras filas y el botón.</p>
+      <p>Endpoints del Agente Histórico: <IC>/datos/exportables</IC> (catálogo por fuente), <IC>/datos/exportar/estimar</IC>, <IC>/datos/exportar/previa</IC> y <IC>/datos/exportar</IC>. La descarga es un GET que el proxy reenvía <strong>como stream de bytes</strong> (CSV y DAT por lotes, leyendo la base en streaming; MAT en memoria con tope de 500.000 filas). AgroDash se lee por su API HTTP (<IC>agrodash_api.py</IC>, sin credenciales, header Origin); si no responde, la fuente aparece como no disponible y el resto funciona. Como la API no cuenta filas, la estimación para AgroDash es una cota (sensores × intervalos).</p>
+      <Note>
+        <div><b>Horas.</b> Todo sale en hora local de Costa Rica (UTC−6) sin sufijo, aunque las fuentes mezclan convenciones (PV: reloj local etiquetado +00; store ambiental: UTC real; API de AgroDash: hora local naive). Solo lectura; una descarga grande cuenta como <b>egress</b> de Supabase.</div>
+      </Note>
     </Page>
   );
 }

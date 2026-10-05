@@ -133,6 +133,22 @@ ssh -i ~/.ssh/VisioneMetrics.pem $S '
 > Los dos usan `network_mode: host` y **atan uvicorn a `127.0.0.1`**. No se publican:
 > quien los expone es nginx, y sólo bajo `/predictivo/` y `/historico/` con `x-api-key`.
 
+El del analizador (compose propio en `agente-analizador/deploy/`, host-net :8010, nginx `/analizador/`):
+
+```bash
+rsync -az -e "ssh -i ~/aws/visione-key.pem" --exclude .venv --exclude __pycache__ --exclude .env \
+  --exclude '*.egg-info' agente-analizador/ ec2-user@52.1.28.77:/home/ec2-user/analizador/agente-analizador/
+scp -i ~/aws/visione-key.pem agente-analizador/deploy/docker-compose.analizador.yml ec2-user@52.1.28.77:/home/ec2-user/analizador/
+# analizador.env (NO versionado) en /home/ec2-user/analizador: DATABASE_URL, ANALIZADOR_API_KEY, ANTHROPIC_API_KEY, DATA_*
+ssh -i ~/aws/visione-key.pem ec2-user@52.1.28.77 \
+  'cd /home/ec2-user/analizador && docker-compose -f docker-compose.analizador.yml up -d --build'
+curl -s https://api.flow.visione-edge.com/analizador/health
+```
+
+La consola en Vercel (`agrovoltaic-consola`) le pega con `HISTORICO_URL`/`HISTORICO_API_KEY`
+(ver `docs/memoria/proyecto/mvp-debugger.md`). Estado real de la EC2 el 2026-09-11:
+`docs/memoria/proyecto/estado-ec2-2026-09-11.md`.
+
 ## 6. Los temporizadores de la ingesta
 
 ```bash
