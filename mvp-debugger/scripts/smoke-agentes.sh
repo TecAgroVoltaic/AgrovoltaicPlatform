@@ -1,16 +1,22 @@
 #!/usr/bin/env bash
 #
-# Smoke del BLOQUEO de agentes: verifica con HTTP real que el agente histórico
-# (Agente Histórico) esté cortado cuando el flag está apagado y vuelva entero
-# cuando se enciende. Mismo enfoque que smoke-auth.sh: la app ya buildeada, sin
-# runner de tests nuevo.
+# Smoke del BLOQUEO de agentes: verifica con HTTP real que el chat del Agente
+# Histórico quede cortado con `AGENTE_HISTORICO=off` y vuelva entero sin el flag
+# (el default es ENCENDIDO, ver app/lib/agentes.ts). Mismo enfoque que
+# smoke-auth.sh: la app ya buildeada, sin runner de tests nuevo.
 #
 #   npm run build && scripts/smoke-agentes.sh
 #
-# Por qué existe: esconder botones no es bloquear. Lo que cuesta plata es
-# /api/historico/* (consulta la Supabase PV y gasta tokens del LLM), así que lo
-# que hay que probar es la puerta, no la UI. Y el flag tiene que ser reversible:
-# si encenderlo no devuelve el agente, el "bloqueo" fue en realidad un borrado.
+# Por qué existe: esconder botones no es bloquear. Lo que cuesta plata es la
+# conversación (/api/historico/chat y /preguntar gastan tokens del LLM), así que
+# lo que hay que probar es la puerta, no la UI. Las lecturas (calidad, datos,
+# arquitectura) NO se bloquean: son deterministas y gratis. Y el flag tiene que
+# ser reversible: si quitarlo no devuelve el chat, el "bloqueo" fue un borrado.
+#
+# "Pasa" se verifica como «NO es 503», no como 200: en el CI no corre ningún
+# sidecar Python y un request que atraviesa el bloqueo termina en 502 «servicio
+# inaccesible»; en una máquina con los servicios arriba, en 200. Las dos cosas
+# prueban lo mismo: el request llegó al proxy en vez de morir en el bloqueo.
 set -euo pipefail
 
 PUERTO="${SMOKE_PORT:-3198}"
@@ -44,7 +50,7 @@ verificar() {
 # Levanta la app con el flag dado y deja una sesión válida en $COOKIES.
 levantar() {
     local valor_flag="$1"
-    AGENTE_ANALIZADOR="$valor_flag" DEBUGGER_PASSWORD="$PASSWORD" \
+    AGENTE_HISTORICO="$valor_flag" DEBUGGER_PASSWORD="$PASSWORD" \
         DEBUGGER_SESSION_SECRET="secreto-$$" \
         npx next start -p "$PUERTO" > /dev/null 2>&1 &
     APP_PID=$!
@@ -77,44 +83,37 @@ contiene() {
     fi
 }
 
-echo ">> flag APAGADO — el agente histórico debe estar bloqueado"
-levantar ""
-verificar "proxy del analizador responde 503"  "503" "$(codigo -b "$COOKIES" "$BASE/api/historico/health")"
-verificar "el chat del analizador responde 503" "503" "$(codigo -b "$COOKIES" -X POST \
-    "$BASE/api/historico/chat" -H 'content-type: application/json' \
-    -d '{"mensajes":[{"rol":"user","texto":"hola"}]}')"
-verificar "la página suelta /analizador no existe" "404" "$(codigo -b "$COOKIES" "$BASE/analizador")"
-verificar "el agente de pronóstico sigue accesible" "200" "$(codigo -b "$COOKIES" "$BASE/api/predictivo/health")"
-contiene "el 503 dice cómo revertirlo" "AGENTE_ANALIZADOR=on" \
-    "$(curl -s -b "$COOKIES" "$BASE/api/historico/health")"
-
-consola="$(curl -s -b "$COOKIES" "$BASE/")"
-for vista in "Reconciliación" "Rendimiento"; do
-    if [[ "$consola" == *"$vista"* ]]; then
-        printf '  FALLA %-46s la vista sigue en la navegación\n' "la consola no ofrece «${vista}»"
-        fallos=$((fallos + 1))
+pasa() {
+    local descripcion="$1" obtenido="$2"
+    if [[ "$obtenido" != "503" ]]; then
+        printf '  ok   %-46s %s\n' "$descripcion" "$obtenido"
     else
-        printf '  ok   %-46s\n' "la consola no ofrece «${vista}»"
+        printf '  FALLA %-46s sigue bloqueado (503)\n' "$descripcion"
+        fallos=$((fallos + 1))
     fi
-done
-contiene "la consola sí ofrece «Predicción vs Real»" "Predicción vs Real" "$consola"
+}
+
+chat_historico() {
+    "$@" -b "$COOKIES" -X POST "$BASE/api/historico/chat" \
+        -H 'content-type: application/json' \
+        -d '{"mensajes":[{"rol":"user","texto":"hola"}]}'
+}
+
+echo ">> AGENTE_HISTORICO=off — la conversación del histórico debe estar bloqueada"
+levantar "off"
+verificar "el chat del histórico responde 503"      "503" "$(chat_historico codigo)"
+verificar "/preguntar del histórico responde 503"   "503" "$(codigo -b "$COOKIES" -X POST \
+    "$BASE/api/historico/preguntar" -H 'content-type: application/json' -d '{"pregunta":"hola"}')"
+contiene "el 503 dice cómo revertirlo" "AGENTE_HISTORICO=off" "$(chat_historico curl -s)"
+pasa "las lecturas del histórico siguen pasando" "$(codigo -b "$COOKIES" "$BASE/api/historico/health")"
+verificar "la página suelta /historico no existe"   "404" "$(codigo -b "$COOKIES" "$BASE/historico")"
+pasa "el agente predictivo sigue pasando" "$(codigo -b "$COOKIES" "$BASE/api/predictivo/health")"
 bajar
 
-echo ">> flag ENCENDIDO — el bloqueo tiene que ser reversible"
-levantar "on"
-# No se exige 200: acá (y en el CI) no hay ningún sidecar del analizador
-# corriendo, así que el proxy contesta 502 «servicio inaccesible». Lo que se
-# prueba es que el request LLEGA al proxy en vez de morir en el bloqueo.
-respuesta_proxy="$(curl -s -b "$COOKIES" "$BASE/api/historico/health")"
-if [[ "$respuesta_proxy" == *"AGENTE_ANALIZADOR=on"* ]]; then
-    printf '  FALLA %-46s sigue bloqueado\n' "el proxy del analizador deja pasar"
-    fallos=$((fallos + 1))
-else
-    printf '  ok   %-46s\n' "el proxy del analizador deja pasar"
-fi
-verificar "la página suelta /analizador vuelve"    "200" "$(codigo -b "$COOKIES" "$BASE/analizador")"
-contiene "la consola vuelve a ofrecer «Reconciliación»" "Reconciliación" \
-    "$(curl -s -b "$COOKIES" "$BASE/")"
+echo ">> sin el flag (default) — el bloqueo tiene que ser reversible"
+levantar ""
+pasa "el chat del histórico deja pasar" "$(chat_historico codigo)"
+verificar "la página suelta /historico vuelve"      "200" "$(codigo -b "$COOKIES" "$BASE/historico")"
 bajar
 
 if [[ $fallos -gt 0 ]]; then
