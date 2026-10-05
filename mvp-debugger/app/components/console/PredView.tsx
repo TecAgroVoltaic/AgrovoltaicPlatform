@@ -39,8 +39,13 @@ const fmt = (n: any, d = 1) =>
   n == null || !isFinite(n) ? "—" : Number(n).toLocaleString("es-CR",
     { minimumFractionDigits: d, maximumFractionDigits: d });
 
-const diaSiguiente = (f: string) =>
-  new Date(new Date(`${f}T00:00:00`).getTime() + MS_POR_DIA).toISOString().slice(0, 10);
+// Aritmética de días sobre fechas "YYYY-MM-DD". Se ancla en UTC (la `Z`) porque
+// el resultado se lee con `toISOString()`, que también es UTC: con la medianoche
+// LOCAL, en un navegador al este de UTC «el día siguiente» devolvía el mismo día
+// (y «el anterior», dos atrás), y el backtest recibía un rango vacío.
+const moverDias = (f: string, dias: number) =>
+  new Date(new Date(`${f}T00:00:00Z`).getTime() + dias * MS_POR_DIA).toISOString().slice(0, 10);
+const diaSiguiente = (f: string) => moverDias(f, 1);
 
 const etiqueta = (s: string) => ANTICIPACIONES.find(([b]) => b === s)?.[1] || s;
 
@@ -77,8 +82,7 @@ export function PredView({ theme }: { theme: string }) {
     const clave = `agrov-rango-${vari}`;
     const aplicar = (r: { desde: string; hasta: string }, esCache: boolean) => {
       setRango(r);
-      const ultimo = new Date(r.hasta + "T00:00:00");
-      const porDefecto = new Date(ultimo.getTime() - MS_POR_DIA).toISOString().slice(0, 10);
+      const porDefecto = moverDias(r.hasta, -1);
       // Del caché solo se toma el día inicial; si el usuario ya eligió otro, no
       // se le pisa la selección cuando llega la revalidación.
       setFecha((f) => (esCache || !f ? porDefecto : f));
