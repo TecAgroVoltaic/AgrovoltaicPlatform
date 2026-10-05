@@ -17,7 +17,7 @@ export function ToolRunner() {
   const [cargando, setCargando] = useState(false);
 
   useEffect(() => {
-    jget<{ tools: Schema[] }>("/api/analizador/tools").then((r) => {
+    jget<{ tools: Schema[] }>("/api/historico/tools").then((r) => {
       if (r.ok && r.data?.tools) {
         setSchemas(r.data.tools);
         setSel(r.data.tools[0]?.name || "");
@@ -38,7 +38,7 @@ export function ToolRunner() {
       return;
     }
     setCargando(true);
-    const r = await jpost(`/api/analizador/tool/${sel}`, body);
+    const r = await jpost(`/api/historico/tool/${sel}`, body);
     setCargando(false);
     if (!r.ok) setErr(`HTTP ${r.status}: ${JSON.stringify(r.data)}`);
     else setRes(r.data);

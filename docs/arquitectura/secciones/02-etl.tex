@@ -11,23 +11,37 @@ cada vez que aparecen archivos nuevos.
 la capa solar (pvlib) se refresca al final de cada corrida.}
 \end{figure}
 
-\subsection{Principio de diseño: cero columnas quemadas}
+\subsection{Una sola lista, y todo lo demás se deduce de ella}
 
-La única fuente irreducible de verdad es \cd{normalize.CONCEPT\_MAP}: un mapa
-\emph{slug canónico $\rightarrow$ concepto}, con una entrada por concepto. Todo lo demás se
-deriva de ahí: la lista de columnas canónicas, las etiquetas de cada variable, el método
-de agregación al remuestrear, las columnas de inserción y \textbf{el DDL SQL completo}
-(\cd{sql/schema.sql} es un artefacto generado, no se edita a mano).
+El problema de fondo de estos CSV es que el mismo dato viene escrito de muchas maneras
+distintas. El voltaje del primer arreglo aparece como \cd{vpv1} en unos archivos, como
+\cd{Voltaje PV1 [V]} en otros y como \cd{voltaje\_pv1\_v} en los más nuevos, y a eso hay
+que sumarle las erratas y los acentos que se fueron colando. En total, unas setenta formas
+distintas de nombrar apenas una docena de cosas.
 
-Las consecuencias prácticas son las que importan:
+La salida fácil sería escribir a mano la lista de nombres buenos y repetirla en cada lugar
+donde hace falta: al crear las tablas, al insertar, al agrupar por intervalos de tiempo.
+Es también la forma más segura de que dentro de seis meses alguien agregue una variable en
+tres de esos cuatro lugares, se olvide del cuarto, y nadie se entere hasta que los números
+no cuadren.
+
+Por eso acá hay \textbf{un solo lugar} donde se declara qué se mide: un diccionario con
+una entrada por cada cosa medida, que dice cuál es su nombre bueno. Todo lo demás sale de
+ahí, incluido el SQL que crea la base de datos, que es un archivo \textbf{generado} y no
+se escribe a mano.
+
+Para quien tenga que trabajar con esto mañana, la diferencia se nota en dos cosas:
 
 \begin{itemize}[leftmargin=*,itemsep=2pt]
-  \item Una columna nueva es \textbf{una línea} en \cd{CONCEPT\_MAP}; entra sola al
-    esquema, a la tabla y al remuestreo.
-  \item Una \emph{grafía} nueva del mismo concepto (otra errata, otro acento, otras
-    unidades) la absorbe \cd{slugify} sin tocar código. Así se colapsaron las
-    aproximadamente 70 variantes crudas de nombres de columna.
+  \item \textbf{Agregar una variable es escribir un renglón.} Aparece sola en el esquema,
+    en la tabla y al agrupar por intervalos. No hay que acordarse de nada más.
+  \item \textbf{Un nombre nuevo para algo que ya existe no da trabajo.} Si el archivo del
+    mes que viene escribe la misma medición con otra errata, otro acento u otras unidades,
+    el sistema la reconoce y la manda al mismo sitio, sin tocar una línea de código. Así
+    fue como esas setenta variantes quedaron reducidas a una lista limpia.
 \end{itemize}
+
+En el código, el diccionario es \cd{CONCEPT\_MAP} y vive en el módulo \cd{normalize}.
 
 \subsection{Módulos}
 
@@ -63,9 +77,9 @@ Las consecuencias prácticas son las que importan:
 Dos niveles, deliberadamente redundantes:
 
 \begin{itemize}[leftmargin=*,itemsep=2pt]
-  \item \textbf{Nivel archivo} --- \cd{\_ingest\_log} guarda el md5 de cada CSV. Si no
+  \item \textbf{Nivel archivo}: \cd{\_ingest\_log} guarda el md5 de cada CSV. Si no
     cambió, ni se abre.
-  \item \textbf{Nivel fila} --- \cd{timestamp} es PRIMARY KEY con
+  \item \textbf{Nivel fila}: \cd{timestamp} es PRIMARY KEY con
     \cd{ON CONFLICT DO UPDATE}. Reprocesar nunca duplica, aunque el md5 falle.
 \end{itemize}
 

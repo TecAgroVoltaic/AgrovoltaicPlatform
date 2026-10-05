@@ -18,13 +18,16 @@ export function palette() {
 const fmt = (n: any, d = 1) =>
   n == null || !isFinite(n) ? "—" : Number(n).toLocaleString("es-CR", { minimumFractionDigits: d, maximumFractionDigits: d });
 
-type Serie = { points: (number | null)[]; color: string; name?: string; area?: boolean; width?: number; dash?: boolean };
-type LineOpts = { x: string[]; height?: number; w?: number; yfmt?: (v: number) => string; area?: boolean; unit?: string; tipfmt?: (v: number) => string };
+type Serie = { points: (number | null)[]; color: string; name?: string; area?: boolean; width?: number; dash?: boolean; r?: number };
+// `marca` resalta un punto del eje X (guía vertical + etiqueta): sirve para
+// señalar "la hora que estoy mirando" sin sacar al lector del gráfico.
+type Marca = { i: number; label?: string };
+type LineOpts = { x: string[]; height?: number; w?: number; yfmt?: (v: number) => string; area?: boolean; unit?: string; tipfmt?: (v: number) => string; marca?: Marca | null };
 
 // `w` = ancho del viewBox. Renderizar cerca del ancho real del contenedor mantiene
 // las fuentes legibles (en un bubble angosto, un viewBox de 1000 se achica 3x y el
 // texto queda ilegible). Vistas grandes: 1000. Chat: ~500.
-export function lineChart(series: Serie[], { x, height = 320, w = 1000, yfmt = (v) => fmt(v, 0), area = true, unit = "", tipfmt = null as any }: LineOpts): string {
+export function lineChart(series: Serie[], { x, height = 320, w = 1000, yfmt = (v) => fmt(v, 0), area = true, unit = "", tipfmt = null as any, marca = null }: LineOpts): string {
   const W = w, H = height, mL = 54, mR = 18, mT = 18, mB = 36, P = palette(), tf = tipfmt || yfmt;
   const n = x.length;
   const flat = series.flatMap((s) => s.points).filter((v) => v != null && isFinite(v as number)) as number[];
@@ -35,6 +38,15 @@ export function lineChart(series: Serie[], { x, height = 320, w = 1000, yfmt = (
   for (let k = 0; k <= 4; k++) { const v = ymin + (ymax - ymin) * k / 4, y = py(v);
     g += `<line x1="${mL}" y1="${y.toFixed(1)}" x2="${W - mR}" y2="${y.toFixed(1)}" stroke="${P.grid}" stroke-width="1"/>`;
     g += `<text x="${mL - 9}" y="${(y + 4).toFixed(1)}" fill="${P.muted}" font-size="12" text-anchor="end" font-family="var(--mono)">${yfmt(v)}</text>`; }
+  if (marca && marca.i >= 0 && marca.i < n) {
+    const mx = px(marca.i);
+    g += `<line x1="${mx.toFixed(1)}" y1="${mT}" x2="${mx.toFixed(1)}" y2="${H - mB}" stroke="${P.accent}" stroke-width="1.4" stroke-dasharray="4 4" opacity="0.85"/>`;
+    if (marca.label) {
+      const anchor = marca.i > n * 0.75 ? "end" : "start";
+      const dx = anchor === "end" ? -7 : 7;
+      g += `<text x="${(mx + dx).toFixed(1)}" y="${mT + 12}" fill="${P.accent}" font-size="11.5" text-anchor="${anchor}" font-family="var(--mono)">${marca.label}</text>`;
+    }
+  }
   const step = Math.max(1, Math.round(n / 7));
   for (let i = 0; i < n; i += step) g += `<text x="${px(i).toFixed(1)}" y="${H - 13}" fill="${P.muted}" font-size="11.5" text-anchor="middle" font-family="var(--mono)">${x[i]}</text>`;
   for (const s of series) {
@@ -47,7 +59,7 @@ export function lineChart(series: Serie[], { x, height = 320, w = 1000, yfmt = (
     s.points.forEach((v, i) => { if (v == null || !isFinite(v)) return;
       const cx = px(i).toFixed(1), cy = py(v).toFixed(1);
       const tip = `${x[i]} · ${s.name ? s.name + ": " : ""}${tf(v)}${unit ? " " + unit : ""}`;
-      g += `<circle cx="${cx}" cy="${cy}" r="2.4" fill="${s.color}"/>`;
+      g += `<circle cx="${cx}" cy="${cy}" r="${s.r || 2.4}" fill="${s.color}"/>`;
       g += `<circle class="hit" cx="${cx}" cy="${cy}" r="12" fill="transparent" data-tip="${tip}"/>`; });
   }
   return `<svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img">${g}</svg>`;
@@ -75,19 +87,57 @@ export function barChart(cats: string[], groups: Group[], { height = 320, yfmt =
   return `<svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img">${g}</svg>`;
 }
 
-export function scatter(pts: [number, number][], { height = 300 } = {}): string {
+export type MarcaScatter = { x: number; y: number; etiqueta: string; nota: string };
+
+/** Nube de puntos con recta ajustada opcional y puntos destacados.
+ *
+ * Las unidades se pasan: antes estaban escritas en el `data-tip` («kWh») y el eje
+ * traía vatios, así que el hover decía una unidad y el dato era otra. Un gráfico
+ * que rotula mal la unidad es peor que no tenerlo. */
+export function scatter(pts: [number, number][], {
+  height = 300, xUnit = "", yUnit = "", xfmt, yfmt, linea, marcas = [], etiquetas = [],
+}: {
+  height?: number; xUnit?: string; yUnit?: string;
+  xfmt?: (v: number) => string; yfmt?: (v: number) => string;
+  /** Recta y = m·x + b, dibujada de extremo a extremo del eje x. */
+  linea?: { m: number; b: number };
+  /** Puntos que se pintan aparte, con su propio texto al pasar el mouse. */
+  marcas?: MarcaScatter[];
+  /** Etiqueta por punto, en el mismo orden que `pts`. */
+  etiquetas?: string[];
+} = {}): string {
   const W = 1000, H = height, mL = 56, mR = 16, mT = 18, mB = 38, P = palette();
   if (pts.length < 2) return `<div class="muted small">Sin suficientes puntos.</div>`;
+  const xf = xfmt || ((v: number) => fmt(v, 0));
+  const yf = yfmt || ((v: number) => fmt(v, 0));
   const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
-  let xmin = Math.min(...xs), xmax = Math.max(...xs), ymin = 0, ymax = Math.max(...ys) * 1.05;
-  const px = (v: number) => mL + ((v - xmin) / (xmax - xmin)) * (W - mL - mR), py = (v: number) => mT + (1 - (v - ymin) / (ymax - ymin)) * (H - mT - mB);
+  const xmin = Math.min(...xs), xmax = Math.max(...xs);
+  const ymin = 0, ymax = Math.max(...ys) * 1.05;
+  const px = (v: number) => mL + ((v - xmin) / (xmax - xmin || 1)) * (W - mL - mR);
+  const py = (v: number) => mT + (1 - (v - ymin) / (ymax - ymin || 1)) * (H - mT - mB);
   let g = "";
   for (let k = 0; k <= 4; k++) { const v = ymin + (ymax - ymin) * k / 4, y = py(v);
     g += `<line x1="${mL}" y1="${y.toFixed(1)}" x2="${W - mR}" y2="${y.toFixed(1)}" stroke="${P.grid}" stroke-width="1"/>`;
-    g += `<text x="${mL - 9}" y="${(y + 4).toFixed(1)}" fill="${P.muted}" font-size="12" text-anchor="end" font-family="var(--mono)">${fmt(v, 1)}</text>`; }
+    g += `<text x="${mL - 9}" y="${(y + 4).toFixed(1)}" fill="${P.muted}" font-size="12" text-anchor="end" font-family="var(--mono)">${yf(v)}</text>`; }
   for (let k = 0; k <= 4; k++) { const v = xmin + (xmax - xmin) * k / 4;
-    g += `<text x="${px(v).toFixed(1)}" y="${H - 13}" fill="${P.muted}" font-size="11.5" text-anchor="middle" font-family="var(--mono)">${fmt(v, 0)}</text>`; }
-  pts.forEach((p) => g += `<circle class="hit" cx="${px(p[0]).toFixed(1)}" cy="${py(p[1]).toFixed(1)}" r="5" fill="${P.accent}" opacity="0.7" data-tip="GHI ${fmt(p[0], 0)} W/m² · ${fmt(p[1], 2)} kWh"/>`);
+    g += `<text x="${px(v).toFixed(1)}" y="${H - 13}" fill="${P.muted}" font-size="11.5" text-anchor="middle" font-family="var(--mono)">${xf(v)}</text>`; }
+
+  // La recta va DEBAJO de los puntos: es la referencia, no el dato.
+  if (linea) {
+    const y1 = linea.m * xmin + linea.b, y2 = linea.m * xmax + linea.b;
+    g += `<line x1="${px(xmin).toFixed(1)}" y1="${py(y1).toFixed(1)}" x2="${px(xmax).toFixed(1)}" y2="${py(y2).toFixed(1)}" stroke="${P.muted}" stroke-width="1.5" stroke-dasharray="6 4" opacity="0.75"/>`;
+  }
+
+  const marcado = new Set(marcas.map((m) => `${m.x}|${m.y}`));
+  pts.forEach((p, i) => {
+    if (marcado.has(`${p[0]}|${p[1]}`)) return;   // los destacados se pintan aparte
+    const et = etiquetas[i] ? `${etiquetas[i]} · ` : "";
+    g += `<circle class="hit" cx="${px(p[0]).toFixed(1)}" cy="${py(p[1]).toFixed(1)}" r="4.5" fill="${P.accent}" opacity="0.55" data-tip="${et}${xf(p[0])}${xUnit ? " " + xUnit : ""} → ${yf(p[1])}${yUnit ? " " + yUnit : ""}"/>`;
+  });
+  for (const m of marcas) {
+    g += `<circle class="hit" cx="${px(m.x).toFixed(1)}" cy="${py(m.y).toFixed(1)}" r="6" fill="none" stroke="${P.crit}" stroke-width="2" data-tip="${m.etiqueta} · ${m.nota}"/>`;
+    g += `<circle class="hit" cx="${px(m.x).toFixed(1)}" cy="${py(m.y).toFixed(1)}" r="2.5" fill="${P.crit}" data-tip="${m.etiqueta} · ${m.nota}"/>`;
+  }
   return `<svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img">${g}</svg>`;
 }
 

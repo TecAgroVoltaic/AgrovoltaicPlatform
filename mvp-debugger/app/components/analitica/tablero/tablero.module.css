@@ -1,0 +1,300 @@
+/* Lo propio del tablero. Todo lo que ya existía en el cascarón (.vista, .phead,
+   .card, .kpi, .kpi-grid, .kpi-nota, .muted, .mono) se reusa tal cual: acá solo
+   vive lo que ninguna clase global resolvía. */
+
+/* El cascarón estiliza `.card h3` pero no `.card h2`, y las tarjetas de esta
+   vista usan h2 para no saltarse un nivel de encabezado bajo el h1 de la
+   página. Sin esto, el título de la tarjeta saldría más grande que el de la
+   pantalla. */
+.cardTitle {
+  font-size: 15.5px;
+}
+
+/* Título a la izquierda, el número de contexto a la derecha: el rango y la
+   cobertura son datos, no prosa, y en la cabecera no roban una línea. */
+.cardHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 14px;
+  margin-bottom: 10px;
+}
+
+.headStat {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.headStat b {
+  color: var(--ink2);
+  font-weight: 600;
+}
+
+/* La energía del sistema pesa más que las demás tarjetas: es la respuesta a la
+   pregunta de la pantalla y el resto es su desglose. */
+.hero {
+  border-color: var(--line2);
+  margin-top: 16px;
+}
+
+/* Las dos tarjetas de contexto, en fila: son secundarias y no merecen dos
+   franjas enteras una debajo de la otra.
+
+   El `min(320px, 100%)` no es adorno: `minmax(320px, 1fr)` a secas fija un piso
+   de 320 px que la columna respeta AUNQUE no quepa, y por debajo de ese ancho la
+   tarjeta se sale del contenedor. Con `.content { overflow-x: clip }` eso no da
+   scroll: recorta en silencio. Misma corrección en las cuatro rejillas de esta
+   vista. */
+.context {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+/* --- Frescura del dato: es una alerta, no una casilla más --- */
+.freshness {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 18px;
+  border: 1px solid var(--line);
+  border-left-width: 4px;
+  border-radius: 12px;
+  padding: 14px 18px;
+  background: var(--panel);
+}
+
+.freshnessCritical {
+  border-color: var(--crit);
+  background: color-mix(in srgb, var(--crit) 8%, var(--panel));
+}
+
+.freshnessWarning {
+  border-color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 8%, var(--panel));
+}
+
+.freshnessHeadline {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.freshnessAge {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.freshnessDetail {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--muted);
+  max-width: 88ch;
+}
+
+/* --- Las DOS energías, enfrentadas en un solo marco --- */
+.balance {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+  gap: 14px;
+  margin-top: 4px;
+}
+
+.question {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px 16px;
+  background: var(--panel2);
+}
+
+/* La registrada manda porque es la que comparten las otras ocho casillas. */
+.questionPrimary {
+  border-color: var(--accent);
+}
+
+.questionTitle {
+  font-size: 13.5px;
+  font-weight: 600;
+  margin: 0 0 6px;
+}
+
+.questionValue {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  margin: 0 0 6px;
+}
+
+.questionValue small {
+  font-family: system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  margin-left: 5px;
+}
+
+.questionMissing {
+  color: var(--muted);
+  font-size: 20px;
+}
+
+.questionNote {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+  max-width: 46ch;
+}
+
+.questionTag {
+  display: inline-block;
+  margin-top: 8px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+}
+
+.gapNote {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border: 1px dashed var(--line2);
+  border-radius: 8px;
+  font-size: 12.5px;
+  color: var(--ink2);
+  max-width: 90ch;
+}
+
+/* --- Casillas y tarjetas por arreglo --- */
+
+/* Las tarjetas se miden a sí mismas: lo que decide cómo se acomodan sus casillas
+   es el ancho de la TARJETA, y a un mismo ancho de ventana una tarjeta puede ser
+   la franja entera o media. Medido a 768 px de ventana la tarjeta de un arreglo
+   deja 430 px por dentro, y a 1440 px deja 523. */
+.arrayCard,
+.hero {
+  container-type: inline-size;
+}
+
+/* Las tres casillas de un arreglo (período, últimos días y rendimiento) son UNA
+   lectura: o entran las tres en fila o se apilan las tres. Con `auto-fit` caían
+   de a 2 + 1 y la tercera quedaba sola con medio marco vacío al lado. 480 px son
+   3 × 152 (por debajo de eso el título de la casilla se parte en tres líneas y
+   la unidad se despega de su número) más los 24 px de separación. */
+.tiles {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  margin-top: 12px;
+}
+
+@container (min-width: 480px) {
+  .tiles {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.arrays {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(330px, 100%), 1fr));
+  gap: 16px;
+  margin: 16px 0;
+}
+
+.cardSub {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.tileMissing {
+  color: var(--muted);
+}
+
+/* --- Conteos dibujados: la caída de 274 a 48 en vez de la frase que la contaba --- */
+
+/* Contexto de medida de la lista. Lo que decide si etiqueta, barra y conteo
+   entran en una fila es el ancho de la TARJETA, no el de la ventana, y los dos
+   no se parecen: la barra lateral se lleva 230 px y estas tarjetas van de a dos.
+   Medido: a 1024 px de ventana esta lista tiene 315 px, no 1024. */
+.statBars {
+  display: flex;
+  flex-direction: column;
+  /* Apilada, cada fila son tres líneas separadas por 3 px: si la distancia entre
+     filas fuese parecida, el conteo de una parecería la etiqueta de la de abajo.
+     12 contra 3 agrupa sin necesidad de un separador. */
+  gap: 12px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  container-type: inline-size;
+}
+
+.statBar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 3px;
+}
+
+.statLabel {
+  font-size: 11.5px;
+  color: var(--ink2);
+  line-height: 1.3;
+}
+
+.statTrack {
+  display: block;
+  height: 7px;
+  border-radius: 4px;
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.statFill,
+.statFillWarn {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+.statFillWarn {
+  background: var(--warn);
+}
+
+.statValue {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+/* Medido en pantalla: la etiqueta (15ch) ocupa 132 px, el conteo («24 de 30
+   días» en monoespaciado) 89 px y las separaciones 20 px. Los 380 px del corte
+   dejan a la barra 139, o sea más larga que el texto que tiene al lado: la barra
+   solo se gana una columna propia cuando de verdad DIBUJA la caída de 274 a 48,
+   que es lo único que esta lista existe para mostrar. Por debajo del corte se
+   apila y la barra pasa a ocupar el ancho entero de la tarjeta, que siempre es
+   más de lo que le tocaría en fila. */
+@container (min-width: 380px) {
+  .statBar {
+    grid-template-columns: minmax(0, 15ch) minmax(60px, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+  }
+
+  /* Solo acá el conteo es una columna propia y partirlo desalinearía la fila.
+     Apilado ocupa el ancho entero y puede quebrar como cualquier texto. */
+  .statValue {
+    white-space: nowrap;
+  }
+}

@@ -6,7 +6,7 @@ categoria: proyecto
 
 # Pipeline de datos en tiempo real del agente (irradiancia + humedad)
 
-Cómo el [[agente-pronostico]] pasa a pronosticar **humedad de suelo + irradiancia**
+Cómo el [[agente-predictivo]] pasa a pronosticar **humedad de suelo + irradiancia**
 "en tiempo real" para San Carlos. Construido y desplegado el 2026-07-27/28.
 Prioridad del usuario: **solo predicciones** de esas dos variables.
 
@@ -44,7 +44,7 @@ la única conectada al MCP). Conexión por `DATABASE_URL`/`STORE_URL` en `.env`
 gitignored. La **direct connection es IPv6-only** (no rutea desde la Mac); usar el
 **Session pooler** `aws-1-us-east-1.pooler.supabase.com:5432`, user `postgres.<ref>`.
 Es la misma DB que `monitoreo_agrovoltaic` (36.485 filas). 3 tablas nuevas del agente
-(DDL en `agente-pronostico/sql/schema_supabase.sql`, idempotente):
+(DDL en `agente-predictivo/sql/schema_supabase.sql`, idempotente):
 - **`lecturas_ambientales_sc`** — store de ingesta, formato largo (1 fila = 1 lectura).
   PK `origen_id` = `readings.id` de AgroDash → upsert 1:1. Backfill: **~812k filas**
   (irradiancia 118k / 6 canales, humedad_suelo 694k / 5 canales), 2026-05-01→07-23.
@@ -52,7 +52,7 @@ Es la misma DB que `monitoreo_agrovoltaic` (36.485 filas). 3 tablas nuevas del a
   modelo, latencia, contexto). Base del predicho-vs-real.
 - **`agente_log`** — logs estructurados del ETL/forecaster/flujo.
 
-## ETL (`pronostico.etl`) — Cartago→Supabase
+## ETL (`predictivo.etl`) — Cartago→Supabase
 
 - Lee la fuente con `config.conninfo()` (AgroDash, read-only) y escribe con
   `STORE_URL`. Idempotente (`ON CONFLICT (origen_id) DO NOTHING`) + incremental
@@ -63,8 +63,8 @@ Es la misma DB que `monitoreo_agrovoltaic` (36.485 filas). 3 tablas nuevas del a
 - Etiqueta los timestamps NAIVE de AgroDash como hora local CR (UTC−6) → instante
   correcto (verificado: pico diurno de irradiancia a las 11h local).
 - **Timer `forecast-etl.timer`** (systemd, cada 15 min, `docker exec forecast-forecast-1
-  python -m pronostico.etl`). Con la fuente congelada, no-op; listo para cuando vuelva.
-  **Units versionados** desde el 2026-08-14 en `agente-pronostico/deploy/systemd/`.
+  python -m predictivo.etl`). Con la fuente congelada, no-op; listo para cuando vuelva.
+  **Units versionados** desde el 2026-08-14 en `agente-predictivo/deploy/systemd/`.
 - **Flag `--variable`** para acotar el ETL a un target (un `--full` sin filtro arrastra
   las dos variables; humedad son ~936k filas y el store es Free tier).
 
@@ -99,7 +99,7 @@ Es la misma DB que `monitoreo_agrovoltaic` (36.485 filas). 3 tablas nuevas del a
 ## Deploy (2026-07-28) — vivo en la EC2
 
 Sidecar `forecast-forecast-1` (compose `docker-compose.forecast.yml`, proyecto
-independiente `forecast`, build context `/home/ec2-user/forecast/agente-pronostico`):
+independiente `forecast`, build context `/home/ec2-user/forecast/agente-predictivo`):
 - `rsync` del `src/` nuevo → rebuild (`FORECAST_BUILD_CONTEXT=… docker-compose … up -d
   --build`) → **STORE_URL agregado a `forecast.env`** (junto al `DATABASE_URL`=Cartago
   que usa el ETL como source).
@@ -108,8 +108,8 @@ independiente `forecast`, build context `/home/ec2-user/forecast/agente-pronosti
   local. En la EC2 el compose es `docker-compose` (con guion), NO `docker compose`.
 - Convive con `forecast-refresh.timer` (cada 6h recrea el contenedor → re-lee el store).
 
-**Código**: rama `feat/agente-pronostico-humedad-etl-store` (commit `639084e`, primer
-commit del paquete `agente-pronostico` completo — estaba untracked). NO pusheado aún.
+**Código**: rama `feat/agente-predictivo-humedad-etl-store` (commit `639084e`, primer
+commit del paquete `agente-predictivo` completo — estaba untracked). NO pusheado aún.
 
 ## Fase 4 (2026-07-29) — flujo programado + write-back
 
@@ -117,7 +117,7 @@ commit del paquete `agente-pronostico` completo — estaba untracked). NO pushea
   `predicciones` (`origen`, `modelo`, `frescura_seg`, `latencia_ms`, `contexto`). Best-effort
   (no rompe el pronóstico si el store falla). Robusto: audita venga de donde venga (schedule,
   webhook, prueba), sin depender del LLM. Desplegado y **verificado por el `/forecast` público**.
-- **Flujo DETERMINISTA** (sin LLM, recolección de datos): `docs/pronostico/flujo-schedule-visioneflow.json`
+- **Flujo DETERMINISTA** (sin LLM, recolección de datos): `docs/predictivo/flujo-schedule-visioneflow.json`
   — `scheduleTrigger` (cada 1h, tz CR) → `httpRequest`(irradiancia) → `httpRequest`(humedad) →
   `output`. Usa nodos de ACCIÓN (`httpRequest`), no el `aiAgent`. El **scheduler de VisioneFlow
   es real** (BullMQ/Redis): al **desplegar** el agente, `registerScheduledTriggers()` lo registra
@@ -127,7 +127,7 @@ commit del paquete `agente-pronostico` completo — estaba untracked). NO pushea
   un pronóstico de la data del 23-jul (irradiancia 0 de noche / humedad por persistencia); cuando
   la ingesta vuelva, las predicciones se vuelven reales sin tocar nada.
 
-## Comparador MVP — tool de anomalías (2026-08-10)
+## Agente Histórico MVP — tool de anomalías (2026-08-10)
 
 Primer tool de la [[capa-agentes]]: endpoint **`/anomalias`** en el sidecar
 (`pronostico.anomalias`, DETERMINISTA, sin LLM). Dado (variable, ventana_min) analiza el
@@ -137,13 +137,13 @@ store y devuelve hallazgos: **`sin_datos_recientes`** (detecta el outage SC — 
 para irradiancia (reusa clear-sky), **crudo** para humedad. 64 tests. Desplegado y probado por
 el `/forecast/anomalias` público. El aiAgent lo llama como tool (`detectar_anomalias`) y **solo
 narra** los hallazgos. Los otros tools (rollups/consultas, Performance Ratio) quedan como
-**nice-to-have** (backlog). Es la semilla del Comparador batch.
+**nice-to-have** (backlog). Es la semilla del Agente Histórico batch.
 
 ## Pendiente
 
-- **Fase 5** — observabilidad + vista predicho-vs-real (semilla del Comparador, [[capa-agentes]]).
+- **Fase 5** — observabilidad + vista predicho-vs-real (semilla del Agente Histórico, [[capa-agentes]]).
 - **Seguridad**: rotar la clave débil de `agrovoltaic_ro` ([[conectividad-tailnet]]).
 - **Cuando el equipo restaure la ingesta SC**: el ETL backfillea solo y el /forecast se
   pone en vivo sin tocar código.
 
-Relacionado: [[agente-pronostico]], [[integracion-visioneflow]], [[conectividad-tailnet]], [[agrodash]], [[capa-agentes]], [[arquitectura-regiones]], [[bloqueantes]].
+Relacionado: [[agente-predictivo]], [[integracion-visioneflow]], [[conectividad-tailnet]], [[agrodash]], [[capa-agentes]], [[arquitectura-regiones]], [[bloqueantes]].

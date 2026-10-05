@@ -64,7 +64,7 @@ Corriente de string & 0--20\,A & Rango del inversor. \\
 Frecuencia de red & 55--65\,Hz & Red de 60\,Hz. \\
 Tensión AC & 100--280\,V & Salida monofásica. \\
 Albedo & 0--1 & Definición del cociente. \\
-Irradiancia & --- & \emph{Offset} $-38{,}845 \to 0$; negativos $\to 0$; todo lo anterior al
+Irradiancia & no aplica & \emph{Offset} $-38{,}845 \to 0$; negativos $\to 0$; todo lo anterior al
   2025-07-01 pasa a NULL (error de sensor corregido a mediados de 2025). \\
 \bottomrule
 \end{tabular}
@@ -72,31 +72,33 @@ Irradiancia & --- & \emph{Offset} $-38{,}845 \to 0$; negativos $\to 0$; todo lo 
 
 \subsection{Calibración y desempeño}
 
-No existe constante de calibración guardada: ``celda calibrada'' resultó ser un nombre
-comercial, no un dato de fábrica. La calibración se hace entonces \textbf{contra cielo
-despejado}: se calcula el GHI teórico con pvlib para la posición y el instante, y se
-compara con lo medido. El hallazgo fue que el período válido \emph{ya viene en W/m$^2$}
-(factor empírico $k \approx 0{,}98$), así que la escala aplicada es 1{,}0 y lo que aporta
-la capa es el índice de cielo despejado y el control de calidad.
+No hay constante de calibración de fábrica: lo que se creía una ``celda calibrada'' resultó
+ser un nombre comercial. Se calibra entonces contra el cielo despejado, comparando lo que
+mide el sensor con lo que debería medir un día sin nubes. Los datos del período válido ya
+venían en W/m$^2$, así que la escala quedó en 1{,}0 y lo que aporta esta capa es el índice
+de claridad y el control de calidad.
+
+Toda la capa se reduce a dos fórmulas. La primera dice cuánta de la luz posible llegó
+de verdad:
 
 \begin{equation*}
   \mathrm{kt^*} = \frac{\mathrm{GHI_{medida}}}{\mathrm{GHI_{cielo\ despejado}}}
   \qquad\text{sólo donde}\quad \mathrm{GHI_{cs}} > 20\ \mathrm{W/m^2}
 \end{equation*}
 
-El Performance Ratio compara la potencia real con la esperada según la irradiancia que
-efectivamente recibe el plano del arreglo:
+La segunda compara la potencia real con la que cabría esperar de la luz que recibe el
+plano del arreglo:
 
 \begin{equation*}
   \mathrm{PR} = \frac{P/P_0}{\mathrm{POA}/1000}
   \qquad P_0 = 1420\ \mathrm{Wp\ por\ arreglo}
 \end{equation*}
 
-Como los paneles son bifaciales, la POA se modela con dos planos (frontal más
-$\varphi\cdot$trasera, con $\varphi = 0{,}80$ y el albedo medido). La validación de ese
-modelo fue por convergencia: PV1 (inclinado, 20°/150°) da PR $= 0{,}622$ y PV2 (vertical,
-90°/50°) da $0{,}626$. Dos geometrías muy distintas que aterrizan en el mismo número
-indican que la ganancia bifacial está bien repartida.
+Como los paneles son bifaciales, la POA suma las dos caras: frontal $+\ \varphi\cdot$trasera,
+con $\varphi = 0{,}80$ y el albedo medido.
+
+El resultado da confianza porque converge: dos arreglos con geometrías muy distintas
+aterrizan casi en el mismo número, PV1 inclinado en $0{,}622$ y PV2 vertical en $0{,}626$.
 
 \begin{clave}[title=Geometría confirmada del sitio]
 1420\,Wp por arreglo ($4 \times 355$\,Wp), 2840\,Wp en total, ambos bifaciales.

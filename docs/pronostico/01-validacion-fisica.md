@@ -1,6 +1,6 @@
 # 01 — Validación de la capa física (clear-sky + kt*)
 
-**Fecha:** 2026-06-30 · **Código:** `agente-pronostico/scripts/validar_fisica.py` · **Datos:** `Caja Irradiancia SC` (AgroDash, solo lectura)
+**Fecha:** 2026-06-30 · **Código:** `agente-predictivo/scripts/validar_fisica.py` · **Datos:** `Caja Irradiancia SC` (AgroDash, solo lectura)
 
 ## Por qué este paso primero
 Antes de construir el agente conviene comprobar —barato— que la **descomposición por cielo

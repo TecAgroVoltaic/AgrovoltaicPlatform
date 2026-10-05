@@ -1,11 +1,11 @@
 # 02 — Forecaster de persistencia inteligente + hindcast
 
-**Fecha:** 2026-06-30 · **Código:** `agente-pronostico/src/pronostico/{data,physics,forecasters/persistence}.py` + `scripts/hindcast_demo.py`
+**Fecha:** 2026-06-30 · **Código:** `agente-predictivo/src/predictivo/{data,physics,forecasters/persistence}.py` + `scripts/hindcast_demo.py`
 
 ## Qué construimos
 Sobre la física ya validada (ver `01-validacion-fisica.md`), el primer pronosticador y su banco de pruebas:
 - **`data.py`** — capa de datos solo-lectura: descarga una vez de AgroDash y cachea en parquet
-  (`data/pronostico/irradiancia_sc.parquet`); `get_recent_data(now, lookback)` es la **barrera
+  (`data/predictivo/irradiancia_sc.parquet`); `get_recent_data(now, lookback)` es la **barrera
   anti-fuga**: solo devuelve lecturas con `timestamp < now`.
 - **`physics.py`** — `clear_sky_ghi`, `clear_sky_index` (kt*), `reconstruct_ghi`.
 - **`forecasters/persistence.py`** — `smart_persistence` (media de kt* reciente × clear-sky futuro) y

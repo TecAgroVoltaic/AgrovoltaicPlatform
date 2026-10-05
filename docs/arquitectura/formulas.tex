@@ -1,0 +1,450 @@
+% AgroVoltaic --- formulario. Todas las formulas que usa el sistema, con el
+% archivo donde vive cada una.
+% Compilar: xelatex -interaction=nonstopmode formulas.tex (dos veces, por el indice).
+\documentclass[11pt,a4paper]{article}
+\input{preambulo}
+
+% El preambulo es compartido con el documento de arquitectura: se le cambia solo
+% el encabezado, para que cada pagina diga de que documento es.
+\fancyhead[L]{\small\color{humo}AgroVoltaic $\cdot$ Formulario}
+\hypersetup{pdftitle={AgroVoltaic. Formulario}}
+
+\begin{document}
+
+\begin{titlepage}
+\centering
+\vspace*{3.5cm}
+{\color{humo}\large PROYECTO AGROVOLTAICO $\cdot$ TEC COSTA RICA\par}
+\vspace{1.2cm}
+{\Huge\bfseries\color{agua} AgroVoltaic\par}
+\vspace{0.4cm}
+{\LARGE Formulario\par}
+\vspace{1.2cm}
+{\large\color{tinta} Todo el cálculo del sistema, en un solo lugar\par}
+\vfill
+\begin{minipage}{0.82\textwidth}
+\small\color{tinta}
+Cada fórmula que el sistema aplica a un número, con el símbolo que usa, la condición
+bajo la que vale y el archivo donde está implementada. No hay ninguna que no esté en
+el código, ni ninguna en el código que no esté acá.
+\end{minipage}
+\vfill
+{\color{humo} \today\par}
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+% =============================================================================
+\section{Símbolos}
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{26mm}p{88mm}p{22mm}@{}}
+\toprule
+\textbf{Símbolo} & \textbf{Qué es} & \textbf{Unidad} \\
+\midrule
+$\mathrm{GHI}$ & Irradiancia global sobre plano horizontal, la que mide el piranómetro & W/m$^2$ \\
+$\mathrm{GHI_{cs}}$ & La misma, pero teórica, con cielo perfectamente despejado & W/m$^2$ \\
+$\mathrm{kt^*}$ & Índice de claridad: qué fracción de la luz posible llegó de verdad & adimensional \\
+$\mathrm{DNI}$ & Componente directa, la que viene del disco solar & W/m$^2$ \\
+$\mathrm{DHI}$ & Componente difusa, la que llega del resto del cielo & W/m$^2$ \\
+$\mathrm{POA}$ & Irradiancia sobre el plano del arreglo (\emph{plane of array}) & W/m$^2$ \\
+$\rho$ & Albedo: fracción de luz que el suelo refleja & adimensional \\
+$\varphi$ & Factor de bifacialidad: cuánto rinde la cara trasera respecto de la frontal & adimensional \\
+$P$ & Potencia continua medida a la entrada del inversor & W \\
+$P_0$ & Potencia nominal instalada del arreglo & Wp \\
+$h$ & Horizonte: cuánto hacia adelante se pronostica & s \\
+$\mathrm{VI}$ & Índice de variabilidad: cuánto se agita la curva del día & adimensional \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Nota de notación: el asterisco de $\mathrm{kt^*}$ distingue el índice de \emph{cielo
+despejado} del índice de claridad clásico $\mathrm{kt}$, que se define contra la
+irradiancia extraterrestre y no contra la de cielo despejado.
+
+% =============================================================================
+\section{Radiación}
+
+\subsection{Cielo despejado}
+
+Es la referencia contra la que se mide todo lo demás: cuánta luz habría a esa hora, en
+ese punto del planeta, si no hubiera una sola nube. Se calcula con el modelo de Ineichen
+con turbidez de Linke climatológica, tal como lo implementa \cd{pvlib}.
+
+\begin{equation*}
+  \mathrm{GHI_{cs}} = f_{\text{Ineichen}}(t,\ \text{lat},\ \text{lon},\ \text{alt})
+\end{equation*}
+
+\begin{clave}[title=Por qué esto no es hacer trampa]
+$\mathrm{GHI_{cs}}$ depende sólo del tiempo y de la posición, no de ningún dato medido.
+Por eso se puede calcular para un instante \emph{futuro} sin que eso sea mirar el futuro:
+es astronomía, no información privilegiada. Es lo que permite que el pronóstico incorpore
+la geometría solar del momento que se está prediciendo.
+\end{clave}
+
+\emph{Implementado en:} \cd{predictivo/physics.py} y \cd{agrovoltaic/clearsky.py}.
+
+\subsection{Índice de claridad}
+
+\begin{equation*}
+  \mathrm{kt^*} = \frac{\mathrm{GHI}}{\mathrm{GHI_{cs}}}
+  \qquad\text{sólo cuando}\quad \mathrm{GHI_{cs}} > 20\ \mathrm{W/m^2}
+  \qquad \mathrm{kt^*} \geq 0
+\end{equation*}
+
+El umbral evita dividir por casi cero al amanecer y al anochecer, donde el cociente se
+dispara sin significar nada. El recorte inferior evita que una medida negativa por
+desajuste del sensor produzca un índice negativo, que no existe.
+
+\emph{Implementado en:} \cd{predictivo/physics.py} y la vista \cd{v\_sc\_radiacion\_calibrada}.
+
+\subsection{Corrección del crudo y control de calidad}
+
+El dato crudo se guarda tal cual y se corrige en la capa de consulta, nunca al insertar.
+Tres reglas, en este orden:
+
+\begin{equation*}
+  \mathrm{GHI_{corr}} =
+  \begin{cases}
+    0 & \text{si } |\mathrm{GHI_{cruda}} - (-38{,}845)| < 10^{-3} \quad\text{(desajuste nocturno)}\\
+    0 & \text{si } \mathrm{GHI_{cruda}} < 0 \\
+    \text{NULL} & \text{si } t < \text{2025-07-01} \quad\text{(error de sensor corregido a mediados de 2025)}\\
+    \mathrm{GHI_{cruda}} & \text{en caso contrario}
+  \end{cases}
+\end{equation*}
+
+Y una lectura se marca como sospechosa cuando supera lo que el cielo puede dar:
+
+\begin{equation*}
+  \mathrm{qc\_ok} = \mathrm{GHI_{corr}} \leq \max\left(1{,}3 \cdot \mathrm{GHI_{cs}},\ 50\right)
+\end{equation*}
+
+El $1{,}3$ deja pasar el realce por reflexión en nubes, que es real y puede superar el
+cielo despejado; el piso de 50 W/m$^2$ evita marcar ruido inofensivo de madrugada.
+
+\emph{Implementado en:} \cd{agrovoltaic/ddl.py}, vistas \cd{v\_sc\_radiacion\_corregida} y
+\cd{v\_sc\_radiacion\_calibrada}.
+
+% =============================================================================
+\section{Pronóstico}
+
+\subsection{La descomposición de la que sale todo}
+
+\begin{equation*}
+  \mathrm{GHI} = \mathrm{kt^*} \times \mathrm{GHI_{cs}}
+\end{equation*}
+
+De los dos factores, el segundo se calcula con astronomía y el primero es el único que
+hay que pronosticar. Pronosticar $\mathrm{kt^*}$ es mucho más fácil que pronosticar
+$\mathrm{GHI}$ directo, porque a $\mathrm{kt^*}$ ya se le quitó la curva diurna del sol,
+que es la que domina el número.
+
+\subsection{Qué índice se persiste}
+
+No se persiste el $\mathrm{kt^*}$ reciente tal cual, sino su \emph{anomalía} respecto de
+lo normal a esa hora, trasplantada a lo normal de la hora que se pronostica:
+
+\begin{equation*}
+  \mathrm{kt^*_{pron}} = \mathrm{kt^*_{clima}}(t+h)
+  + w \cdot \Big( \mathrm{kt^*_{reciente}} - \mathrm{kt^*_{clima}}(t) \Big)
+\end{equation*}
+
+Los dos términos climáticos corrigen cosas distintas y por eso van por separado:
+
+\begin{itemize}[leftmargin=*,itemsep=3pt]
+  \item \textbf{El ajuste diurno} (los dos $\mathrm{kt^*_{clima}}$) evita trasladar la
+    mañana a la tarde como si fueran iguales. En San Carlos no lo son: el índice medio
+    baja de $0{,}58$ a las 11 h a $0{,}35$ a las 16 h, porque las tardes se cierran por
+    convección. Ignorarlo producía un sesgo medido de $+52$\,\% a las 16 h.
+  \item \textbf{La contracción} (el peso $w$) evita creerle a lo reciente más de lo que
+    vale. Persistir supone que la nubosidad de ahora sigue valiendo dentro de $h$, y eso
+    se desgasta: la correlación del índice consigo mismo cae de $0{,}90$ a 5 min a
+    $0{,}13$ a 6 h.
+\end{itemize}
+
+\subsection{El peso}
+
+\begin{equation*}
+  w = \rho_h + (1 - \rho_h)\,(1 - r_h)
+  \qquad
+  r_h =
+  \begin{cases}
+    0 & h \leq 1\ \mathrm{h} \\
+    \dfrac{h - 1\,\mathrm{h}}{3\,\mathrm{h} - 1\,\mathrm{h}} & 1\ \mathrm{h} < h < 3\ \mathrm{h} \\
+    1 & h \geq 3\ \mathrm{h}
+  \end{cases}
+\end{equation*}
+
+donde $\rho_h$ es la autocorrelación del $\mathrm{kt^*}$ medida al desfase $h$ sobre el
+histórico anterior al instante que se pronostica, acotada a $[0,1]$. El peso \textbf{se
+mide, no se declara}. En horizontes cortos $w=1$ y queda persistencia pura; en horizontes
+largos $w=\rho_h$ y manda la correlación real; en el medio se interpola. Sin historia
+suficiente (menos de 200 pares) el peso vuelve a 1.
+
+\emph{Implementado en:} \cd{predictivo/forecasters/climatologia.py}.
+
+\subsection{La reconstrucción}
+
+\begin{equation*}
+  \mathrm{GHI_{pron}}(t+h) = \mathrm{kt^*_{pron}} \times \mathrm{GHI_{cs}}(t+h)
+\end{equation*}
+
+Acá entra la geometría solar del instante pronosticado. Es la diferencia con repetir la
+última lectura: si $t+h$ cae más cerca del mediodía, el pronóstico sube aunque las nubes
+no se muevan.
+
+\subsection{La banda}
+
+No es una desviación típica sino los \textbf{cuantiles 16 y 84 del error real} que el
+método cometió a ese mismo horizonte, medidos sobre el histórico:
+
+\begin{equation*}
+  \big[\,\mathrm{GHI_{bajo}},\ \mathrm{GHI_{alto}}\,\big] =
+  \Big[\, q_{16}\big(\varepsilon_h\big),\ q_{84}\big(\varepsilon_h\big) \,\Big]
+  \qquad \varepsilon_h = \mathrm{GHI_{pron}} - \mathrm{GHI_{real}}
+\end{equation*}
+
+Se eligieron 16 y 84 porque en una distribución normal encierran exactamente $\pm 1$
+desviación típica, y así la banda se lee igual que siempre aunque el error no sea normal.
+La banda anterior, basada en la dispersión de la última hora, salía casi del mismo ancho
+para todos los horizontes ($158$ a $166$ W/m$^2$) mientras el error real iba de $169$ a
+$237$: prometía una precisión que no tenía.
+
+\emph{Implementado en:} \cd{predictivo/forecasters/uncertainty.py}.
+
+\subsection{Humedad de suelo}
+
+No hay curva del sol que descontar, así que no hay nada que descomponer:
+
+\begin{equation*}
+  \hat{y}(t+h) = \mathrm{mediana}\big(y_{\text{reciente}}\big)
+  \qquad
+  \text{banda} = \big[\,q_{16},\ q_{84}\,\big]\ \text{de la misma ventana}
+\end{equation*}
+
+Alcanza porque el suelo cambia despacio y está muy correlacionado consigo mismo.
+
+% =============================================================================
+\section{Fotovoltaico}
+
+\subsection{De la horizontal al plano del arreglo}
+
+El piranómetro mide en horizontal, pero los paneles no están en horizontal. Hay que
+transponer, y para eso primero hay que separar la luz en sus dos componentes:
+
+\begin{equation*}
+  (\mathrm{DNI},\ \mathrm{DHI}) = f_{\text{Erbs}}\big(\mathrm{GHI},\ \theta_z,\ n_{\text{día}}\big)
+\end{equation*}
+
+\begin{equation*}
+  \mathrm{POA} = f_{\text{isotrópica}}\big(\beta,\ \gamma,\ \theta_z,\ \gamma_s,\
+  \mathrm{DNI},\ \mathrm{DHI},\ \mathrm{GHI},\ \rho\big)
+\end{equation*}
+
+con $\beta$ la inclinación del plano, $\gamma$ su azimut, $\theta_z$ el ángulo cenital
+solar y $\gamma_s$ el azimut solar. El albedo $\rho$ es el \textbf{medido en sitio}, no un
+valor de tabla; si cae fuera de $[0{,}05,\ 0{,}9]$ se sustituye por $0{,}2$.
+
+\subsection{Bifacialidad}
+
+Los paneles producen por las dos caras, así que la POA efectiva suma la trasera con un
+descuento:
+
+\begin{equation*}
+  \mathrm{POA_{ef}} = \mathrm{POA}(\beta,\ \gamma)
+  + \varphi \cdot \mathrm{POA}(180^\circ - \beta,\ \gamma + 180^\circ)
+  \qquad \varphi = 0{,}80
+\end{equation*}
+
+La cara trasera se modela como un segundo plano, el opuesto exacto del frontal.
+
+\emph{Implementado en:} \cd{agrovoltaic/performance.py}.
+
+\subsection{Performance Ratio}
+
+Compara lo que el arreglo produjo con lo que cabría esperar de la luz que efectivamente
+recibió:
+
+\begin{equation*}
+  \mathrm{PR} = \frac{P / P_0}{\mathrm{POA_{ef}} / 1000}
+  \qquad
+  P_0 = 1420\ \mathrm{Wp\ por\ arreglo}
+  \qquad
+  \text{sólo si } \mathrm{POA_{ef}} > 100\ \mathrm{W/m^2}
+\end{equation*}
+
+El $1000$ es la irradiancia de las condiciones de ensayo estándar, que es contra lo que
+está definida la potencia nominal. El umbral de 100 W/m$^2$ evita calcular el cociente de
+noche y con luz muy baja, donde se vuelve inestable.
+
+\emph{Implementado en:} vista \cd{v\_sc\_performance}, generada por \cd{agrovoltaic/ddl.py}.
+
+\subsection{Energía}
+
+Integración trapezoidal de la potencia, o de la irradiancia para la insolación:
+
+\begin{equation*}
+  E = \sum_i \frac{P_i + P_{i+1}}{2}\,\Delta t_i
+  \qquad [\mathrm{Wh}]
+\end{equation*}
+
+% =============================================================================
+\section{Calidad de datos}
+
+\subsection{Las dos completitudes}
+
+Son dos preguntas distintas y por eso son dos números. La primera: ¿el registrador estuvo
+encendido todas las horas con sol?
+
+\begin{equation*}
+  \text{cobertura} = \frac{\text{horas con dato}}{\text{horas de sol del día}}
+\end{equation*}
+
+Medir contra 24 horas daría un 50\,\% permanente que no informa nada, porque de noche no
+hay nada que medir. Las horas de sol salen del amanecer y el atardecer reales de esa
+fecha en ese sitio.
+
+La segunda: dentro de lo que sí grabó, ¿están todas las muestras?
+
+\begin{equation*}
+  \text{densidad} = \frac{\text{filas presentes}}{\dfrac{\text{horas con dato} \times 3600}{\text{cadencia}} + 1}
+\end{equation*}
+
+La cadencia se infiere del propio día, tomando el intervalo más frecuente, y no de una
+constante: el sistema cambió de cadencia varias veces a lo largo de su vida. Un día puede
+tener cobertura $1{,}0$ y densidad $0{,}4$: grabó de punta a punta, pero con huecos.
+
+\emph{Implementado en:} \cd{historico/calidad/barrido.py} y \cd{historico/calidad/sol.py}.
+
+\subsection{Índice de variabilidad}
+
+El índice de claridad dice \emph{cuánta} luz llegó, pero no \emph{cómo}. Un día de
+$\mathrm{kt^*}$ medio $0{,}5$ puede ser una capa uniforme de nubes o un sol entrando y
+saliendo cada dos minutos, y para un inversor no son lo mismo. Eso lo separa el largo de
+arco de la curva, comparado con el del cielo despejado:
+
+\begin{equation*}
+  \mathrm{VI} = \frac{\sum_i \sqrt{(\Delta \mathrm{GHI}_i)^2 + (\Delta t_i)^2}}
+                     {\sum_i \sqrt{(\Delta \mathrm{GHI_{cs}}_i)^2 + (\Delta t_i)^2}}
+\end{equation*}
+
+Un día perfectamente despejado da $\mathrm{VI} \approx 1$; el paso de nubes lo dispara.
+
+\begin{aviso}[title={El índice mide la curva, no el registrador}]
+El $\Delta t$ tiene que ser el real entre muestras. Con cadencias distintas el mismo día
+da índices distintos: se midieron $4{,}15$ y $23{,}81$ para el mismo $\mathrm{kt^*}$ sólo
+por cambiar la frecuencia de muestreo. Comparar índices de días con cadencias distintas
+no significa nada.
+\end{aviso}
+
+\subsection{Clasificación del día}
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{46mm}p{40mm}p{50mm}@{}}
+\toprule
+\textbf{Condición} & \textbf{Clase} & \textbf{Qué significa} \\
+\midrule
+$\mathrm{kt^*}$ alto y $\mathrm{VI}$ bajo & despejado & Sol limpio todo el día \\
+$\mathrm{kt^*}$ bajo y $\mathrm{VI}$ bajo & cubierto & Capa uniforme de nubes \\
+$\mathrm{VI}$ alto & variable & Intermitente, el peor caso para el inversor \\
+resto & parcial & \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Lo físicamente imposible}
+
+\begin{equation*}
+  \mathrm{kt^*} > 1{,}2 \ \Longrightarrow\ \text{descartado}
+\end{equation*}
+
+Significaría que llegó más energía de la que manda el sol con el cielo abierto. Sin este
+filtro, los días con lecturas imposibles se disfrazaban de días soleados: uno llegó a
+reportar un índice medio de $5{,}67$.
+
+\subsection{Valores atípicos}
+
+Puntuación robusta, con mediana y desviación absoluta mediana en lugar de media y
+desviación típica, para que los propios atípicos no inflen el umbral que debería
+detectarlos:
+
+\begin{equation*}
+  z = \frac{0{,}6745\,\big(x - \mathrm{mediana}(x)\big)}{\mathrm{MAD}(x)}
+  \qquad
+  |z| > 3{,}5 \ \Longrightarrow\ \text{atípico}
+\end{equation*}
+
+El $0{,}6745$ es el cuantil $0{,}75$ de la normal estándar, y está para que la puntuación
+se lea en la misma escala que un $z$ clásico.
+
+\emph{Implementado en:} \cd{predictivo/anomalias.py}.
+
+% =============================================================================
+\section{Evaluación}
+
+Todas se calculan sobre el histórico, simulando el reloj: el pronosticador nunca ve datos
+posteriores al instante que se le pide predecir.
+
+\begin{equation*}
+  \mathrm{MAE} = \frac{1}{n}\sum_i \big| \hat{y}_i - y_i \big|
+  \qquad
+  \text{sesgo} = \frac{1}{n}\sum_i \big( \hat{y}_i - y_i \big)
+  \qquad
+  \text{error relativo} = \frac{\mathrm{MAE}}{\bar{y}}
+\end{equation*}
+
+El sesgo va aparte del error absoluto a propósito: un método puede tener poco error medio
+y aun así equivocarse siempre hacia el mismo lado, que es un defecto distinto y se corrige
+distinto.
+
+\begin{equation*}
+  \text{destreza}\ [\%] = \left(1 - \frac{\mathrm{MAE}}{\mathrm{MAE_{ingenua}}}\right) \times 100
+\end{equation*}
+
+La referencia es la persistencia ingenua, repetir la última lectura. Una destreza de cero
+significa que el método no aporta nada sobre no hacer nada.
+
+\emph{Implementado en:} \cd{predictivo/backtest.py}.
+
+% =============================================================================
+\section{Constantes}
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{40mm}p{30mm}p{68mm}@{}}
+\toprule
+\textbf{Constante} & \textbf{Valor} & \textbf{De dónde sale} \\
+\midrule
+Latitud, longitud & $10{,}33$, $-84{,}42$ & San Carlos \\
+Altitud & 600 m & \\
+Zona horaria & UTC$-6$ & Costa Rica, sin horario de verano \\
+$P_0$ por arreglo & 1420 Wp & $4 \times 355$ Wp; 2840 Wp en total \\
+PV1: inclinación, azimut & $20^\circ$, $150^\circ$ & Arreglo inclinado \\
+PV2: inclinación, azimut & $90^\circ$, $50^\circ$ & Arreglo vertical \\
+$\varphi$ & $0{,}80$ & Asumido; lo respalda la convergencia del PR \\
+Umbral de cielo despejado & 20 W/m$^2$ & Bajo eso, el índice no significa nada \\
+Índice máximo creíble & $1{,}3$ & Por encima, se marca la lectura \\
+Índice imposible & $1{,}2$ & Por encima, se descarta el día \\
+Umbral de POA para el PR & 100 W/m$^2$ & \\
+Desajuste nocturno & $-38{,}845$ & Medido en 205 archivos \\
+Error del sensor de temperatura & $85{,}0$ °C & Código de error del DS18B20 desconectado \\
+Temperatura válida & 10 a 80 °C & Criterio de Leo Cardinale \\
+Muestreo eléctrico & 5 min & \\
+Muestreo de radiación & 15 s & Mínimo que permite la plataforma de ingesta \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{1em}
+\begin{clave}[title=Convergencia como validación]
+El factor de bifacialidad no se midió, se asumió. Lo que lo respalda es que dos arreglos
+con geometrías muy distintas, uno inclinado a $20^\circ$ y otro vertical a $90^\circ$,
+aterrizan casi en el mismo Performance Ratio: $0{,}622$ y $0{,}626$. Si el factor
+estuviera mal, la ganancia trasera quedaría mal repartida entre los dos y los números se
+separarían.
+\end{clave}
+
+\end{document}

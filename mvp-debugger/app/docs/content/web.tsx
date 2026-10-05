@@ -31,11 +31,11 @@ export function WebArquitectura() {
       />
 
       <h2>El proxy /api/* (por qué el browser nunca ve las keys)</h2>
-      <Diagram>{`  Browser ─► /api/analizador/*  (route handler, inyecta x-api-key) ─► :8010 ─► Supabase PV (RO)
-          └► /api/pronostico/*  (route handler, inyecta x-api-key) ─► :8000 ─► AgroDash / store (RO)`}</Diagram>
+      <Diagram>{`  Browser ─► /api/historico/*  (route handler, inyecta x-api-key) ─► :8010 ─► Supabase PV (RO)
+          └► /api/predictivo/*  (route handler, inyecta x-api-key) ─► :8000 ─► AgroDash / store (RO)`}</Diagram>
       <p>El browser <strong>nunca</strong> habla directo con los servicios Python ni ve las keys. Todo pasa por rutas catch-all del lado servidor:</p>
       <ul>
-        <li><IC>app/api/analizador/[...path]/route.ts</IC> y <IC>app/api/pronostico/[...path]/route.ts</IC> reenvían método + query + body al upstream.</li>
+        <li><IC>app/api/historico/[...path]/route.ts</IC> y <IC>app/api/predictivo/[...path]/route.ts</IC> reenvían método + query + body al upstream.</li>
         <li><IC>app/lib/upstream.ts</IC> hace el <IC>fetch</IC> e inyecta el header <IC>x-api-key</IC> solo si la key existe. Si el Python está caído, devuelve un 502 legible.</li>
         <li><IC>app/lib/config.ts</IC> es <strong>server-only</strong>: aquí viven las URLs y keys, nunca se serializan al cliente.</li>
       </ul>
@@ -48,10 +48,10 @@ export function WebArquitectura() {
       <Table
         head={["Variable (server)", "Default", "Para qué"]}
         rows={[
-          [<IC>ANALIZADOR_URL</IC>, <IC>http://127.0.0.1:8010</IC>, "servicio del analizador"],
-          [<IC>PRONOSTICO_URL</IC>, <IC>http://127.0.0.1:8000</IC>, "servicio del pronóstico"],
-          [<IC>ANALIZADOR_API_KEY</IC>, "(vacío en local)", "se inyecta como x-api-key al analizador"],
-          [<IC>PRONOSTICO_API_KEY</IC>, "(vacío en local)", "se inyecta como x-api-key al pronóstico"],
+          [<IC>HISTORICO_URL</IC>, <IC>http://127.0.0.1:8010</IC>, "servicio del analizador"],
+          [<IC>PREDICTIVO_URL</IC>, <IC>http://127.0.0.1:8000</IC>, "servicio del pronóstico"],
+          [<IC>HISTORICO_API_KEY</IC>, "(vacío en local)", "se inyecta como x-api-key al analizador"],
+          [<IC>PREDICTIVO_API_KEY</IC>, "(vacío en local)", "se inyecta como x-api-key al pronóstico"],
         ]}
       />
       <p>En local se corre todo con <IC>./dev.sh</IC> (levanta analizador:8010 + pronóstico:8000 + next:3000). Detalle en <a href="#infra">Despliegue</a>.</p>
@@ -64,27 +64,36 @@ export function WebConsola() {
     <Page
       crumb="La web · mvp-debugger"
       title="Vistas de la consola"
-      lead="Qué muestra cada una de las cuatro secciones de la consola (ruta /), y de qué endpoint sale cada dato."
+      lead="Qué muestra cada sección de la consola (ruta /), y de qué endpoint sale cada dato."
     >
-      <p>La consola (<IC>components/console/Console.tsx</IC>) es un shell con barra lateral: selector de agente (Analizador / Pronóstico), navegación de 4 vistas, indicador de salud de la DB (ping a <IC>/health</IC> cada 15 s) y toggle de tema. Abajo a la derecha, el chat flotante.</p>
+      <p>La consola (<IC>components/console/Console.tsx</IC>) es un shell con barra lateral: selector de agente (Histórico / Predictivo), navegación en dos mitades (las vistas del agente elegido y las fijas, que se ven siempre), indicador de salud de la DB (ping a <IC>/health</IC> cada 15 s) y toggle de tema. Abajo a la derecha, el chat flotante.</p>
 
       <h2>1 · Reconciliación</h2>
-      <p>La vista por defecto del analizador. Muestra los <strong>datos crudos en vivo</strong> (tabla <IC>electrico_corregido</IC>: timestamp, potencias PV1/PV2/AC, temperaturas) buscables y con «cargar más», más tres tarjetas de <strong>cobertura</strong> (eléctrica, radiación 15 s, performance). La idea: preguntale al chat y cruzá cada número de su respuesta contra estos datos. Sale de <IC>/api/analizador/datos/muestra</IC> y <IC>/datos/tablas</IC>.</p>
+      <p>La vista por defecto del analizador. Muestra los <strong>datos crudos en vivo</strong> (tabla <IC>electrico_corregido</IC>: timestamp, potencias PV1/PV2/AC, temperaturas) buscables y con «cargar más», más tres tarjetas de <strong>cobertura</strong> (eléctrica, radiación 15 s, performance). La idea: preguntale al chat y cruzá cada número de su respuesta contra estos datos. Sale de <IC>/api/historico/datos/muestra</IC> y <IC>/datos/tablas</IC>.</p>
 
       <h2>2 · Predicción vs Real</h2>
-      <p>La vista del pronóstico. Pinta un <strong>backtest</strong> (<IC>/api/pronostico/backtest?variable=&dias=&bucket=h</IC>) con tres series: Real (medido), Reconstrucción del método y Cielo despejado (techo). Controles: variable (irradiancia / humedad de suelo) y ventana (3/7/14 días). Debajo, KPIs de error (MAE, sesgo, error relativo, skill) y el desglose de mayores desvíos.</p>
+      <p>La vista del pronóstico. Pinta un <strong>backtest</strong> (<IC>/api/predictivo/backtest?variable=&dias=&bucket=h</IC>) con tres series: Real (medido), Reconstrucción del método y Cielo despejado (techo). Controles: variable (irradiancia / humedad de suelo) y ventana (3/7/14 días). Debajo, KPIs de error (MAE, sesgo, error relativo, skill) y el desglose de mayores desvíos.</p>
       <Note kind="warn">
-        <div>El banner lo deja explícito: <b>es un backtest, no predicciones en vivo</b>. El agente no pronostica de forma continua — predice solo cuando se le llama.</div>
+        <div>El banner lo deja explícito: <b>es un backtest, no predicciones en vivo</b>. El agente no pronostica de forma continua: predice solo cuando se le llama.</div>
       </Note>
 
       <h2>3 · Rendimiento</h2>
-      <p>KPIs reales del sistema (energía por arreglo, PR, GHI media/kt*) llamando las tools <IC>energia_por_arreglo</IC>, <IC>performance_ratio</IC>, <IC>irradiancia_resumen</IC>, <IC>temperatura_por_arreglo</IC>. Series graficadas por período (todo / 2026 / mayo) y variable (potencia, irradiancia, kt*, PR), con comparación PV1 vs PV2. Incluye un scatter <strong>irradiancia → potencia PV1</strong>. Las series salen de <IC>/api/analizador/datos/serie</IC>.</p>
+      <p>KPIs reales del sistema (energía por arreglo, PR, GHI media/kt*) llamando las tools <IC>energia_por_arreglo</IC>, <IC>performance_ratio</IC>, <IC>irradiancia_resumen</IC>, <IC>temperatura_por_arreglo</IC>. Series graficadas por período (todo / 2026 / mayo) y variable (potencia, irradiancia, kt*, PR), con comparación PV1 vs PV2. Incluye un scatter <strong>irradiancia → potencia PV1</strong>. Las series salen de <IC>/api/historico/datos/serie</IC>.</p>
       <Note>
         <div>Honestidad sobre la cadencia variable: el gráfico de «potencia» es <b>potencia media por bucket</b> (robusta al muestreo que cambia de 2 s a 5 min); la energía real en kWh vive en el KPI.</div>
       </Note>
 
-      <h2>4 · Costo y uso</h2>
-      <p>Cuánto cuesta operar el agente. El <strong>acumulado real</strong> (<IC>GET /uso</IC>, persistido: tokens, USD, nº consultas) y el <strong>gasto de la sesión</strong> — cada pregunta que hacés suma su costo, con gráfico acumulado, split entrada/salida y proyección. Tarifa del modelo <IC>claude-haiku-4-5</IC> ($1 in / $5 out por millón de tokens).</p>
+      <h2>4 · Arquitectura del agente</h2>
+      <p>El agente de pronóstico dibujado como grafo, leído en vivo de <IC>GET /arquitectura</IC>: sus herramientas con el <IC>input_schema</IC> completo, los frenos y el interruptor de <strong>modo</strong>. Los dos modos se distinguen por una sola cosa: si el agente puede ver la medición del sensor. Con <strong>medición visible</strong> conserva <IC>backtest</IC> y juzga el método; con <strong>medición oculta</strong> el servicio se la quita, que es la única garantía real de que predice sin conocer el resultado. Cada nodo abre una ficha con «Qué hace» y «En qué ayuda».</p>
+
+      <h2>5 · Base de datos</h2>
+      <p>Qué se le hizo al crudo. El recorrido en cinco actos con el dato a la vista en cada paso, partido por la línea que separa lo que se decide <strong>al cargar</strong> (irreversible) de lo que se decide <strong>al consultar</strong> (una vista SQL, reescribible). Debajo, once tratamientos numerados como en el documento que revisó Leo Cardinale. Es un corte fechado, no una lectura viva: el servicio del pronóstico no lee las tablas fotovoltaicas.</p>
+
+      <h2>6 · Costo y uso</h2>
+      <p>Cuánto cuesta operar el agente. El <strong>acumulado real</strong> (<IC>GET /uso</IC>, persistido: tokens, USD, nº consultas) y el <strong>gasto de la sesión</strong>: cada pregunta que hacés suma su costo, con gráfico acumulado, split entrada/salida y proyección. Tarifa del modelo <IC>claude-haiku-4-5</IC> ($1 in / $5 out por millón de tokens).</p>
+
+      <h2>7 · Salud del sistema</h2>
+      <p>Diagnóstico del servicio y de la cobertura de datos: qué variables tiene el store, hasta cuándo llegan, cuál fue la última predicción guardada y si algo dejó de responder.</p>
     </Page>
   );
 }
@@ -100,7 +109,7 @@ export function WebChat() {
       <p><IC>components/chat/ChatWidget.tsx</IC>: un bubble abajo-derecha que se expande a un panel. <strong>Hilos separados por agente</strong> (no se mezclan), persistidos en <IC>localStorage</IC>. Manda el historial de texto limpio + el contexto de la vista actual a <IC>/api/{"<agente>"}/chat</IC>, y renderiza:</p>
       <ul>
         <li>La respuesta (con markdown mínimo: negritas).</li>
-        <li><strong>Gráficos inline</strong> de datos reales — cuando una tool devolvió el marcador <IC>_grafico</IC>, se pinta como SVG (sin librerías, <IC>app/lib/charts.ts</IC>).</li>
+        <li><strong>Gráficos inline</strong> de datos reales: cuando una tool devolvió el marcador <IC>_grafico</IC>, se pinta como SVG (sin librerías, <IC>app/lib/charts.ts</IC>).</li>
         <li>Un indicador con frases genéricas mientras espera, y una <strong>traza plegable</strong> por respuesta (tools usadas, búsquedas web, costo).</li>
       </ul>
 
@@ -123,7 +132,7 @@ export function WebChat() {
         head={["Componente", "Qué hace"]}
         rows={[
           [<IC>Ask</IC>, "Caja de pregunta → POST /preguntar → traza completa (turno LLM, tools, respuesta, costo)"],
-          [<IC>ToolRunner</IC>, "Ejecuta una tool atómica directo (sin LLM) con los params que quieras — POST /tool/{nombre}"],
+          [<IC>ToolRunner</IC>, "Ejecuta una tool atómica directo (sin LLM) con los params que quieras: POST /tool/{nombre}"],
           [<IC>DataExplorer</IC>, "Cobertura, filas crudas y series graficadas de cada relación de la Supabase PV"],
           [<IC>Kpis</IC>, "Llama las tools con período abierto: estado actual del sistema"],
           [<IC>PronosticoPanel</IC>, "Series del store (irradiancia + humedad) con resumen/sparkline + detección de anomalías"],

@@ -4,7 +4,23 @@ Web mínima (Next.js) para **probar y depurar en vivo** los dos agentes del proy
 con datos reales. La idea no es diseño: es ver **qué consulta el agente, qué calcula
 y cómo redacta**, y poder cruzar cada número contra los datos de las bases.
 
-## Qué muestra
+## Dos secciones, una sola aplicación
+
+- **Sistema de evaluación de datos** (`/`, sección principal): análisis del
+  histórico fotovoltaico por rango de fechas. Secciones: Tablero (`/`), Series
+  (`/series`), Estadística (`/estadistica`), Calidad (`/calidad`) y Comparativa
+  (`/comparativa`). El rango vive en la URL (`?desde=&hasta=&granularidad=`), así
+  que una pantalla se comparte tal como se está mirando. `hasta` es **exclusivo**.
+- **Consola de agentes** (`/consola`, sección secundaria): el debugger que
+  documenta el resto de este archivo. Estaba en `/` y solo cambió de dirección.
+
+Los algoritmos se calculan en Python (`agente-historico/src/historico/analitica/`)
+y el frontend **no calcula estadística**: recibe los números y los pinta. Las
+fundaciones del sistema de análisis viven en `app/lib/analitica/` (contratos Zod,
+rango de la URL, cliente tipado) y `app/components/charts/` (primitivas de
+gráfico sobre ECharts, con carga, error y vacío resueltos).
+
+## Qué muestra la consola de agentes
 
 Por cada pregunta, el debugger renderiza la **traza completa** del agente:
 
@@ -16,23 +32,96 @@ Por cada pregunta, el debugger renderiza la **traza completa** del agente:
 Regla de oro para verificar: **todo número de la respuesta final tiene que aparecer
 en la salida de alguna tool**. Si no, es una alerta (el modelo estaría alucinando).
 
-### Analizador PV (`/analizador`)
+### Agente Histórico (`/analizador`)
 - Q&A con traza sobre el histórico fotovoltaico (Supabase PV).
 - **KPIs**: llama las 6 tools con período abierto (estado actual del sistema).
 - **Runner manual de tools**: ejecuta una tool atómica sin el LLM, con tus params.
 - **Explorador de datos**: cobertura, filas crudas y series graficadas de cada
   relación (crudas, corregidas, calibradas, performance).
 
-### Pronóstico ambiental (`/pronostico`)
+### Agente Predictivo (`/pronostico`)
 - Q&A con traza (traduce el horizonte → `forecast` → redacta).
 - Series del store (irradiancia + humedad de suelo) con resumen y sparkline.
 - Detección de anomalías determinista.
 
+### Calidad de datos (`Calidad de datos`)
+
+Lo que encontró el **Agente Histórico** barriendo el histórico PV día por día: completitud,
+validez, duplicados, y la caracterización del cielo. Es una vista **transversal**, no de un
+agente: describe los datos, no el comportamiento de un modelo.
+
+La pieza central es el **mapa de días**, y es un calendario y no una tabla a propósito: el
+hallazgo más grande del histórico es que faltan 295 de los 569 días de calendario, y eso en
+una tabla de 274 filas no se ve, porque una tabla solo muestra lo que existe.
+
+Son **dos tiras**, una por fuente, porque el veredicto combinado escondía lo más accionable:
+la radiación tiene 126 días sanos y el eléctrico 4. Fundidas en una sola barra, ambas se ven
+igual de rojas.
+
+El veredicto de cada día lo decide **el servicio**, no la vista. Si lo calculara el cliente,
+la consola y el reporte del CLI podrían discrepar sobre si un día sirve, que es la clase de
+desacuerdo que nadie detecta hasta que ya tomó una decisión con él. Y «grave» no es cualquier
+hallazgo grave: un día no deja de servir porque 3 de 144 lecturas de una de trece columnas se
+salieran de rango.
+
+La detección **no corre desde acá**: es por lotes (`python -m comparador todo`) y deja los
+hallazgos en la base. Si la consola pudiera dispararla, cada visita recorrería los 274 días y
+el resultado dependería de quién mire y cuándo. Por eso el proxy solo expone `GET`.
+
+## Pruebas
+
+```bash
+npm test        # vitest: lógica del rango, contratos Zod y estados de los gráficos
+npm run verificar   # renderiza las vistas de la consola (ver abajo)
+```
+
+Son dos cosas distintas y las dos hacen falta: `npm test` prueba comportamiento en
+jsdom; `npm run verificar` afirma propiedades del HTML de las vistas ya escritas.
+
+## Verificar la UI sin navegador
+
+La extensión de Chrome que daría control del navegador **no conecta**, así que las vistas se
+verifican compilando los componentes y renderizándolos de verdad con `react-dom/server`:
+
+```bash
+npm run verificar
+```
+
+No es un mock: es el mismo componente con los mismos datos. Lo que se afirma no es «compila»
+sino **propiedades del resultado**: que no vuelva el vocabulario viejo, que no queden
+coordenadas absolutas, presupuestos de contenido, y que el CSS que la vista usa exista.
+
+## Linting y deuda conocida
+
+```bash
+npm run lint        # el sistema de analisis: tiene que quedar en CERO
+npm run lint:todo   # la app entera: ensena la deuda que ya estaba
+```
+
+La separacion es deliberada. `next lint` sobre todo el repositorio devuelve **187
+errores preexistentes**, ninguno introducido por el sistema de analisis:
+
+| Cuantos | Regla | Donde |
+|---|---|---|
+| 176 | `react/jsx-key` | `app/docs/content/**` (arrays de JSX en la documentacion) |
+| 6 | `react/no-unescaped-entities` | idem |
+| 5 | `react-hooks/exhaustive-deps` | `Health.tsx`, `Uso.tsx`, `PerfView.tsx` |
+
+Meterlos en la misma puerta que el codigo nuevo tendria el efecto contrario al que
+se busca: la puerta estaria siempre en rojo, y una puerta que siempre esta en rojo
+no frena nada. Por eso `lint` acota el alcance a lo que si podemos mantener limpio
+y `lint:todo` deja la cuenta a la vista para saldarla aparte.
+
+Los cinco `exhaustive-deps` son los unicos con riesgo real (un `useEffect` con
+dependencias incompletas lee valores viejos sin avisar). Los 182 de `docs/content`
+son de una vista que se renderiza una vez y no cambia.
+
 ## Arquitectura
 
 ```
-Browser ─► /api/analizador/*  (route handler, inyecta x-api-key)  ─► :8010  analizador.api  ─► Supabase PV (RO)
-        └► /api/pronostico/*  (route handler, inyecta x-api-key)  ─► :8000  pronostico.api  ─► store parquet / Supabase (RO)
+Browser ─► /api/historico/*  (route handler, inyecta x-api-key)  ─► :8010  analizador.api  ─► Supabase PV (RO)
+        ├► /api/predictivo/*  (route handler, inyecta x-api-key)  ─► :8000  predictivo.api  ─► store parquet / Supabase (RO)
+        └► /api/historico/*  (route handler, solo GET)           ─► :8020  comparador.api  ─► Supabase PV (RO)
 ```
 
 - El browser **nunca** habla directo con los servicios Python ni ve las API keys:
@@ -41,7 +130,7 @@ Browser ─► /api/analizador/*  (route handler, inyecta x-api-key)  ─► :80
 - Los endpoints nuevos que consume el debugger se agregaron a los propios agentes
   (una sola fuente de verdad del lazo LLM, no se reimplementa en Node):
   - `POST /preguntar` → corre el agente y devuelve la **traza**.
-  - Analizador: `GET /datos/tablas|columnas|muestra|serie` (peek read-only, allowlist).
+  - Histórico: `GET /datos/tablas|columnas|muestra|serie` (peek read-only, allowlist).
   - Pronóstico: `GET /serie` (peek del store).
 - Todo es **solo lectura** sobre las bases.
 
@@ -49,11 +138,11 @@ Browser ─► /api/analizador/*  (route handler, inyecta x-api-key)  ─► :80
 
 ```bash
 cd mvp-debugger
-./dev.sh          # levanta analizador:8010 + pronostico:8000 + next:3000
+./dev.sh          # levanta analizador:8010 + pronostico:8000 + comparador:8020 + next:3000
 ```
 
-`dev.sh` toma la `ANTHROPIC_API_KEY` de `agente-pronostico/.env`, usa el venv de
-`agente-pronostico/.venv`, y abre <http://localhost:3000>. Ctrl-C cierra todo.
+`dev.sh` toma la `ANTHROPIC_API_KEY` de `agente-predictivo/.env`, usa el venv de
+`agente-predictivo/.venv`, y abre <http://localhost:3000>. Ctrl-C cierra todo.
 
 ### Contra los agentes de la EC2 (sin montar nada local)
 
@@ -68,7 +157,7 @@ solo —8000, 8010 y 3000 suelen estar ocupados en una máquina de desarrollo—
 las URLs del `.env.local` con los puertos de esa corrida y cierra el túnel al salir.
 
 Requiere `.env.local` con `DEBUGGER_PASSWORD` (si no, no vas a poder entrar) y la llave
-SSH en `~/aws/visione-key.pem` (override: `EC2_KEY`, `EC2_HOST`, `CONSOLA_PORT`).
+SSH en `~/.ssh/VisioneMetrics.pem` (override: `EC2_KEY`, `EC2_HOST`, `CONSOLA_PORT`).
 
 ## Acceso
 
@@ -81,12 +170,15 @@ la cookie: rotarlo cierra todas las sesiones sin cambiarle la contraseña al equ
 
 ```bash
 # 1) analizador (usa DATABASE_URL de la raíz + ANTHROPIC_API_KEY del entorno)
-cd ..; set -a; . agente-pronostico/.env; set +a
-PYTHONPATH=agente-analizador/src agente-pronostico/.venv/bin/python \
+cd ..; set -a; . agente-predictivo/.env; set +a
+PYTHONPATH=agente-historico/src agente-predictivo/.venv/bin/python \
   -m uvicorn analizador.api:app --port 8010
 
 # 2) pronostico
-cd agente-pronostico && .venv/bin/python -m uvicorn pronostico.api:app --port 8000
+cd agente-predictivo && .venv/bin/python -m uvicorn predictivo.api:app --port 8000
+
+# comparador (venv propio; sirve el store de hallazgos, no lo calcula)
+cd agente-historico && .venv/bin/python -m uvicorn comparador.api:app --port 8020
 
 # 3) web
 cd ../mvp-debugger && npm install && npm run dev
@@ -98,10 +190,11 @@ cd ../mvp-debugger && npm install && npm run dev
 
 | Var | Default | Para qué |
 |---|---|---|
-| `ANALIZADOR_URL` | `http://127.0.0.1:8010` | servicio del analizador |
-| `PRONOSTICO_URL` | `http://127.0.0.1:8000` | servicio del pronóstico |
-| `ANALIZADOR_API_KEY` | (vacío) | si el servicio exige `x-api-key` |
-| `PRONOSTICO_API_KEY` | (vacío) | idem |
+| `HISTORICO_URL` | `http://127.0.0.1:8010` | servicio del analizador |
+| `PREDICTIVO_URL` | `http://127.0.0.1:8000` | servicio del pronóstico |
+| `HISTORICO_URL` | `http://127.0.0.1:8020` | servicio del comparador |
+| `HISTORICO_API_KEY` | (vacío) | si el servicio exige `x-api-key` |
+| `PREDICTIVO_API_KEY` | (vacío) | idem |
 
 En local los servicios corren sin key (dejá las keys vacías). Para apuntar a los
 servicios ya desplegados en la EC2, cambiá las URLs y pegá las keys.

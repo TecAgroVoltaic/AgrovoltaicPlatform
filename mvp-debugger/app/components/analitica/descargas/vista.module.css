@@ -1,0 +1,244 @@
+/* Lo que esta vista necesita y el cascarón no tiene. Las tarjetas, los botones y
+   las casillas ya viven en globals.css, que es de todos. */
+
+/* Cada paso es su propio contexto de medida. La pregunta que deciden las
+   rejillas de abajo es cuánto ancho tiene LA TARJETA, no la ventana: la ventana
+   no sabe cuánto se llevó la barra lateral, y con ella desplegada o plegada la
+   misma ventana deja anchos muy distintos. */
+.grupo {
+  container-type: inline-size;
+  /* Un fieldset trae un ancho mínimo intrínseco propio que ignora al padre, y es
+     lo que produce el desplazamiento lateral del cuerpo en un teléfono. */
+  min-width: 0;
+  min-inline-size: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.leyenda {
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 10.5px;
+  color: var(--ink2);
+  font-weight: 600;
+  padding: 0;
+  margin: 0;
+}
+
+/* Las nueve tablas y los tres formatos: la misma tarjeta seleccionable. */
+.tablas,
+.formatos {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 1fr;
+}
+
+.opcion {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  min-width: 0;
+  padding: 11px 13px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel2);
+  cursor: pointer;
+}
+
+.opcion:hover {
+  border-color: var(--accent);
+}
+
+.opcion:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.opcionOn {
+  border-color: var(--accent);
+  background: var(--raise);
+}
+
+.opcion input {
+  margin-top: 3px;
+  accent-color: var(--accent);
+  flex: 0 0 auto;
+}
+
+.opcionCuerpo {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.opcionTitulo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 13.5px;
+  font-weight: 560;
+  letter-spacing: -0.01em;
+}
+
+.opcionDatos {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* Contador de columnas elegidas y los atajos «todas» / «ninguna». */
+.barra {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.columnas {
+  display: grid;
+  gap: 6px 14px;
+  grid-template-columns: 1fr;
+}
+
+.columna {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  min-width: 0;
+  padding: 4px 2px;
+  cursor: pointer;
+}
+
+.columna input {
+  margin-top: 3px;
+  accent-color: var(--accent);
+  flex: 0 0 auto;
+}
+
+.columnaCuerpo {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  /* Un nombre de columna largo se parte en vez de ensanchar la rejilla. */
+  overflow-wrap: anywhere;
+  font-size: 12.5px;
+}
+
+.variante {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 4px;
+  border-top: 1px solid var(--line);
+}
+
+.casilla {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  min-width: 0;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.casilla input {
+  margin-top: 3px;
+  accent-color: var(--accent);
+  flex: 0 0 auto;
+}
+
+.casilla > span {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.casillaOff {
+  cursor: default;
+  color: var(--muted);
+}
+
+/* Todo lo que hay que leer ANTES de bajar el archivo. Amarillo de aviso, no rojo
+   de error: nada está roto, hay algo que saber. */
+.aviso {
+  margin: 0;
+  font-size: 12px;
+  color: var(--warn);
+}
+
+.orden {
+  border-left: 2px solid var(--accent);
+  padding: 2px 0 2px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ordenLista {
+  margin: 0;
+  padding-left: 1.7em;
+  font-size: 12px;
+  color: var(--ink2);
+}
+
+.ordenLista li {
+  margin: 2px 0;
+  overflow-wrap: anywhere;
+}
+
+.resumen {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink2);
+}
+
+.cifra {
+  margin: 0;
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.estado {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.estado p {
+  margin: 0;
+}
+
+/* Los tres escalones. Salen del ancho de la TARJETA, ya descontados sus 20 px de
+   relleno a cada lado: a 360 px de ventana la tarjeta mide unos 288, así que
+   todo cae en una columna y no hay desplazamiento lateral que corregir. */
+@container (min-width: 420px) {
+  .columnas {
+    grid-template-columns: 1fr 1fr;
+  }
+  .formatos {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@container (min-width: 520px) {
+  .tablas {
+    grid-template-columns: 1fr 1fr;
+  }
+  .ordenLista {
+    columns: 2;
+  }
+}
+
+@container (min-width: 760px) {
+  .columnas {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}

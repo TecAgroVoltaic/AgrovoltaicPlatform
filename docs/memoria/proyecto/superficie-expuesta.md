@@ -14,7 +14,7 @@ fuera** (curl contra la IP pública). Vale para `52.1.28.77`.
 | Puerto | Proceso | Bind | ¿Alcanzable desde internet? |
 |---|---|---|---|
 | 80 / 443 | nginx (`agent-runtime-loadbalancer-1`) | `0.0.0.0` | **Sí** — es la entrada pública |
-| 8000 | uvicorn · agente de pronóstico | `0.0.0.0` | **No** (probado: sin respuesta) |
+| 8000 | uvicorn · Agente Predictivo | `0.0.0.0` | **No** (probado: sin respuesta) |
 | 8010 | uvicorn · agente analizador | `0.0.0.0` | **No** (probado: sin respuesta) |
 | 5433 | `agrodash-pg` (réplica del dump) | **`127.0.0.1`** | **No** — atado a loopback |
 | 6379 | redis del Agent-Runtime | `0.0.0.0` | no verificado desde fuera |
@@ -54,3 +54,35 @@ poder rotar la firma sin cambiarle la contraseña al equipo.
 - Rotar la clave débil del rol de prueba pendiente desde [[conectividad-tailnet]].
 
 Relacionado: [[agrodash-local]], [[mvp-debugger]], [[integracion-visioneflow]], [[conectividad-tailnet]].
+
+## 2026-08-19 — claves con nombre y la ruta pública saneada
+
+**Se cerró la fuga de `/salud/ingesta`.** Ese endpoint es abierto a propósito (monitoreo
+externo sin clave) pero devolvía el reporte entero, incluido `ultimo_error_etl.error` con el
+mensaje CRUDO de Postgres: un fragmento de `COPY` con el UUID de un sensor y el nombre de una
+caja, más `por_variable` con errores de conexión y puertos internos. Ahora pasa por
+`api._publico()`: sobrevive el HECHO (estado, edades, si está congelada, si la corrida terminó
+bien y cuántas filas trajo) y se van los mensajes. El detalle completo sigue en `/salud/panel`,
+que exige clave. Hay prueba que verifica que un UUID de ejemplo no salga.
+
+**Una clave compartida pasó a claves con nombre** (`claves.py`, `FORECAST_API_KEYS` con pares
+`nombre:clave`). Tres razones, todas operativas:
+- **Revocar.** Con una sola clave, sacarle el acceso a alguien obliga a rotarla para todos: la
+  consola, los flujos de VisioneFlow y cualquier script. Ahora se borra un par.
+- **Atribuir.** El rate-limit (12/min) y el tope de gasto se aplican por identidad. Con la clave
+  compartida todos caían en el mismo balde y un script en bucle dejaba sin servicio a las
+  personas. Ahora cada consumidor se frena solo.
+- **No pasear material de clave.** `_identidad()` usaba `key:{primeros 8 caracteres}` para el
+  limitador y los logs. Ahora usa el nombre (`cliente:consola`).
+
+`FORECAST_API_KEY` (una sola, sin nombre) se sigue aceptando como `legado`: hay flujos de
+VisioneFlow con esa clave ya pegada.
+
+Claves vigentes: `consola`, `visioneflow`, `izack`. Los valores viven en
+`~/.agrovoltaic-claves.txt` (chmod 600, fuera del repo) y en `forecast.env` de la EC2.
+
+**Consecuencia: se eliminó el túnel SSH.** La consola local apuntaba a `127.0.0.1:18000`, un
+túnel a la EC2 que se caía cada vez que la Mac dormía (Tailscale no cubre ese tramo: la Mac y la
+EC2 están en tailnets distintas). Ahora `.env.local` apunta a `api.flow.visione-edge.com`, que
+ya existía y es lo que usa producción. Medido: 0,21 s por el endpoint público contra 0,28-0,38 s
+por el túnel, o sea más rápido y sin piezas móviles.

@@ -1,11 +1,89 @@
 "use client";
 import { Page, Note, IC, Table, Meta, Pre, Diagram } from "../ui";
+import { useMapaHistorico } from "@/app/components/console/arquitectura/useMapaHistorico";
+import { valorUmbral, type MapaHistorico } from "@/app/components/console/arquitectura/mapaHistorico";
 
-export function Analizador() {
+/** Los umbrales y los tipos de hallazgo, LEÍDOS DEL AGENTE.
+ *
+ * No están transcritos acá a propósito. Una tabla escrita a mano envejece sin que
+ * nadie se entere, y entonces el documento y el agente discrepan sobre el número
+ * que decide si un dato sirve: quien lea la doc creerá que el criterio es uno y
+ * el agente aplicará otro. Salen del mismo `GET /arquitectura` que dibuja el mapa
+ * de la consola, que a su vez se deriva del código.
+ */
+function CriteriosDelHistorico() {
+  const { mapa, esRespaldo, cargando } = useMapaHistorico();
+  if (cargando) return <p className="dx-muted">Leyendo los criterios del agente…</p>;
+  if (!mapa) return null;
+  return <TablasCriterios mapa={mapa} esRespaldo={esRespaldo} />;
+}
+
+/** Las tablas, sin carga de red.
+ *
+ * Separadas del componente de arriba para que se puedan RENDERIZAR con un mapa
+ * real en `scripts/verificar-vistas.mjs`: el efecto que trae los datos no corre
+ * en un render estático, así que dentro del wrapper lo único verificable sería
+ * la línea de «cargando». No hay navegador con el que mirar esto.
+ */
+export function TablasCriterios({ mapa, esRespaldo = false }: {
+  mapa: MapaHistorico; esRespaldo?: boolean;
+}) {
+  return (
+    <>
+      <h2>Umbrales: los números que deciden si un dato sirve</h2>
+      <p>
+        No son física, son <strong>política</strong>: alguien los eligió y se pueden
+        discutir sin abrir el código. Salen leídos de donde se aplican, así que esta
+        tabla no puede quedar desactualizada respecto del agente. Verlos es lo que
+        convierte «el agente dice que el día es malo» en «lo marca porque cubrió menos
+        del {Math.round((mapa.umbrales.find((u) => u.clave === "COBERTURA_MINIMA")?.valor ?? 0) * 100)}
+        {" "}% de las horas de sol».
+      </p>
+      <Table
+        head={["Umbral", "Valor", "Qué decide"]}
+        rows={mapa.umbrales.map((u) => [
+          <IC>{u.clave}</IC>, valorUmbral(u.valor), u.que_decide,
+        ])}
+      />
+
+      <h2>Qué sabe detectar ({mapa.hallazgos.tipos.length} tipos)</h2>
+      <p>
+        Lo que el barrido tipifica. Cada hallazgo se guarda con su severidad
+        ({mapa.hallazgos.severidades.join(" · ")}) y con cuántas lecturas afecta, que es
+        lo que después decide el veredicto del día ({mapa.hallazgos.veredictos.join(" · ")}).
+      </p>
+      <Table
+        head={["Tipo", "Qué es"]}
+        rows={mapa.hallazgos.tipos.map((t) => [<IC>{t.tipo}</IC>, t.que_es])}
+      />
+
+      <h2>Garantías</h2>
+      <p>
+        Ninguna depende de que el modelo obedezca una instrucción. Todas son
+        consecuencia de cómo está armado el sistema, que es la única clase de garantía
+        que sigue valiendo cuando el modelo se equivoca.
+      </p>
+      <Table
+        head={["Qué se garantiza", "Cómo"]}
+        rows={mapa.garantias.map((g) => [g.que, g.como])}
+      />
+      {esRespaldo && (
+        <Note kind="warn">
+          <div>
+            <b>Copia guardada.</b> El servicio no respondió, así que estas tablas salen
+            de la última captura del código y no del agente en vivo.
+          </div>
+        </Note>
+      )}
+    </>
+  );
+}
+
+export function Historico() {
   return (
     <Page
-      crumb="Agente Analizador PV"
-      title="Analizador PV"
+      crumb="Agente Histórico"
+      title="Agente Histórico"
       lead="Agente de preguntas y respuestas sobre el histórico fotovoltaico de San Carlos. El LLM solo orquesta; los números salen siempre de herramientas que hacen SQL de solo-lectura sobre las vistas ya limpias."
     >
       <Meta items={[
@@ -13,16 +91,17 @@ export function Analizador() {
         ["Puerto", "8010"],
         ["Modelo", "claude-haiku-4-5"],
         ["max_tokens", "2048"],
-        ["Entrypoint", "analizador.api:app"],
+        ["Entrypoint", "historico.api:app"],
         ["Fuente", "Supabase PV (RO)"],
       ]} />
 
       <h2>El lazo del agente</h2>
-      <p>Clase <IC>Analizador</IC> (<IC>agent/agent.py</IC>): tool-use manual con el SDK de Anthropic (no el tool-runner beta) para control total y no filtrar el razonamiento interno. El agente se construye de forma <strong>perezosa</strong> en el primer <IC>/preguntar</IC> o <IC>/chat</IC> — así <IC>/health</IC> y <IC>/tool</IC> no dependen de la <IC>ANTHROPIC_API_KEY</IC>.</p>
+      <p>Clase <IC>Historico</IC> (<IC>agent/agent.py</IC>): tool-use manual con el SDK de Anthropic (no el tool-runner beta) para control total y no filtrar el razonamiento interno. El agente se construye de forma <strong>perezosa</strong> en el primer <IC>/preguntar</IC> o <IC>/chat</IC>: así <IC>/health</IC> y <IC>/tool</IC> no dependen de la <IC>ANTHROPIC_API_KEY</IC>.</p>
       <p>La <strong>barrera anti-invención</strong> es estructural + de prompt: el modelo no tiene acceso a la DB (toda cifra pasa por el <IC>DISPATCH</IC> de tools) y el system prompt ordena «NUNCA calcules ni inventes números». La comparación PV1 vs PV2 no necesita tool dedicada: <IC>performance_ratio</IC>, <IC>energia_por_arreglo</IC> y <IC>temperatura_por_arreglo</IC> ya devuelven ambos arreglos en una sola llamada.</p>
 
-      <h2>Herramientas (8)</h2>
-      <p>Registro en <IC>tools/__init__.py</IC>: cada módulo expone un <IC>SCHEMA</IC> (lo que ve el LLM) y un <IC>run(**params)</IC>. Las 6 atómicas comparten firma <IC>run(desde?, hasta?)</IC>.</p>
+      <h2>Herramientas</h2>
+      <p>Registro en <IC>tools/__init__.py</IC>: cada módulo expone un <IC>SCHEMA</IC> (lo que ve el LLM) y un <IC>run(**params)</IC>. Se dividen en <strong>dos familias</strong>, y la división no es cosmética: llegan a destinos distintos. Las de <b>análisis</b> leen las vistas corregidas y responden <i>qué pasó</i>; las de <b>calidad</b> no calculan nada, leen el store que dejó el barrido y responden <i>si el dato sirve</i>. El mapa vivo de las dos familias, con el contrato de cada herramienta, está en la <a href="/#arq">vista de arquitectura de la consola</a>.</p>
+      <p>Las de análisis que agregan sobre un período incrustan el bloque <IC>confianza</IC> en su propia respuesta: dice sobre cuántos días <i>utilizables</i> se calculó el número. Va dentro del payload y no en el prompt, así que el modelo no puede reportar la cifra sin ver su fiabilidad.</p>
       <Table
         head={["Tool", "Devuelve", "Relación DB"]}
         rows={[
@@ -42,7 +121,7 @@ export function Analizador() {
       </Note>
 
       <h2>Endpoints HTTP</h2>
-      <p>Definidos en <IC>api.py</IC>. Los marcados exigen <IC>x-api-key</IC> solo si <IC>ANALIZADOR_API_KEY</IC> está en el entorno (comparación en tiempo constante).</p>
+      <p>Definidos en <IC>api.py</IC>. Los marcados exigen <IC>x-api-key</IC> solo si <IC>HISTORICO_API_KEY</IC> está en el entorno (comparación en tiempo constante).</p>
       <Table
         head={["Método · Path", "Auth", "Qué hace"]}
         rows={[
@@ -59,6 +138,8 @@ export function Analizador() {
         ]}
       />
 
+      <CriteriosDelHistorico />
+
       <h2>Conexión a datos</h2>
       <p>Pool <IC>psycopg_pool.ConnectionPool</IC> (perezoso, <IC>min=1, max=6</IC>) forzado a <strong>solo-lectura</strong> (<IC>SET SESSION ... READ ONLY</IC>). Motivo: abrir conexión al pooler de Supabase cuesta ~700 ms; reusar evita pagarlo por request. El commit <IC>4261062</IC> («pool + cobertura en 1 consulta») bajó una consulta de 8 s a 0,3 s.</p>
       <Note>
@@ -68,11 +149,11 @@ export function Analizador() {
   );
 }
 
-export function Pronostico() {
+export function Predictivo() {
   return (
     <Page
-      crumb="Agente Pronóstico"
-      title="Pronóstico ambiental"
+      crumb="Agente Predictivo"
+      title="Agente Predictivo"
       lead="Agente que pronostica irradiancia y humedad de suelo a corto plazo, y reconstruye honestamente el pasado (backtest). No usa machine learning: usa física del cielo despejado."
     >
       <Meta items={[
@@ -82,6 +163,14 @@ export function Pronostico() {
         ["Horizonte", "1 min – 6 h"],
         ["Fuente", "AgroDash → store Supabase"],
       ]} />
+
+      <Note>
+        <div><b>Vale más verlo que leerlo.</b> La consola tiene una <a href="/">vista de
+        arquitectura</a> que dibuja este agente como un grafo: sus herramientas, qué recibe
+        y devuelve cada una, y el interruptor de modo que apaga <IC>backtest</IC> cuando el
+        agente tiene que predecir sin ver la medición. Se lee del servicio (<IC>GET /arquitectura</IC>),
+        así que muestra el agente como está hoy, no como estaba cuando se escribió esta página.</div>
+      </Note>
 
       <h2>Qué pronostica</h2>
       <Table
@@ -102,10 +191,13 @@ export function Pronostico() {
         <li>Cielo despejado: modelo <strong>Ineichen</strong> de pvlib con turbidez Linke climatológica.</li>
         <li>De noche (cielo despejado ≤ 20 W/m²) el valor es exactamente <IC>0.0</IC>.</li>
         <li>Banda de incertidumbre: ±1σ de kt* reciente reconstruido a GHI.</li>
-        <li>El «ahora» por defecto es el <strong>último timestamp del store</strong>, no el reloj de pared.</li>
+        <li>El «ahora» por defecto es el <strong>último timestamp del store</strong>, no el reloj de pared. Se puede <strong>anclar en otro instante</strong> (campo <IC>ahora</IC> de <IC>POST /forecast</IC>): el forecaster sigue viendo solo datos anteriores a ese momento.</li>
         <li><IC>parse_horizon("dos horas") → 7200</IC> es determinista (sin LLM) y es la fuente de verdad del horizonte.</li>
       </ul>
       <p>La humedad de suelo persiste la <strong>mediana</strong> de lecturas recientes (el suelo cambia lento y es muy autocorrelacionado); no tiene análogo de cielo despejado.</p>
+      <Note>
+        <div><b>La matemática completa está en <a href="#metodo">Método y fórmulas</a>:</b> la ecuación de Ineichen, por qué el umbral de 20 W/m², por qué mediana y no media, cómo se arma la banda, las cuatro métricas del backtest y el z-score robusto de anomalías.</div>
+      </Note>
 
       <h2>Dos modalidades: pronóstico vs. backtest</h2>
       <Table
@@ -114,9 +206,14 @@ export function Pronostico() {
           ["Qué es", "Desde el «ahora» hacia adelante (≤ 6 h)", "«Cómo habría predicho» una fecha pasada vs. lo medido"]        ,
           ["Dispara", <><IC>POST /forecast</IC> o la tool forecast</>, <><IC>GET /backtest</IC> o la tool backtest (solo en /chat)</>],
           ["Datos", "get_recent_data(now, 60min), barrera timestamp < now", "la MISMA serie del store, remuestreada, con .shift(1)"],
-          ["Es predicción real", "sí", "no — evalúa el método"],
+          ["Es predicción real", "sí (salvo si se ancla en el pasado)", "no: evalúa el método"],
         ]}
       />
+      <h3>Instante de referencia</h3>
+      <p>Con la ingesta congelada desde el 23-jul-2026, el último dato cae de madrugada: pronosticar «desde el último dato» da irradiancia 0 siempre, porque de noche <em>es</em> 0. Por eso <IC>POST /forecast</IC> acepta <IC>ahora</IC> (ISO): ancla el pronóstico en un instante del histórico (p. ej. con sol) y devuelve un número real. Como ese momento ya pasó, la respuesta adjunta <IC>medido</IC> con lo que registró el sensor y el error.</p>
+      <Note kind="warn">
+        <div>Un pronóstico anclado es un <b>hindcast</b>, no una predicción en vivo. La barrera anti-fuga es la misma (<IC>get_recent_data</IC> devuelve solo <IC>timestamp &lt; ahora</IC>) y el valor medido se consulta <b>después</b>, sin entrar al cálculo. Se audita en <IC>predicciones</IC> con el origen sufijado <IC>:instante-referencia</IC> para no mezclarlo con predicciones reales.</div>
+      </Note>
       <Note kind="warn">
         <div>El backtest <b>reaplica el método</b> sobre el histórico real; por eso la vista «Predicción vs Real» de la consola aclara que <b>no son predicciones en vivo</b>. Las métricas: <IC>mae</IC>, <IC>bias</IC>, <IC>error_rel_pct</IC> y <IC>skill_pct</IC> (mejora sobre el baseline «igual que antes»).</div>
       </Note>
@@ -125,7 +222,7 @@ export function Pronostico() {
       <Table
         head={["Tool", "Disponible en", "Notas"]}
         rows={[
-          [<IC>forecast</IC>, "/preguntar y /chat", "run_forecast(variable, horizon_seconds, horizonte_texto?)"],
+          [<IC>forecast</IC>, "/preguntar y /chat", "run_forecast(variable, horizon_seconds, horizonte_texto?, now?)"],
           [<IC>backtest</IC>, "solo /chat", <>Genera <IC>_grafico</IC> (Real vs Reconstrucción) para pintar inline</>],
           [<IC>web_search</IC>, "solo /chat", "Server-tool de Anthropic (máx. 3 usos), para conocimiento externo con cita"],
         ]}
@@ -136,7 +233,7 @@ export function Pronostico() {
         head={["Método · Path", "Qué hace"]}
         rows={[
           [<IC>GET /health</IC>, "Ping (abierto, sin key)"],
-          [<IC>POST /forecast</IC>, "Pronóstico directo. Hace write-back a la tabla predicciones (auditoría)"],
+          [<IC>POST /forecast</IC>, <>Pronóstico directo (opcional <IC>ahora</IC> = instante de referencia). Hace write-back a la tabla predicciones (auditoría)</>],
           [<IC>GET /backtest</IC>, "Reconstrucción honesta (variable, dias, bucket, desde/hasta)"],
           [<IC>POST /anomalias</IC>, "Detección determinista (outliers, drift, stuck, outage, fuera_rango)"],
           [<IC>GET /serie</IC>, "Peek de una serie del store para graficar"],
@@ -157,7 +254,7 @@ export function Pronostico() {
         ]}
       />
       <Note>
-        <div>El forecaster <b>no toca</b> la tabla fotovoltaica del analizador — convive con ella sin fusionarse. Lee de un caché parquet; solo <IC>cargar_serie(forzar=True)</IC> golpea la DB. <b>NASA POWER no se usa</b> en el código (es solo referencia paralela para los gaps largos).</div>
+        <div>El forecaster <b>no toca</b> la tabla fotovoltaica del analizador: convive con ella sin fusionarse. Lee de un caché parquet; solo <IC>cargar_serie(forzar=True)</IC> golpea la DB. <b>NASA POWER no se usa</b> en el código (es solo referencia paralela para los gaps largos).</div>
       </Note>
     </Page>
   );

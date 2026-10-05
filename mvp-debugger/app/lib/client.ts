@@ -44,7 +44,7 @@ export function whToKwh(wh: any): string {
   return (n / 1000).toLocaleString("es-CR", { maximumFractionDigits: 1 }) + " kWh";
 }
 
-// Markdown minimo (negrita + saltos) — suficiente para leer la respuesta del
+// Markdown minimo (negrita + saltos): suficiente para leer la respuesta del
 // agente en un debugger, sin sumar una libreria.
 export function inlineMd(texto: string): string {
   const esc = texto
@@ -60,12 +60,30 @@ export function inlineMd(texto: string): string {
 // y la UI en "cargando..." para siempre. Estos helpers convierten eso en un
 // estado de error explicito y accionable.
 
+// El horario del apagado programado se mudo a lib/horario.ts (un modulo sin
+// "use client") para que tambien lo pueda leer codigo de servidor. Se reexporta
+// para no tocar a quien ya lo importaba de aca.
+import { MSG_APAGADO } from "@/app/lib/horario";
+export { HORARIO, MSG_APAGADO } from "@/app/lib/horario";
+
+/** true si el fallo es "el servicio de atras no esta ahi", y no otra cosa.
+ *
+ * El proxy de /api/* devuelve 502 con `servicio inaccesible` cuando no logra
+ * conectar; el 0 es que ni siquiera salio el fetch; el 504 es que salio y no
+ * volvio. Los tres significan lo mismo para quien mira la pantalla. Un 401 o un
+ * 422 NO entran: esos son fallos de verdad y hay que verlos como tales. */
+export function servidorApagado(r: Resp): boolean {
+  if (r.status === 0 || r.status === 502 || r.status === 504) return true;
+  const d = r.data as any;
+  return typeof d?.error === "string" && d.error.includes("servicio inaccesible");
+}
+
 /** Mensaje legible de una respuesta fallida (detail de FastAPI, error del proxy, o el status). */
 export function mensajeError(r: Resp): string {
+  if (servidorApagado(r)) return MSG_APAGADO;
   const d = r.data as any;
   if (typeof d?.detail === "string") return d.detail;
   if (typeof d?.error === "string") return d.error;
-  if (r.status === 0) return "no se pudo contactar al servicio";
   if (r.status === 401) return "sesión vencida: recargá la página para volver a entrar";
   return `el servicio respondió ${r.status}`;
 }

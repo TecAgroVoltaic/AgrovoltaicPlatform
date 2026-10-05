@@ -1,19 +1,19 @@
 % Figura: capas del modelo de datos. El crudo nunca se toca; cada capa agrega.
 \begin{tikzpicture}[node distance=7mm]
 
-\node[almacen,text width=46mm] (crudo) {\textbf{Capa 0 --- crudo}\\
+\node[almacen,text width=46mm] (crudo) {\textbf{Capa 0: crudo}\\
   \cd{monitoreo\_sc\_electrico}\\ \cd{radiacion\_sc\_15s}\\
   \nota{tal como salió del CSV}};
 
-\node[comp,text width=46mm,right=14mm of crudo] (corr) {\textbf{Capa 1 --- corrección}\\
+\node[comp,text width=46mm,right=14mm of crudo] (corr) {\textbf{Capa 1: corrección}\\
   \cd{v\_sc\_electrico\_corregido}\\ \cd{v\_sc\_radiacion\_corregida}\\
   \nota{85\,°C, rangos, offset, pre-2025}};
 
-\node[comp,text width=46mm,right=14mm of corr] (cal) {\textbf{Capa 2 --- calibración}\\
+\node[comp,text width=46mm,right=14mm of corr] (cal) {\textbf{Capa 2: calibración}\\
   \cd{v\_sc\_radiacion\_calibrada}\\
   \nota{W/m$^2$, kt*, \cd{qc\_ok}}};
 
-\node[comp,text width=46mm,below=12mm of cal] (perf) {\textbf{Capa 3 --- desempeño}\\
+\node[comp,text width=46mm,below=12mm of cal] (perf) {\textbf{Capa 3: desempeño}\\
   \cd{v\_sc\_performance}\\
   \nota{\cd{pr\_pv1}, \cd{pr\_pv2}}};
 

@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 #
-# Levanta la consola de evaluación contra los agentes que YA CORREN EN LA EC2,
-# usando un túnel SSH. No expone nada: los servicios siguen escuchando solo en
-# el loopback del servidor.
+# Levanta la consola LOCAL contra los agentes que YA CORREN EN EL SERVIDOR,
+# usando un túnel SSH.
+#
+# OJO, desde 2026-08-25 esto es OPCIONAL: la consola ya está desplegada en
+# https://agro.visione-edge.com y ahí no hace falta túnel ni nada. Este script
+# sigue sirviendo para lo otro: correr TU código local (una vista a medio hacer,
+# un cambio sin desplegar) contra los datos y los agentes de producción.
 #
 #   ./consola.sh              # elige puertos libres solo
 #   CONSOLA_PORT=3010 ./consola.sh
@@ -13,15 +17,15 @@
 # acceso a las bases). Este script es para mirar producción sin montar nada.
 set -euo pipefail
 
-EC2_HOST="${EC2_HOST:-ec2-user@52.1.28.77}"
-LLAVE_SSH="${EC2_KEY:-$HOME/aws/visione-key.pem}"
+EC2_HOST="${EC2_HOST:-ec2-user@34.203.122.144}"   # VisioneMetrics
+LLAVE_SSH="${EC2_KEY:-$HOME/.ssh/VisioneMetrics.pem}"
 # Puertos REMOTOS de los agentes en la EC2 (fijos, definidos por sus compose).
-PUERTO_PRONOSTICO_REMOTO=8000
-PUERTO_ANALIZADOR_REMOTO=8010
+PUERTO_PREDICTIVO_REMOTO=8000
+PUERTO_HISTORICO_REMOTO=8010
 # Puertos LOCALES del túnel. Altos a propósito: 8000 y 8010 suelen estar
 # ocupados por otros servicios de la máquina de desarrollo.
-PUERTO_PRONOSTICO_LOCAL="${PRONOSTICO_PORT:-18000}"
-PUERTO_ANALIZADOR_LOCAL="${ANALIZADOR_PORT:-18010}"
+PUERTO_PREDICTIVO_LOCAL="${PREDICTIVO_PORT:-18000}"
+PUERTO_HISTORICO_LOCAL="${HISTORICO_PORT:-18010}"
 PUERTO_CONSOLA_PREFERIDO="${CONSOLA_PORT:-3010}"
 ESPERA_MAX_SEG=45
 
@@ -61,8 +65,8 @@ abrir_tunel() {
     log "abriendo túnel a $EC2_HOST"
     ssh -i "$LLAVE_SSH" -o ConnectTimeout=15 -o ExitOnForwardFailure=yes \
         -o ServerAliveInterval=30 -N \
-        -L "$PUERTO_PRONOSTICO_LOCAL:127.0.0.1:$PUERTO_PRONOSTICO_REMOTO" \
-        -L "$PUERTO_ANALIZADOR_LOCAL:127.0.0.1:$PUERTO_ANALIZADOR_REMOTO" \
+        -L "$PUERTO_PREDICTIVO_LOCAL:127.0.0.1:$PUERTO_PREDICTIVO_REMOTO" \
+        -L "$PUERTO_HISTORICO_LOCAL:127.0.0.1:$PUERTO_HISTORICO_REMOTO" \
         "$EC2_HOST" &
     TUNEL_PID=$!
 }
@@ -85,18 +89,18 @@ sincronizar_env() {
     # Las URLs del .env.local tienen que apuntar a los puertos del túnel de ESTA
     # corrida; si no, la consola pega a un servicio que no es el que se levantó.
     sed -i.bak -E \
-        -e "s|^PRONOSTICO_URL=.*|PRONOSTICO_URL=http://127.0.0.1:$PUERTO_PRONOSTICO_LOCAL|" \
-        -e "s|^ANALIZADOR_URL=.*|ANALIZADOR_URL=http://127.0.0.1:$PUERTO_ANALIZADOR_LOCAL|" \
+        -e "s|^PREDICTIVO_URL=.*|PREDICTIVO_URL=http://127.0.0.1:$PUERTO_PREDICTIVO_LOCAL|" \
+        -e "s|^HISTORICO_URL=.*|HISTORICO_URL=http://127.0.0.1:$PUERTO_HISTORICO_LOCAL|" \
         "$AQUI/.env.local"
     rm -f "$AQUI/.env.local.bak"
 }
 
 verificar_requisitos
-PUERTO_PRONOSTICO_LOCAL=$(puerto_libre "$PUERTO_PRONOSTICO_LOCAL")
-PUERTO_ANALIZADOR_LOCAL=$(puerto_libre "$PUERTO_ANALIZADOR_LOCAL")
+PUERTO_PREDICTIVO_LOCAL=$(puerto_libre "$PUERTO_PREDICTIVO_LOCAL")
+PUERTO_HISTORICO_LOCAL=$(puerto_libre "$PUERTO_HISTORICO_LOCAL")
 abrir_tunel
-esperar_servicio "$PUERTO_PRONOSTICO_LOCAL" "pronostico"
-esperar_servicio "$PUERTO_ANALIZADOR_LOCAL" "analizador"
+esperar_servicio "$PUERTO_PREDICTIVO_LOCAL" "predictivo"
+esperar_servicio "$PUERTO_HISTORICO_LOCAL" "historico"
 sincronizar_env
 
 [[ -d "$AQUI/.next" ]] || { log "compilando la consola"; (cd "$AQUI" && npm run build); }

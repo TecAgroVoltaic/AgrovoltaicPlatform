@@ -1,0 +1,477 @@
+/* Lo que esta vista necesita y el cascarón no tiene. Nada más: las tarjetas, la
+   rejilla de gráficos, las tablas y los chips ya viven en globals.css, que es de
+   todos y no se toca.
+
+   Pasa de las 150 líneas de referencia, y es a propósito: la convención del
+   proyecto es UNA hoja por vista (calidad ronda las 500, tablero 252), y partirla
+   por componente obligaría a la mitad de los archivos a importar de dos sitios
+   para pintar una sola tarjeta. Se lee de arriba abajo, por bloques de la
+   pantalla, y los tres últimos son lo que aparece solo en cierto ancho o con
+   cierto puntero. */
+
+/* El contexto de medida de la vista. Hace dos trabajos:
+
+   1. Las rejillas y las tablas de abajo preguntan por el ancho que REALMENTE
+      tienen. La ventana no sirve: la barra lateral se lleva 230 px, así que a
+      1024 px de ventana esta vista trabaja con 715 y a 768 con solo 459.
+   2. Corta la propagación del ancho mínimo hacia arriba. `.content` del cascarón
+      se dimensiona a su contenido (`.app` usa `align-items:flex-start`), así que
+      la matriz de variantes estiraba la PÁGINA entera: medido a 360 px, el
+      documento salía 368 px contra 349 de ventana. Con `inline-size` el ancho de
+      la vista deja de depender de lo que lleve dentro. */
+.medida {
+  container-type: inline-size;
+}
+
+/* Un bloque temático: título propio y sus figuras debajo. */
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Un par de figuras lado a lado.
+
+   No reutiliza `.gr-grid.gr-2` del cascarón porque aquel punto de corte mira la
+   VENTANA: a 1100 px de ventana, con la barra lateral abierta, cada figura se
+   quedaba en 387 px de lienzo, y una serie mensual de dos arreglos en 387 px es
+   ilegible. Acá la pregunta es por el ancho de la rejilla, que es el dato que
+   decide si las dos entran. 1056 px = 2 × 520 (480 de lienzo mínimo más los 40 de
+   relleno de la tarjeta) más los 16 de separación. Mismo umbral que usa la vista
+   Estadística, y por el mismo motivo. */
+.par {
+  display: grid;
+  gap: 16px;
+  /* `minmax(0, 1fr)` y no `1fr`: el mínimo de una pista `1fr` es `auto`, o sea el
+     ancho mínimo del contenido, y el lienzo de ECharts declara uno de 442 px.
+     Con `1fr` a secas la pista crecía hasta 442 dentro de un contenedor de 347 y
+     la figura se salía por el borde. Medido a 390 px con los pliegues abiertos. */
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@container (min-width: 1056px) {
+  .par {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+/* Una figura con algo escrito encima o debajo (chips, meses descartados).
+   `min-width: 0` por lo mismo que arriba, pero del lado del elemento: como hijo
+   de una rejilla o de un flex, su mínimo automático es el del lienzo que lleva
+   dentro, y ese lienzo nunca debería mandar sobre el ancho de la columna. */
+.figure {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* --- El veredicto ---
+   Pesa más que el resto a propósito: una pantalla donde todo grita no deja nada
+   destacado, y acá lo único que hay que leer sí o sí es quién produce más. */
+.hero {
+  border-color: var(--line2);
+  padding: 24px 22px 20px;
+}
+
+.verdict {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 11px;
+  margin: 14px 0 6px;
+  font-size: 27px;
+  letter-spacing: -0.03em;
+}
+
+.verdictReading {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--ink2);
+  max-width: 78ch;
+}
+
+/* Que el ganador no dependa del método es la segunda cosa que hay que saber, y
+   por eso viaja con el veredicto y no en la sección que lo desglosa. */
+.agreement {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: var(--ink2);
+}
+
+.agreementAside {
+  margin-left: 11px;
+  padding-left: 11px;
+  border-left: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--crit);
+}
+
+/* El ganador se dice con PALABRAS, no con un color: quien no distinga el matiz
+   tiene que poder leer el resultado igual. */
+.winnerTag {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--line));
+  border-radius: 99px;
+  padding: 2px 9px;
+}
+
+/* `min(250px, 100%)` y no `250px`: `minmax(250px, 1fr)` nunca baja de 250, así
+   que en el contenedor de 280 px que deja una ventana de 360 la tarjeta se salía
+   por el borde. Con `min()` el suelo cede cuando no hay 250 que repartir. */
+.arrayGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr));
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.arrayCard {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px 16px;
+  background: var(--panel2);
+}
+
+.arrayLead {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+}
+
+.arrayName {
+  font-size: 14px;
+  margin: 0;
+}
+
+.arrayGeometry {
+  margin: 2px 0 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.valueLine {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 0 0 10px;
+}
+
+.value {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  /* Explícito porque este número también se pinta dentro de un pliegue, y el
+     cuerpo del pliegue es texto apagado: una cifra grande en gris se lee como
+     deshabilitada. */
+  color: var(--ink);
+}
+
+.value small {
+  font-family: system-ui, sans-serif;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.valueMissing {
+  composes: value;
+  color: var(--muted);
+  font-size: 17px;
+}
+
+/* --- Los métodos, uno por fila ---
+   Sin bordes de tarjeta ni relleno de tabla larga: son siete filas de una línea
+   y tienen que leerse de un vistazo, no invitar a estudiarlas. */
+.cutTable {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 14px;
+  font-size: 13px;
+}
+
+.cutTable th,
+.cutTable td {
+  text-align: left;
+  padding: 7px 12px 7px 0;
+  border-bottom: 1px solid var(--line);
+  vertical-align: baseline;
+}
+
+.cutTable thead th {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.cutTable tbody th {
+  font-weight: 500;
+  color: var(--ink2);
+}
+
+.cutTable tbody tr:last-child th,
+.cutTable tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* La muestra de cada método, dibujada: que un método conserve una décima parte
+   de las lecturas se ve antes de leerse. El ancho es lo único que sale de acá;
+   los dos números son del backend. */
+.sample {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.sampleTrack {
+  flex: none;
+  width: 54px;
+  height: 7px;
+  border-radius: 99px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.sampleFill {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--accent) 60%, var(--line2));
+}
+
+/* Los pliegues de una sección, apilados y separados del contenido que resumen. */
+.disclosures {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+/* --- La matriz de variantes ---
+   La tabla de números vive dentro de un pliegue, cuyo cuerpo es prosa apagada de
+   12 px. Un dato no se lee en el mismo tono que la nota que lo acompaña. */
+.foldedTable {
+  color: var(--ink2);
+  font-size: 12.5px;
+}
+
+.variantCell {
+  white-space: nowrap;
+}
+
+.provisionalTag,
+.impossibleTag {
+  display: inline-block;
+  margin-left: 7px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  border-radius: 5px;
+  padding: 1px 6px;
+}
+
+.provisionalTag {
+  color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 14%, transparent);
+}
+
+.impossibleTag {
+  color: var(--crit);
+  background: color-mix(in srgb, var(--crit) 14%, transparent);
+}
+
+/* --- Avisos --- */
+.noticeCritical,
+.noticeWarning {
+  border: 1px solid var(--line);
+  border-left-width: 3px;
+  border-radius: 10px;
+  padding: 12px 15px;
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.noticeCritical {
+  border-left-color: var(--crit);
+  background: color-mix(in srgb, var(--crit) 7%, transparent);
+}
+
+.noticeWarning {
+  border-left-color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 7%, transparent);
+}
+
+.noticeTitle {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.noticeItem {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.noticeHead {
+  margin: 0;
+  font-size: 12.5px;
+}
+
+/* Un mes con PR imposible se nombra en texto: la barra no puede decirlo. */
+.impossibleMonths {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--crit);
+}
+
+/* --- El cruce punto a punto --- */
+/* Mismo motivo que en `.arrayGrid`: el suelo del `minmax` tiene que poder ceder.
+   Acá aprieta más, porque este panel vive dentro de un pliegue y de una tarjeta,
+   y a 360 px le quedan 244 px de ancho útil. */
+.crossGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+  gap: 14px;
+  margin-top: 12px;
+}
+
+/* Lo largo scrollea DENTRO de su caja, nunca arrastrando la página entera.
+   El borde ya dice que hay recorte vertical; lo que faltaba era el aviso
+   horizontal, que llega con `.tablaAncha`, y el `min-width:0` que deja a la caja
+   encogerse por debajo de la tabla que lleva dentro. */
+.scrollBox {
+  max-height: 420px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0 12px;
+}
+
+/* ── Lo que no cabe ──────────────────────────────────────────────────────────
+   La matriz de variantes son cinco columnas de cifras a tres decimales, y la
+   comparación se hace ENTRE columnas: el PR del Inclinado contra el del Vertical
+   en la misma fila. Replegarla a pares etiqueta-valor pondría los dos números que
+   hay que comparar en renglones distintos, que es exactamente lo que la tabla
+   existe para evitar. Se desplaza de lado y se avisa de que hay más. */
+
+/* `.tbl-scroll` del cascarón pone `overflow-x:auto` y nada más: ni deja que la
+   caja se encoja por debajo de su tabla dentro de una rejilla (`min-width:0`), ni
+   da señal de que quede contenido a la derecha. Las sombras salen de
+   `background-attachment`: las tapas van con `local` y viajan con el contenido,
+   las sombras van con `scroll` y se quedan quietas, así que cada una solo asoma
+   por el lado que aún tiene tabla. Sin JavaScript. */
+.tablaAncha {
+  min-width: 0;
+  overscroll-behavior-x: contain;
+  background-image:
+    linear-gradient(to right, var(--panel) 30%, transparent),
+    linear-gradient(to left, var(--panel) 30%, transparent),
+    /* La sombra se mezcla desde la tinta y no desde el negro: en el tema
+       oscuro un negro sobre panel oscuro no se ve, y el aviso se perdía
+       justo en el tema que trae la consola por defecto. */
+    linear-gradient(to right, color-mix(in srgb, var(--ink) 26%, transparent), transparent),
+    linear-gradient(to left, color-mix(in srgb, var(--ink) 26%, transparent), transparent);
+  background-position: left center, right center, left center, right center;
+  background-repeat: no-repeat;
+  background-size: 26px 100%, 26px 100%, 11px 100%, 11px 100%;
+  background-attachment: local, local, scroll, scroll;
+}
+
+/* Es una parada de tabulador porque dentro no hay ningún control: sin esto, con
+   el teclado no había forma de mover lo que queda escondido. */
+.tablaAncha:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* ── Adaptación por ancho de contenedor ─────────────────────────────────────
+   Los puntos de corte miran `.medida`, no la ventana: con la barra lateral
+   abierta una ventana de 1024 px deja 715 de vista y una de 768 deja 459. Un
+   punto de corte de ventana confunde esos casos con los de pantalla estrecha. */
+
+/* 520 px: por debajo de eso la tabla de métodos deja tres columnas de menos de
+   170 px y «Contador · POA bifacial» se parte en tres renglones. */
+@container (max-width: 520px) {
+  /* La barra de la muestra se pone ENCIMA de sus dos números en vez de al lado.
+     No se quita: dibujar que un método conserva 1.383 de 3.347 lecturas es la
+     mitad del argumento de la tabla. Lo que sobra en angosto es que compita por
+     el ancho con el texto, no la barra en sí. */
+  .sample {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+  }
+
+  .sampleTrack {
+    width: 100%;
+  }
+
+  /* El aparte del PR imposible cuelga de una raya vertical pensada para ir al
+     final de la línea. Cuando la frase envuelve, esa raya queda flotando en
+     medio del párrafo: en angosto pasa a ser un renglón propio. */
+  .agreementAside {
+    display: block;
+    margin: 4px 0 0;
+    padding: 0 0 0 11px;
+  }
+
+  .hero {
+    padding: 18px 16px 16px;
+  }
+
+  .verdict {
+    font-size: 22px;
+    gap: 8px;
+  }
+}
+
+/* 620 px: con menos que eso la matriz de variantes (544 px medidos con los
+   nombres sin partir) obliga a desplazar. Dejar que el nombre del método envuelva
+   la baja a 408 px y la mayoría de los teléfonos deja de necesitar el gesto. El
+   `nowrap` se conserva donde hay sitio, que es donde de verdad ayuda a leer el
+   método como una unidad. */
+@container (max-width: 620px) {
+  .variantCell {
+    white-space: normal;
+  }
+}
+
+/* ── Dedo, no ratón ──────────────────────────────────────────────────────────
+   La pregunta no es cuánto mide la pantalla sino con qué se toca: una tableta de
+   1024 px se maneja con el pulgar igual que un teléfono. Los chips del cascarón
+   miden 27 px de alto, por debajo de los 44 que hacen falta para acertar sin
+   ampliar. Se toca el alto y el relleno, nunca el color ni el tipo. */
+@media (pointer: coarse) {
+  .variantes {
+    gap: 8px;
+  }
+
+  .variantes :global(.chip) {
+    min-height: 44px;
+    padding: 8px 13px;
+  }
+
+  .block :global(.btn),
+  .block :global(.btn-sm) {
+    min-height: 44px;
+  }
+}

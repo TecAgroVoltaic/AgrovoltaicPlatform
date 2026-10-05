@@ -17,9 +17,23 @@ type Props = {
 
 const TEXTO_CARGANDO = "cargando";
 
+// El apagado programado no se pinta como un fallo: no hay nada que reintentar
+// ni nadie a quien avisar. Se reconoce por el mensaje que redacta `mensajeError`.
+const SENA_APAGADO = "está apagado";
+
 export function Estado({ cargando, error, vacio, que = "los datos", onReintentar, pista }: Props) {
   if (cargando) {
     return <div className="muted loading">{TEXTO_CARGANDO} {que}…</div>;
+  }
+  if (error && error.includes(SENA_APAGADO)) {
+    return (
+      <div className="alert" style={{ borderColor: "var(--line2)" }}>
+        <div><strong>Servidor apagado.</strong> {error}.</div>
+        <div className="muted" style={{ marginTop: 6 }}>
+          La documentación y el mapa del agente siguen disponibles.
+        </div>
+      </div>
+    );
   }
   if (error) {
     return (

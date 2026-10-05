@@ -33,6 +33,34 @@ from .schemas import (
     radiacion_table_columns,
 )
 
+# --- Firma de fila contaminada ----------------------------------------------
+# En 490 filas de 46 dias, el CSV del inversor trae mezcladas lecturas del
+# piranometro (el problema conocido de los 13 esquemas). Esas filas meten
+# magnitudes imposibles para un inversor de 2,84 kWp: la de 2025-10-07 07:45 da
+# 26.503.162,8 W en potencia_pv1_w y 39.328.367,1 en energia_total_wh, y por si
+# sola producia el maximo imposible que nos hizo descartar el contador.
+#
+# Se detecta por magnitudes imposibles en OTRAS columnas de la misma fila, nunca
+# por el valor de la columna que se quiere limpiar: un umbral sobre la propia
+# energia recortaria dias record legitimos.
+#
+# CUIDADO CON LA LOGICA TERNARIA: se cierra con `IS TRUE`, que colapsa el NULL a
+# falso. Escribirlo como `NOT (firma)` ya nos mordio: con cualquier columna en
+# NULL, `NOT (NULL)` es NULL y la fila se pierde. La base cae de 36.469 a 18.005.
+#
+# Gemelo de esta expresion: `agente-historico/sql/003_electrico_sin_falsos_positivos.sql`.
+# Si cambia una, cambia la otra (ver la nota de duplicacion en full_schema_sql).
+_FIRMA_PIRANOMETRO = " OR ".join((
+    "potencia_pv1_w > 5000.0", "potencia_pv2_w > 5000.0",
+    "voltaje_pv1_v > 600.0", "voltaje_pv2_v > 600.0",
+    "corriente_pv1_a > 20.0", "corriente_pv2_a > 20.0",
+    "potencia_total_wac > 5000.0",
+    "temperatura_inversor_c > 100.0",
+    "potencia_pv1_w < 0.0", "potencia_pv2_w < 0.0",
+    "voltaje_pv1_v < 0.0", "voltaje_pv2_v < 0.0",
+))
+
+
 # Columnas de metadata que son enteras (el resto de 'meta' es texto).
 _INTEGER_META = {"n_muestras", "intervalo_original_seg"}
 
@@ -117,7 +145,14 @@ def correction_expr(col: str) -> str:
         lo, hi = config.VAC_VALID_RANGE
         return f"CASE WHEN {col} < {lo} OR {col} > {hi} THEN NULL ELSE {col} END"
 
-    # energia (acumuladores), corriente_aac, codigo_error: crudo
+    if col.startswith("energia_"):
+        # Acumuladores del inversor. El VALOR es bueno (y esta en kWh, pese al
+        # sufijo _wh del nombre: razon integral/contador = 1.003,58 de mediana
+        # sobre 127 dias). Lo que hay que anular es la fila entera cuando es una
+        # lectura del piranometro colada en el CSV del inversor.
+        return f"CASE WHEN ({_FIRMA_PIRANOMETRO}) IS TRUE THEN NULL ELSE {col} END"
+
+    # corriente_aac, codigo_error: crudo
     return col
 
 

@@ -1,0 +1,68 @@
+/* Solo lo que el cascarón no tiene ya. Todo lo demás sale de globals.css
+   (.vista, .card, .gr-grid, .pill, .lbl, .select, .muted, .mono), que es de
+   todos los equipos y no se toca. */
+
+.picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px 16px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  /* Sin esto un <select> con etiquetas largas desborda la rejilla en una ventana
+     angosta y aparece scroll horizontal en el body. */
+  min-width: 0;
+  max-width: 100%;
+}
+
+.field > select {
+  max-width: 100%;
+}
+
+.gaps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.note {
+  margin: 10px 0 0;
+  max-width: 78ch;
+}
+
+/* Chart + su lista de tramos sin dato: van pegados porque son una sola lectura. */
+.source {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  /* El lienzo de ECharts lleva un canvas con ancho en píxeles. Sin esto, el
+     `min-width: auto` del ítem de rejilla se queda anclado a ese ancho y la
+     ventana angosta acaba con scroll horizontal en el body. */
+  min-width: 0;
+}
+
+/* Selector + gráfico. Sin .card alrededor: el gráfico ya trae su propio panel y
+   anidarlos deja un marco dentro de otro. */
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  /* El ancho de esta columna lo manda el contenedor, JAMÁS su contenido. Medido:
+     el <select> de variables pide 379 px (su opción más larga, «Energia AC
+     acumulada de vida (contador, kWh) (kWh)», mide 324 px de texto) y el
+     `max-width: 100%` de abajo no lo frena cuando el ancho del padre se calcula
+     a partir de sus hijos, que es lo que hace el cascarón por debajo de 760 px.
+     A 360 y a 390 px de ventana eso dejaba la página entera con 21 px de scroll
+     lateral. `container-type: inline-size` corta esa circularidad (el tamaño en
+     línea deja de mirar el contenido) y de paso deja preguntar por el ancho REAL
+     de la columna, que no es el de la ventana: la barra lateral se lleva 230. */
+  container-type: inline-size;
+}

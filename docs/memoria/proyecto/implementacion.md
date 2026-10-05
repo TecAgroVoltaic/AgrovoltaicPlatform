@@ -8,6 +8,12 @@ categoria: proyecto
 
 Implementado y corrido OK el 2026-06-02 (285 CSV → 36.630 filas en `monitoreo_agrovoltaic`).
 
+> ⚠️ **2026-08-31: este paquete define una vista que otro proyecto parametriza.**
+> `v_sc_electrico_corregido` la **crea** el ETL (`ddl.py` con su propio config, y `sql/schema.sql`
+> como artefacto generado) y la **lee y parametriza** el Agente Histórico. Nada obliga a que los
+> rangos de los dos coincidan, y **regenerar el esquema desde el menú reintroduce los defectos que
+> el otro proyecto acaba de corregir**. Ya pasó una vez → [[rango-fisico-en-cinco-sitios]].
+
 > **⚠️ Rediseño 2026-08-10 (v0.2) — validado con Leo Cardinale** ([[respuestas-leo-cardinale]]).
 > Cambio de fondo: **el crudo se guarda tal cual; la corrección vive en vistas SQL**. El modelo
 > pasó de **1 tabla transformada** a **2 tablas crudas + 2 vistas de corrección**:
@@ -36,6 +42,16 @@ Implementado y corrido OK el 2026-06-02 (285 CSV → 36.630 filas en `monitoreo_
 > frontal+bifacial con pvlib) + vista `v_sc_performance` (`pr_pv1`, `pr_pv2`). Modelo bifacial de
 > dos planos (φ=0,80). Verificado: **PR energético PV1=0,622 / PV2=0,626** (convergen → bifacial
 > validado). Ver [[geometria-sistema]]. Objetos viejos dropeados.
+> **⚠️ CORREGIDO el 2026-08-28:** esos dos números salen de un `JOIN` por **timestamp exacto**
+> entre potencia (5 min uniformes) y POA (cadencia irregular), que conservaba **4.369 de 28.996
+> lecturas**. Emparejando por bin de 5 min dan **PV1 = 0,664 / PV2 = 0,633**, o sea **no
+> convergen** y **gana el inclinado, no el vertical**. La migración
+> `sql/002_performance_emparejado_por_bin.sql` está escrita y **NO aplicada** (se avisa a Leo y
+> Hugo antes). Y el "bifacial validado" de esta línea **no se sostiene por otra razón, además del
+> emparejamiento**: la convergencia se conseguía ajustando la irradiancia del vertical con el
+> propio φ, y ese arreglo depende del factor casi proporcionalmente (su cara trasera modelada
+> aporta +109 % contra +15 % en el inclinado). **φ = 0,80 queda sin validar, no refutado.** Detalle
+> en [[emparejamiento-por-timestamp]] y [[geometria-sistema]].
 >
 > **Seguridad (2026-08-10): RLS habilitado (lockdown)** en las 9 tablas públicas (migración
 > `agrovoltaic_enable_rls_lockdown`) — sin políticas: solo roles de servicio (postgres/service_role,
@@ -116,4 +132,5 @@ El crudo entra sin tocar. Las vistas `v_*_corregido` aplican (parámetros en `co
   mediana). Tests (`tests/`) aún vacíos.
 
 Relacionado: [[estado]], [[objetivo]], [[decisiones]], [[bloqueantes]],
-[[schemas-multiples]], [[filas-mezcladas]].
+[[schemas-multiples]], [[filas-mezcladas]], [[rango-fisico-en-cinco-sitios]],
+[[vista-corregida-no-corrige]], [[implementacion-decisiones-lcv]].

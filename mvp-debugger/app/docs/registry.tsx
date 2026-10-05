@@ -5,15 +5,19 @@ import type { ComponentType } from "react";
 import { Overview, Glosario } from "./content/intro";
 import { Arquitectura } from "./content/arquitectura";
 import { DatosFuentes, DatosEsquema, DatosPipeline } from "./content/datos";
-import { Analizador, Pronostico } from "./content/agentes";
+import { Historico, Predictivo } from "./content/agentes";
+import { Metodo } from "./content/metodo";
 import { WebArquitectura, WebConsola, WebChat } from "./content/web";
 import { VfPlataforma, VfAgentes } from "./content/visioneflow";
 import { Infra } from "./content/infra";
 
 export type Sec = { id: string; title: string; Comp: ComponentType };
-export type Grp = { label: string; items: Sec[] };
+// `agente` marca los grupos que documentan UN agente concreto: si ese agente
+// esta bloqueado en la consola, su documentacion tampoco se muestra (si no, la
+// doc promete una seccion que no existe).
+export type Grp = { label: string; items: Sec[]; agente?: "historico" | "predictivo" };
 
-export const GROUPS: Grp[] = [
+const GRUPOS_TODOS: Grp[] = [
   { label: "Introducción", items: [
     { id: "overview", title: "Overview", Comp: Overview },
     { id: "glosario", title: "Glosario", Comp: Glosario },
@@ -26,11 +30,16 @@ export const GROUPS: Grp[] = [
     { id: "datos-esquema", title: "Esquema de la base", Comp: DatosEsquema },
     { id: "datos-pipeline", title: "Pipeline ETL y calidad", Comp: DatosPipeline },
   ] },
-  { label: "Agente Analizador PV", items: [
-    { id: "analizador", title: "Analizador PV", Comp: Analizador },
+  { label: "Agente Histórico", agente: "historico", items: [
+    { id: "historico", title: "Agente Histórico", Comp: Historico },
   ] },
-  { label: "Agente Pronóstico", items: [
-    { id: "pronostico", title: "Pronóstico ambiental", Comp: Pronostico },
+  { label: "Agente Predictivo", agente: "predictivo", items: [
+    { id: "predictivo", title: "Agente Predictivo", Comp: Predictivo },
+  ] },
+  // SIN `agente`: la matemática (clear-sky, kt*, metricas, z robusto) es el
+  // fundamento del sistema y se documenta igual aunque un agente este bloqueado.
+  { label: "Método y fórmulas", items: [
+    { id: "metodo", title: "Fórmulas del pronóstico", Comp: Metodo },
   ] },
   { label: "La web · mvp-debugger", items: [
     { id: "web", title: "Arquitectura y superficies", Comp: WebArquitectura },
@@ -46,6 +55,15 @@ export const GROUPS: Grp[] = [
   ] },
 ];
 
-export const ORDER: Sec[] = GROUPS.flatMap((g) => g.items);
-export const BY_ID: Record<string, Sec> = Object.fromEntries(ORDER.map((s) => [s.id, s]));
 export const DEFAULT_ID = "overview";
+
+/** Grupos visibles segun que agentes estan habilitados en esta consola. */
+export function grupos(historicoActivo: boolean): Grp[] {
+  return GRUPOS_TODOS.filter((g) => historicoActivo || g.agente !== "historico");
+}
+
+/** Secciones en orden + indice por id, derivados de los grupos visibles. */
+export function indice(gs: Grp[]): { orden: Sec[]; porId: Record<string, Sec> } {
+  const orden = gs.flatMap((g) => g.items);
+  return { orden, porId: Object.fromEntries(orden.map((s) => [s.id, s])) };
+}

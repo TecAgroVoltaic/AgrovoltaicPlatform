@@ -1,10 +1,16 @@
 "use client";
-// Mini-chat del glosario: le pregunta al Analizador PV que explique un concepto,
+// Mini-chat del glosario: le pide al agente ACTIVO que explique un concepto,
 // con chips de arranque y repreguntas (conversación multi-turno). Pega a
-// /api/analizador/chat, la misma tool que usa el widget flotante — nunca inventa,
+// /api/<agente>/chat, la misma tool que usa el widget flotante: nunca inventa,
 // puede usar sus herramientas y buscar en la web para dar contexto.
+//
+// El agente NO está fijo: si el Histórico está bloqueado en esta consola, la
+// pregunta va al de pronóstico (también resuelve conocimiento externo por web).
+// Antes apuntaba duro a /api/historico/chat y el bloqueo lo dejaba en 503.
 import { useEffect, useRef, useState } from "react";
-import { jpost, inlineMd } from "@/app/lib/client";
+import { jpost } from "@/app/lib/client";
+import { renderMd } from "@/app/lib/markdown";
+import { useAgenteDocs } from "./agenteCtx";
 
 type Msg = { rol: "user" | "assistant"; texto: string };
 
@@ -16,6 +22,7 @@ const CONCEPTOS = [
 ];
 
 export function ConceptChat() {
+  const agente = useAgenteDocs();
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [cargando, setCargando] = useState(false);
@@ -33,10 +40,11 @@ export function ConceptChat() {
     setCargando(true);
     setMeta(null);
     const historial = nuevo.map((m) => ({ rol: m.rol, texto: m.texto }));
-    const r = await jpost<any>("/api/analizador/chat", { mensajes: historial, contexto: "Glosario · documentación del sistema" });
+    const r = await jpost<any>(`/api/${agente}/chat`, { mensajes: historial, contexto: "Glosario · documentación del sistema" });
     setCargando(false);
     if (!r.ok) {
-      setMsgs((s) => [...s, { rol: "assistant", texto: `No pude contactar al agente (HTTP ${r.status || "?"}). Verificá que el analizador esté corriendo.` }]);
+      const detalle = (r.data as any)?.error || (r.data as any)?.detail;
+      setMsgs((s) => [...s, { rol: "assistant", texto: detalle || `No pude contactar al agente (HTTP ${r.status || "?"}). Verificá que el servicio esté corriendo.` }]);
       return;
     }
     const tz = r.data;
@@ -51,7 +59,8 @@ export function ConceptChat() {
   return (
     <div className="dx-ask">
       <p className="dx-ask-sub">
-        Tocá un concepto o escribí tu pregunta. Responde el <strong>Analizador PV</strong> — el mismo agente
+        Tocá un concepto o escribí tu pregunta. Responde el{" "}
+        <strong>{agente === "historico" ? "Agente Histórico" : "Agente Predictivo"}</strong>, el mismo agente
         de la consola: no inventa, y puede consultar los datos del sistema o buscar en la web para dar contexto.
         Podés repreguntar para profundizar.
       </p>
@@ -68,7 +77,7 @@ export function ConceptChat() {
         <div className="dx-ask-thread">
           {msgs.map((m, i) => (
             <div key={i} className={"dx-ask-msg " + m.rol}>
-              <div className="dx-ask-bub" dangerouslySetInnerHTML={{ __html: inlineMd(m.texto) }} />
+              <div className="dx-ask-bub md" dangerouslySetInnerHTML={{ __html: renderMd(m.texto) }} />
             </div>
           ))}
           {cargando && (

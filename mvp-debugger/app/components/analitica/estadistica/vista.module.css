@@ -1,0 +1,68 @@
+/* Lo que esta vista necesita y el cascarón no tiene. Nada más: los colores, las
+   tarjetas y el marco de cada gráfico ya viven en globals.css, que es de todos. */
+
+/* Contexto de medida de la vista. Lo único que hace es dejar que las rejillas de
+   abajo se pregunten por el ancho que REALMENTE tienen. */
+.medida {
+  container-type: inline-size;
+}
+
+/* Un par de figuras que se miran JUNTAS: las cajas mensuales contra la
+   irradiación del mismo mes, las crestas contra la nube de puntos. Que caigan
+   una debajo de otra no es solo una cuestión de aire: es que la comparación que
+   la figura propone deja de poder hacerse de un vistazo.
+
+   No reutiliza `.gr-grid.gr-2` de globals porque aquel punto de corte mira la
+   VENTANA, y la ventana no sabe cuánto se llevó la barra lateral: medido a 1100
+   px de ventana, con la barra desplegada cada figura queda en 351 px de lienzo y
+   con la barra plegada en 437 px. Mismo punto de corte, dos figuras muy
+   distintas. Acá la pregunta es por el ancho de la rejilla, que es el dato que
+   decide si las dos entran. */
+.par {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr;
+}
+
+/* Tres escalones, y cada uno sale de una medida de la consola, no de un número
+   redondo.
+
+   790 px de rejilla es lo que queda con la ventana en 1.024 (la barra lateral se
+   lleva 230 y los márgenes 68): ahí cada figura pasa a 348 px de lienzo. El
+   listón viejo estaba en 1.056 px, o sea que el par solo se veía junto a partir
+   de 1.354 px de VENTANA y nunca en un portátil corriente. Bajarlo se apoya en
+   medición y no en gusto: `overflow.test` sostiene que estas figuras se dibujan
+   enteras y sin pisarse en 286 px, que es el lienzo de un teléfono; 348 sobra.
+   Se pierden etiquetas de mes en el eje (las esconde ECharts al no caber) y se
+   gana ver la pareja de un vistazo, que es para lo que la pareja existe.
+
+   Por debajo de 790 la figura se queda con la fila entera: con la ventana en
+   768 son 690 px de lienzo, y partirlos en dos daría 318, tan angosto como un
+   teléfono teniendo sitio de sobra.
+
+   1.120 px es donde las dos ya tienen espacio y lo que hace falta es que no se
+   lean como un bloque único: ahí la separación crece. */
+@container (min-width: 790px) {
+  .par {
+    gap: 16px;
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@container (min-width: 1120px) {
+  .par {
+    gap: 20px;
+  }
+}
+
+/* Una figura con algo escrito debajo (los sensores que quedaron fuera de la
+   comparación). Sin esto el texto se pega al borde del gráfico. */
+.figura {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nota {
+  margin: 0;
+}

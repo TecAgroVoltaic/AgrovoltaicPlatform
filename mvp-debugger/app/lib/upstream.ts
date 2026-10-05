@@ -1,7 +1,7 @@
 // Proxy generico hacia un servicio Python. Responsabilidad unica: reenviar el
 // request (metodo + query + body) al upstream, inyectar la x-api-key del lado
 // servidor y devolver la respuesta tal cual. Un unico punto -> DRY para las dos
-// rutas catch-all (/api/analizador/* y /api/pronostico/*).
+// rutas catch-all (/api/historico/* y /api/predictivo/*).
 import type { Servicio } from "@/app/lib/config";
 
 export async function proxy(

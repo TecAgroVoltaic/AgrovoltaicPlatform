@@ -1,0 +1,152 @@
+CONSULTAS SOBRE LA DATA
+AgroVoltaic San Carlos, 28 de agosto de 2026
+Cifras medidas sobre la base de datos de produccion, en solo lectura.
+
+
+===========================================================================
+1. EL RENDIMIENTO DEL ARREGLO VERTICAL CONTRA EL INCLINADO SALE INVERTIDO
+===========================================================================
+
+SE ENCONTRO
+
+El sistema guarda dos flujos de datos que se registran a ritmos distintos. El
+inversor anota una lectura cada 5 minutos. El sensor de irradiancia anota a un
+ritmo que fue cambiando con los anos: cada 15 segundos en algunas epocas, cada
+5 minutos y medio en otras.
+
+Para calcular el Performance Ratio hay que cruzar la potencia con la
+irradiancia del mismo momento. El calculo que se usa hoy solo empareja lecturas
+cuya marca de tiempo coincide al segundo. Como los dos registradores nunca se
+sincronizaron entre si, esa coincidencia exacta ocurre pocas veces: se
+conservan 4.369 de 28.996 lecturas, el 15 %.
+
+LA EVIDENCIA: LA PERDIDA NO ES PAREJA
+
+    Mes        Lecturas disponibles    Se conservan
+    2025-09             857                30 %
+    2025-10           2.620                45 %
+    2025-11           3.063                 5 %
+    2025-12           3.655                 4 %
+    2026-01           3.589                 5 %
+    2026-02           3.243                 5 %
+    2026-03           3.641                 5 %
+    2026-04           4.136                 4 %
+    2026-05           3.487                53 %
+
+Octubre 2025 y mayo 2026 son los meses en que los dos registradores coincidian
+en el reloj, y entre los dos aportan el 69 % de la muestra. Los seis meses de
+por medio aportan un 4 o 5 % cada uno.
+
+Un arreglo vertical y uno inclinado rinden distinto segun la altura del sol.
+Medir el rendimiento sobre dos meses en vez de sobre el ano no da una muestra
+mas chica: da una muestra de otra cosa.
+
+QUE CAMBIA
+
+    Emparejando por marca de tiempo exacta, 4.369 pares
+      PV1 inclinado 0,622 | PV2 vertical 0,626   -> gana el VERTICAL
+
+    Promediando sobre la ventana de 5 min, 19.482 pares
+      PV1 inclinado 0,664 | PV2 vertical 0,633   -> gana el INCLINADO
+
+LA CORRECCION PROPUESTA
+
+En vez de exigir que las dos marcas de tiempo coincidan al segundo, promediar
+la irradiancia sobre la misma ventana de 5 minutos que cubre cada lectura del
+inversor. Es un cambio en como se calcula el numero, no en los datos guardados:
+no se borra ni se modifica ninguna medicion, y se puede volver atras. Con ese
+emparejamiento el Performance Ratio pasa a apoyarse en 19.482 pares en lugar de
+4.369. Se probo ademas una segunda forma (tomar la lectura de irradiancia mas
+cercana dentro de dos minutos y medio) y da 0,665 y 0,634: el resultado no
+depende del metodo elegido.
+
+SE CONSULTA
+
+  a) Se aplica ese cambio en la forma de emparejar?
+
+  b) El sensor de irradiancia esta montado en horizontal. Al arreglo inclinado,
+     que esta a 20 grados, eso se le parece bastante; al vertical, que esta a
+     90 grados, no. Si la potencia se grafica contra ese sensor, el arreglo
+     vertical aparenta aprovechar el sol mucho menos de lo que realmente lo
+     aprovecha: por cada 100 W/m2 adicionales entrega 55 W medido contra el
+     sensor horizontal y 91 W contra la irradiancia estimada sobre su propio
+     plano (calculada con un modelo, a partir de la inclinacion y la
+     orientacion de cada arreglo). Se usa la irradiancia de cada plano para
+     esa comparacion?
+
+
+===========================================================================
+2. UN INVERSOR EN CERO VOLTIOS, ES DATO MALO O ESTA APAGADO?
+===========================================================================
+
+SE ENCONTRO
+
+Entre los controles automaticos de calidad hay uno que marca como sospechosa
+cualquier lectura fisicamente imposible. Para el voltaje de salida del
+inversor, el rango que se definio como valido es de 100 a 280 V.
+
+Con ese criterio quedan 7.955 lecturas marcadas, pero 7.873 de esas 7.955
+valen exactamente 0, y la mediana de la columna es 212,4 V. Un cero no parece
+un error de medicion: parece el inversor sin exportar, que es lo normal de
+noche y al amanecer.
+
+QUE CAMBIA
+
+Con el criterio actual, 238 de los 274 dias con datos quedan marcados como
+graves. Despues de correr todos los controles, ningun dia del historico queda
+en verde, y este es el motivo principal.
+
+SE CONSULTA
+
+Un 0 en el voltaje de salida cuenta como dato valido (inversor apagado) o como
+dato invalido? De eso depende el veredicto de calidad de 238 dias.
+
+Si es valido, la misma pregunta aplica a corriente, frecuencia y potencia
+total, que tambien se van a cero cuando el inversor no exporta.
+
+
+===========================================================================
+3. LA ENERGIA TOTAL DEL TABLERO, ES EN CONTINUA O EN ALTERNA?
+===========================================================================
+
+SE ENCONTRO
+
+El documento de evaluacion pide mostrar la energia total producida, pero no
+especifica de cual de las mediciones sale. Hay tres candidatas y dan numeros
+muy distintos:
+
+    Contador acumulado del inversor, va de 182 Wh a 39.328.367 Wh
+      -> 39 MWh en un sistema de 2,84 kWp: imposible, se descarta
+
+    Potencia de salida en alterna
+      -> vacia por completo de nov-2025 a feb-2026: la columna no vino en
+         el archivo
+
+    Suma de los dos arreglos en continua (la que se usa hoy)
+      -> 1.522,78 kWh | inclinado 921,05 | vertical 601,72
+
+La tercera se obtiene integrando la potencia de cada arreglo a lo largo del
+tiempo, asi que no depende del contador del inversor ni de que este se
+reinicie.
+
+SE CONSULTA
+
+Se confirma que la casilla del tablero significa energia en continua, o sea la
+suma de los dos arreglos? Si tiene que ser en alterna, hay que decidir que se
+muestra en los cuatro meses sin dato.
+
+
+===========================================================================
+TRES HECHOS QUE CONVIENE TENER PRESENTES
+===========================================================================
+
+- El sensor SP722 no lleva funcionando desde mayo de 2026: registro 18 dias,
+  del 11 al 28 de mayo, con 360 lecturas, y paro tres dias antes que el resto
+  del sistema. Es todo el dato que hay si se pensaba usarlo para calibrar.
+
+- El piranometro de irradiancia reflejada se instalo el 25 de octubre de 2025,
+  mucho despues que el de incidente. Como el albedo se calcula con los dos,
+  cualquier analisis de albedo tiene 7 meses de ventana, no 19.
+
+- El sistema dejo de reportar el 1 de junio de 2026: hoy son 88 dias sin datos
+  nuevos.

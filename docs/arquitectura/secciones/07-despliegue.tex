@@ -3,9 +3,24 @@
 \begin{figure}[htbp]
 \centering
 \resizebox{0.96\textwidth}{!}{\input{figuras/fig-deploy}}
-\caption{Qué corre dónde. Ningún puerto de la EC2 está publicado: los agentes y la
-réplica escuchan sólo en el loopback y se alcanzan por túnel SSH.}
+\caption{Qué corre dónde. Los dos agentes y la réplica escuchan sólo en el
+\emph{loopback}; lo único publicado es nginx, con TLS, y detrás de él la consola con su
+control de acceso y las dos rutas de servicio que consume VisioneFlow.}
 \end{figure}
+
+\subsection{Por qué la plataforma vive en su propio servidor}
+
+Hasta el 2026-08-24 los dos microservicios corrían \emph{dentro} de la EC2 de VisioneFlow,
+la plataforma de agentes de la empresa. Funcionaba, pero ataba dos proyectos que no
+tienen nada que ver: el despliegue del pronóstico vivía en el repositorio de la
+plataforma, cada despliegue del \emph{backend} hacía \cd{git reset --hard} y había que
+acordarse de no tocar ciertos archivos, y una caída de cualquiera de los dos arrastraba
+al otro.
+
+Desde entonces la plataforma de datos tiene servidor propio, dominio propio y
+certificado propio. VisioneFlow le sigue hablando, pero ahora como lo que es: una API
+externa, con su clave, sobre HTTPS. Es la misma relación que tendría con cualquier
+proveedor de terceros, y esa es exactamente la idea.
 
 \subsection{Qué corre dónde}
 
@@ -15,27 +30,65 @@ réplica escuchan sólo en el loopback y se alcanzan por túnel SSH.}
 \toprule
 \textbf{Pieza} & \textbf{Dónde} & \textbf{Cómo sobrevive a un reinicio} \\
 \midrule
-Agente de pronóstico & EC2, contenedor \cd{forecast-forecast-1} & \cd{restart: unless-stopped} \\
-Agente analizador & EC2, contenedor \cd{analizador-analizador-1} & ídem \\
-Réplica de AgroDash & EC2, \cd{agrodash-pg} en \cd{127.0.0.1:5433} & ídem, sobre volumen persistente \\
-Ingesta cada 15 min & EC2, \cd{forecast-etl.timer} & unidad systemd habilitada \\
-Refresco cada 6 h & EC2, \cd{forecast-refresh.timer} & ídem \\
+Agente Predictivo & \cd{predictivo-predictivo-1} \newline \nota{\cd{127.0.0.1:8000}} & \cd{restart: unless-stopped} \\
+Agente Histórico & \cd{historico-historico-1} \newline \nota{\cd{127.0.0.1:8010}} & ídem \\
+Réplica de AgroDash & \cd{agrodash-pg} \newline \nota{\cd{127.0.0.1:5433}} & ídem, sobre volumen persistente \\
+Consola & proceso Node \newline \nota{\cd{127.0.0.1:3001}} & gestor de procesos con estado guardado \\
+Borde HTTPS & nginx del sistema \newline \nota{puertos 80 y 443} & unidad systemd habilitada \\
+Ingesta cada 15 min & \cd{predictivo-etl.timer} & unidad systemd habilitada \\
+Refresco cada 6 h & \cd{predictivo-refresh.timer} & ídem \\
 Almacenamiento & Supabase & servicio gestionado \\
-Consola & sólo local & --- \\
 \bottomrule
 \end{tabular}
 \end{center}
 
+\begin{aviso}[title=El servidor no está encendido las 24 horas]
+Un programador de tareas de AWS apaga la instancia a las 19:00 y la enciende a las 07:00,
+de lunes a viernes. De viernes a lunes está apagada el fin de semana completo. Es una
+decisión de costo, no un fallo, pero condiciona todo lo demás: cualquier consumidor
+externo tiene que disparar dentro de esa ventana. La ingesta no pierde nada porque sus
+temporizadores llevan \cd{Persistent=true} y \cd{OnBootSec}, así que al encender se pone
+al día sola con lo que se perdió.
+\end{aviso}
+
+\subsection{Qué se publica, y qué no}
+
+Sólo hay tres cosas alcanzables desde internet, todas por el mismo nginx con TLS:
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{40mm}p{40mm}p{58mm}@{}}
+\toprule
+\textbf{Ruta} & \textbf{Va a} & \textbf{Quién puede} \\
+\midrule
+\cd{/} & la consola & Quien tenga la contraseña. Sin sesión válida, las
+  páginas redirigen y \cd{/api/*} responde 401. \\
+\cd{/predictivo/...} & el Predictivo & Quien tenga la clave de servicio. No pasa por el
+  control de la consola: un flujo automático no tiene sesión. \\
+\cd{/historico/...} & el Histórico & ídem. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Los nombres anteriores (\cd{/forecast/} y \cd{/analizador/}) siguen respondiendo como
+alias, para que el cambio de servidor no obligara a reconfigurar rutas en el canvas de
+la plataforma.
+
 \subsection{Por qué hay una réplica de AgroDash}
 
 El servidor de Cartago está caído, así que la fuente de la ingesta pasó a ser una
-réplica restaurada de un volcado, montada en la propia EC2. El puerto queda atado al
-loopback y ocupa unos 5\,GB. Volver a la fuente viva es cambiar una línea de
+réplica restaurada de un volcado, montada en el propio servidor. El puerto queda atado al
+loopback y ocupa unos 6\,GB. Volver a la fuente viva es cambiar una línea de
 configuración: la URL de Cartago quedó comentada, no borrada.
 
 Un detalle que cuesta tiempo si no se sabe: si el \cd{pg\_restore} de la máquina es más
 nuevo que el servidor, falla con \cd{unrecognized configuration parameter "transaction\_timeout"}.
 Por eso la restauración se hace con el \cd{pg\_restore} de \emph{adentro} del contenedor.
+
+Al mudar el servidor, la réplica se movió por la red privada de la nube, sin salir a
+internet, y se verificó contando las filas de las dos puntas: 21\,314\,662 lecturas en el
+origen y las mismas 21\,314\,662 en el destino, con idéntica marca de tiempo máxima. Un
+\cd{pg\_restore} que termina con código cero no es prueba de nada; el conteo sí.
 
 \subsection{Salud del sistema}
 
@@ -69,12 +122,17 @@ la unidad como fallida. Hay una prueba de regresión que fija ese comportamiento
 \toprule
 \textbf{Síntoma} & \textbf{Dónde mirar} \\
 \midrule
-La ingesta no trae datos & \cd{systemctl status forecast-etl.service} y la tabla
+La ingesta no trae datos & \cd{systemctl status predictivo-etl.service} y la tabla
   \cd{agente\_log} filtrando por nivel de error. \\
 El pronóstico responde datos viejos & \cd{GET /salud/ingesta}: la fuente está congelada,
   no es un fallo del agente. \\
-Todo responde 429 & Tope diario de gasto o límite de ritmo. \\
-La consola responde 503 & Falta \cd{DEBUGGER\_PASSWORD} en el entorno. \\
+Nada responde, de noche o en fin de semana & El servidor está apagado por programación.
+  No es una caída. \\
+Todo responde 429 & Tope diario de gasto, límite de ritmo del servicio, o el freno de
+  nginx si es el acceso a la consola. \\
+La consola responde 503 & Falta \cd{DEBUGGER\_PASSWORD} en el entorno. Falla cerrada a
+  propósito. \\
+Un servicio da 502 & El contenedor está caído; nginx sigue en pie. \\
 Supabase rechaza escrituras & El plan gratuito son 500\,MB y está cerca del límite. \\
 \bottomrule
 \end{tabular}
@@ -83,7 +141,7 @@ Supabase rechaza escrituras & El plan gratuito son 500\,MB y está cerca del lí
 \subsection{Pruebas}
 
 Ninguna suite necesita credenciales ni red hacia Supabase; si una empieza a pedirlas,
-dejó de ser unitaria. Las tres corren en CI en cada \emph{push} y cada PR.
+dejó de ser unitaria. Corren en CI en cada \emph{push} y cada PR.
 
 \begin{center}
 \small
@@ -91,10 +149,12 @@ dejó de ser unitaria. Las tres corren en CI en cada \emph{push} y cada PR.
 \toprule
 \textbf{Componente} & \textbf{Pruebas} & \textbf{Qué cubren} \\
 \midrule
-Agente de pronóstico & 117 & Horizonte, física, herramienta, ETL, límites, salud, API. \\
-Agente analizador & 24 & API, costos, lista blanca de datos. \\
-Consola & 9 casos de humo & Construcción y control de acceso. \\
-ETL de CSV & --- & Sin suite; la verificación es el \emph{notebook} de EDA. \\
+Agente Predictivo & 253 & Horizonte, física, herramienta, ETL, límites, salud, claves,
+  riesgo, climatología, observabilidad, API. \\
+Agente Histórico & 61 & API, costos, lista blanca de datos, control de calidad, cielo,
+  contexto. \\
+Consola & 3 guiones de humo & Construcción, control de acceso y formato de respuestas. \\
+ETL de CSV & ninguna & Sin suite; la verificación es el \emph{notebook} de EDA. \\
 \bottomrule
 \end{tabular}
 \end{center}

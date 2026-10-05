@@ -1,0 +1,508 @@
+/* Estilos propios de la vista Calidad. `app/globals.css` es de todos: acá va
+   solo lo que ninguna clase del cascarón resuelve.
+
+   REGLA DE LA VISTA: la gravedad nunca se comunica solo con color. Cada estado
+   trae ADEMÁS una trama distinta (sólida, rayada, cuadriculada, contorno
+   punteado) y su palabra escrita al lado. Un daltónico lee la trama; un lector
+   de pantalla lee la palabra.
+
+   Pasa de las 150 líneas de referencia, como la de Comparativa y por lo mismo:
+   la convención del proyecto es UNA hoja por vista, y partirla por componente
+   obligaría a media docena de archivos a importar de dos sitios para pintar una
+   tarjeta. Se lee de arriba abajo, por bloques de la pantalla, y los tres
+   últimos son lo que aparece solo en cierto ancho o con cierto puntero. */
+
+/* El contexto de medida de la vista. Hace dos trabajos, los dos necesarios:
+
+   1. Las rejillas y las barras de abajo preguntan por el ancho que REALMENTE
+      tienen. La ventana no sirve de referencia: la barra lateral se lleva 230 px,
+      así que a 1024 px de ventana esta vista trabaja con 715 y a 1440 con 1131.
+   2. Corta la propagación del ancho mínimo hacia arriba, que es de donde salía el
+      desbordamiento. `.content` del cascarón se dimensiona a su contenido
+      (`.app` usa `align-items:flex-start`), así que una tabla ancha de acá
+      estiraba la PÁGINA ENTERA: medido a 360 px con la pestaña «Qué está roto»
+      abierta, el documento salía 901 px contra 349 de ventana, y había que
+      arrastrar de lado la cabecera y el menú para leer una celda. Con
+      `inline-size` el ancho de la vista deja de depender de lo que lleve dentro
+      y lo ancho pasa a desplazarse en SU caja. */
+.medida {
+  container-type: inline-size;
+}
+
+/* `min(320px, 100%)` y no `320px` a secas: `minmax(320px, 1fr)` nunca baja de
+   320, así que en un contenedor de 317 px (una ventana de 360) la columna se
+   salía por el borde. Con `min()` el suelo cede cuando no hay 320 que dar. */
+.split {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+  align-items: stretch;
+}
+
+.axis {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.axisEje {
+  border-left: 3px solid var(--accent);
+}
+
+.axisEquipo {
+  border-left: 3px dashed var(--warn);
+}
+
+.axisTag {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.big {
+  font-size: 34px;
+  font-weight: 650;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Las tarjetas de segundo orden: mismo marco, menos peso tipográfico que los
+   dos ejes del veredicto. La jerarquía tiene que verse sin leer. */
+.aside {
+  padding: 16px 18px;
+}
+
+/* La tira comprimida del desglose por variable. Alta como el rango entero: que
+   ni la mejor variable llegue a la mitad es el dato, no un defecto del dibujo. */
+.spread {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 34px;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+  border-bottom: 1px solid var(--line2);
+}
+
+.spreadSlot {
+  display: flex;
+  align-items: flex-end;
+  flex: 1 1 0;
+  height: 100%;
+}
+
+.spreadBar {
+  width: 100%;
+  min-height: 2px;
+  border-radius: 1px 1px 0 0;
+  background: var(--accent);
+}
+
+/* Los rótulos de los extremos de una tira o de una cifra secundaria. */
+.ends {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 3px 0 0;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+/* El ranking que ya ordenó el servicio. */
+.ranking {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  counter-reset: none;
+}
+
+.rankingRow {
+  display: grid;
+  gap: 3px;
+}
+
+.rankingHead {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: baseline;
+  font-size: 12.5px;
+}
+
+.rankingFigures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  align-items: baseline;
+  font-size: 12px;
+}
+
+/* La barra de proporción: los dos números van escritos al lado, así que el
+   ancho es geometría y nunca la única forma de leer la cifra. */
+.track {
+  display: block;
+  height: 7px;
+  border-radius: 4px;
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.fill {
+  display: block;
+  height: 100%;
+  background: var(--crit);
+}
+
+/* Los dos titulares de la vigilancia: el corte que no puede quedar plegado. */
+.headline {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--ink2);
+}
+
+.headlineCount {
+  font-family: var(--mono);
+  font-size: 15px;
+  color: var(--ink);
+}
+
+/* Las pestañas del detalle. El chip del cascarón pone el color; acá solo la
+   separación y la línea que ata la activa con su panel. */
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 8px;
+}
+
+.tab {
+  font-size: 12.5px;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.panel:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: 12px;
+}
+
+/* Los grupos por gravedad de la tabla por tipo. No es el pliegue de texto
+   metodológico (ese es `Disclosure`, común a las cinco vistas): es una tabla
+   larga que se abre por tramos, y por eso el resumen pesa como un encabezado. */
+.typeGroup {
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+}
+
+.typeGroupSummary {
+  cursor: pointer;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: baseline;
+  padding: 3px 0;
+}
+
+/* El aviso redactado por el backend. Se muestra pegado al número que corrige. */
+.warning {
+  border-left: 2px solid var(--warn);
+  padding: 6px 0 6px 10px;
+  font-size: 12.5px;
+  color: var(--ink2);
+  margin: 0;
+}
+
+.strip {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin: 6px 0 0;
+  padding: 0;
+}
+
+.cell {
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+  border: 1px solid var(--line2);
+}
+
+/* Las cuatro tramas. `noData` es hueco a propósito: un día ausente no es un día
+   aprobado, y con relleno se leería como uno más. */
+.ok {
+  background: var(--good);
+  border-color: var(--good);
+}
+
+.warn {
+  background: repeating-linear-gradient(
+    45deg, var(--warn) 0 2px, transparent 2px 4px
+  );
+  border-color: var(--warn);
+}
+
+.crit {
+  background:
+    repeating-linear-gradient(45deg, var(--crit) 0 2px, transparent 2px 4px),
+    repeating-linear-gradient(-45deg, var(--crit) 0 2px, transparent 2px 4px);
+  border-color: var(--crit);
+}
+
+.noData {
+  background: transparent;
+  border-style: dotted;
+  border-color: var(--muted);
+}
+
+.running {
+  background: var(--panel2);
+  border-color: var(--line2);
+}
+
+.stopped {
+  background: repeating-linear-gradient(
+    90deg, var(--warn) 0 2px, transparent 2px 5px
+  );
+  border-color: var(--warn);
+}
+
+.stoppedSun {
+  background: var(--crit);
+  border-color: var(--crit);
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 11.5px;
+  color: var(--ink2);
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sevTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.sevGlyph {
+  font-size: 12px;
+  line-height: 1;
+}
+
+/* El significado de la gravedad viaja DENTRO de `.sevTag`, que es `nowrap` para
+   que el signo no se separe nunca de su palabra. Esa frase mide más de 400 px y
+   sin esto salía en un solo renglón imposible de romper: era ella la que estiraba
+   el resumen de cada grupo de la tabla por tipo. El `nowrap` sigue protegiendo lo
+   que tiene que proteger, «▲ Grave», y la explicación ya puede envolver. */
+.sevMeaning {
+  white-space: normal;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+  margin-bottom: 10px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.findings {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.finding {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 11px;
+  background: var(--panel2);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: baseline;
+  font-size: 12.5px;
+}
+
+/* Cada variable fuera de vigilancia ocupa su propio bloque envolvente, no una
+   fila de tabla: en pantalla estrecha una tabla de cinco columnas obliga a
+   desplazarse justo en el dato que hay que leer entero. */
+.unwatched {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: baseline;
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--warn);
+  border-radius: 8px;
+  padding: 8px 11px;
+  background: var(--panel2);
+  font-size: 12.5px;
+}
+
+.state {
+  border: 1px dashed var(--line2);
+  border-radius: 10px;
+  padding: 22px;
+  text-align: center;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ── Lo que no cabe ──────────────────────────────────────────────────────────
+   Estas tablas son comparaciones de varias columnas: la columna ES el dato, y
+   plegarlas a pares etiqueta-valor rompería justo lo que se viene a hacer acá
+   (ordenar 133 tipos por días afectados, o 18 variables por cobertura). Así que
+   se desplazan de lado, no se replantean. Ver el comentario de cada componente
+   para la decisión caso por caso. */
+
+/* `.tbl-scroll` del cascarón ya pone `overflow-x:auto`, pero le faltan las dos
+   cosas que hacen usable un desplazamiento: que la caja pueda encogerse por
+   debajo de su contenido dentro de una rejilla o un flex (`min-width:0`) y que se
+   VEA que queda tabla a la derecha. Las sombras se pintan con
+   `background-attachment`: las dos tapas van con `local` y viajan con el
+   contenido, las dos sombras van con `scroll` y se quedan quietas, así que cada
+   sombra solo asoma por el lado que todavía tiene contenido. Sin JavaScript y sin
+   medir nada. */
+.tablaAncha {
+  min-width: 0;
+  /* Que el rebote horizontal no se contagie a la página. */
+  overscroll-behavior-x: contain;
+  background-image:
+    linear-gradient(to right, var(--panel) 30%, transparent),
+    linear-gradient(to left, var(--panel) 30%, transparent),
+    /* La sombra se mezcla desde la tinta y no desde el negro: en el tema
+       oscuro un negro sobre panel oscuro no se ve, y el aviso se perdía
+       justo en el tema que trae la consola por defecto. */
+    linear-gradient(to right, color-mix(in srgb, var(--ink) 26%, transparent), transparent),
+    linear-gradient(to left, color-mix(in srgb, var(--ink) 26%, transparent), transparent);
+  background-position: left center, right center, left center, right center;
+  background-repeat: no-repeat;
+  background-size: 26px 100%, 26px 100%, 11px 100%, 11px 100%;
+  background-attachment: local, local, scroll, scroll;
+}
+
+/* Dentro de una caja que se desplaza, el navegador lleva cada columna a su ancho
+   mínimo, y para una columna de prosa ese mínimo es la palabra más larga: la
+   explicación del glosario salía a razón de una palabra por renglón. Un renglón
+   de una palabra no se lee, se descifra. Se le da una medida mínima legible y se
+   paga con unos píxeles más de desplazamiento, que es el lado correcto del
+   canje. */
+.queEs {
+  min-width: 22ch;
+}
+
+/* La caja es una parada de tabulador porque hay tablas sin un solo control
+   dentro (el desglose por variable): sin esto, quien navega con teclado no tiene
+   forma de mover el contenido oculto. */
+.tablaAncha:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* La paginación del cascarón (`.loadmore`) no envuelve: sus dos botones, el
+   contador y el orden entran en una fila y punto. A 360 px eso deja «Siguientes»
+   fuera de alcance. */
+.pager {
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+
+/* ── Adaptación por ancho de contenedor ─────────────────────────────────────
+   El punto de corte mira `.medida`, no la ventana: con la barra lateral abierta
+   una ventana de 1024 px deja 715 de vista, y con el cajón cerrado deja 979. Un
+   punto de corte de ventana no distingue esos dos casos. */
+
+/* 470 px es donde los dos selectores del filtro (109 y 163 px medidos, más sus
+   rótulos y la separación) dejan de convivir con los botones de «quitar filtro»
+   en una fila legible. Por debajo, cada campo se lleva la fila entera y el
+   selector ocupa todo el ancho: apuntar a un desplegable de 109 px con el pulgar
+   es la clase de gesto que se falla dos de cada tres veces. */
+@container (max-width: 470px) {
+  .filters {
+    align-items: stretch;
+  }
+
+  .field {
+    flex: 1 1 100%;
+  }
+
+  .field select {
+    width: 100%;
+  }
+}
+
+/* ── Dedo, no ratón ──────────────────────────────────────────────────────────
+   La pregunta acá no es cuánto mide la pantalla sino con qué se toca: una tableta
+   de 1024 px se maneja con el pulgar igual que un teléfono. Los chips del
+   cascarón miden 27 px de alto, por debajo de los 44 que hacen falta para acertar
+   sin ampliar. Se toca el alto y el relleno, nunca el color ni el tipo: el chip
+   tiene que seguir pareciendo el mismo chip. */
+@media (pointer: coarse) {
+  .tabs {
+    gap: 8px;
+  }
+
+  .tabs .tab {
+    min-height: 44px;
+    padding: 9px 15px;
+  }
+
+  .filters select,
+  .filters :global(.btn-sm) {
+    min-height: 44px;
+  }
+
+  .pager :global(.btn-sm),
+  /* Los «Ver hallazgos de X» de la tabla por tipo: son el único camino de la
+     tabla al explorador, y quedaban en 38 px. */
+  .tablaAncha :global(.btn-sm) {
+    min-height: 44px;
+    padding: 6px 14px;
+  }
+}
