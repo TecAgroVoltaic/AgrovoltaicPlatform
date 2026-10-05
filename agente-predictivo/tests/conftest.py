@@ -20,6 +20,10 @@ def _sin_store_ni_parquet(monkeypatch, tmp_path):
         idx = pd.DatetimeIndex([], tz=config.TZ, name="ts")
         return pd.Series([], index=idx, name=variable, dtype="float64")
 
+    # `config` carga el .env de la maquina al importarse: con un STORE_URL real ahi,
+    # el gasto y el uso se leerian de la base de produccion en vez de fallar como
+    # en CI. Sin URL, el store "no esta" para toda la suite.
+    monkeypatch.setattr(config, "STORE_URL", None)
     monkeypatch.setattr(data, "DATA_DIR", tmp_path)
     monkeypatch.setattr(data, "_SERIES", {})
     monkeypatch.setattr(data, "_descargar_desde_store", _serie_vacia)

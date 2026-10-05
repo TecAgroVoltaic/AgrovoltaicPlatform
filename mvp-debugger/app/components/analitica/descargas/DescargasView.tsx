@@ -8,6 +8,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { jget, mensajeError, type Resp } from "@/app/lib/client";
 import { Estado } from "@/app/components/console/Estado";
+import { hoyEnSitio, moverDias } from "@/app/lib/tiempo";
 
 type Columna = { nombre: string; tipo: string };
 type Dataset = {
@@ -36,11 +37,6 @@ const DEBOUNCE_MS = 400;
 const PREVIA_N = 5;
 
 const dia = (iso: string | null | undefined) => (iso ? String(iso).slice(0, 10) : "");
-const hoy = () => new Date().toISOString().slice(0, 10);
-const sumarDias = (ymd: string, n: number) => {
-  const d = new Date(ymd + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + n);
-  return d.toISOString().slice(0, 10);
-};
 const diasEntre = (a: string, b: string) => Math.round((Date.parse(b + "T00:00:00Z") - Date.parse(a + "T00:00:00Z")) / 86400000);
 const nf = (n: number) => n.toLocaleString("es-CR");
 const mb = (bytes: number) => bytes < 1e6 ? `${Math.max(1, Math.round(bytes / 1e3))} kB` : `${(bytes / 1e6).toLocaleString("es-CR", { maximumFractionDigits: 1 })} MB`;
@@ -174,16 +170,16 @@ export function DescargasView() {
   function setDesdeSeguro(v: string) { setDesde(v); if (v && hasta && hasta < v) setHasta(v); }
   function setHastaSeguro(v: string) { setHasta(v); if (v && desde && v < desde) setDesde(v); }
   function rangoInicial(d: Dataset) {
-    const fin = dia(d.hasta) || hoy();
-    const ini = dia(d.desde) || sumarDias(fin, -365);
-    const d30 = sumarDias(fin, -30);
+    const fin = dia(d.hasta) || hoyEnSitio();
+    const ini = dia(d.desde) || moverDias(fin, -365);
+    const d30 = moverDias(fin, -30);
     setDesde(d30 < ini ? ini : d30); setHasta(fin);
   }
   function preset(p: "semana" | "mes" | "trimestre" | "anio" | "todo") {
-    const fin = cobFin || hoy(), ini = cobIni || sumarDias(fin, -3650);
+    const fin = cobFin || hoyEnSitio(), ini = cobIni || moverDias(fin, -3650);
     if (p === "todo") { setDesde(ini); setHasta(fin); return; }
     const n = p === "semana" ? 7 : p === "mes" ? 30 : p === "trimestre" ? 91 : 365;
-    setDesde(sumarDias(fin, -n) < ini ? ini : sumarDias(fin, -n)); setHasta(fin);
+    setDesde(moverDias(fin, -n) < ini ? ini : moverDias(fin, -n)); setHasta(fin);
   }
   function reset() { setCols(null); setCajas(new Set()); setTipos(new Set()); setPaso(0); setEst(null); setPrevia(null); setErrEst(null); }
   function elegirFuente(clave: string) {
