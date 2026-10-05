@@ -474,6 +474,32 @@ Agente Histórico) + módulo `exportar.py` del histórico (no es tool del LLM) c
   `numpy`/`scipy`): `docker compose -f docker-compose.analizador.yml up -d --build`. AgroDash no
   necesita configuración (API pública; override opcional `AGRODASH_API_URL`).
 
+## 2026-10-05 — deploy de `master` en Vercel, con token (cómo se hace hoy)
+
+- **Vercel NO despliega solo.** Verificado por la API: el proyecto `agrovoltaic-consola` no tiene
+  repositorio conectado (`link: null`) y GitHub no registra ningún deployment. Cada cambio de `master`
+  se sube a mano.
+- **La CLI de la Mac de Isaac está logueada en otra cuenta** (equipo «San Rafael Ecolodge»), sin acceso
+  al proyecto. Se despliega con un **token** guardado en `mvp-debugger/.env.vercel` como `VERCEL_TOKEN`
+  (ignorado por git con la regla `.env*`; Next no carga ese archivo). El token es acotado: `whoami` y
+  `teams` lo rechazan, pero el deploy y la API del proyecto funcionan. Con la CLI hay que pasar los
+  identificadores por entorno, porque no logra leer la configuración del proyecto por su cuenta:
+
+  ```bash
+  cd mvp-debugger && set -a; . ./.env.vercel; set +a
+  VERCEL_ORG_ID=team_ySfgfXaHzPxraEmpFB9Qf7lj VERCEL_PROJECT_ID=prj_rAE18e3uAbF64X8MPATTUFxHOPJI \
+    npx vercel deploy --prod --yes --token "$VERCEL_TOKEN"
+  ```
+- **Deploy del 2026-10-05:** `master` en `98495ef` (consola por agente + sistema de evaluación de datos
+  + Descargas con dos fuentes + módulo de hora del sitio). Verificado **sin sesión**: `/login` 200, las
+  páginas redirigen al login y `/api/*` responde 401. **No se verificó ninguna vista con sesión.**
+- **Para volver atrás:** el deploy anterior (11-sep) es
+  `agrovoltaic-consola-1ujg65t4h-izackk26-4583s-projects.vercel.app`; se promueve con
+  `npx vercel promote <esa URL> --token "$VERCEL_TOKEN" --scope izackk26-4583s-projects`.
+- Las seis variables de producción (`HISTORICO_URL`, `HISTORICO_API_KEY`, `PREDICTIVO_URL`,
+  `PREDICTIVO_API_KEY`, `DEBUGGER_PASSWORD`, `DEBUGGER_SESSION_SECRET`) son *sensitive*: se pueden
+  reemplazar pero no leer. Lo que falta para que todo funcione está en [[abiertos]].
+
 ## 2026-09-11 — deploy de la consola en Vercel (cómo se hace)
 
 - Proyecto **`agrovoltaic-consola`** (team `izackk26-4583s-projects`), producción en
