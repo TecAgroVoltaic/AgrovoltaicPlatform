@@ -61,7 +61,7 @@ export const ANALYSIS_SECTIONS: readonly AnalysisSection[] = [
     path: "/descargas",
     label: "Descargas",
     description:
-      "Los datos del período en .csv, .dat o .mat: se elige la tabla, las columnas y el formato.",
+      "Un rango de fechas en .csv, .dat o .mat, desde Supabase PV o la API de AgroDash: se elige el dataset, los filtros, las columnas y el formato.",
     Icon: IconoDescarga,
   },
 ];
