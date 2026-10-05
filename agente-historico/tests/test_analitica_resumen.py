@@ -333,3 +333,18 @@ def test_una_ventana_invertida_se_rechaza_en_el_contrato_antes_de_calcular():
     with pytest.raises(VentanaInvalida) as error:
         crear("2026-06-05", "2026-06-01")
     assert error.value.codigo == "rango_vacio"
+
+
+def test_hoy_es_el_dia_del_sitio_y_no_el_de_la_maquina(monkeypatch):
+    # Given: las 02:00 UTC del 6 de octubre, que en Costa Rica son las 20:00 del 5
+    from datetime import datetime, timezone
+
+    class _Reloj(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return datetime(2026, 10, 6, 2, 0, tzinfo=timezone.utc).astimezone(tz)
+
+    monkeypatch.setattr(resumen, "datetime", _Reloj)
+
+    # When/Then: el dia es el del sitio, aunque el servidor ya este en "manana"
+    assert resumen.hoy_en_sitio() == date(2026, 10, 5)

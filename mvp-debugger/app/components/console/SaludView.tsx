@@ -11,6 +11,7 @@
 // sistema sano. Por eso el diagnóstico va arriba de todo y las tablas después.
 import { useEffect, useState } from "react";
 import { jget, mensajeError, nfmt } from "@/app/lib/client";
+import { instanteEnSitio } from "@/app/lib/tiempo";
 import { IconoAlerta, IconoCheck } from "@/app/components/Iconos";
 
 const RUTA = "/api/predictivo/salud/panel";
@@ -73,12 +74,7 @@ function edad(horas: number | null | undefined): string {
   return `${nfmt(horas / HORAS_POR_DIA, 1)} días`;
 }
 
-function fecha(iso: string | null | undefined): string {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  return isNaN(d.getTime()) ? String(iso)
-    : d.toLocaleString("es-CR", { dateStyle: "short", timeStyle: "short" });
-}
+const fecha = instanteEnSitio;
 
 /** Un dato con su rótulo, en la rejilla de identidad de las bases. */
 function Dato({ k, v, mono = true }: { k: string; v: React.ReactNode; mono?: boolean }) {

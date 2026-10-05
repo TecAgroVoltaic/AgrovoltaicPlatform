@@ -16,6 +16,7 @@
 // dice una vez, en una etiqueta, no en tres párrafos.
 import { useEffect, useMemo, useState } from "react";
 import { jget, mensajeError, type Resp } from "@/app/lib/client";
+import { ETIQUETA_ZONA, moverDias, moverReloj } from "@/app/lib/tiempo";
 import { Estado } from "@/app/components/console/Estado";
 import { LecturaAgente } from "@/app/components/console/LecturaAgente";
 import { lineChart, palette } from "@/app/lib/charts";
@@ -30,7 +31,6 @@ const VARIABLES: [string, string][] = [
 const ANTICIPACIONES: [string, string][] = [
   ["15min", "15 min"], ["30min", "30 min"], ["h", "1 hora"],
 ];
-const MS_POR_DIA = 86400000;
 // La anticipación en segundos, para pedírsela al agente sin que tenga que
 // deducirla del texto (`predecir` la exige como entero).
 const SEGUNDOS: Record<string, number> = { "15min": 900, "30min": 1800, h: 3600 };
@@ -39,12 +39,6 @@ const fmt = (n: any, d = 1) =>
   n == null || !isFinite(n) ? "—" : Number(n).toLocaleString("es-CR",
     { minimumFractionDigits: d, maximumFractionDigits: d });
 
-// Aritmética de días sobre fechas "YYYY-MM-DD". Se ancla en UTC (la `Z`) porque
-// el resultado se lee con `toISOString()`, que también es UTC: con la medianoche
-// LOCAL, en un navegador al este de UTC «el día siguiente» devolvía el mismo día
-// (y «el anterior», dos atrás), y el backtest recibía un rango vacío.
-const moverDias = (f: string, dias: number) =>
-  new Date(new Date(`${f}T00:00:00Z`).getTime() + dias * MS_POR_DIA).toISOString().slice(0, 10);
 const diaSiguiente = (f: string) => moverDias(f, 1);
 
 const etiqueta = (s: string) => ANTICIPACIONES.find(([b]) => b === s)?.[1] || s;
@@ -184,15 +178,11 @@ export function PredView({ theme }: { theme: string }) {
     + `3 o 4 frases, sin tablas ni listas.`;
 
   // Instante en que el agente "se para" para predecir: el momento elegido menos
-  // la anticipación. Se arma en hora local sin zona, que es como lo interpreta el
-  // servicio (America/Costa_Rica).
+  // la anticipación. Es hora de pared del sitio, sin zona, que es como la
+  // interpreta el servicio; `moverReloj` no pasa por el reloj del navegador.
   const corteISO = useMemo(() => {
     if (!fecha || !momento) return "";
-    const t = new Date(`${fecha}T${momento}:00`).getTime() - SEGUNDOS[bucket] * 1000;
-    const d = new Date(t);
-    const p2 = (n: number) => String(n).padStart(2, "0");
-    return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`
-         + `T${p2(d.getHours())}:${p2(d.getMinutes())}:00`;
+    return moverReloj(`${fecha}T${momento}:00`, -SEGUNDOS[bucket]);
   }, [fecha, momento, bucket]);
 
   return (
@@ -265,7 +255,7 @@ export function PredView({ theme }: { theme: string }) {
                   <span className="sw" style={{ background: "var(--ceil)" }} />Techo (cielo despejado)
                 </span>
               )}
-              <span className="muted">{fecha} · hora local (UTC−6)</span>
+              <span className="muted">{fecha} · {ETIQUETA_ZONA}</span>
             </div>
             {hayTecho && (
               <p className="note">

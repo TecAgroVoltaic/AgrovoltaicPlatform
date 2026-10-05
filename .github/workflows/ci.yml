@@ -70,6 +70,13 @@ jobs:
         run: npm ci
       - name: Typecheck
         run: npx tsc --noEmit
+      # La consola muestra hora de Costa Rica, no la de quien mira. El guard corta
+      # en la puerta cualquier uso del reloj local del navegador; los tests de
+      # `tiempo.ts` corren cada caso con la máquina en cinco zonas distintas.
+      - name: Guard de zona horaria
+        run: node scripts/smoke-zona-horaria.mjs
+      - name: Tests (vitest)
+        run: npm test
       - name: Build
         run: npm run build
       # El gate de acceso no tiene runner de tests (no hay jest/vitest y no se

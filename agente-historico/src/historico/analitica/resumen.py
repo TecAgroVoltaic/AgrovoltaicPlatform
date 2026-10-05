@@ -30,9 +30,10 @@ por dia) y el criterio en las funciones puras de abajo (`evaluar_frescura`,
 """
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 
-from historico import cache, db
+from historico import cache, config, db
 from historico.analitica import energia, resultado
 from historico.analitica.ventana import DIA, Ventana, crear, ultimos_dias
 from historico.calidad import contexto
@@ -109,6 +110,13 @@ _NOTA = (
 def _dia(marca: str) -> date:
     """La fecha local de una marca de tiempo. Sin conversion de zona (ver ventana.py)."""
     return date.fromisoformat(marca[:10])
+
+
+def hoy_en_sitio() -> date:
+    """El dia de HOY en el sitio, no el de la maquina. El servidor corre en UTC:
+    con el reloj de la maquina, desde las 18:00 de Costa Rica ya seria manana y el dato
+    de hoy apareceria con un dia de atraso que no tiene."""
+    return datetime.now(ZoneInfo(config.TZ)).date()
 
 
 def evaluar_frescura(ultimo_global: str | None, hoy: date) -> dict:
@@ -323,6 +331,6 @@ def calcular(ventana: Ventana, hoy: date | None = None) -> dict:
     return resultado.sobre(
         ventana, confianza,
         **componer(global_, en_ventana, dias, tramo(dias, reciente),
-                   confianza["dias_con_datos"], hoy or date.today()),
+                   confianza["dias_con_datos"], hoy or hoy_en_sitio()),
         ventana_reciente=reciente.como_dict() if reciente else None,
     )

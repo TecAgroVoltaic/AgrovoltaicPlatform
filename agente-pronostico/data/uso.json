@@ -1,0 +1,22 @@
+{
+  "desde": "2026-10-05T08:54:00.843946+00:00",
+  "n_consultas": 1,
+  "total_requests": 1,
+  "total_input_tokens": 1582,
+  "total_output_tokens": 113,
+  "total_usd": 0.002147,
+  "por_modelo": {
+    "claude-haiku-4-5": {
+      "n_consultas": 1,
+      "input_tokens": 1582,
+      "output_tokens": 113,
+      "usd_total": 0.002147
+    }
+  },
+  "por_dia": {
+    "2026-10-05": {
+      "n_consultas": 1,
+      "usd": 0.002147
+    }
+  }
+}

@@ -4,6 +4,8 @@
 // la vista no puede romperse porque un bloque venga distinto o falte. Un fallo
 // del store, por ejemplo, degrada `datos` sin tumbar el resto del mapa.
 
+import { diaEnSitio } from "@/app/lib/tiempo";
+
 export type Prop = {
   type?: string;
   enum?: string[];
@@ -97,11 +99,5 @@ export function nombresDeModos(mapa: Mapa | null): string[] {
   return mapa ? Object.keys(mapa.modos) : [];
 }
 
-/** Fecha corta y legible; tolera nulos y basura. */
-export function dia(iso: string | null | undefined): string {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  return isNaN(d.getTime())
-    ? String(iso).slice(0, 10)
-    : d.toLocaleDateString("es-CR", { year: "numeric", month: "short", day: "2-digit" });
-}
+/** Fecha corta y legible, en hora del sitio; tolera nulos y basura. */
+export const dia = diaEnSitio;
