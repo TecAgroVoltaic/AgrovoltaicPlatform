@@ -74,6 +74,16 @@ def _urls_de_readings(llamadas):
     return [u for u in llamadas if "/readings" in u]
 
 
+def _ahora_cr():
+    """"Ahora" en la hora local NAIVE de Costa Rica, que es el reloj del adaptador.
+
+    `datetime.now()` a secas usa la zona de la maquina: en CI (UTC) queda seis
+    horas adelante del tope que calcula `lecturas`, el rango sale vacio y no se
+    pide ningun tramo.
+    """
+    return datetime.now(api_agrodash.CR).replace(tzinfo=None)
+
+
 def _rango(url):
     """(from, to) de una URL de /readings, como datetimes."""
     crudo = dict(p.split("=", 1) for p in url.split("?", 1)[1].split("&"))
@@ -86,7 +96,7 @@ def test_las_ventanas_nunca_superan_el_maximo_que_preserva_el_instante(monkeypat
     # Given: un rango de 5 horas, muy por encima del maximo de 2
     llamadas = _falsear_http(monkeypatch, BOXES_UN_SENSOR, [])
     fuente = api_agrodash.FuenteAgroDashAPI(BASE)
-    desde = datetime.now() - timedelta(hours=5)
+    desde = _ahora_cr() - timedelta(hours=5)
 
     # When
     list(fuente.lecturas(CAJA, TIPO, desde))
@@ -106,7 +116,7 @@ def test_un_bucket_sin_medio_segundo_levanta_en_vez_de_ingerir(monkeypatch):
 
     # When / Then: no se ingiere nada, se levanta
     with pytest.raises(api_agrodash.RespuestaInesperada, match="bins de 1 s"):
-        list(fuente.lecturas(CAJA, TIPO, datetime.now() - timedelta(minutes=30)))
+        list(fuente.lecturas(CAJA, TIPO, _ahora_cr() - timedelta(minutes=30)))
 
 
 def test_un_bucket_que_agrupa_lecturas_levanta(monkeypatch):
@@ -117,7 +127,7 @@ def test_un_bucket_que_agrupa_lecturas_levanta(monkeypatch):
 
     # When / Then
     with pytest.raises(api_agrodash.RespuestaInesperada, match="promediando"):
-        list(fuente.lecturas(CAJA, TIPO, datetime.now() - timedelta(minutes=30)))
+        list(fuente.lecturas(CAJA, TIPO, _ahora_cr() - timedelta(minutes=30)))
 
 
 def test_el_medio_segundo_del_bin_se_trunca_y_recupera_el_instante_real(monkeypatch):
@@ -127,7 +137,7 @@ def test_el_medio_segundo_del_bin_se_trunca_y_recupera_el_instante_real(monkeypa
     fuente = api_agrodash.FuenteAgroDashAPI(BASE)
 
     # When
-    filas = list(fuente.lecturas(CAJA, TIPO, datetime.now() - timedelta(minutes=30)))
+    filas = list(fuente.lecturas(CAJA, TIPO, _ahora_cr() - timedelta(minutes=30)))
 
     # Then: vuelve el segundo entero, que es el created_at original
     assert filas[0][4] == datetime(2026, 7, 22, 9, 0, 4)
@@ -143,7 +153,7 @@ def test_una_caja_inexistente_levanta_en_vez_de_devolver_vacio(monkeypatch):
 
     # When / Then
     with pytest.raises(api_agrodash.CajaNoEncontrada, match="no existe"):
-        list(fuente.lecturas("Caja Que No Existe", TIPO, datetime.now()))
+        list(fuente.lecturas("Caja Que No Existe", TIPO, _ahora_cr()))
 
 
 def test_un_tipo_de_sensor_inexistente_en_la_caja_levanta(monkeypatch):
@@ -153,7 +163,7 @@ def test_un_tipo_de_sensor_inexistente_en_la_caja_levanta(monkeypatch):
 
     # When / Then
     with pytest.raises(api_agrodash.CajaNoEncontrada, match="no tiene sensores"):
-        list(fuente.lecturas(CAJA, "humedad", datetime.now()))
+        list(fuente.lecturas(CAJA, "humedad", _ahora_cr()))
 
 
 # ── Forma de los datos ──────────────────────────────────────────────────────
@@ -167,7 +177,7 @@ def test_los_buckets_sin_valor_se_saltan(monkeypatch):
     fuente = api_agrodash.FuenteAgroDashAPI(BASE)
 
     # When
-    filas = list(fuente.lecturas(CAJA, TIPO, datetime.now() - timedelta(minutes=30)))
+    filas = list(fuente.lecturas(CAJA, TIPO, _ahora_cr() - timedelta(minutes=30)))
 
     # Then: un hueco no es un error, simplemente no aporta filas
     assert [f[6] for f in filas] == [44.67]
@@ -181,7 +191,7 @@ def test_la_api_no_expone_ni_el_id_de_origen_ni_el_instante_de_medicion(monkeypa
 
     # When
     origen_id, caja, sensor_id, sensor_type, _, ts_medicion, valor = next(
-        iter(fuente.lecturas(CAJA, TIPO, datetime.now() - timedelta(minutes=30))))
+        iter(fuente.lecturas(CAJA, TIPO, _ahora_cr() - timedelta(minutes=30))))
 
     # Then: se dice explicitamente que no se sabe, en vez de inventarlo
     assert origen_id is None
@@ -195,7 +205,7 @@ def test_el_rango_se_pide_sin_sufijo_z(monkeypatch):
     fuente = api_agrodash.FuenteAgroDashAPI(BASE)
 
     # When
-    list(fuente.lecturas(CAJA, TIPO, datetime.now() - timedelta(minutes=30)))
+    list(fuente.lecturas(CAJA, TIPO, _ahora_cr() - timedelta(minutes=30)))
 
     # Then
     url = _urls_de_readings(llamadas)[0]
@@ -209,7 +219,7 @@ def test_el_catalogo_de_cajas_se_pide_una_sola_vez(monkeypatch):
     fuente = api_agrodash.FuenteAgroDashAPI(BASE)
 
     # When
-    list(fuente.lecturas(CAJA, TIPO, datetime.now() - timedelta(hours=5)))
+    list(fuente.lecturas(CAJA, TIPO, _ahora_cr() - timedelta(hours=5)))
 
     # Then: /boxes cachea; un backfill lo pediria miles de veces
     assert sum(1 for u in llamadas if "/boxes" in u) == 1
