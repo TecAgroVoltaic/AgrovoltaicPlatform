@@ -52,7 +52,7 @@ levantar() {
     local valor_flag="$1"
     AGENTE_HISTORICO="$valor_flag" DEBUGGER_PASSWORD="$PASSWORD" \
         DEBUGGER_SESSION_SECRET="secreto-$$" \
-        npx next start -p "$PUERTO" > /dev/null 2>&1 &
+        node node_modules/next/dist/bin/next start -p "$PUERTO" > /dev/null 2>&1 &
     APP_PID=$!
     local intento=0
     until curl -s -o /dev/null "$BASE/login" 2>/dev/null; do
@@ -65,10 +65,21 @@ levantar() {
         -H 'content-type: application/json' -d "{\"password\":\"$PASSWORD\"}"
 }
 
+# Se levanta con `node` y no con `npx`: `npx` deja a Next como proceso hijo, el
+# kill mata solo al envoltorio y el servidor viejo sigue con el puerto tomado.
+# El arranque siguiente no puede bindear y las verificaciones le pegan a la app
+# ANTERIOR, con el flag anterior. Por lo mismo se espera a que el puerto quede
+# libre de verdad antes de seguir.
 bajar() {
     [[ -n "$APP_PID" ]] && kill "$APP_PID" 2>/dev/null || true
+    [[ -n "$APP_PID" ]] && wait "$APP_PID" 2>/dev/null || true
     APP_PID=""
-    sleep 1
+    local intento=0
+    while curl -s -o /dev/null "$BASE/login" 2>/dev/null; do
+        intento=$((intento + 1))
+        [[ $intento -ge $ESPERA_MAX_SEG ]] && { echo "la app anterior no bajo"; exit 1; }
+        sleep 1
+    done
 }
 
 # El cuerpo del 503 tiene que explicar cómo revertirlo; un 503 mudo manda a
