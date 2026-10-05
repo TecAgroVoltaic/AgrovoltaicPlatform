@@ -53,6 +53,32 @@ de nosotros:
   285 históricos están en el `.zip` y en la base. Quien re-corra el ETL sobre "la carpeta activa"
   hoy procesa 57 archivos, no 342 ([[dataset-actual]]).
 
+## Frente que abre la integración a `master` (2026-10-05)
+
+- **Decidir qué se hace con el tope de 15 clientes del pooler de Supabase.** Recomendado: pasar las
+  lecturas del Agente Histórico al modo transacción (puerto 6543). Sin decidir. Ver
+  [[pooler-supabase-15-clientes]].
+- **Quitar la atribución prohibida de tres commits de `master`** (`b83dfcb`, `121cf60`, `e0f5d84`).
+  Exige reescribir el historial y force-push; lo hace Isaac.
+- **Cerrar el PR #19**, reemplazado por el #21.
+- **Vercel y el analizador viejo.** `HISTORICO_URL` de Vercel apunta al analizador que se levantó el
+  11-sep en el EC2 de VisioneFlow, con la API anterior. La consola de `master` necesita el Agente
+  Histórico nuevo (`/calidad/*`, `/analitica/*`, `/arquitectura`). Re-apuntar al servidor propio y
+  apagar ese contenedor. Ver [[estado-ec2-2026-09-11]], [[servidor-propio]].
+- **Desplegar `master` en los dos lugares donde vive la consola; hoy ninguno lo tiene.** Verificado el
+  2026-10-05: (1) **Vercel no despliega solo** (el repo no registra ningún deployment ni check de Vercel;
+  la versión publicada tiene unos 18 días) y la CLI de la Mac de Isaac estaba logueada en otra cuenta
+  (equipo «San Rafael Ecolodge»), sin acceso a `agrovoltaic-consola`: hay que hacer `vercel login` con
+  la cuenta dueña y `npx vercel --prod --yes` desde `mvp-debugger/`. (2) **El servidor propio**
+  (`agro.visione-edge.com`) está arriba con la consola y los dos agentes, pero **sin Descargas**:
+  `/historico/arquitectura` da 200 y `/historico/datos/exportables` da 404. Falta redesplegar el Agente
+  Histórico y la consola ahí (llave `~/.ssh/VisioneMetrics.pem`, que no está en esa Mac).
+- **Limpiar la sección 5 del RUNBOOK.** Al integrar Descargas quedaron ahí las instrucciones del
+  11-sep para redesplegar el analizador en el EC2 de VisioneFlow (`52.1.28.77`, rutas `agente-analizador/`),
+  que ya no corresponden.
+- **Borrar las carpetas locales viejas** `agente-analizador/` y `agente-pronostico/` (solo quedan
+  `.env`, `.venv` y caché) y el worktree `../AgrovoltaicPlatform-integracion`.
+
 ## Frente que abre el responsive (2026-09-03)
 
 - **Decidir si la barra de rango vuelve a quedar pegada en portátiles de 13 pulgadas.** Hoy deja de
