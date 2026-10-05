@@ -65,14 +65,16 @@ de nosotros:
   11-sep en el EC2 de VisioneFlow, con la API anterior. La consola de `master` necesita el Agente
   Histórico nuevo (`/calidad/*`, `/analitica/*`, `/arquitectura`). Re-apuntar al servidor propio y
   apagar ese contenedor. Ver [[estado-ec2-2026-09-11]], [[servidor-propio]].
-- **Desplegar `master` en los dos lugares donde vive la consola; hoy ninguno lo tiene.** Verificado el
-  2026-10-05: (1) **Vercel no despliega solo** (el repo no registra ningún deployment ni check de Vercel;
-  la versión publicada tiene unos 18 días) y la CLI de la Mac de Isaac estaba logueada en otra cuenta
-  (equipo «San Rafael Ecolodge»), sin acceso a `agrovoltaic-consola`: hay que hacer `vercel login` con
-  la cuenta dueña y `npx vercel --prod --yes` desde `mvp-debugger/`. (2) **El servidor propio**
-  (`agro.visione-edge.com`) está arriba con la consola y los dos agentes, pero **sin Descargas**:
-  `/historico/arquitectura` da 200 y `/historico/datos/exportables` da 404. Falta redesplegar el Agente
-  Histórico y la consola ahí (llave `~/.ssh/VisioneMetrics.pem`, que no está en esa Mac).
+- **Terminar el despliegue de `master`: Vercel ya lo tiene, el servidor propio no.** El 2026-10-05 se
+  desplegó `master` (`98495ef`) en Vercel a mano, ver [[mvp-debugger]] §2026-10-05. Falta: (1)
+  **revisar las vistas con sesión iniciada**, que nadie verificó (la contraseña de producción no está
+  en la Mac de Isaac); se espera que fallen las pantallas nuevas (Calidad, Series, Estadística,
+  Comparativa, Arquitectura) si `HISTORICO_URL` sigue apuntando al analizador viejo del EC2 de
+  VisioneFlow. (2) **Redesplegar el Agente Histórico y la consola en el servidor propio**
+  (`agro.visione-edge.com`): está arriba pero sin Descargas (`/historico/arquitectura` 200,
+  `/historico/datos/exportables` 404); hace falta la llave `~/.ssh/VisioneMetrics.pem`, que no está en
+  esa Mac. (3) **Apuntar `HISTORICO_URL` / `PREDICTIVO_URL` de Vercel al servidor propio** (hace
+  falta su URL y su API key) y apagar el analizador viejo.
 - **Limpiar la sección 5 del RUNBOOK.** Al integrar Descargas quedaron ahí las instrucciones del
   11-sep para redesplegar el analizador en el EC2 de VisioneFlow (`52.1.28.77`, rutas `agente-analizador/`),
   que ya no corresponden.
