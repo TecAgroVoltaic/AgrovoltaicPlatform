@@ -33,7 +33,7 @@ El frontend valida con zod y pinta con la primitiva; no transforma.
 | `tipo` | `datos` = tipo del frontend | Algoritmo backend que lo produce |
 |---|---|---|
 | `serie` | `TimeSeriesData` `{lines:[{id,label,points:[{timestamp,value}],trend?,movingAverage?,deviationBand?}], unit}` | `analitica/series.py` |
-| `barras` | `BarsData` `{categories, series:[{id,label,values,valueLabels?}], unit, orientation?}` | `analitica/irradiacion.py`, `energia.py`, `rendimiento.py` (mensual) |
+| `barras` | `BarsData` `{categories, series:[{id,label,values,valueLabels?}], unit, orientation?}` | `analitica/energia.py` (cierre diario de `energia_hoy_wh`/`energia_pv1_wh`/`energia_pv2_wh`, sumado por bucket), `distribucion.irradiacion_mensual` (irradiancias W/m2 → kWh/m2 por mes), `series.py` (media por bucket del resto) |
 | `cajas` | `BoxPlotData` `{boxes:[{label,min,q1,median,q3,max,count,outliers?}], unit}` | `analitica/distribucion.py` |
 | `carpeta` | `CalendarHeatmapData` `{columns, rows, cells:[{column,row,value}], unit, min?, max?}` | `analitica/carpeta.py` |
 | `dispersion` | `ScatterFitData` `{points:[{x,y,label?}], fit:{slope,intercept,r2}|null, xUnit, yUnit}` | `analitica/correlacion.py` |
@@ -43,7 +43,15 @@ El frontend valida con zod y pinta con la primitiva; no transforma.
   `/analitica/series`). El frontend lo trata con `app/lib/tiempo.ts`.
 - `value` nulo = hueco; nunca 0 en lugar de nulo.
 - Tope de puntos por serie: **2.000** (el backend agrega a una granularidad mayor si se pasa,
-  y lo dice en `subtitulo`).
+  y lo dice en `subtitulo`). En `serie` y `barras` el tope efectivo es 1.500, el que ya impone
+  `analitica/fuente.py`. En `carpeta` el tope es de columnas (días, máx. 1.200 por el algoritmo).
+- *(2026-10-06, rama asistente-backend)* `barras` no tiene datos de PR mensual: el PR no es una
+  variable del catálogo. `energia_total_wh` se rechaza en `barras` (contador de vida, no cierra
+  por día). Sin `hasta`, la ventana del gráfico cierra en hoy del sitio (no en 2100).
+- `cajas` no manda `outliers` (el algoritmo cuenta atípicos, no guarda sus valores). Un mes sin
+  dato viaja con `count: 0` y ceros, igual que `BoxesFigure.tsx`.
+- `crestas` normaliza `density` al pico común de todas las curvas; `tailProbability` es `null`
+  mientras la tool no reciba umbral.
 
 ### Salida completa de la tool
 
@@ -90,14 +98,14 @@ compartido). El LLM nunca ve bytes.
     "tabla": "radiacion_calibrada",
     "fuente": "supabase" | "agrodash",
     "formato": "csv" | "dat" | "mat",
-    "desde": "2026-08-01", "hasta": "2026-09-01",
+    "desde": "2026-08-01", "hasta": "2026-08-31",   // hasta INCLUSIVO, como el endpoint
     "columnas": ["timestamp", "irradiancia_incidente_wm2"],
     "filtros": { "caja": [], "sensor_tipo": [] },
     "paso": 0,
     "filas_estimadas": 8640,
     "cota": false,
-    "nombre_sugerido": "radiacion_calibrada_2026-08-01_2026-09-01.csv",
-    "url": "/datos/exportar?tabla=radiacion_calibrada&formato=csv&desde=2026-08-01&hasta=2026-09-01&columnas=timestamp,irradiancia_incidente_wm2"
+    "nombre_sugerido": "radiacion_calibrada_2026-08-01_2026-08-31.csv",
+    "url": "/datos/exportar?tabla=radiacion_calibrada&formato=csv&desde=2026-08-01&hasta=2026-08-31&columnas=timestamp,irradiancia_incidente_wm2"
   },
   "nota": "Ofrecele la descarga al usuario; el boton lo pinta la interfaz."
 }
@@ -110,6 +118,14 @@ compartido). El LLM nunca ve bytes.
 
 Entrada: `{tabla, formato, desde?, hasta?, columnas?, fuente?, caja?, sensor_tipo?, paso?}`, con las
 mismas reglas que `GET /datos/exportar`. Las tablas y columnas válidas salen de `exportar.catalogo()`.
+
+*(2026-10-06, rama asistente-backend)* **`hasta`:** en la entrada de la tool es **exclusivo**, como en
+todas las tools (el ejemplo de arriba pidió `hasta: "2026-09-01"`). `GET /datos/exportar` toma una
+fecha `hasta` como **inclusiva**, así que la tool resta un día y `_descarga.hasta` y la `url` llevan
+el inclusivo (`2026-08-31`). Con hora (`2026-09-01T12:00`) es exclusivo en los dos y viaja tal cual.
+`desde`/`hasta` son obligatorios en las tablas con columna de tiempo (el error lo da `exportar`).
+`columnas` solo va en la `url` si se pidió un subconjunto; `_descarga.columnas` lista siempre las
+que saldrán (la temporal primero).
 
 ---
 
@@ -127,6 +143,18 @@ Respuesta `text/event-stream`, un evento por línea `event:` + `data:` (JSON) + 
 | `texto` | `{delta}` | fragmentos del texto final del asistente (streaming del SDK) |
 | `fin` | **el mismo objeto que devuelve `/chat`** `{respuesta, modelo, pasos, usage, costo, ms_total}` | al terminar |
 | `error` | `{mensaje, codigo?}` | ante cualquier fallo; cierra el stream |
+
+*(2026-10-06, rama asistente-backend)* Precisiones:
+- Los `texto` son los deltas de **todos** los turnos del modelo: el SDK no avisa antes si un turno
+  terminará pidiendo una tool. Cada turno cierra con un `paso` `{tipo:"modelo", stop_reason}`; si
+  `stop_reason` es `"tool_use"`, el texto acumulado hasta ahí era intermedio. `fin.respuesta` es la
+  versión autoritativa del texto final.
+- `error.codigo` ∈ `llm_limite` (rate limit del modelo), `llm_no_disponible` (otro error de la API
+  de Anthropic), `error_interno`. `mensaje` es genérico y en castellano; el detalle queda en el log.
+  Un error antes de abrir (401, 429 de `_frenar_consumo`) sigue siendo HTTP, no SSE.
+- Un error dentro de una tool **no** es `error`: sale como `paso` con `error: true` y el lazo sigue.
+- El turno del usuario que recibe el modelo empieza con `[Hoy en el sitio: aaaa-mm-dd]` (también en
+  `/chat`), para que traduzca fechas relativas a rangos.
 
 `/chat` sigue existiendo sin cambios (lo usa el `ChatWidget` de `/consola`). El proxy Next
 (`app/api/historico/[...path]/route.ts`) ya reenvía el cuerpo como stream; la rama de frontend verifica
