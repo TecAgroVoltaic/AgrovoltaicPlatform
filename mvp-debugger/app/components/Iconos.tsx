@@ -267,3 +267,14 @@ export function IconoAsistente({ size = 16, className }: P) {
     </svg>
   );
 }
+
+/** Alertas: una campana. No el triángulo de `IconoAlerta`, que en la consola ya
+ *  significa «discrepancia» y no «algo pide atención de una persona». */
+export function IconoCampana({ size = 16, className }: P) {
+  return (
+    <svg {...base(size)} className={className}>
+      <path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15z" />
+      <path d="M10 20.5a2 2 0 0 0 4 0" />
+    </svg>
+  );
+}

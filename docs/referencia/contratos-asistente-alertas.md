@@ -353,7 +353,9 @@ Id inexistente → 404.
   graves en el menú (lee `/alertas/resumen`; se refresca al volver a la vista, sin polling agresivo).
 - Lista compacta: una línea por alerta (severidad, título, variable, rango de fechas, ocurrencias,
   estado), filtros por estado/severidad/tipo, búsqueda, paginación. Por defecto solo abiertas.
-- Ficha (cajón lateral o ruta `/alertas/[id]`): descripción (`que_es`), evidencia con cifras, enlaces
+- Estado de la vista en la query, junto al rango: `estado` (csv de estados; ausente = abiertas),
+  `severidad`, `tipo`, `q`, `offset` y `alerta` (id de la ficha abierta, para compartirla).
+- Ficha (cajón lateral; pantalla completa en móvil): descripción (`que_es`), evidencia con cifras, enlaces
   a Calidad y Series con el rango de la alerta, línea de tiempo de eventos, acciones según estado
   (reconocer, seguimiento con nota y próxima revisión, resolver, descartar, reabrir).
 - Toda acción muestra progreso y error en pantalla; nunca un botón mudo.

@@ -19,7 +19,7 @@ export function SectionNav() {
 
   return (
     <nav className="nav" aria-label="Secciones de análisis">
-      {ANALYSIS_SECTIONS.map(({ path, label, Icon }) => {
+      {ANALYSIS_SECTIONS.map(({ path, label, Icon, Badge }) => {
         const active = pathname === path;
         return (
           <Link
@@ -30,6 +30,7 @@ export function SectionNav() {
           >
             <Icon size={ICON_SIZE} />
             <span>{label}</span>
+            {Badge ? <Badge /> : null}
           </Link>
         );
       })}
