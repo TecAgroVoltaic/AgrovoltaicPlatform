@@ -9,6 +9,8 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { jget, mensajeError, type Resp } from "@/app/lib/client";
 import { Estado } from "@/app/components/console/Estado";
 import { hoyEnSitio, moverDias } from "@/app/lib/tiempo";
+import { formatBytes as mb, formatCount as nf } from "@/app/lib/descargas/format";
+import { useDescarga } from "@/app/lib/descargas/useDescarga";
 
 type Columna = { nombre: string; tipo: string };
 type Dataset = {
@@ -38,8 +40,6 @@ const PREVIA_N = 5;
 
 const dia = (iso: string | null | undefined) => (iso ? String(iso).slice(0, 10) : "");
 const diasEntre = (a: string, b: string) => Math.round((Date.parse(b + "T00:00:00Z") - Date.parse(a + "T00:00:00Z")) / 86400000);
-const nf = (n: number) => n.toLocaleString("es-CR");
-const mb = (bytes: number) => bytes < 1e6 ? `${Math.max(1, Math.round(bytes / 1e3))} kB` : `${(bytes / 1e6).toLocaleString("es-CR", { maximumFractionDigits: 1 })} MB`;
 const hora = (s: string | null | undefined) => (s ? String(s).slice(0, 16).replace("T", " ") : "—");
 const slug = (s: string) => s.replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40).toLowerCase();
 const resumenLista = (s: Set<string>, todo: string) => s.size === 0 ? todo : s.size <= 2 ? [...s].join(", ") : `${s.size} seleccionadas`;
@@ -126,11 +126,8 @@ export function DescargasView() {
   const [tipos, setTipos] = useState<Set<string>>(new Set());
   const [paso, setPaso] = useState(0);
   const [verPrevia, setVerPrevia] = useState(false);
-  // Descarga con feedback: fetch + lectura por stream (bytes recibidos) + cancelar.
-  // Un <a download> no avisa nada mientras el servidor arma el archivo (un .mat
-  // grande o AgroDash en crudo pueden tardar minutos) y esconde los errores.
-  const [dl, setDl] = useState<{ estado: "idle" | "bajando" | "error" | "ok"; bytes: number; msg?: string }>({ estado: "idle", bytes: 0 });
-  const [abortar, setAbortar] = useState<AbortController | null>(null);
+  const descarga = useDescarga();
+  const dl = descarga.state;
 
   const [est, setEst] = useState<Estimacion | null>(null);
   const [previa, setPrevia] = useState<Previa | null>(null);
@@ -250,42 +247,7 @@ export function DescargasView() {
   const qdl = new URLSearchParams(params); qdl.set("formato", formato); if (colsParam) qdl.set("columnas", colsParam);
   const url = `/api/historico/datos/exportar?${qdl.toString()}`;
 
-  async function descargar() {
-    const ctl = new AbortController();
-    setAbortar(ctl); setDl({ estado: "bajando", bytes: 0 });
-    try {
-      const r = await fetch(url, { signal: ctl.signal, cache: "no-store" });
-      if (!r.ok) {
-        const d = await r.json().catch(() => ({}));
-        throw new Error(d?.detail || d?.error || `el servicio respondió ${r.status}`);
-      }
-      const partes: BlobPart[] = [];
-      let bytes = 0;
-      if (r.body) {
-        const reader = r.body.getReader();
-        for (;;) {
-          const { value, done } = await reader.read();
-          if (done) break;
-          if (value) { partes.push(value); bytes += value.byteLength; setDl({ estado: "bajando", bytes }); }
-        }
-      } else {
-        const b = await r.blob(); partes.push(b); bytes = b.size;
-      }
-      const tipo = r.headers.get("content-type") || "application/octet-stream";
-      const cd = r.headers.get("content-disposition") || "";
-      const m = /filename="?([^";]+)"?/.exec(cd);
-      const archivo = m ? m[1] : nombre;
-      const href = URL.createObjectURL(new Blob(partes, { type: tipo }));
-      const a = document.createElement("a"); a.href = href; a.download = archivo; document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(href), 60_000);
-      setDl({ estado: "ok", bytes, msg: archivo });
-    } catch (e: any) {
-      if (e?.name === "AbortError") setDl({ estado: "idle", bytes: 0 });
-      else setDl({ estado: "error", bytes: 0, msg: String(e?.message || e) });
-    } finally {
-      setAbortar(null);
-    }
-  }
+  const descargar = () => descarga.start(url, nombre);
   const nombre = (() => {
     const partes = fuente === "supabase" ? [tabla] : [fuente, tabla];
     if (cajas.size) partes.push(cajas.size <= 2 ? slug([...cajas].join("_")) : `${cajas.size}-cajas`);
@@ -437,17 +399,17 @@ export function DescargasView() {
                 ) : <div className="muted small">Elegí un rango.</div>}
                 {excedeMat && !errEst && <div className="alert" style={{ marginBottom: 0 }}>Supera el tope del .mat: acortá el rango o usá CSV/DAT.</div>}
               </div>
-              {dl.estado === "bajando" ? (
+              {dl.status === "downloading" ? (
                 <>
                   <button className="btn dl-btn" disabled>Preparando… {dl.bytes ? mb(dl.bytes) + " recibidos" : "esperando al servidor"}</button>
-                  <button className="btn ghost sm" style={{ width: "100%", marginTop: 8 }} onClick={() => abortar?.abort()}>Cancelar</button>
+                  <button className="btn ghost sm" style={{ width: "100%", marginTop: 8 }} onClick={descarga.cancel}>Cancelar</button>
                   {dl.bytes === 0 && <p className="muted small" style={{ margin: "8px 0 0" }}>{formato === "mat" ? "El .mat se arma completo antes de enviarse: puede tardar." : "AgroDash se consulta sensor por sensor: puede tardar."}</p>}
                 </>
               ) : (
                 <button className="btn dl-btn" disabled={!listo} onClick={descargar}>Descargar</button>
               )}
-              {dl.estado === "error" && <div className="alert" style={{ marginBottom: 0 }}>No se pudo descargar: {dl.msg}</div>}
-              {dl.estado === "ok" && <p className="muted small mono" style={{ margin: "8px 0 0" }}>listo · {mb(dl.bytes)} · {dl.msg}</p>}
+              {dl.status === "error" && <div className="alert" style={{ marginBottom: 0 }}>No se pudo descargar: {dl.message}</div>}
+              {dl.status === "done" && <p className="muted small mono" style={{ margin: "8px 0 0" }}>listo · {mb(dl.bytes)} · {dl.fileName}</p>}
               <button className="btn ghost sm" style={{ width: "100%", marginTop: 8 }} onClick={() => setVerPrevia(!verPrevia)} disabled={!previa?.filas.length}>
                 {verPrevia ? "Ocultar vista previa" : `Vista previa (${previa?.filas.length ?? 0} filas)`}
               </button>

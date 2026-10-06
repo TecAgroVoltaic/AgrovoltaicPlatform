@@ -257,3 +257,13 @@ export function IconoDescarga({ size = 16, className }: P) {
     </svg>
   );
 }
+
+/** Asistente: un bocadillo de conversación con dos líneas de texto. */
+export function IconoAsistente({ size = 16, className }: P) {
+  return (
+    <svg {...base(size)} className={className}>
+      <path d="M20 12.5a7.5 7.5 0 0 1-11 6.6L4 20.5l1.4-4.6A7.5 7.5 0 1 1 20 12.5z" />
+      <path d="M9 10.5h6M9 14h4" />
+    </svg>
+  );
+}

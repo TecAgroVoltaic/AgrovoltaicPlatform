@@ -20,6 +20,9 @@ const DIRECTORIOS_LINTEADOS = [
   "app/components/analitica",
   "app/components/charts",
   "app/lib/analitica",
+  "app/components/asistente",
+  "app/lib/asistente",
+  "app/lib/descargas",
 ];
 
 const nextConfig = {

@@ -10,6 +10,7 @@ import { jpost } from "@/app/lib/client";
 import { renderMd } from "@/app/lib/markdown";
 import { TrazaLegible } from "@/app/components/TrazaLegible";
 import { lineChart, palette } from "@/app/lib/charts";
+import { ChartSpecRenderer } from "@/app/components/asistente/ChartSpecRenderer";
 import type { Traza } from "@/app/components/TraceViewer";
 
 type Msg = { rol: "user" | "assistant"; texto: string; traza?: Traza };
@@ -44,6 +45,12 @@ const EJEMPLOS: Record<string, string[]> = {
 };
 
 const serieColor = (P: any, i: number) => [P.accent, P.real, P.pred, P.ceil][i % 4];
+
+// Formato viejo de `graficar` ({tipo:"linea", x, series}). Se mantiene solo
+// hasta que el backend con ChartSpec (version 1) esté desplegado; todo lo demás
+// lo pinta `ChartSpecRenderer`, que es la única forma de dibujar un gráfico del
+// agente.
+const esGraficoViejo = (g: any) => g?.tipo === "linea" && Array.isArray(g?.series);
 
 function graficoHTML(g: any): string {
   const P = palette();
@@ -195,6 +202,7 @@ function MsgExtras({ traza, abierto, onToggle }: { traza: Traza; abierto: boolea
   return (
     <>
       {graficos.map((g, i) => {
+        if (!esGraficoViejo(g)) return <div key={i} className="chat-graf"><ChartSpecRenderer spec={g} /></div>;
         const P = palette();
         return (
           <div key={i} className="chat-graf">
