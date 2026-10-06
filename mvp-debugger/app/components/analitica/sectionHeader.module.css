@@ -1,0 +1,27 @@
+/* La cabecera propia de una sección con `ownsHeader` (Asistente, Alertas): UNA
+   fila de 52 px pegada arriba (7 % de una pantalla de 740 px de alto, dentro del
+   15 % que admite una banda pegajosa). Reemplaza a la barra de rango, a la
+   cabecera de página y, en pantallas angostas, a la barra superior del cajón de
+   secciones. Cada sección la toma con `composes` y le agrega lo suyo. */
+
+.header { position:sticky; top:0; z-index:20; height:52px; display:flex; align-items:center; gap:12px;
+  padding:0 24px; background:var(--ground); border-bottom:1px solid var(--line); min-width:0; }
+
+/* El botón del menú de secciones: solo existe donde la barra lateral se esconde. */
+.menu { display:none; align-items:center; justify-content:center; flex:none; height:32px; padding:0 8px;
+  border-radius:8px; border:1px solid var(--line2); background:transparent; color:var(--ink2); cursor:pointer; }
+.menu:hover { border-color:var(--accent); color:var(--ink); }
+.menu:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+.titleBlock { flex:1; min-width:0; display:flex; flex-direction:column; }
+.title { margin:0; font-size:14px; font-weight:600; line-height:1.35; color:var(--ink);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.meta { font-family:var(--mono); font-size:11px; color:var(--muted);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+/* Mismo corte que el cajón de secciones en globals.css (900 px): por debajo la
+   barra lateral se esconde y esta cabecera es la que trae el botón del menú. */
+@media (max-width:900px) {
+  .menu { display:inline-flex; }
+  .header { padding:0 16px; gap:10px; }
+}

@@ -1,9 +1,9 @@
-// Lo que protege: que el chip de contexto cambie el rango DE LA URL (la única
+// Lo que protege: que el chip de rango cambie el rango DE LA URL (la única
 // fuente de verdad del rango) y que el desplegable se maneje con teclado.
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ContextChip } from "@/app/components/asistente/ContextChip";
+import { RangeChip } from "@/app/components/analitica/RangeChip";
 
 // La misma instancia en cada pintada, como la de Next: una nueva por render
 // cambiaría el rango en cada pasada y el formulario se resincronizaría sin fin.
@@ -25,17 +25,17 @@ vi.mock("next/navigation", () => ({
 
 const CHIP_NAME = /Rango de contexto: 3 may – 1 jun 2026 · diaria/;
 
-describe("ContextChip", () => {
+describe("RangeChip", () => {
   beforeEach(() => router.push.mockClear());
 
   it("muestra el rango de la URL en corto, con el fin inclusivo", () => {
-    render(<ContextChip threadOpen={false} />);
+    render(<RangeChip title="Rango de contexto" formIdPrefix="contexto-rango" />);
     expect(screen.getByRole("button", { name: CHIP_NAME })).toHaveTextContent("3 may – 1 jun 2026 · diaria");
   });
 
   it("aplicar un rango nuevo lo escribe en la URL y cierra el desplegable", () => {
     // Given el desplegable abierto
-    render(<ContextChip threadOpen={false} />);
+    render(<RangeChip title="Rango de contexto" formIdPrefix="contexto-rango" />);
     const chip = screen.getByRole("button", { name: CHIP_NAME });
     fireEvent.click(chip);
     expect(chip).toHaveAttribute("aria-expanded", "true");
@@ -52,7 +52,7 @@ describe("ContextChip", () => {
   });
 
   it("un rango inválido no toca la URL y lo dice", () => {
-    render(<ContextChip threadOpen={false} />);
+    render(<RangeChip title="Rango de contexto" formIdPrefix="contexto-rango" />);
     fireEvent.click(screen.getByRole("button", { name: CHIP_NAME }));
     // When «Hasta» queda antes que «Desde»
     fireEvent.click(screen.getByRole("button", { name: "Hasta 1 jun 2026" }));
@@ -64,7 +64,7 @@ describe("ContextChip", () => {
   });
 
   it("Escape dentro del calendario cierra solo el calendario, no el desplegable", () => {
-    render(<ContextChip threadOpen={false} />);
+    render(<RangeChip title="Rango de contexto" formIdPrefix="contexto-rango" />);
     fireEvent.click(screen.getByRole("button", { name: CHIP_NAME }));
     fireEvent.click(screen.getByRole("button", { name: "Desde 3 may 2026" }));
     fireEvent.keyDown(screen.getByRole("grid"), { key: "Escape" });
@@ -73,10 +73,10 @@ describe("ContextChip", () => {
   });
 
   it("Escape cierra el desplegable y devuelve el foco al chip", () => {
-    render(<ContextChip threadOpen />);
+    render(<RangeChip title="Rango de contexto" formIdPrefix="contexto-rango" note="Este hilo conserva el rango con que se abrió." />);
     const chip = screen.getByRole("button", { name: CHIP_NAME });
     fireEvent.click(chip);
-    // Con un hilo abierto avisa que el rango nuevo no le llega a ese hilo
+    // La nota de la sección acompaña al formulario
     expect(screen.getByText(/Este hilo conserva el rango con que se abrió/)).toBeInTheDocument();
     fireEvent.keyDown(document, { key: "Escape" });
     expect(screen.queryByRole("dialog")).toBeNull();

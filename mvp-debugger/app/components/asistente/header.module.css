@@ -1,56 +1,40 @@
-/* La cabecera del hilo: UNA fila de 52 px pegada arriba (7 % de una pantalla de
-   740 px de alto, dentro del 15 % que admite una banda pegajosa). Reemplaza a la
-   barra de rango, a la cabecera de página y, en pantallas angostas, a la barra
-   superior del cajón de secciones. */
+/* La cabecera del hilo. La fila de 52 px, el botón del menú y el bloque de
+   título son los de toda sección con cabecera propia (`sectionHeader.module.css`);
+   acá va lo del Asistente: hilos, costo, «Nueva» y su acomodo en el teléfono. */
 
-.header { position:sticky; top:0; z-index:20; height:52px; display:flex; align-items:center; gap:12px;
-  padding:0 24px; background:var(--ground); border-bottom:1px solid var(--line); min-width:0; }
+.header { composes:header from "../analitica/sectionHeader.module.css"; }
+.menu { composes:menu from "../analitica/sectionHeader.module.css"; }
+.titleBlock { composes:titleBlock from "../analitica/sectionHeader.module.css"; }
+.title { composes:title from "../analitica/sectionHeader.module.css"; }
+.meta { composes:meta from "../analitica/sectionHeader.module.css"; }
 
 .button { composes:ghost from "./controls.module.css"; }
 .iconButton { composes:ghost from "./controls.module.css"; padding:0 8px; }
-.menu { composes:iconButton; display:none; }
-
-.titleBlock { flex:1; min-width:0; display:flex; flex-direction:column; }
-.title { margin:0; font-size:14px; font-weight:600; line-height:1.35; color:var(--ink);
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.meta { font-family:var(--mono); font-size:11px; color:var(--muted);
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
 .cost { composes:pill from "./controls.module.css"; font-family:var(--mono); }
 
-/* El chip de contexto y su desplegable. */
-.context { position:relative; flex:none; min-width:0; }
-.contextChip { composes:pill from "./controls.module.css"; }
-.popover { position:absolute; top:calc(100% + 8px); right:0; z-index:30; width:min(400px, calc(100vw - 24px));
-  padding:14px 16px; background:var(--raise); border:1px solid var(--line2); border-radius:12px;
-  box-shadow:0 12px 32px color-mix(in srgb, var(--ink) 18%, transparent); }
-.popoverTitle { margin:0 0 10px; font-size:13px; font-weight:600; color:var(--ink); }
-.popover :global(.rng-form) { gap:10px 12px; }
-.popoverNote { margin:10px 0 0; font-size:11.5px; color:var(--muted); }
-
-/* Mismo corte que el cajón de secciones en globals.css (900 px): por debajo la
-   barra lateral se esconde y esta cabecera es la que trae el botón del menú. */
-@media (max-width:900px) {
-  .menu { display:inline-flex; }
-  .header { padding:0 16px; gap:10px; }
-}
+/* El chip de rango es el compartido (`RangeChip`); estas dos clases solo lo
+   ubican y lo compactan en el teléfono. */
+.context { flex:none; }
+.contextChip { flex:none; }
 
 /* Teléfono: iconos y el rango como subtítulo, como el artboard móvil. La rejilla
    pone el chip de contexto bajo el título sin cambiar el orden del DOM, que es
-   el del teclado y el del lector de pantalla. */
+   el del teclado y el del lector de pantalla. Los selectores del chip y del menú
+   llevan `.header` delante para ganarle a sus hojas compartidas sin depender del
+   orden en que se carguen. */
 @media (max-width:760px) {
   .header { display:grid; grid-template-columns:auto minmax(0, 1fr) auto auto;
     grid-template-areas:"menu title threads new" "menu context threads new";
     align-content:center; column-gap:10px; row-gap:0; padding:0 12px; }
-  .menu { grid-area:menu; }
+  .header .menu { grid-area:menu; }
   .threads { grid-area:threads; }
   .titleBlock { grid-area:title; }
-  .context { grid-area:context; }
+  .header .context { grid-area:context; }
   .newThread { grid-area:new; }
-  .menu, .threads, .newThread { width:34px; height:30px; padding:0; }
+  .header .menu, .threads, .newThread { width:34px; height:30px; padding:0; }
   .meta, .cost, .newLabel { display:none; }
-  .contextChip { height:auto; padding:0; border:0; background:none; border-radius:0;
+  .header .contextChip { height:auto; padding:0; border:0; background:none; border-radius:0;
     font-family:var(--mono); font-size:10.5px; color:var(--muted); }
-  .contextChip > svg:first-child { display:none; }
-  .popover { position:fixed; top:56px; left:12px; right:12px; width:auto; }
+  .header .contextChip > svg:first-child { display:none; }
 }
