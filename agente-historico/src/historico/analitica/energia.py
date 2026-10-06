@@ -255,6 +255,28 @@ def cierres_ac(dias: list[dict]) -> list[float]:
             if d.get("n_ac") and d.get("ac_cierre") is not None]
 
 
+# Clave de catalogo de un contador DIARIO -> (campo del cierre, campo del conteo) en
+# `por_dia`. `energia_total_wh` no esta a proposito: es de vida y no cierra por dia.
+CIERRE_DIARIO = {
+    "energia_hoy_wh": ("ac_cierre", "n_ac"),
+    "energia_pv1_wh": ("dc_cierre_inclinado", "n_dc_inclinado"),
+    "energia_pv2_wh": ("dc_cierre_vertical", "n_dc_vertical"),
+}
+
+
+def cierre_por_dia(dias: list[dict], clave: str) -> dict[str, float]:
+    """kWh de cada dia con lectura del contador diario `clave`, por fecha ISO. Puro.
+
+    El cierre del dia es su maximo, con el mismo criterio de `cierres_ac`. Un dia sin
+    lecturas del contador NO aparece: no es un dia de cero kWh.
+    """
+    if clave not in CIERRE_DIARIO:
+        raise ValueError(f"{clave!r} no es un contador diario; validos: {', '.join(CIERRE_DIARIO)}")
+    campo, campo_n = CIERRE_DIARIO[clave]
+    return {str(d["dia"])[:10]: a_kwh(d[campo]) for d in dias
+            if d.get(campo_n) and d.get(campo) is not None}
+
+
 def tramos_vida(dias: list[dict]) -> list[tuple[float, float]]:
     """(primero, ultimo) de `energia_total_wh` por dia, en kWh y en orden."""
     return [(a_kwh(d["vida_primero"]), a_kwh(d["vida_ultimo"])) for d in dias
