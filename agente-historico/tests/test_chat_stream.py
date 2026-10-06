@@ -206,3 +206,21 @@ def test_historial_que_no_termina_en_el_usuario_da_fin_vacio(entorno):
 def test_stream_exige_la_clave_si_esta_configurada(monkeypatch):
     monkeypatch.setenv(api.ENV_API_KEY, "clave")
     assert CLIENTE.post("/chat/stream", json={"mensajes": []}).status_code == 401
+
+
+def test_el_turno_del_usuario_lleva_la_fecha_del_sitio(monkeypatch, entorno):
+    # Given: hoy en Costa Rica es el 6 de octubre (el servidor podria ir en UTC)
+    from datetime import date
+
+    from historico.agent import agent
+    monkeypatch.setattr(agent, "hoy_en_sitio", lambda: date(2026, 10, 6))
+    cliente = _cliente()
+
+    # When
+    list(Historico(client=cliente, model="m").chat_stream(
+        [{"rol": "user", "texto": "hace 15 dias"}], contexto="vista series"))
+
+    # Then: el modelo puede traducir "hace 15 dias" a un rango
+    turno = cliente.messages.llamadas[0]["messages"][0]["content"]
+    assert turno.startswith("[Hoy en el sitio: 2026-10-06]")
+    assert turno.endswith("hace 15 dias")

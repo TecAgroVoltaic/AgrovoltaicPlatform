@@ -17,6 +17,7 @@ import anthropic
 from historico import config, costos, tools
 from historico.agent import lazo
 from historico.agent.prompts import CHAT_SYSTEM, SYSTEM_PROMPT
+from historico.analitica.resumen import hoy_en_sitio
 
 # Web search del lado servidor (Anthropic la ejecuta). max_uses acota el gasto:
 # cada busqueda tiene costo y mete ~miles de tokens de resultados -> pocas.
@@ -145,6 +146,10 @@ class Historico:
             return None
         if contexto:
             ms[-1]["content"] = f"[Contexto de la vista: {contexto}]\n\n{ms[-1]['content']}"
+        # La fecha va en el turno y no en el system: el system esta cacheado y una
+        # fecha adentro lo invalidaria cada dia. Sin ella el modelo no puede traducir
+        # "hace 15 dias" a un rango.
+        ms[-1]["content"] = f"[Hoy en el sitio: {hoy_en_sitio().isoformat()}]\n{ms[-1]['content']}"
         return ms[-_TOPE_HISTORIAL:]
 
     def _turno(self, en_vivo: bool, **kwargs):
