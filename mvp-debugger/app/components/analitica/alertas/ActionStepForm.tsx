@@ -31,6 +31,8 @@ export type ActionStepFormProps = {
   readonly onCancel: () => void;
 };
 
+/** El tope del backend (422 si se pasa): mejor que el campo no deje escribir más. */
+const NOTE_MAX_LENGTH = 2000;
 const NOTE_MISSING = "Escribí una nota: un seguimiento sin nota no dice qué se hizo ni qué falta.";
 const DATE_INVALID = "La próxima revisión tiene que ser una fecha válida (AAAA-MM-DD).";
 
@@ -62,6 +64,7 @@ export function ActionStepForm({ action, config, pending, onSubmit, onCancel }: 
             id={noteId}
             className={`input ${styles.note}`}
             rows={3}
+            maxLength={NOTE_MAX_LENGTH}
             value={note}
             required={config.noteRequired}
             aria-invalid={problem === NOTE_MISSING}

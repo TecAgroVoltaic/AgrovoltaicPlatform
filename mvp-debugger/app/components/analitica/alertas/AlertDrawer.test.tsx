@@ -116,7 +116,7 @@ describe("la ficha de una alerta", () => {
   it("un seguimiento con nota y fecha sale con las dos", async () => {
     // Given el formulario de seguimiento abierto
     api.fetchAlertDetail.mockResolvedValue({ ok: true, data: detailIn("reconocida") });
-    api.runAlertAction.mockResolvedValue({ ok: false, failure: failure("NETWORK"), transition: null });
+    api.runAlertAction.mockResolvedValue({ ok: false, failure: failure("NETWORK"), conflict: null });
     renderDrawer();
     fireEvent.click(await screen.findByRole("button", { name: "Dar seguimiento" }));
 
@@ -159,7 +159,7 @@ describe("la ficha de una alerta", () => {
     api.runAlertAction.mockResolvedValue({
       ok: false,
       failure: failure("UPSTREAM_ERROR", { status: 409, message: api.INVALID_TRANSITION_MESSAGE }),
-      transition: { from: "dismissed", to: "acknowledged" },
+      conflict: { kind: "invalidTransition", from: "dismissed", to: "acknowledged" },
     });
     const { onChanged } = renderDrawer();
 

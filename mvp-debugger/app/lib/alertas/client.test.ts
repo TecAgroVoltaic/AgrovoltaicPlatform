@@ -1,12 +1,14 @@
 // Lo que protegen estas pruebas: que las acciones salgan como POST con el
-// cuerpo del contrato, y que un 409 `transicion_invalida` llegue como mensaje
-// claro con los estados, no como «el servicio devolvió un error».
+// cuerpo del contrato, y que los dos 409 y el 422 lleguen como mensajes claros,
+// no como «el servicio devolvió un error».
 import { describe, expect, it, vi } from "vitest";
 
 import {
   fetchAlertsPage,
   INVALID_TRANSITION_MESSAGE,
+  OPEN_ALERT_EXISTS_MESSAGE,
   runAlertAction,
+  VALIDATION_MESSAGE,
 } from "@/app/lib/alertas/client";
 import {
   ALERTS_PAGE_WIRE,
@@ -60,7 +62,7 @@ describe("acciones sobre una alerta", () => {
 
   it("un 409 transicion_invalida devuelve mensaje claro y los dos estados", async () => {
     // Given una alerta que otra persona ya olvidó
-    const httpFetch = respondWith(409, { detail: INVALID_TRANSITION_WIRE });
+    const httpFetch = respondWith(409, { detail: "no se puede resolver", ...INVALID_TRANSITION_WIRE });
 
     // When se intenta resolverla
     const outcome = await runAlertAction(ALERT_ID, { action: "resolve" }, { httpFetch });
@@ -69,11 +71,42 @@ describe("acciones sobre una alerta", () => {
     expect(outcome).toMatchObject({
       ok: false,
       failure: { status: 409, message: INVALID_TRANSITION_MESSAGE },
-      transition: { from: "dismissed", to: "resolved" },
+      conflict: { kind: "invalidTransition", from: "dismissed", to: "resolved" },
     });
   });
 
-  it("un 409 con otro cuerpo sigue siendo un error del servicio", async () => {
+  it("reabrir con otra alerta abierta por la misma causa lo dice con esas palabras", async () => {
+    // Given un 409 alerta_abierta_existente
+    const httpFetch = respondWith(409, {
+      detail: "ya existe",
+      codigo: "alerta_abierta_existente",
+      id: ALERT_ID,
+      abierta_id: 77,
+    });
+
+    // When se intenta reabrir
+    const outcome = await runAlertAction(ALERT_ID, { action: "reopen" }, { httpFetch });
+
+    // Then no se confunde con una transición inválida
+    expect(outcome).toMatchObject({
+      ok: false,
+      failure: { message: OPEN_ALERT_EXISTS_MESSAGE },
+      conflict: { kind: "openAlertExists", openAlertId: 77 },
+    });
+  });
+
+  it("un 422 de validación se explica en vez de mostrar la lista de FastAPI", async () => {
+    // Given un seguimiento que el backend rechaza por la nota
+    const httpFetch = respondWith(422, { detail: [{ loc: ["body", "nota"], msg: "field required" }] });
+
+    // When se envía
+    const outcome = await runAlertAction(ALERT_ID, { action: "followUp", note: "x" }, { httpFetch });
+
+    // Then el mensaje dice qué revisar
+    expect(outcome).toMatchObject({ ok: false, failure: { message: VALIDATION_MESSAGE }, conflict: null });
+  });
+
+  it("un 409 con un código desconocido sigue siendo un error del servicio", async () => {
     // Given un conflicto que no es de transición
     const httpFetch = respondWith(409, { detail: "otra cosa" });
 
@@ -84,7 +117,7 @@ describe("acciones sobre una alerta", () => {
     expect(outcome).toMatchObject({
       ok: false,
       failure: { code: "UPSTREAM_ERROR", message: "otra cosa" },
-      transition: null,
+      conflict: null,
     });
   });
 
@@ -98,7 +131,7 @@ describe("acciones sobre una alerta", () => {
     const outcome = await runAlertAction(ALERT_ID, { action: "dismiss" }, { httpFetch });
 
     // Then el código es el de siempre de la capa de análisis
-    expect(outcome).toMatchObject({ ok: false, failure: { code: "NETWORK" }, transition: null });
+    expect(outcome).toMatchObject({ ok: false, failure: { code: "NETWORK" }, conflict: null });
   });
 });
 

@@ -6,7 +6,18 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { STATUS_LABEL } from "@/app/components/analitica/alertas/labels";
 import { runAlertAction, type AlertActionInput } from "@/app/lib/alertas/client";
+import type { AlertConflict } from "@/app/lib/alertas/contracts";
 import type { AlertAction } from "@/app/lib/alertas/vocabulary";
+
+function conflictMessage(message: string, conflict: AlertConflict | null): string {
+  if (conflict?.kind === "invalidTransition" && conflict.from) {
+    return `${message} Ahora está «${STATUS_LABEL[conflict.from]}».`;
+  }
+  if (conflict?.kind === "openAlertExists" && conflict.openAlertId !== null) {
+    return `${message} Es la alerta n.º ${conflict.openAlertId}.`;
+  }
+  return message;
+}
 
 export type AlertActionController = {
   readonly pending: AlertAction | null;
@@ -38,15 +49,11 @@ export function useAlertAction(alertId: number, onChanged: () => void): AlertAct
         onChanged();
         return true;
       }
-      const { transition } = outcome;
-      // Con un 409 la ficha está vieja: se refresca para que los botones
-      // vuelvan a corresponder al estado real, y el mensaje dice cuál es.
-      if (transition) onChanged();
-      setError(
-        transition?.from
-          ? `${outcome.failure.message} Ahora está «${STATUS_LABEL[transition.from]}».`
-          : outcome.failure.message,
-      );
+      const { conflict } = outcome;
+      // Con `transicion_invalida` la ficha está vieja: se refresca para que los
+      // botones vuelvan a corresponder al estado real, y el mensaje dice cuál es.
+      if (conflict?.kind === "invalidTransition") onChanged();
+      setError(conflictMessage(outcome.failure.message, conflict));
       return false;
     },
     [alertId, onChanged],

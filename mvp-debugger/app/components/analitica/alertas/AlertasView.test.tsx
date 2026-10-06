@@ -62,7 +62,7 @@ describe("AlertasView", () => {
     const row = await screen.findByRole("button", { name: /Inversor sin generar con sol pleno/ });
     expect(row).toHaveTextContent("Grave");
     expect(row).toHaveTextContent("Nueva");
-    expect(row).toHaveTextContent("día entero");
+    expect(row).toHaveTextContent("todas las variables AC");
     expect(row).toHaveTextContent("2026-08-26 a 2026-08-31");
     expect(row).toHaveTextContent("2 días");
     expect(screen.getByText(/1 a 2 de 23 alertas/)).toBeInTheDocument();

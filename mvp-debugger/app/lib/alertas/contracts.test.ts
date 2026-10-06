@@ -8,7 +8,7 @@ import {
   alertSchema,
   alertsPageSchema,
   alertsSummarySchema,
-  invalidTransitionSchema,
+  alertConflictSchema,
 } from "@/app/lib/alertas/contracts";
 import {
   ALERT_DETAIL_WIRE,
@@ -109,16 +109,29 @@ describe("contrato de la lista, el resumen y la ficha", () => {
   );
 });
 
-describe("contrato del 409 transicion_invalida", () => {
+describe("contrato de los dos 409", () => {
   it.each([
-    ["suelto", INVALID_TRANSITION_WIRE],
-    ["envuelto en detail (FastAPI)", { detail: INVALID_TRANSITION_WIRE }],
-  ])("lo lee %s", (_shape, body) => {
+    ["como lo manda historico.errores", { detail: "no se puede resolver", ...INVALID_TRANSITION_WIRE }],
+    ["envuelto en detail (HTTPException)", { detail: INVALID_TRANSITION_WIRE }],
+  ])("transicion_invalida se lee %s", (_shape, body) => {
     // Given el cuerpo del 409
     // When se valida
-    const transition = invalidTransitionSchema.parse(body);
+    const conflict = alertConflictSchema.parse(body);
 
     // Then dice de qué estado a cuál se intentó pasar
-    expect(transition).toEqual({ from: "dismissed", to: "resolved" });
+    expect(conflict).toEqual({ kind: "invalidTransition", from: "dismissed", to: "resolved" });
+  });
+
+  it("alerta_abierta_existente trae la alerta con la que choca", () => {
+    // Given reabrir una alerta cuya clave ya tiene otra abierta
+    const body = { detail: "ya hay una abierta", codigo: "alerta_abierta_existente", id: 41, abierta_id: 77 };
+
+    // When se valida / Then se distingue del otro 409
+    expect(alertConflictSchema.parse(body)).toEqual({ kind: "openAlertExists", openAlertId: 77 });
+  });
+
+  it("un 409 con otro código no se toma por ninguno de los dos", () => {
+    // Given un conflicto que el contrato no define / When se valida / Then no pasa
+    expect(alertConflictSchema.safeParse({ codigo: "otro", detail: "x" }).success).toBe(false);
   });
 });

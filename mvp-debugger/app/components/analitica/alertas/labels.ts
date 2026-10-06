@@ -69,10 +69,12 @@ export function typeLabel(type: string): string {
   return TYPE_LABEL[type] ?? type;
 }
 
-const WHOLE_DAY_VARIABLE = "*";
+/** `*` = el día entero de la fuente. Hoy solo lo usa `inversor_parado_con_sol`,
+ *  que junta en UNA alerta las tres variables AC del mismo apagón. */
+const ALL_VARIABLES = "*";
 
 export function variableLabel(variable: string): string {
-  return variable === WHOLE_DAY_VARIABLE ? "día entero" : variable;
+  return variable === ALL_VARIABLES ? "todas las variables AC" : variable;
 }
 
 /** El encabezado de un fallo dice QUIÉN falló; el detalle, qué pasó. Que el

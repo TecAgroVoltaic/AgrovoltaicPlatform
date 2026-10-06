@@ -1,8 +1,9 @@
 "use client";
 // Lecturas y acciones de `/alertas/*`, por el mismo proxy y con los mismos
 // códigos de fallo que el resto de la capa de análisis (`app/lib/analitica`).
-// Lo único propio de acá es leer el 409 `transicion_invalida`, que no es un
-// error genérico: dice que la alerta cambió de estado y hacia cuál.
+// Lo único propio de acá es leer los dos 409 del contrato (`transicion_invalida`
+// y `alerta_abierta_existente`) y el 422 de validación, que no son errores
+// genéricos: cada uno le dice a la persona algo distinto que hacer.
 import {
   fetchAnalytics,
   fetchResource,
@@ -16,21 +17,31 @@ import {
   alertDetailSchema,
   alertsPageSchema,
   alertsSummarySchema,
-  invalidTransitionSchema,
+  alertConflictSchema,
   type Alert,
   type AlertDetail,
   type AlertsPage,
   type AlertsSummary,
-  type InvalidTransition,
+  type AlertConflict,
 } from "@/app/lib/alertas/contracts";
 import { alertsListParams, type AlertsQuery } from "@/app/lib/alertas/query";
 import { ALERT_ACTION_PATH, type AlertAction } from "@/app/lib/alertas/vocabulary";
 
 const ALERTS_PATH = "alertas";
 const CONFLICT_STATUS = 409;
+const VALIDATION_STATUS = 422;
 
 export const INVALID_TRANSITION_MESSAGE =
   "Esa acción ya no aplica: la alerta cambió de estado desde que se abrió la ficha.";
+export const OPEN_ALERT_EXISTS_MESSAGE =
+  "Ya hay una alerta abierta por esta misma causa: no se puede reabrir esta.";
+export const VALIDATION_MESSAGE =
+  "El servicio rechazó los datos de la acción: revisá que la nota no esté vacía ni pase de 2.000 caracteres.";
+
+const CONFLICT_MESSAGE: Readonly<Record<AlertConflict["kind"], string>> = {
+  invalidTransition: INVALID_TRANSITION_MESSAGE,
+  openAlertExists: OPEN_ALERT_EXISTS_MESSAGE,
+};
 
 export function fetchAlertsPage(
   range: DateRange,
@@ -67,8 +78,8 @@ export type AlertActionOutcome =
   | {
       readonly ok: false;
       readonly failure: AnalyticsFailure;
-      /** Presente solo si el backend rechazó la transición (409). */
-      readonly transition: InvalidTransition | null;
+      /** Presente solo si el backend respondió uno de los 409 del contrato. */
+      readonly conflict: AlertConflict | null;
     };
 
 function actionBody(input: AlertActionInput): Record<string, string> {
@@ -95,18 +106,25 @@ export async function runAlertAction(
     deps,
   );
   if (result.ok) return { ok: true, alert: result.data };
-  const transition = readInvalidTransition(result.failure);
-  return transition
-    ? {
-        ok: false,
-        failure: { ...result.failure, message: INVALID_TRANSITION_MESSAGE },
-        transition,
-      }
-    : { ok: false, failure: result.failure, transition: null };
+  const conflict = readConflict(result.failure);
+  if (conflict) {
+    return {
+      ok: false,
+      failure: { ...result.failure, message: CONFLICT_MESSAGE[conflict.kind] },
+      conflict,
+    };
+  }
+  // El 422 de FastAPI trae `detail` como lista de errores de campo, que no es
+  // texto para una persona: se reemplaza por una frase que dice qué revisar.
+  const failure =
+    result.failure.status === VALIDATION_STATUS
+      ? { ...result.failure, message: VALIDATION_MESSAGE }
+      : result.failure;
+  return { ok: false, failure, conflict: null };
 }
 
-function readInvalidTransition(failure: AnalyticsFailure): InvalidTransition | null {
+function readConflict(failure: AnalyticsFailure): AlertConflict | null {
   if (failure.status !== CONFLICT_STATUS) return null;
-  const parsed = invalidTransitionSchema.safeParse(failure.payload);
+  const parsed = alertConflictSchema.safeParse(failure.payload);
   return parsed.success ? parsed.data : null;
 }

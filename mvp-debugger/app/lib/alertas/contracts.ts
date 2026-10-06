@@ -187,20 +187,33 @@ export const alertActionResponseSchema = z
   .object({ alerta: alertSchema })
   .transform((raw) => raw.alerta);
 
-const invalidTransitionBodySchema = z.object({
-  codigo: z.literal("transicion_invalida"),
-  de: z.string(),
-  a: z.string(),
-});
+// ── Conflictos (409) ─────────────────────────────────────────────────────────
+// El backend responde `{detail: "<prosa>", codigo, ...datos}` (historico.errores):
+// `codigo` es lo estable, `detail` cambia. Se acepta además el objeto envuelto
+// en `detail`, que es como lo serializa un `HTTPException` de FastAPI.
 
-/** El 409 del contrato. Se acepta suelto o envuelto en `detail`, que es como
- *  lo serializa FastAPI si se lanza con `HTTPException(409, detail={...})`. */
-export const invalidTransitionSchema = z
-  .union([invalidTransitionBodySchema, z.object({ detail: invalidTransitionBodySchema })])
-  .transform((raw) => ("detail" in raw ? raw.detail : raw))
+const invalidTransitionBodySchema = z
+  .object({ codigo: z.literal("transicion_invalida"), de: z.string(), a: z.string() })
   .transform((raw) => ({
+    kind: "invalidTransition" as const,
     from: STATUS_FROM_WIRE.get(raw.de) ?? null,
     to: STATUS_FROM_WIRE.get(raw.a) ?? null,
   }));
 
-export type InvalidTransition = z.infer<typeof invalidTransitionSchema>;
+const openAlertExistsBodySchema = z
+  .object({
+    codigo: z.literal("alerta_abierta_existente"),
+    abierta_id: z.number().int().nullable().optional(),
+  })
+  .transform((raw) => ({ kind: "openAlertExists" as const, openAlertId: raw.abierta_id ?? null }));
+
+const conflictBodySchema = z.union([invalidTransitionBodySchema, openAlertExistsBodySchema]);
+
+/** Los dos 409 del contrato: la alerta cambió de estado, o reabrirla chocaría
+ *  con otra abierta por la misma causa (misma `clave`). */
+export const alertConflictSchema = z.union([
+  conflictBodySchema,
+  z.object({ detail: conflictBodySchema }).transform((raw) => raw.detail),
+]);
+
+export type AlertConflict = z.infer<typeof alertConflictSchema>;
