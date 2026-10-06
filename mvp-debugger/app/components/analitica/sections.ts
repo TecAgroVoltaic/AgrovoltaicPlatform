@@ -10,6 +10,7 @@ import {
   IconoReconciliar,
   IconoSerie,
   IconoTablero,
+  IconoAsistente,
 } from "@/app/components/Iconos";
 
 export type AnalysisSection = {
@@ -63,6 +64,13 @@ export const ANALYSIS_SECTIONS: readonly AnalysisSection[] = [
     description:
       "Un rango de fechas en .csv, .dat o .mat, desde Supabase PV o la API de AgroDash: se elige el dataset, los filtros, las columnas y el formato.",
     Icon: IconoDescarga,
+  },
+  {
+    path: "/asistente",
+    label: "Asistente",
+    description:
+      "Preguntas en lenguaje natural sobre los datos: responde con los mismos algoritmos de las vistas, grafica y prepara descargas.",
+    Icon: IconoAsistente,
   },
 ];
 
