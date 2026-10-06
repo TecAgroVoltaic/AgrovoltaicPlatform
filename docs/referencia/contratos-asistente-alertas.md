@@ -186,20 +186,6 @@ nueva ──reconocer──▶ reconocida ──seguimiento──▶ en_seguimie
   └──descartar──▶ descartada ◀──────────────────────┘        reabrir ◀──────────┘
 ```
 
-Tabla de transiciones que **ofrece la UI** (lectura del diagrama hecha por `feat/alertas-frontend`,
-en `mvp-debugger/app/lib/alertas/transitions.ts`). El backend es la autoridad: si acepta o rechaza
-algo distinto, se corrige esta tabla y ese archivo juntos.
-
-| Estado actual | Acciones ofrecidas |
-|---|---|
-| `nueva` | reconocer, descartar |
-| `reconocida` | seguimiento, descartar |
-| `en_seguimiento` | seguimiento (otro evento), resolver, descartar |
-| `resuelta` | reabrir |
-| `descartada` | reabrir |
-
-El estado al que lleva `reabrir` lo decide el backend; la UI solo pinta la `alerta` que devuelve.
-
 - **Reconocer** ("aprobar" en la UI): alguien vio la alerta y la da por válida.
 - **Seguimiento**: nota obligatoria + `proxima_revision` opcional. Cada seguimiento es un evento;
   la ficha muestra la línea de tiempo completa.
@@ -262,13 +248,7 @@ Todos con `_verificar_api_key`.
 | `POST /alertas/evaluar` | `{desde?, hasta?}` | `{creadas, actualizadas, revisadas, rango}` |
 
 Transición inválida (p. ej. resolver una descartada) → **409** con `{codigo:"transicion_invalida", de, a}`.
-`de` es el estado **actual** de la alerta y `a` el destino pedido, ambos con los valores de `estado`.
-El frontend acepta el objeto suelto o envuelto en `detail` (lo que produce
-`HTTPException(409, detail={...})` de FastAPI). Id inexistente → 404.
-
-`GET /alertas` filtra por `desde`/`hasta` cuando vienen; el frontend **siempre** los manda (el rango
-del cascarón). Se asume que una alerta entra si su `[fecha_inicio, fecha_fin]` se solapa con
-`[desde, hasta)`; si el backend usa otro criterio, documentarlo acá.
+Id inexistente → 404.
 
 `Alerta` = todas las columnas de la tabla con fechas ISO. `Evento` = `{id, tipo, nota, autor, datos, creado_en}`.
 
