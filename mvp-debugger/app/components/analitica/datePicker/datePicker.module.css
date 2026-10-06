@@ -1,5 +1,5 @@
 /* El selector de fecha del rango: botón + calendario mensual en un desplegable.
-   Celdas de 40 px como mínimo (táctiles) y ancho total de ~314 px, que entra
+   Celdas de 40 px como mínimo (táctiles) y ancho total de 320 px (medido), que entra
    a 360 px con margen; el desplazamiento lateral lo corrige `placement.ts`. */
 
 .picker { position:relative; }

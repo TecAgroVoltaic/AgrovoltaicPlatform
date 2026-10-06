@@ -7,7 +7,8 @@
 //
 // El desplegable atrapa el foco (Tab da la vuelta adentro), Escape lo cierra
 // SIN cerrar el desplegable que lo contenga (el chip de contexto del Asistente
-// también cierra con Escape) y un clic afuera lo cierra.
+// también cierra con Escape: lo marca con `defaultPrevented`) y un clic afuera
+// lo cierra.
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 
 import { dayAvailability } from "@/app/components/analitica/datePicker/availability";
@@ -59,7 +60,7 @@ export function DatePicker({ id, labelId, value, onChange, daysWithData }: DateP
       return;
     }
     const { left, width } = popover.getBoundingClientRect();
-    setShiftPx(horizontalShift({ left, width }, document.documentElement.clientWidth));
+    setShiftPx(horizontalShift({ left, width }, containingBoundary(wrapperRef.current)));
   }, [open]);
 
   useEffect(() => {
@@ -73,6 +74,10 @@ export function DatePicker({ id, labelId, value, onChange, daysWithData }: DateP
 
   function onPopoverKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     if (event.key === "Escape") {
+      // preventDefault es la señal para el desplegable que lo contiene: en Next
+      // la raíz de React ES el document, y stopPropagation no frena a otro
+      // oyente del mismo nodo (el del chip de contexto). Medido en el navegador.
+      event.preventDefault();
       event.stopPropagation();
       close();
       return;
@@ -138,4 +143,15 @@ export function DatePicker({ id, labelId, value, onChange, daysWithData }: DateP
       ) : null}
     </div>
   );
+}
+
+/** El espacio donde tiene que caber el calendario: el diálogo que lo contiene
+ *  (el desplegable del chip de contexto) o, si no hay, la pantalla. */
+function containingBoundary(picker: HTMLElement | null) {
+  const dialog = picker?.parentElement?.closest('[role="dialog"]');
+  if (dialog) {
+    const { left, right } = dialog.getBoundingClientRect();
+    return { left, right };
+  }
+  return { left: 0, right: document.documentElement.clientWidth };
 }

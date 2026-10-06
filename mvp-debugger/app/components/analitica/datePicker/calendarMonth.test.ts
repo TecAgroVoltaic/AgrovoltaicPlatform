@@ -36,20 +36,26 @@ describe("salto de mes", () => {
 });
 
 describe("horizontalShift", () => {
-  const VIEWPORT = 360;
-  const WIDTH = 314;
+  const SCREEN_360 = { left: 0, right: 360 };
+  const WIDTH = 320;
 
   it("no mueve un calendario que ya entra", () => {
-    expect(horizontalShift({ left: 16, width: WIDTH }, VIEWPORT)).toBe(0);
+    expect(horizontalShift({ left: 16, width: WIDTH }, SCREEN_360)).toBe(0);
   });
 
   it("corre a la izquierda el de «Hasta» que se sale por la derecha", () => {
-    // Given abierto desde x=180 a 360 px: llegaría a 494
-    // Then se corre para que termine a 8 px del borde
-    expect(horizontalShift({ left: 180, width: WIDTH }, VIEWPORT)).toBe(360 - 8 - 494);
+    // Given abierto desde x=180 a 360 px: llegaría a 500
+    // Then se corre para que termine a 8 px del borde (352)
+    expect(horizontalShift({ left: 180, width: WIDTH }, SCREEN_360)).toBe(352 - 500);
+  });
+
+  it("dentro del panel del chip (12–348 a 360 px) cabe en el panel, no solo en la pantalla", () => {
+    // Given el calendario de «Desde» abierto en x=29: llegaría a 349, 1 px fuera del panel
+    // Then se corre hasta quedar a 8 px del borde del panel
+    expect(horizontalShift({ left: 29, width: WIDTH }, { left: 12, right: 348 })).toBe(340 - 349);
   });
 
   it("si no entra entero, se pega al margen izquierdo", () => {
-    expect(horizontalShift({ left: 100, width: 400 }, VIEWPORT)).toBe(8 - 100);
+    expect(horizontalShift({ left: 100, width: 400 }, SCREEN_360)).toBe(8 - 100);
   });
 });

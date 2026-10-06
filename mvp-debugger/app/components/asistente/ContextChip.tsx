@@ -41,7 +41,8 @@ export function ContextChip({ threadOpen }: ContextChipProps) {
     if (!open) return;
     panelRef.current?.querySelector<HTMLElement>("button, select")?.focus();
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") close();
+      // Un Escape ya atendido adentro (el calendario del rango) no es para el chip.
+      if (event.key === "Escape" && !event.defaultPrevented) close();
     };
     const onPointer = (event: PointerEvent) => {
       if (event.target instanceof Node && !wrapperRef.current?.contains(event.target)) setOpen(false);

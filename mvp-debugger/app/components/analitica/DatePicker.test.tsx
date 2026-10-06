@@ -18,7 +18,7 @@ const READY: DaysWithDataState = {
 
 function renderPicker(daysWithData: DaysWithDataState = READY, value = "2026-05-21") {
   const onChange = vi.fn();
-  render(
+  const { container } = render(
     <>
       <span id="rotulo">Desde</span>
       <DatePicker id="campo" labelId="rotulo" value={value} onChange={onChange} daysWithData={daysWithData} />
@@ -26,7 +26,7 @@ function renderPicker(daysWithData: DaysWithDataState = READY, value = "2026-05-
   );
   const trigger = screen.getByRole("button", { name: /Desde/ });
   fireEvent.click(trigger);
-  return { onChange, trigger, dialog: screen.getByRole("dialog", { name: "Desde" }) };
+  return { onChange, trigger, container, dialog: screen.getByRole("dialog", { name: "Desde" }) };
 }
 
 const day = (name: RegExp) => screen.getByRole("button", { name });
@@ -99,18 +99,20 @@ describe("DatePicker", () => {
     expect(day(/^1 de junio de 2026$/)).toHaveFocus();
   });
 
-  it("Escape cierra solo el calendario: no le llega al desplegable que lo contiene", () => {
-    // Given un oyente de Escape en el documento, como el del chip de contexto
-    const outerEscape = vi.fn();
-    document.addEventListener("keydown", outerEscape);
-    const { trigger } = renderPicker();
+  it("Escape cierra solo el calendario y lo marca como atendido para el desplegable de afuera", () => {
+    // Given un oyente de Escape en el MISMO nodo que la raíz de React, como el
+    // del chip de contexto en Next (donde la raíz es el document): a ese
+    // oyente stopPropagation no lo frena, por eso el contrato es defaultPrevented
+    const { trigger, container } = renderPicker();
+    const outerEscape = vi.fn((event: KeyboardEvent) => event.defaultPrevented);
+    container.addEventListener("keydown", outerEscape);
     // When se pulsa Escape dentro del calendario
     fireEvent.keyDown(screen.getByRole("grid"), { key: "Escape" });
-    // Then se cierra, el foco vuelve al botón y el de afuera no se entera
+    // Then se cierra, el foco vuelve al botón y el de afuera lo ve ya atendido
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(trigger).toHaveFocus();
-    expect(outerEscape).not.toHaveBeenCalled();
-    document.removeEventListener("keydown", outerEscape);
+    expect(outerEscape).toHaveBeenCalledTimes(1);
+    expect(outerEscape).toHaveReturnedWith(true);
   });
 
   it("Tab da la vuelta dentro del calendario", () => {
