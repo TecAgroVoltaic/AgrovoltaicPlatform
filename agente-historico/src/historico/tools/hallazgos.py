@@ -34,7 +34,7 @@ TIPO_DEL_CIELO = "kt_imposible"
 
 # Todos los tipos que la tabla `hallazgos_calidad` puede contener hoy, DERIVADOS
 # de los tres detectores que escriben en ella: el barrido por dia y por columna,
-# las cinco familias de `calidad.pruebas` (incluido el estructural `sin_fuente`) y
+# las seis familias de `calidad.pruebas` (incluido el estructural `sin_fuente`) y
 # el detector de cielo.
 TIPOS_QUE_SE_ESCRIBEN: tuple[str, ...] = tuple(dict.fromkeys(
     tuple(barrido.TIPOS_PROPIOS) + tuple(barrido.TIPOS_DE_PRUEBAS) + (TIPO_DEL_CIELO,)))
@@ -80,6 +80,10 @@ QUE_ES = {
     # que fallo fue el inversor. Por eso no baja `dias_utilizables` en `confianza`.
     "inversor_sin_acoplar": ("el inversor no se acopló a la red entre las 07:00 y las "
                              "17:00: el DATO es bueno, lo que falló fue el EQUIPO"),
+    # ── Familia 6: consistencia entre sensores ───────────────────────────────
+    "incongruencia_temp_irradiancia": (
+        "la temperatura de módulo no responde a la irradiancia (no sigue al sol, fría "
+        "a pleno sol o caliente sin sol); umbrales pendientes de validación por Hugo"),
     # ── Estructural: lo que el documento pide y la base no tiene ─────────────
     "sin_fuente": "la variable está en el documento y no en la base: nadie la mide",
     # ── Detector de cielo ────────────────────────────────────────────────────
