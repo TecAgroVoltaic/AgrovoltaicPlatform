@@ -23,7 +23,7 @@ const STEP_CONFIG: Partial<Record<AlertAction, ActionStepConfig>> = {
     withNextReview: true,
     submitLabel: "Guardar seguimiento",
   },
-  resolve: { noteLabel: "Nota (opcional)", submitLabel: "Resolver" },
+  resolve: { noteLabel: "Nota (opcional)", submitLabel: "Marcar como resuelta" },
   dismiss: {
     intro: "¿Olvidar esta alerta? Sale de la lista de abiertas, pero queda en el historial y se puede reabrir.",
     submitLabel: "Sí, olvidar",
