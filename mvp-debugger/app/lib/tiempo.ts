@@ -33,6 +33,8 @@ const LOCALE = "es-CR";
 const MS_POR_DIA = 86_400_000;
 const LARGO_FECHA = 10;   // YYYY-MM-DD
 const LARGO_RELOJ = 19;   // YYYY-MM-DDTHH:MM:SS
+const LARGO_ANIO = 4;
+const LARGO_HORA_MINUTO = 5;  // HH:MM
 
 // ── 1. Fechas de calendario ──────────────────────────────────────────────────
 
@@ -48,6 +50,18 @@ export function moverDias(fecha: string, dias: number): string {
  *  de UTC: a las 19:00 de Costa Rica en UTC ya es mañana. */
 export function hoyEnSitio(ahora: Date = new Date()): string {
   return partes(ahora).fecha;
+}
+
+// Abreviaturas de mes como se dicen en Costa Rica («set», no «sep»). Se escriben
+// a mano y no con `Intl`: una fecha de calendario no es un instante y no hay
+// zona que aplicarle, y así el texto no depende del ICU del navegador.
+const MESES_CORTOS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "set", "oct", "nov", "dic"];
+
+/** Una fecha `YYYY-MM-DD` como «3 may» o, con año, «3 may 2026». */
+export function fechaCorta(fecha: string, conAnio: boolean): string {
+  const [anio, mes, dia] = fecha.slice(0, LARGO_FECHA).split("-").map(Number);
+  const texto = `${dia} ${MESES_CORTOS[mes - 1] ?? "?"}`;
+  return conAnio ? `${texto} ${anio}` : texto;
 }
 
 // ── 2. Reloj del sitio (hora de pared, sin zona) ─────────────────────────────
@@ -99,4 +113,15 @@ export function diaEnSitio(iso: string | null | undefined): string {
   const d = instante(iso);
   return d === null ? String(iso).slice(0, LARGO_FECHA)
     : d.toLocaleDateString(LOCALE, { timeZone: ZONA_SITIO, year: "numeric", month: "short", day: "2-digit" });
+}
+
+/** Cuándo pasó algo, corto y en hora del sitio: «hoy 12:21», «3 oct 09:05» o,
+ *  de otro año, «3 oct 2025 09:05». Para la línea bajo el título de un hilo. */
+export function momentoEnSitio(instanteReal: Date, ahora: Date = new Date()): string {
+  const momento = partes(instanteReal);
+  const hoy = partes(ahora).fecha;
+  const hora = momento.hora.slice(0, LARGO_HORA_MINUTO);
+  if (momento.fecha === hoy) return `hoy ${hora}`;
+  const otroAnio = momento.fecha.slice(0, LARGO_ANIO) !== hoy.slice(0, LARGO_ANIO);
+  return `${fechaCorta(momento.fecha, otroAnio)} ${hora}`;
 }

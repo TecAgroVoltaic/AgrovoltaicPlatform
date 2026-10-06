@@ -5,8 +5,10 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import {
   diaEnSitio,
+  fechaCorta,
   hoyEnSitio,
   instanteEnSitio,
+  momentoEnSitio,
   moverDias,
   moverReloj,
 } from "@/app/lib/tiempo";
@@ -72,5 +74,22 @@ describe.each(ZONAS)("con el reloj de la máquina en %s", (zona) => {
     expect(enZona(() => instanteEnSitio(null))).toBe("—");
     expect(enZona(() => instanteEnSitio("no-es-fecha"))).toBe("no-es-fecha");
     expect(enZona(() => diaEnSitio(undefined))).toBe("—");
+  });
+
+  it("el momento de un hilo dice «hoy» con el día del sitio, no el de la máquina", () => {
+    // Given las 02:30 UTC del 6 de octubre, que en el sitio son las 20:30 del 5
+    const ahora = new Date("2026-10-06T03:00:00Z");
+    // When se rotula un instante de la misma noche del sitio y otro del día anterior
+    // Then el primero es «hoy» y el segundo lleva su fecha corta
+    expect(enZona(() => momentoEnSitio(new Date("2026-10-06T02:30:00Z"), ahora))).toBe("hoy 20:30");
+    expect(enZona(() => momentoEnSitio(new Date("2026-10-04T15:05:00Z"), ahora))).toBe("4 oct 09:05");
+    expect(enZona(() => momentoEnSitio(new Date("2025-09-04T15:05:00Z"), ahora))).toBe("4 set 2025 09:05");
+  });
+});
+
+describe("fechaCorta", () => {
+  it("abrevia el mes como en Costa Rica y agrega el año solo si se pide", () => {
+    expect(fechaCorta("2026-09-03", false)).toBe("3 set");
+    expect(fechaCorta("2026-01-31", true)).toBe("31 ene 2026");
   });
 });

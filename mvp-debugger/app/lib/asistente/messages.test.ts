@@ -28,7 +28,7 @@ describe("buildBlocks", () => {
     // Then salen en orden y el final aparece una sola vez
     expect(blocks.map((block) => block.kind)).toEqual(["text", "chart", "download", "text"]);
     expect(blocks[1]).toMatchObject({
-      request: { variables: ["potencia_pv1_w"], from: "2026-08-01", toExclusive: "2026-09-01" },
+      request: { variables: ["potencia_pv1_w"], from: "2026-08-01", toExclusive: "2026-09-01", granularity: null },
     });
   });
 
@@ -45,7 +45,7 @@ describe("buildBlocks", () => {
 describe("exportRequestMessage", () => {
   it("pide la exportación con las mismas variables y rango del gráfico", () => {
     const text = exportRequestMessage("Potencia PV1", {
-      variables: ["potencia_pv1_w"], from: "2026-08-01", toExclusive: "2026-09-01",
+      variables: ["potencia_pv1_w"], from: "2026-08-01", toExclusive: "2026-09-01", granularity: null,
     });
     expect(text).toContain("potencia_pv1_w");
     expect(text).toContain("desde 2026-08-01 hasta 2026-09-01");

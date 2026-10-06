@@ -12,6 +12,8 @@ export type ChartRequest = {
   readonly variables: readonly string[];
   readonly from: string | null;
   readonly toExclusive: string | null;
+  /** El grano tal como viaja (`hora|dia|semana|mes`), si el agente lo fijó. */
+  readonly granularity: string | null;
 };
 
 export type MessageBlock =
@@ -32,6 +34,7 @@ const chartInputSchema = z.object({
   variables: z.array(z.string()).min(1),
   desde: z.string().optional(),
   hasta: z.string().optional(),
+  granularidad: z.string().optional(),
 });
 
 export function buildBlocks(steps: readonly AgentStep[], finalText: string): MessageBlock[] {
@@ -68,6 +71,7 @@ function chartRequest(input: unknown): ChartRequest | null {
     variables: parsed.data.variables,
     from: parsed.data.desde ?? null,
     toExclusive: parsed.data.hasta ?? null,
+    granularity: parsed.data.granularidad ?? null,
   };
 }
 
