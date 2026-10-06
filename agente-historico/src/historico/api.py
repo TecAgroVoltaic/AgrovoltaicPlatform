@@ -176,6 +176,32 @@ def chat(cuerpo: ChatBody) -> dict:
     return traza
 
 
+_ASISTENTE = None
+
+
+def _asistente():
+    """El agente del asistente: mismo lazo, otro modelo (`config.MODEL_ASISTENTE`)."""
+    global _ASISTENTE
+    if _ASISTENTE is None:
+        from historico import config
+        from historico.agent.agent import Historico
+        _ASISTENTE = Historico(model=config.MODEL_ASISTENTE)
+    return _ASISTENTE
+
+
+@app.post("/chat/stream", dependencies=[Depends(_verificar_api_key), Depends(_frenar_consumo)])
+def chat_stream(cuerpo: ChatBody) -> StreamingResponse:
+    """El chat del asistente como SSE (contrato §3): pasos en vivo, deltas de texto y
+    un `fin` identico a la respuesta de `/chat`. Ver `historico.chat_sse`."""
+    from historico import chat_sse
+    mensajes = [m.model_dump() for m in cuerpo.mensajes]
+    return StreamingResponse(
+        chat_sse.emitir(lambda: _asistente().chat_stream(mensajes, cuerpo.contexto),
+                        uso.registrar),
+        media_type=chat_sse.MEDIA_TYPE, headers=chat_sse.CABECERAS,
+    )
+
+
 @app.get("/uso", dependencies=[Depends(_verificar_api_key)])
 def consumo() -> dict:
     """Consumo acumulado del agente (tokens + costo USD + nº consultas, por modelo).
