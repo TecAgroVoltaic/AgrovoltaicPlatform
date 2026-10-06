@@ -4,7 +4,9 @@
 //
 // Este módulo es puro (sin React ni Next): leer, escribir y cambiar la consulta
 // se prueba sin montar nada. Los nombres de los parámetros van en castellano
-// porque son contrato público, igual que `desde`/`hasta`.
+// porque son contrato público, igual que `desde`/`hasta`. Leer y escribir viven
+// juntos (y por eso pasa de 150 líneas): separados, un parámetro nuevo se
+// agrega de un lado y se olvida del otro.
 import type { ParamEntries, ParamReader } from "@/app/lib/analitica/urlRange";
 import {
   ALERT_SEVERITY_WIRE,

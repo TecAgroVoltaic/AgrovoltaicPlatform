@@ -3,6 +3,7 @@
 // entre la navegación y las páginas se desincroniza sola.
 import type { ComponentType } from "react";
 
+import { AlertsNavBadge } from "@/app/components/analitica/alertas/AlertsNavBadge";
 import {
   IconoCalidad,
   IconoDescarga,
@@ -10,6 +11,7 @@ import {
   IconoReconciliar,
   IconoSerie,
   IconoTablero,
+  IconoCampana,
 } from "@/app/components/Iconos";
 
 export type AnalysisSection = {
@@ -19,6 +21,8 @@ export type AnalysisSection = {
   /** Qué se responde en esa sección, para la cabecera de la página. */
   readonly description: string;
   readonly Icon: ComponentType<{ size?: number }>;
+  /** Indicador opcional junto a la etiqueta del menú (p. ej. un contador). */
+  readonly Badge?: ComponentType;
 };
 
 export const ANALYSIS_SECTIONS: readonly AnalysisSection[] = [
@@ -63,6 +67,14 @@ export const ANALYSIS_SECTIONS: readonly AnalysisSection[] = [
     description:
       "Un rango de fechas en .csv, .dat o .mat, desde Supabase PV o la API de AgroDash: se elige el dataset, los filtros, las columnas y el formato.",
     Icon: IconoDescarga,
+  },
+  {
+    path: "/alertas",
+    label: "Alertas",
+    description:
+      "Lo que pide atención de una persona: problemas del equipo y del dato que se repiten, con su evidencia y su seguimiento.",
+    Icon: IconoCampana,
+    Badge: AlertsNavBadge,
   },
 ];
 

@@ -1,6 +1,9 @@
 // Contratos de `/alertas/*` (docs/referencia/contratos-asistente-alertas.md §4.5).
 // Se valida en la frontera y se traduce a inglés acá, una sola vez: ningún
 // componente sabe que el backend dice `en_seguimiento`.
+//
+// Pasa de 150 líneas a propósito: es UN contrato (el de §4.5) y partirlo por
+// endpoint repartiría `alertSchema`, que usan cuatro de las cinco respuestas.
 import { z } from "zod";
 
 import { isIsoDate } from "@/app/lib/analitica/dateRange";
