@@ -7,7 +7,7 @@
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 
-import styles from "@/app/components/analitica/alertas/alertas.module.css";
+import styles from "@/app/components/analitica/alertas/navBadge.module.css";
 import { useAlertsSummary } from "@/app/components/analitica/alertas/useAlertsData";
 
 export function AlertsNavBadge() {

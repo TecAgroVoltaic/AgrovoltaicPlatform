@@ -26,8 +26,9 @@ export type AnalysisSection = {
   readonly Badge?: ComponentType;
   /** La sección dibuja su propia cabecera a ancho completo: el cascarón no le
    *  pone la barra de rango, ni el pie, ni la barra superior del cajón (el botón
-   *  del menú lo pone ella con `useSectionMenu`). Hoy solo el Asistente, donde
-   *  el chat es el protagonista y el rango viaja como contexto del hilo. */
+   *  del menú lo pone ella con `SectionMenuButton`). El Asistente, donde el chat
+   *  es el protagonista y el rango viaja como contexto del hilo, y Alertas, que
+   *  lleva el período, cuándo se evaluó y «Evaluar ahora» en esa misma fila. */
   readonly ownsHeader?: true;
 };
 
@@ -89,6 +90,7 @@ export const ANALYSIS_SECTIONS: readonly AnalysisSection[] = [
       "Lo que pide atención de una persona: problemas del equipo y del dato que se repiten, con su evidencia y su seguimiento.",
     Icon: IconoCampana,
     Badge: AlertsNavBadge,
+    ownsHeader: true,
   },
 ];
 

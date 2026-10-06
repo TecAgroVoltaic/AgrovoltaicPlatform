@@ -1,20 +1,24 @@
 "use client";
-// El cajón de la ficha: lateral en escritorio, pantalla completa en un teléfono
-// (lo decide el CSS). Se comporta como diálogo: toma el foco al abrir, Escape
-// lo cierra, y quien lo abrió recupera el foco al cerrar (eso lo hace la vista,
-// que sabe qué fila fue).
+// El cajón de la ficha: 540 px a la derecha en escritorio, pantalla completa en
+// un teléfono (lo decide el CSS). Se comporta como diálogo: toma el foco al
+// abrir, Escape lo cierra, el tabulador no se escapa, y quien lo abrió recupera
+// el foco al cerrar (eso lo hace la vista, que sabe qué fila fue).
 import { useEffect, useId, useRef } from "react";
 
-import styles from "@/app/components/analitica/alertas/alertas.module.css";
+import { IconClose } from "@/app/components/asistente/AssistantIcons";
 import { AlertDetailPanel } from "@/app/components/analitica/alertas/AlertDetailPanel";
+import styles from "@/app/components/analitica/alertas/drawer.module.css";
+
+const FOCUSABLE =
+  "a[href], button:not([disabled]):not([tabindex='-1']), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), summary";
+const CLOSE_ICON_SIZE = 14;
+const CLOSE_ICON_STROKE = 2.2;
 
 export type AlertDrawerProps = {
   readonly alertId: number;
   readonly onClose: () => void;
   readonly onChanged: () => void;
 };
-
-const FOCUSABLE = "a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), summary";
 
 /** Con `aria-modal` el lector de pantalla ya no ve lo de atrás; el tabulador
  *  tampoco tiene que llegar ahí, o el foco cae en una lista tapada por el velo. */
@@ -44,7 +48,9 @@ export function AlertDrawer({ alertId, onClose, onChanged }: AlertDrawerProps) {
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
+      // Un Escape ya atendido adentro (el calendario de la próxima revisión)
+      // cierra solo eso, no la ficha entera.
+      if (event.key === "Escape" && !event.defaultPrevented) onClose();
       if (event.key === "Tab" && panelRef.current) keepFocusInside(panelRef.current, event);
     };
     document.addEventListener("keydown", onKey);
@@ -57,14 +63,8 @@ export function AlertDrawer({ alertId, onClose, onChanged }: AlertDrawerProps) {
           de Escape y del botón, que sí están en el orden de tabulación. */}
       <div className={styles.scrim} onClick={onClose} aria-hidden="true" />
       <aside ref={panelRef} className={styles.drawer} role="dialog" aria-modal="true" aria-labelledby={titleId}>
-        <button
-          ref={closeRef}
-          type="button"
-          className={`btn-sm ${styles.close}`}
-          onClick={onClose}
-          aria-label="Cerrar la ficha"
-        >
-          Cerrar
+        <button ref={closeRef} type="button" className={styles.close} onClick={onClose} aria-label="Cerrar la ficha">
+          <IconClose size={CLOSE_ICON_SIZE} strokeWidth={CLOSE_ICON_STROKE} />
         </button>
         <AlertDetailPanel key={alertId} alertId={alertId} titleId={titleId} onChanged={onChanged} />
       </aside>

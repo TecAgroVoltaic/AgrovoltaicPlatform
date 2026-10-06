@@ -10,29 +10,13 @@ import type { DateRange } from "@/app/lib/analitica/dateRange";
 import { onAlertsChanged } from "@/app/lib/alertas/changes";
 import { fetchAlertDetail, fetchAlertsPage, fetchAlertsSummary } from "@/app/lib/alertas/client";
 import type { AlertDetail, AlertsPage, AlertsSummary } from "@/app/lib/alertas/contracts";
-import { alertsListParams, isDefaultFilters, type AlertsQuery } from "@/app/lib/alertas/query";
+import { alertsListParams, type AlertsQuery } from "@/app/lib/alertas/query";
 
-const FIRST_OFFSET = 0;
-
-/** El vacío SIEMPRE dice por qué. «No hay abiertas en este rango» y «ninguna
- *  coincide con tu filtro» piden a la persona cosas distintas. */
-export function alertsPageToState(page: AlertsPage, query: AlertsQuery): ChartState<AlertsPage> {
-  if (page.alerts.length > 0) return readyChart(page);
-  if (query.offset > FIRST_OFFSET) {
-    return emptyChart("NO_ROWS", {
-      message: "Esta página quedó vacía.",
-      hint: "La lista cambió desde que se abrió el enlace: volvé a la primera página.",
-    });
-  }
-  return isDefaultFilters(query.filters)
-    ? emptyChart("NO_ROWS", {
-        message: "No hay alertas abiertas en este rango.",
-        hint: "Que no haya alertas no dice que el dato esté sano: mirá cuándo fue la última evaluación.",
-      })
-    : emptyChart("FILTERED_OUT", {
-        message: "Ninguna alerta coincide con los filtros elegidos.",
-        hint: "Quitá un filtro para volver a ver las alertas abiertas del rango.",
-      });
+/** Una página sin filas es un vacío y no un error. Cuál vacío (nunca evaluado,
+ *  nada abierto, filtros que no coinciden) lo decide la vista con la consulta y
+ *  el resumen en la mano: ver `emptyListKind`. */
+export function alertsPageToState(page: AlertsPage): ChartState<AlertsPage> {
+  return page.alerts.length > 0 ? readyChart(page) : emptyChart("NO_ROWS");
 }
 
 export function useAlertsList(range: DateRange, query: AlertsQuery) {
@@ -40,7 +24,7 @@ export function useAlertsList(range: DateRange, query: AlertsQuery) {
   return useReloadableResource(
     key,
     () => fetchAlertsPage(range, query),
-    (page: AlertsPage) => alertsPageToState(page, query),
+    alertsPageToState,
   );
 }
 
