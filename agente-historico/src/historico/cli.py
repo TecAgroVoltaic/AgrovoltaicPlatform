@@ -5,7 +5,8 @@
     historico cielo   [--desde --hasta]   caracteriza el cielo por dia
     historico sol     [--desde --hasta]   ventana solar (amanecer/atardecer)
     historico reporte [--desde --hasta]   el informe legible
-    historico todo    [--desde --hasta]   sol + barrido + cielo + reporte
+    historico alertas [--desde --hasta]   deriva alertas de los hallazgos
+    historico todo    [--desde --hasta]   sol + barrido + cielo + reporte + alertas
 
 Sin subcomando abre el Q&A, que es como se usaba antes del renombre.
 
@@ -22,7 +23,7 @@ import json
 import sys
 from datetime import date, timedelta
 
-CALIDAD = ("sol", "barrido", "cielo", "reporte", "todo")
+CALIDAD = ("sol", "barrido", "cielo", "reporte", "alertas", "todo")
 
 
 def _qa() -> int:
@@ -63,6 +64,7 @@ def _rango(args) -> tuple[date, date]:
 
 def _calidad(args) -> int:
     from historico import db
+    from historico.alertas import evaluar
     from historico.calidad import barrido, cielo, reporte, sol
 
     try:
@@ -78,6 +80,10 @@ def _calidad(args) -> int:
                   file=sys.stderr)
         if args.accion in ("reporte", "todo"):
             print(reporte.generar(desde, hasta))
+        # Ultimo a proposito: deriva de los hallazgos que dejaron los pasos de arriba.
+        if args.accion in ("alertas", "todo"):
+            print(json.dumps(evaluar.evaluar(desde, hasta), indent=2, ensure_ascii=False),
+                  file=sys.stderr)
         return 0
     finally:
         db.cerrar()
