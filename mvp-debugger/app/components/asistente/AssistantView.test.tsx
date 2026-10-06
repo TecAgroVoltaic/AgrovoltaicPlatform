@@ -1,13 +1,17 @@
 // Lo que protege: el flujo entero de la sección contra un backend simulado que
-// cumple el contrato. Pregunta -> pasos en vivo -> gráfico y texto -> «Descargar
-// estos datos» -> tarjeta de descarga; y los caminos de fallo y de historial.
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+// cumple el contrato. Pregunta -> pasos en vivo -> gráfico y texto -> pasos
+// plegados -> «Descargar estos datos» -> tarjeta de descarga; y los caminos de
+// fallo, de historial y de cambio de hilo.
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { AssistantView } from "@/app/components/asistente/AssistantView";
-import { EXAMPLE_QUESTIONS } from "@/app/components/asistente/EmptyState";
+import { SectionMenuProvider } from "@/app/components/analitica/SectionMenu";
 import { DESCARGA_SPEC, chartTurnEvents, sseEvent, streamedResponse } from "@/app/lib/asistente/fixtures";
+import { EXAMPLE_INTENTS } from "@/app/lib/asistente/intents";
+import type { AssistantChatDeps } from "@/app/lib/asistente/useAssistantChat";
 import { THREADS_STORAGE_KEY } from "@/app/lib/asistente/threadStorage";
+import { controllableStream, memoryStorage, requestBody } from "@/app/lib/asistente/testSupport";
 
 vi.mock("@/app/components/charts/EChart", () => ({
   EChart: ({ ariaLabel }: { ariaLabel: string }) => <div role="img" aria-label={ariaLabel} />,
@@ -19,18 +23,14 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams("desde=2026-08-01&hasta=2026-09-01&granularidad=dia"),
 }));
 
-const CHART_QUESTION = "Graficá la potencia de agosto";
+const CHART_QUESTION = EXAMPLE_INTENTS.find((intent) => intent.kind === "chart")?.example ?? "";
 
-function memoryStorage(): Storage {
-  const data = new Map<string, string>();
-  return {
-    get length() { return data.size; },
-    clear: () => data.clear(),
-    key: (index) => [...data.keys()][index] ?? null,
-    getItem: (key) => data.get(key) ?? null,
-    removeItem: (key) => void data.delete(key),
-    setItem: (key, value) => void data.set(key, value),
-  };
+function renderView(deps: AssistantChatDeps) {
+  return render(
+    <SectionMenuProvider>
+      <AssistantView deps={deps} />
+    </SectionMenuProvider>,
+  );
 }
 
 function exportTurnEvents(): string[] {
@@ -41,36 +41,13 @@ function exportTurnEvents(): string[] {
   ];
 }
 
-/** Un stream que se abre ahora y se alimenta desde el test. */
-function controllableStream() {
-  const encoder = new TextEncoder();
-  let push: (frame: string) => void = () => undefined;
-  let close: () => void = () => undefined;
-  const body = new ReadableStream<Uint8Array>({
-    start(controller) {
-      push = (frame) => controller.enqueue(encoder.encode(frame));
-      close = () => controller.close();
-    },
-  });
-  return {
-    response: new Response(body, { status: 200, headers: { "content-type": "text/event-stream" } }),
-    push: (frame: string) => push(frame),
-    close: () => close(),
-  };
-}
-
-function requestBody(httpFetch: ReturnType<typeof vi.fn>, call: number): { mensajes: { texto: string }[]; contexto: string } {
-  const init: unknown = httpFetch.mock.calls[call]?.[1];
-  const body = init && typeof init === "object" && "body" in init ? String(init.body) : "{}";
-  return JSON.parse(body);
-}
-
 describe("AssistantView", () => {
-  it("sin conversación muestra los ejemplos, y un ejemplo arranca la pregunta con el rango como contexto", async () => {
+  it("sin conversación muestra el estado vacío, y un ejemplo arranca la pregunta con el rango como contexto", async () => {
     // Given la sección vacía y un backend que grafica
     const httpFetch = vi.fn(async (_url: string, _init?: RequestInit) => streamedResponse(chartTurnEvents()));
-    render(<AssistantView deps={{ storage: memoryStorage, httpFetch }} />);
-    EXAMPLE_QUESTIONS.forEach((question) => expect(screen.getByRole("button", { name: question })).toBeInTheDocument());
+    renderView({ storage: memoryStorage, httpFetch });
+    expect(screen.getByRole("heading", { name: "¿Qué querés saber de la planta?" })).toBeInTheDocument();
+    EXAMPLE_INTENTS.forEach((intent) => expect(screen.getByRole("button", { name: intent.example })).toBeInTheDocument());
     // When se pulsa el ejemplo del gráfico
     fireEvent.click(screen.getByRole("button", { name: CHART_QUESTION }));
     // Then llega el gráfico y el comentario, y el contexto lleva el rango de la URL
@@ -79,14 +56,35 @@ describe("AssistantView", () => {
     expect(requestBody(httpFetch, 0).contexto).toContain("2026-08-01 a 2026-08-31");
   });
 
-  it("muestra la tool en curso mientras corre", async () => {
+  it("mientras corre lista la tool en curso con «Detener», y Detener corta la respuesta", async () => {
+    // Given una respuesta que queda abierta con una tool corriendo
     const stream = controllableStream();
-    render(<AssistantView deps={{ storage: memoryStorage, httpFetch: async () => stream.response }} />);
+    renderView({ storage: memoryStorage, httpFetch: stream.fetch });
     fireEvent.click(screen.getByRole("button", { name: CHART_QUESTION }));
     stream.push(sseEvent("tool_inicio", { id: "t1", nombre: "graficar", input: {} }));
-    expect(await screen.findByText(/Armando el gráfico/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Detener" })).toBeInTheDocument();
-    stream.close();
+    // Then el paso se ve en vivo, con el texto de progreso
+    const steps = await screen.findByRole("list", { name: "Pasos del asistente" });
+    expect(within(steps).getByText(/Armando el gráfico…/)).toBeInTheDocument();
+    // When se pulsa Detener
+    fireEvent.click(screen.getByRole("button", { name: "Detener" }));
+    // Then la respuesta queda cerrada como cancelada
+    expect(await screen.findByRole("alert")).toHaveTextContent("Cancelaste esta respuesta.");
+  });
+
+  it("al terminar, los pasos se pliegan a una línea que despliega la traza", async () => {
+    // Given una respuesta terminada con una tool
+    renderView({ storage: memoryStorage, httpFetch: async () => streamedResponse(chartTurnEvents()) });
+    fireEvent.click(screen.getByRole("button", { name: CHART_QUESTION }));
+    const toggle = await screen.findByRole("button", { name: "1 consulta · 3,1 s" });
+    // Then la lista en vivo ya no está y la traza empieza plegada
+    expect(screen.queryByRole("list", { name: "Pasos del asistente" })).toBeNull();
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("Ejecutó el algoritmo")).toBeNull();
+    // When se despliega
+    fireEvent.click(toggle);
+    // Then se ve la traza legible del paso
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText("Ejecutó el algoritmo")).toBeInTheDocument();
   });
 
   it("«Descargar estos datos» pide la exportación por chat y la respuesta trae la tarjeta", async () => {
@@ -95,10 +93,9 @@ describe("AssistantView", () => {
       .fn(async (_url: string, _init?: RequestInit) => streamedResponse(chartTurnEvents()))
       .mockImplementationOnce(async () => streamedResponse(chartTurnEvents()))
       .mockImplementationOnce(async () => streamedResponse(exportTurnEvents()));
-    render(<AssistantView deps={{ storage: memoryStorage, httpFetch }} />);
+    renderView({ storage: memoryStorage, httpFetch });
     fireEvent.click(screen.getByRole("button", { name: CHART_QUESTION }));
-    // When se pide descargar los datos del gráfico
-    // (mientras la respuesta llega el botón está, pero deshabilitado)
+    // When se piden los datos del gráfico (deshabilitado mientras la respuesta llega)
     await waitFor(() => expect(screen.getByRole("button", { name: "Descargar estos datos" })).toBeEnabled());
     fireEvent.click(screen.getByRole("button", { name: "Descargar estos datos" }));
     await waitFor(() => expect(httpFetch).toHaveBeenCalledTimes(2));
@@ -106,10 +103,10 @@ describe("AssistantView", () => {
     const lastQuestion = requestBody(httpFetch, 1).mensajes.at(-1)?.texto ?? "";
     expect(lastQuestion).toContain("potencia_pv1_w");
     expect(lastQuestion).toContain("desde 2026-08-01 hasta 2026-09-01");
-    // And la tarjeta muestra el archivo y el rango inclusivo, con su botón
-    expect(await screen.findByText(DESCARGA_SPEC.nombre_sugerido)).toBeInTheDocument();
-    expect(screen.getByText(/CSV · 8.640 filas · radiacion_calibrada · 2026-08-01 a 2026-08-31/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Descargar" })).toBeInTheDocument();
+    // And la tarjeta muestra el archivo, filas y columnas, con su botón
+    const card = await screen.findByRole("group", { name: `Descarga: ${DESCARGA_SPEC.nombre_sugerido}` });
+    expect(within(card).getByText(/8.640 filas estimadas · timestamp, irradiancia_incidente_wm2 · hora local/)).toBeInTheDocument();
+    expect(within(card).getByRole("button", { name: "Descargar" })).toBeInTheDocument();
   });
 
   it("un fallo se ve en pantalla y «Reintentar» vuelve a preguntar lo mismo", async () => {
@@ -117,7 +114,7 @@ describe("AssistantView", () => {
     const httpFetch = vi
       .fn(async (_url: string, _init?: RequestInit) => streamedResponse(chartTurnEvents()))
       .mockImplementationOnce(async () => new Response(JSON.stringify({ error: "chat desactivado" }), { status: 503 }));
-    render(<AssistantView deps={{ storage: memoryStorage, httpFetch }} />);
+    renderView({ storage: memoryStorage, httpFetch });
     fireEvent.click(screen.getByRole("button", { name: CHART_QUESTION }));
     expect(await screen.findByRole("alert")).toHaveTextContent("chat desactivado");
     // When se reintenta
@@ -128,20 +125,23 @@ describe("AssistantView", () => {
     expect(requestBody(httpFetch, 1).mensajes).toEqual([{ rol: "user", texto: CHART_QUESTION }]);
   });
 
-  it("la conversación queda guardada y vuelve al recargar", async () => {
+  it("la conversación queda guardada y vuelve al recargar, con su título y su costo", async () => {
     // Given una conversación terminada
     const storage = memoryStorage();
     const access = () => storage;
     const httpFetch = async () => streamedResponse(chartTurnEvents());
-    const first = render(<AssistantView deps={{ storage: access, httpFetch }} />);
+    const first = renderView({ storage: access, httpFetch });
     fireEvent.click(screen.getByRole("button", { name: CHART_QUESTION }));
     await screen.findByRole("img", { name: "Potencia PV1" });
     await waitFor(() => expect(storage.getItem(THREADS_STORAGE_KEY)).toContain("Potencia PV1"));
     first.unmount();
     // When se vuelve a abrir la sección
-    render(<AssistantView deps={{ storage: access, httpFetch }} />);
-    // Then el gráfico sigue ahí, sin pedir nada nuevo
+    renderView({ storage: access, httpFetch });
+    // Then el gráfico sigue ahí, la cabecera nombra el hilo y suma lo gastado
     expect(await screen.findByRole("img", { name: "Potencia PV1" })).toBeInTheDocument();
-    expect(screen.getByRole("combobox", { name: "Conversaciones guardadas" })).toHaveDisplayValue(CHART_QUESTION);
+    const title = screen.getByRole("heading", { level: 1 });
+    expect(title).toHaveTextContent(CHART_QUESTION);
+    expect(within(title.parentElement ?? document.body).getByText(/^2 mensajes · /)).toBeInTheDocument();
+    expect(screen.getByText("USD 0,004")).toBeInTheDocument();
   });
 });

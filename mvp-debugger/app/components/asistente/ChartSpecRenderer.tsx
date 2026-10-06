@@ -1,10 +1,12 @@
 "use client";
 // Pinta un `_grafico` del agente con la primitiva que le corresponde.
 //
-// Es la ÚNICA forma de dibujar un gráfico del agente (asistente y widget de la
-// consola). No transforma nada: valida el ChartSpec y le pasa `datos` tal cual a
-// la primitiva. Si el spec no cumple el contrato, se dice por qué y no se dibuja
-// nada: un gráfico a medias se lee como un dato real.
+// Es la ÚNICA forma de dibujar un gráfico del agente: el widget de la consola usa
+// `ChartSpecRenderer` y la tarjeta del Asistente usa sus dos piezas
+// (`ChartSpecChart` e `InvalidChartSpec`). No transforma nada: valida el
+// ChartSpec y le pasa `datos` tal cual a la primitiva. Si el spec no cumple el
+// contrato, se dice por qué y no se dibuja nada: un gráfico a medias se lee como
+// un dato real.
 import { useMemo, type ReactNode } from "react";
 
 import {
@@ -18,7 +20,7 @@ import {
   readyChart,
   type ChartState,
 } from "@/app/components/charts";
-import styles from "@/app/components/asistente/asistente.module.css";
+import styles from "@/app/components/asistente/cards.module.css";
 import { parseChartSpec, type ChartSpec } from "@/app/lib/asistente/contracts/chartSpec";
 
 export type ChartSpecRendererProps = {
@@ -45,8 +47,14 @@ function stateFor<TData>(data: TData, rows: number): ChartState<TData> {
   return rows > 0 ? readyChart(data) : emptyChart("NO_ROWS");
 }
 
-function ChartSpecChart({ spec }: { spec: ChartSpec }) {
-  const frame = { title: spec.titulo, subtitle: spec.subtitulo ?? spec.unidad };
+export type ChartSpecChartProps = {
+  readonly spec: ChartSpec;
+  /** Alto fijo del lienzo; sin él lo decide el ancho (ver `chartBox`). */
+  readonly height?: number;
+};
+
+export function ChartSpecChart({ spec, height }: ChartSpecChartProps) {
+  const frame = { title: spec.titulo, subtitle: spec.subtitulo ?? spec.unidad, height };
   switch (spec.tipo) {
     case "serie":
       return <TimeSeriesChart {...frame} state={stateFor(spec.datos, spec.datos.lines.length)} />;
@@ -63,7 +71,7 @@ function ChartSpecChart({ spec }: { spec: ChartSpec }) {
   }
 }
 
-function InvalidChartSpec({ reason }: { reason: string }) {
+export function InvalidChartSpec({ reason }: { reason: string }) {
   return (
     <div className="gr gr-estado gr-error" role="alert">
       <p className="gr-estado-t">El gráfico del asistente no se puede dibujar</p>

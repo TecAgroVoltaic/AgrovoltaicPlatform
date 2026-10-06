@@ -1,0 +1,36 @@
+/* Los controles del Asistente que se repiten en la cabecera, las tarjetas, los
+   pasos y el compositor. Se definen una vez y cada hoja los toma con `composes`,
+   así un borde o un alto no se desalinean entre piezas. */
+
+/* Botón de contorno de la cabecera («Nueva», abrir hilos). */
+.ghost { display:inline-flex; align-items:center; justify-content:center; gap:6px; flex:none;
+  height:32px; padding:0 12px; border-radius:8px; border:1px solid var(--line2);
+  background:transparent; color:var(--ink2); font:inherit; font-size:13px; cursor:pointer; white-space:nowrap; }
+.ghost:hover:not(:disabled) { border-color:var(--accent); color:var(--ink); }
+.ghost:disabled { opacity:.45; cursor:default; }
+.ghost:focus-visible, .action:focus-visible, .pill:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+/* Píldora: chips de contexto, de costo y de intención. */
+.pill { display:inline-flex; align-items:center; gap:6px; flex:none; height:28px; padding:0 10px;
+  border-radius:999px; border:1px solid var(--line2); background:var(--panel); color:var(--ink2);
+  font:inherit; font-size:12px; white-space:nowrap; }
+button.pill { cursor:pointer; }
+button.pill:hover:not(:disabled) { border-color:var(--accent); color:var(--ink); }
+button.pill:disabled { opacity:.45; cursor:default; }
+
+/* Acción de tarjeta o de paso: «Descargar estos datos», «Detener», «Reintentar». */
+.action { display:inline-flex; align-items:center; gap:6px; flex:none; height:30px; padding:0 10px;
+  border-radius:7px; border:1px solid var(--line2); background:transparent; color:var(--ink2);
+  font:inherit; font-size:12.5px; cursor:pointer; text-decoration:none; white-space:nowrap; }
+.action:hover:not(:disabled) { border-color:var(--accent); color:var(--ink); }
+.action:disabled { opacity:.45; cursor:default; }
+.actionPrimary { composes:action; background:var(--accent); border-color:var(--accent); color:var(--ground); font-weight:600; }
+.actionPrimary:hover:not(:disabled) { color:var(--ground); filter:brightness(1.05); }
+
+/* El texto de un botón que en el teléfono queda solo con su icono. El botón
+   lleva `aria-label` con el mismo texto: esconder el texto con display:none lo
+   sacaría también del nombre accesible. */
+@media (max-width:760px) {
+  .collapsible { display:none; }
+  .action.iconOnMobile, .actionPrimary.iconOnMobile { width:34px; padding:0; justify-content:center; }
+}

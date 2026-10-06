@@ -1,37 +1,34 @@
 "use client";
-// La respuesta mientras llega: qué tool está corriendo («Consultando la
-// irradiancia…»), lo que ya se puede mostrar y el texto que va entrando.
+// La respuesta mientras llega: los pasos en vivo con «Detener» debajo, lo que
+// ya se puede mostrar y el texto que va entrando.
+import { LiveStepList } from "@/app/components/asistente/AgentSteps";
+import { IconStop } from "@/app/components/asistente/AssistantIcons";
+import { AnswerFrame } from "@/app/components/asistente/AnswerFrame";
 import { MessageBlocks } from "@/app/components/asistente/MessageBlocks";
 import styles from "@/app/components/asistente/asistente.module.css";
-import { IconoCheck, IconoError } from "@/app/components/Iconos";
+import controls from "@/app/components/asistente/controls.module.css";
 import { buildBlocks } from "@/app/lib/asistente/messageBlocks";
-import type { LiveStep, TurnProgress } from "@/app/lib/asistente/turnReducer";
+import type { TurnProgress } from "@/app/lib/asistente/turnReducer";
 
-const ICON_SIZE = 14;
+const STOP_ICON_SIZE = 12;
 
 export type LiveTurnViewProps = {
   readonly progress: TurnProgress;
   /** Los gráficos que ya llegaron muestran su botón, deshabilitado hasta que
    * la respuesta termine. */
   readonly onAsk: (question: string) => void;
+  readonly onCancel: () => void;
 };
 
-export function LiveTurnView({ progress, onAsk }: LiveTurnViewProps) {
+export function LiveTurnView({ progress, onAsk, onCancel }: LiveTurnViewProps) {
   const blocks = buildBlocks(progress.steps, progress.streamingText);
   // Sin una tool corriendo ni texto entrando, el modelo está decidiendo: si no
   // se dice, la pantalla parece colgada justo entre un gráfico y su comentario.
   const waiting = !progress.streamingText && !progress.liveSteps.some((step) => step.status === "running");
 
   return (
-    <article className={styles.assistant} aria-label="Respuesta en curso" aria-busy="true">
-      {progress.liveSteps.length > 0 ? (
-        <ol className={styles.liveSteps} aria-label="Pasos del asistente">
-          {progress.liveSteps.map((step) => (
-            <LiveStepItem key={step.id} step={step} />
-          ))}
-        </ol>
-      ) : null}
-      <MessageBlocks blocks={blocks} onAsk={onAsk} askDisabled />
+    <AnswerFrame label="Respuesta en curso" busy>
+      {progress.liveSteps.length > 0 ? <LiveStepList progress={progress} /> : null}
       {waiting ? (
         <div className={styles.thinking} role="status">
           <span className="chat-dots" aria-hidden="true">
@@ -42,30 +39,13 @@ export function LiveTurnView({ progress, onAsk }: LiveTurnViewProps) {
           {progress.liveSteps.length ? "Armando la respuesta…" : "Pensando…"}
         </div>
       ) : null}
-    </article>
-  );
-}
-
-function LiveStepItem({ step }: { step: LiveStep }) {
-  const tone =
-    step.status === "done" ? styles.liveStepDone : step.status === "failed" ? styles.liveStepFailed : "";
-  return (
-    <li className={`${styles.liveStep} ${tone}`}>
-      <span className={styles.liveIcon} aria-hidden="true">
-        {step.status === "running" ? (
-          <span className="chat-dots">
-            <i />
-          </span>
-        ) : step.status === "done" ? (
-          <IconoCheck size={ICON_SIZE} />
-        ) : (
-          <IconoError size={ICON_SIZE} />
-        )}
-      </span>
-      <span>
-        {step.label}
-        {step.status === "running" ? "…" : step.status === "failed" ? " (falló)" : ""}
-      </span>
-    </li>
+      <div className={styles.liveControls}>
+        <button type="button" className={controls.action} onClick={onCancel}>
+          <IconStop size={STOP_ICON_SIZE} />
+          Detener
+        </button>
+      </div>
+      <MessageBlocks blocks={blocks} onAsk={onAsk} askDisabled />
+    </AnswerFrame>
   );
 }

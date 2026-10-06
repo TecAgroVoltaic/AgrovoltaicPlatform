@@ -1,6 +1,8 @@
 // Asistente: chat a pantalla completa con el Agente Histórico.
 //
-// La página es de servidor y solo pone la cabecera; la conversación es de
+// La sección pone su propia cabecera (`ownsHeader` en sections.ts): el cascarón
+// no le agrega la barra de rango ni el pie, y acá no va la cabecera de página.
+// El título visible es el del hilo, en `ThreadHeader`. La conversación es de
 // cliente (localStorage, stream) y va dentro de <Suspense> porque lee el rango
 // de la URL con `useSearchParams`.
 //
@@ -11,6 +13,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { AssistantView } from "@/app/components/asistente/AssistantView";
+import styles from "@/app/components/asistente/page.module.css";
 import { findSection } from "@/app/components/analitica/sections";
 import { MSG_BLOQUEADO, historicoActivo } from "@/app/lib/agentes";
 
@@ -21,22 +24,25 @@ export const metadata: Metadata = { title: "Asistente · AgroVoltaic" };
 const SECTION_PATH = "/asistente";
 
 export default function AsistentePage() {
+  if (!historicoActivo()) return <AssistantUnavailable />;
+  return (
+    <Suspense fallback={<p className={styles.loading}>Cargando el asistente…</p>}>
+      <AssistantView />
+    </Suspense>
+  );
+}
+
+function AssistantUnavailable() {
   const section = findSection(SECTION_PATH);
   return (
-    <div className="vista">
+    <div className={`vista ${styles.unavailable}`}>
       <header className="phead">
         <h1>{section?.label ?? "Asistente"}</h1>
         <p>{section?.description}</p>
       </header>
-      {historicoActivo() ? (
-        <Suspense fallback={<p className="muted small">Cargando el asistente…</p>}>
-          <AssistantView />
-        </Suspense>
-      ) : (
-        <div className="banner" role="status">
-          {MSG_BLOQUEADO}
-        </div>
-      )}
+      <div className="banner" role="status">
+        {MSG_BLOQUEADO}
+      </div>
     </div>
   );
 }

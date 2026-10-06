@@ -1,10 +1,10 @@
 "use client";
 // Los bloques de una respuesta (texto, gráfico, descarga) en el orden en que
 // ocurrieron. Lo comparten la respuesta guardada y la que está llegando.
-import { ChartSpecRenderer } from "@/app/components/asistente/ChartSpecRenderer";
+import { ChartCard } from "@/app/components/asistente/ChartCard";
 import { DescargaCard } from "@/app/components/asistente/DescargaCard";
 import styles from "@/app/components/asistente/asistente.module.css";
-import { exportRequestMessage, type MessageBlock } from "@/app/lib/asistente/messageBlocks";
+import type { MessageBlock } from "@/app/lib/asistente/messageBlocks";
 import { renderMd } from "@/app/lib/markdown";
 
 export type MessageBlocksProps = {
@@ -30,28 +30,13 @@ export function MessageBlocks({ blocks, onAsk, askDisabled }: MessageBlocksProps
           );
         }
         if (block.kind === "download") return <DescargaCard key={block.key} spec={block.spec} />;
-        const { request } = block;
         return (
-          <ChartSpecRenderer
+          <ChartCard
             key={block.key}
             spec={block.spec}
-            footer={
-              request
-                ? (spec) => (
-                    <div className={styles.chartActions}>
-                      <button
-                        type="button"
-                        className="btn ghost sm"
-                        disabled={askDisabled}
-                        title={askDisabled ? "Esperá a que termine la respuesta en curso" : undefined}
-                        onClick={() => onAsk(exportRequestMessage(spec.titulo, request))}
-                      >
-                        Descargar estos datos
-                      </button>
-                    </div>
-                  )
-                : undefined
-            }
+            request={block.request}
+            onAsk={onAsk}
+            askDisabled={askDisabled}
           />
         );
       })}

@@ -1,0 +1,41 @@
+/* El estado vacío: qué se le puede pedir al asistente, centrado en la columna. */
+
+.empty { flex:1; display:flex; flex-direction:column; justify-content:center; gap:28px; padding:12px 0; }
+
+.intro { display:flex; flex-direction:column; gap:6px; }
+.mark { width:40px; height:40px; margin-bottom:8px; border-radius:12px; background:var(--accent);
+  color:var(--ground); display:flex; align-items:center; justify-content:center; }
+.heading { margin:0; font-size:26px; font-weight:700; letter-spacing:-.01em; color:var(--ink); }
+.lead { margin:0; max-width:68ch; color:var(--ink2); font-size:15px; }
+
+.grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:12px; }
+
+/* La tarjeta entera es clicable sin ser un botón gigante: el botón es el
+   ejemplo, y su ::after cubre la tarjeta. Así el nombre accesible es la
+   pregunta que se va a mandar, y no la tarjeta leída de corrido. */
+.intent { position:relative; display:flex; flex-direction:column; gap:10px; min-height:150px; padding:16px;
+  border:1px solid var(--line); background:var(--panel); border-radius:12px; }
+.intent:hover, .intent:focus-within { border-color:var(--accent); }
+.intentTitle { display:flex; align-items:center; gap:8px; font-weight:600; font-size:13.5px; color:var(--ink); }
+.intentTitle svg { color:var(--accent); }
+.example { padding:0; border:0; background:none; text-align:left; font:inherit; font-size:13.5px;
+  line-height:1.45; color:var(--ink2); cursor:pointer; }
+.example::before { content:"\201C"; }
+.example::after { content:""; position:absolute; inset:0; border-radius:12px; }
+.example:focus-visible { outline:none; }
+.example:focus-visible::after { outline:2px solid var(--accent); outline-offset:2px; }
+.example:disabled { cursor:default; }
+.exampleText::after { content:"\201D"; }
+.scope { margin-top:auto; font-family:var(--mono); font-size:11px; color:var(--muted); }
+
+.recent { display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:12.5px; color:var(--muted); min-width:0; }
+.recentThread { composes:pill from "./controls.module.css"; max-width:100%; min-width:0; }
+.recentTitle { min-width:0; overflow:hidden; text-overflow:ellipsis; }
+
+@media (max-width:760px) {
+  .empty { gap:20px; justify-content:flex-start; }
+  .heading { font-size:22px; }
+  .lead { font-size:14px; }
+  .grid { grid-template-columns:minmax(0, 1fr); gap:10px; }
+  .intent { min-height:0; padding:14px; gap:8px; }
+}
