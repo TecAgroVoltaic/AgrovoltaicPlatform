@@ -1,8 +1,8 @@
 """El CATALOGO de pruebas y el corredor que lo recorre.
 
-Cinco familias: las cuatro del documento de evaluacion, que juzgan el DATO, y
-`disponibilidad`, que juzga el EQUIPO. La quinta se agrego exactamente igual que
-cualquier otra (una funcion con la firma del contrato y un renglon aca), que es
+Seis familias: las cuatro del documento de evaluacion, que juzgan el DATO,
+`disponibilidad`, que juzga el EQUIPO, y `entre_sensores`, que cruza dos sensores.
+La quinta y la sexta se agregaron exactamente igual que cualquier otra (una funcion con la firma del contrato y un renglon aca), que es
 la propiedad que este modulo existe para tener.
 
 Agregar una prueba es escribir una funcion con la firma del contrato y anotarla
@@ -32,7 +32,7 @@ from dataclasses import dataclass
 
 from historico.analitica import catalogo
 from historico.calidad.pruebas import anomalias, completitud, consistencia_temporal
-from historico.calidad.pruebas import disponibilidad, validez_fisica
+from historico.calidad.pruebas import disponibilidad, entre_sensores, validez_fisica
 from historico.calidad.pruebas.contrato import (
     AVISO, EVALUADA, FUENTE_SIN_ORIGEN, NO_APLICA, SIN_DATOS, SIN_FUENTE,
     TIPO_SIN_FUENTE, Contexto, Hallazgo, NoAplica, Prueba, Serie,
@@ -47,6 +47,10 @@ ANOMALIAS = "anomalias"
 # permite a `calidad.contexto` dejar la disponibilidad fuera del veredicto de
 # calidad sin perderla de vista. Ver `disponibilidad.py`.
 DISPONIBILIDAD = "disponibilidad"
+# Sexta familia: cruza dos sensores. Juzga el DATO (un DS18B20 que no sigue al sol
+# no mide el modulo), asi que su hallazgo SI entra al veredicto como cualquier
+# grave sobre `temp_*`. Ver `entre_sensores.py`.
+CONSISTENCIA_ENTRE_SENSORES = "consistencia_entre_sensores"
 
 
 @dataclass(frozen=True)
@@ -113,6 +117,9 @@ CATALOGO_PRUEBAS: tuple[PruebaRegistrada, ...] = (
     # ── Familia 5: disponibilidad del equipo ────────────────────────────────
     PruebaRegistrada("inversor_sin_acoplar", DISPONIBILIDAD, disponibilidad.TIPO,
                      disponibilidad.inversor_sin_acoplar),
+    # ── Familia 6: consistencia entre sensores ──────────────────────────────
+    PruebaRegistrada("incongruencia_temp_irradiancia", CONSISTENCIA_ENTRE_SENSORES,
+                     entre_sensores.TIPO, entre_sensores.incongruencia_temp_irradiancia),
 )
 
 # Los tipos que produce ESTE paquete, incluido el estructural. El barrido los

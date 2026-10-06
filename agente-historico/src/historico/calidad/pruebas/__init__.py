@@ -1,10 +1,12 @@
-"""Las CINCO familias de pruebas de calidad: cuatro sobre el dato, una sobre el equipo.
+"""Las SEIS familias de pruebas de calidad: cuatro sobre el dato, una sobre el equipo
+y una que cruza dos sensores.
 
     completitud            ¿esta todo lo que tenia que estar?
     validez_fisica         ¿el numero es posible?
     consistencia_temporal  ¿las marcas de tiempo se sostienen?
     anomalias              ¿el numero es posible pero raro?
     disponibilidad         ¿la planta estaba funcionando?
+    entre_sensores         ¿la temperatura de modulo responde al sol?
 
 Las cuatro primeras son las del documento de evaluacion y juzgan el DATO. La
 quinta nace de R3 de Leo Cardinale y juzga el EQUIPO, que no es lo mismo: un dia

@@ -8,6 +8,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  RANGE_PRESETS,
   VERIFIED_COVERAGE,
   variableCoverage,
   variableWindow,
@@ -129,5 +130,28 @@ describe("variableCoverage", () => {
     // rango, porque mover el rango no lo arregla nunca
     expect(gap?.code).toBe("NO_SOURCE");
     expect(gap?.message).toContain("no hay anemometro");
+  });
+});
+
+describe("atajos del rango", () => {
+  const presetById = (id: string) => {
+    const preset = RANGE_PRESETS.find((candidate) => candidate.id === id);
+    if (!preset) throw new Error(`falta el atajo ${id}`);
+    return preset;
+  };
+  const PUBLISHED_COVERAGE = { from: "2024-11-10", toExclusive: "2026-09-01" };
+
+  it("con la cobertura publicada, terminan en su último día y no en la constante vieja", () => {
+    // Given la cobertura que publica el backend, que llega al 2026-08-31
+    // When se arman los tres atajos
+    // Then la semana y el mes terminan el 2026-08-31 (fin exclusivo 09-01)
+    expect(presetById("last-week").build(PUBLISHED_COVERAGE)).toEqual(range("2026-08-25", "2026-09-01"));
+    expect(presetById("last-month").build(PUBLISHED_COVERAGE)).toEqual(range("2026-08-02", "2026-09-01"));
+    expect(presetById("all").build(PUBLISHED_COVERAGE)).toEqual({ ...PUBLISHED_COVERAGE, granularity: "month" });
+  });
+
+  it("sin cobertura publicada caen a VERIFIED_COVERAGE", () => {
+    expect(presetById("last-week").build().toExclusive).toBe(VERIFIED_COVERAGE.toExclusive);
+    expect(presetById("all").build()).toEqual({ ...VERIFIED_COVERAGE, granularity: "month" });
   });
 });

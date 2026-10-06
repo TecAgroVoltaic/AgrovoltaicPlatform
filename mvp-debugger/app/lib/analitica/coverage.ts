@@ -15,6 +15,7 @@
 // DEUDA CONOCIDA: la cobertura de la BASE (la de acá abajo) sigue a mano porque
 // ningún endpoint la publica. Verificada contra la Supabase de producción el
 // 2026-08-28. Cuando el backend la exponga, se reemplaza ACÁ y nada más cambia.
+import type { CoverageBounds } from "@/app/lib/analitica/contracts/daysWithData";
 import type { CatalogVariable } from "@/app/lib/analitica/contracts/variables";
 import {
   addDays,
@@ -38,10 +39,10 @@ export const COVERAGE_FACTS = {
 const RECENT_WINDOW_DAYS = 30;
 const WEEK_WINDOW_DAYS = 7;
 
-function endingAtLastDataDay(days: number): DateRange {
+function endingAtLastDataDay(days: number, coverage: CoverageBounds = VERIFIED_COVERAGE): DateRange {
   return {
-    from: addDays(VERIFIED_COVERAGE.toExclusive, -days),
-    toExclusive: VERIFIED_COVERAGE.toExclusive,
+    from: addDays(coverage.toExclusive, -days),
+    toExclusive: coverage.toExclusive,
     granularity: "day",
   };
 }
@@ -49,28 +50,34 @@ function endingAtLastDataDay(days: number): DateRange {
 /** Lo que se abre cuando la URL no trae rango. */
 export const DEFAULT_RANGE: DateRange = endingAtLastDataDay(RECENT_WINDOW_DAYS);
 
-/** Atajos del selector. `build` es pura: mismo resultado siempre, sin reloj. */
+/** Atajos del selector. `build` es pura y sin reloj: se ancla a la cobertura
+ *  que publica el backend (`GET /analitica/dias-con-datos`) cuando ya llegó, y
+ *  a `VERIFIED_COVERAGE` mientras tanto o si no llegó. */
 export type RangePreset = {
   readonly id: string;
   readonly label: string;
-  readonly build: () => DateRange;
+  readonly build: (coverage?: CoverageBounds) => DateRange;
 };
 
 export const RANGE_PRESETS: readonly RangePreset[] = [
   {
     id: "last-week",
     label: "Última semana con datos",
-    build: () => endingAtLastDataDay(WEEK_WINDOW_DAYS),
+    build: (coverage) => endingAtLastDataDay(WEEK_WINDOW_DAYS, coverage),
   },
   {
     id: "last-month",
     label: "Último mes con datos",
-    build: () => endingAtLastDataDay(RECENT_WINDOW_DAYS),
+    build: (coverage) => endingAtLastDataDay(RECENT_WINDOW_DAYS, coverage),
   },
   {
     id: "all",
     label: "Todo el histórico",
-    build: () => ({ ...VERIFIED_COVERAGE, granularity: "month" }),
+    build: (coverage = VERIFIED_COVERAGE) => ({
+      from: coverage.from,
+      toExclusive: coverage.toExclusive,
+      granularity: "month",
+    }),
   },
 ];
 

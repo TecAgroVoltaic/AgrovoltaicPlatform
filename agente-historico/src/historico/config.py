@@ -33,6 +33,10 @@ def database_url() -> str:
 
 # LLM: solo orquesta (entiende/rutea/redacta) -> Haiku alcanza y es barato.
 MODEL = os.environ.get("ANTHROPIC_MODEL", "claude-haiku-4-5")
+# El asistente de pantalla completa (`/chat/stream`) elige grafico, tipo y rango, y
+# redacta sobre varios pasos: ahi Haiku se queda corto. `/chat` y `/preguntar`
+# conservan `MODEL`.
+MODEL_ASISTENTE = os.environ.get("ANTHROPIC_MODEL_ASISTENTE", "claude-sonnet-5-5")
 MAX_TOKENS = 2048
 
 # Zona horaria del sitio (los timestamps se guardaron como hora local CR).

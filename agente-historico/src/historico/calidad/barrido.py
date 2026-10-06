@@ -20,12 +20,13 @@ may-2025, ~5 min desde nov-2025), asi que cualquier numero fijo mentiria.
 La deteccion es determinista y sin LLM: los numeros salen de aca, el lenguaje viene
 despues (docs/memoria/proyecto/capa-agentes.md).
 
-## El segundo paso: las cinco familias de `calidad.pruebas`
+## El segundo paso: las seis familias de `calidad.pruebas`
 
 Lo de arriba mira DOS tablas columna por columna con SQL agregado. `calidad.pruebas`
 mira el CATALOGO ENTERO de variables lectura por lectura, con los umbrales exactos
 del documento (cuatro familias que juzgan el DATO) mas la disponibilidad del
-EQUIPO, que juzga si la planta estaba funcionando. Los dos pasos escriben en
+EQUIPO, que juzga si la planta estaba funcionando, y la consistencia ENTRE
+sensores (temperatura de modulo contra irradiancia). Los dos pasos escriben en
 `hallazgos_calidad` y ninguno pisa al otro: sus tipos son disjuntos y cada uno
 borra los suyos antes de reinsertar.
 
@@ -66,7 +67,7 @@ TIPOS_PROPIOS = (
     "constante_en_cero", "sensor_plano", "offset_nocturno",
 )
 
-# Los tipos de las cinco familias de `calidad.pruebas`. Van APARTE de
+# Los tipos de las seis familias de `calidad.pruebas`. Van APARTE de
 # `TIPOS_PROPIOS` y no fundidos con ellos: la garantia de que ningun tipo se
 # repite entre los dos detectores se comprueba comparando las dos listas, y en una
 # sola no habria nada que comparar. Dos detectores con el mismo tipo se pisarian
@@ -338,10 +339,11 @@ def _series_del_rango(desde: date,
 
 
 def _barrer_pruebas(desde: date, hasta: date) -> dict:
-    """Corre las cinco familias sobre el catalogo entero y persiste sus hallazgos.
+    """Corre las seis familias sobre el catalogo entero y persiste sus hallazgos.
 
     El contexto es un `ContextoDisponibilidad` y no un `Contexto` pelado porque la
-    quinta familia gradua la severidad del inversor caido con la radiacion
+    sexta familia cruza la temperatura con esa misma radiacion por bin, y la
+    quinta gradua la severidad del inversor caido con la radiacion
     concurrente. Sin ese mapa la prueba NO se calla (eso seria peor), pero saca
     todos sus hallazgos con motivo `sin_irradiancia` y se pierde la separacion
     entre los 69 dias con sol pleno, donde el equipo estuvo averiado sin excusa, y
@@ -367,7 +369,7 @@ def barrer(desde: date, hasta: date, fuentes=FUENTES) -> dict:
     """Barre [desde, hasta) y deja los hallazgos en el store. Idempotente.
 
     Devuelve el resumen de la corrida (cuantos dias y cuantos hallazgos por fuente,
-    mas el de las cinco familias de `calidad.pruebas` bajo la clave `pruebas`).
+    mas el de las seis familias de `calidad.pruebas` bajo la clave `pruebas`).
     """
     resumen = {}
     for fuente in fuentes:

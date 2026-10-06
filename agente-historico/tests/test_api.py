@@ -854,3 +854,24 @@ def test_exportar_devuelve_el_cupo_al_terminar(monkeypatch):
     assert all(tomados)
     for _ in tomados:
         api._exportaciones.release()
+
+
+def test_dias_con_datos_exige_clave_y_devuelve_el_contrato_del_calendario(monkeypatch):
+    # Given: API key configurada y una base con un dia electrico y uno de radiacion
+    monkeypatch.setenv(ENV_API_KEY, CLAVE)
+    monkeypatch.setattr(db, "query", lambda sql, params=(): (
+        [{"fecha": "2024-11-10"}] if "monitoreo_sc_electrico" in sql
+        else [{"fecha": "2024-11-11"}]))
+
+    # When: se pide sin clave y con clave
+    sin_clave = CLIENTE.get("/analitica/dias-con-datos")
+    con_clave = CLIENTE.get("/analitica/dias-con-datos", headers={"x-api-key": CLAVE})
+
+    # Then: sin clave 401; con clave, la union y `hasta` exclusivo
+    assert sin_clave.status_code == 401
+    assert con_clave.status_code == 200
+    assert con_clave.json() == {
+        "desde": "2024-11-10", "hasta": "2024-11-12", "n_dias": 2,
+        "dias": ["2024-11-10", "2024-11-11"],
+        "fuentes": {"electrico": ["2024-11-10"], "radiacion": ["2024-11-11"]},
+    }

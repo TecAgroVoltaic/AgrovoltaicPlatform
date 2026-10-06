@@ -33,6 +33,8 @@ const LOCALE = "es-CR";
 const MS_POR_DIA = 86_400_000;
 const LARGO_FECHA = 10;   // YYYY-MM-DD
 const LARGO_RELOJ = 19;   // YYYY-MM-DDTHH:MM:SS
+const LARGO_ANIO = 4;
+const LARGO_HORA_MINUTO = 5;  // HH:MM
 
 // ── 1. Fechas de calendario ──────────────────────────────────────────────────
 
@@ -48,6 +50,86 @@ export function moverDias(fecha: string, dias: number): string {
  *  de UTC: a las 19:00 de Costa Rica en UTC ya es mañana. */
 export function hoyEnSitio(ahora: Date = new Date()): string {
   return partes(ahora).fecha;
+}
+
+// Abreviaturas de mes como se dicen en Costa Rica («set», no «sep»). Se escriben
+// a mano y no con `Intl`: una fecha de calendario no es un instante y no hay
+// zona que aplicarle, y así el texto no depende del ICU del navegador.
+const MESES_CORTOS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "set", "oct", "nov", "dic"];
+
+/** Una fecha `YYYY-MM-DD` como «3 may» o, con año, «3 may 2026». */
+export function fechaCorta(fecha: string, conAnio: boolean): string {
+  const [anio, mes, dia] = fecha.slice(0, LARGO_FECHA).split("-").map(Number);
+  const texto = `${dia} ${MESES_CORTOS[mes - 1] ?? "?"}`;
+  return conAnio ? `${texto} ${anio}` : texto;
+}
+
+// ── 1b. Calendario mensual ───────────────────────────────────────────────────
+// Lo que necesita un calendario: el mes, su largo y en qué día de la semana cae
+// cada fecha. Misma regla que arriba: aritmética UTC sobre la fecha de
+// calendario, sin reloj local. Identificadores en inglés (regla del proyecto);
+// el resto del archivo en español es deuda anterior.
+
+const LONG_MONTH_NAMES = [
+  "enero", "febrero", "marzo", "abril", "mayo", "junio",
+  "julio", "agosto", "setiembre", "octubre", "noviembre", "diciembre",
+];
+const DAYS_PER_WEEK = 7;
+const SUNDAY_UTC_INDEX = 0;
+const MONTHS_PER_YEAR = 12;
+const YEAR_MONTH_LENGTH = 7;  // YYYY-MM
+
+function calendarParts(date: string): { year: number; month: number; day: number } {
+  const [year, month, day] = date.slice(0, LARGO_FECHA).split("-").map(Number);
+  return { year, month, day };
+}
+
+function isoFromParts(year: number, month: number, day: number): string {
+  return new Date(Date.UTC(year, month - 1, day)).toISOString().slice(0, LARGO_FECHA);
+}
+
+/** Días que tiene el mes (`month` de 1 a 12). */
+export function daysInMonth(year: number, month: number): number {
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+
+/** Día de la semana con el lunes primero: 0 = lunes … 6 = domingo. */
+export function weekdayMondayFirst(date: string): number {
+  const { year, month, day } = calendarParts(date);
+  const sundayFirst = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+  return sundayFirst === SUNDAY_UTC_INDEX ? DAYS_PER_WEEK - 1 : sundayFirst - 1;
+}
+
+/** El mes de `date` como `YYYY-MM`. */
+export function monthKey(date: string): string {
+  return date.slice(0, YEAR_MONTH_LENGTH);
+}
+
+/** El primer día del mes de `date`, `YYYY-MM-01`. */
+export function monthStart(date: string): string {
+  return `${monthKey(date)}-01`;
+}
+
+/** Corre `date` `months` meses conservando el día; si el mes destino es más
+ *  corto (31 ene + 1 mes), cae en su último día y no se desborda a marzo. */
+export function shiftMonths(date: string, months: number): string {
+  const { year, month, day } = calendarParts(date);
+  const monthIndex = year * MONTHS_PER_YEAR + (month - 1) + months;
+  const targetYear = Math.floor(monthIndex / MONTHS_PER_YEAR);
+  const targetMonth = (monthIndex % MONTHS_PER_YEAR) + 1;
+  return isoFromParts(targetYear, targetMonth, Math.min(day, daysInMonth(targetYear, targetMonth)));
+}
+
+/** El mes de `date` con su año: «mayo 2026». */
+export function monthLabel(date: string): string {
+  const { year, month } = calendarParts(date);
+  return `${LONG_MONTH_NAMES[month - 1] ?? "?"} ${year}`;
+}
+
+/** La fecha completa, para lectores de pantalla: «3 de mayo de 2026». */
+export function longDateLabel(date: string): string {
+  const { year, month, day } = calendarParts(date);
+  return `${day} de ${LONG_MONTH_NAMES[month - 1] ?? "?"} de ${year}`;
 }
 
 // ── 2. Reloj del sitio (hora de pared, sin zona) ─────────────────────────────
@@ -99,4 +181,36 @@ export function diaEnSitio(iso: string | null | undefined): string {
   const d = instante(iso);
   return d === null ? String(iso).slice(0, LARGO_FECHA)
     : d.toLocaleDateString(LOCALE, { timeZone: ZONA_SITIO, year: "numeric", month: "short", day: "2-digit" });
+}
+
+/** Cuándo pasó algo, corto y en hora del sitio: «hoy 12:21», «3 oct 09:05» o,
+ *  de otro año, «3 oct 2025 09:05». Para la línea bajo el título de un hilo. */
+export function momentoEnSitio(instanteReal: Date, ahora: Date = new Date()): string {
+  const momento = partes(instanteReal);
+  const hoy = partes(ahora).fecha;
+  const hora = momento.hora.slice(0, LARGO_HORA_MINUTO);
+  if (momento.fecha === hoy) return `hoy ${hora}`;
+  const otroAnio = momento.fecha.slice(0, LARGO_ANIO) !== hoy.slice(0, LARGO_ANIO);
+  return `${fechaCorta(momento.fecha, otroAnio)} ${hora}`;
+}
+
+// ── 4. Tiempo transcurrido ───────────────────────────────────────────────────
+
+const MS_PER_SECOND = 1000;
+const SECONDS_PER_MINUTE = 60;
+const MINUTES_PER_HOUR = 60;
+const HOURS_PER_DAY = 24;
+
+/** Cuánto pasó entre dos instantes, en la unidad más grande que cabe entera:
+ *  «hace 8 s», «hace 12 min», «hace 2 h», «hace 3 d». Es una resta de instantes,
+ *  así que no depende de ninguna zona. Un `since` en el futuro (relojes
+ *  desfasados entre servidor y navegador) se lee como «hace 0 s», no negativo. */
+export function elapsedSince(since: Date, now: Date = new Date()): string {
+  const seconds = Math.max(0, Math.floor((now.getTime() - since.getTime()) / MS_PER_SECOND));
+  if (seconds < SECONDS_PER_MINUTE) return `hace ${seconds} s`;
+  const minutes = Math.floor(seconds / SECONDS_PER_MINUTE);
+  if (minutes < MINUTES_PER_HOUR) return `hace ${minutes} min`;
+  const hours = Math.floor(minutes / MINUTES_PER_HOUR);
+  if (hours < HOURS_PER_DAY) return `hace ${hours} h`;
+  return `hace ${Math.floor(hours / HOURS_PER_DAY)} d`;
 }

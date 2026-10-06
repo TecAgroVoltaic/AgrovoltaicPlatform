@@ -4,9 +4,18 @@
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
+  daysInMonth,
   diaEnSitio,
+  elapsedSince,
+  longDateLabel,
+  monthLabel,
+  monthStart,
+  shiftMonths,
+  weekdayMondayFirst,
+  fechaCorta,
   hoyEnSitio,
   instanteEnSitio,
+  momentoEnSitio,
   moverDias,
   moverReloj,
 } from "@/app/lib/tiempo";
@@ -68,9 +77,70 @@ describe.each(ZONAS)("con el reloj de la máquina en %s", (zona) => {
     expect(enZona(() => diaEnSitio("2026-10-06T02:30:00Z"))).toContain("05");
   });
 
+  it("el calendario ubica cada día en su día de la semana, lunes primero", () => {
+    // Given fechas cuyo día de la semana se conoce / Then no depende de la zona
+    expect(enZona(() => weekdayMondayFirst("2026-06-01"))).toBe(0); // lunes
+    expect(enZona(() => weekdayMondayFirst("2026-05-31"))).toBe(6); // domingo
+    expect(enZona(() => weekdayMondayFirst("2026-03-29"))).toBe(6); // cambio de hora en Europa
+    expect(enZona(() => weekdayMondayFirst("2024-11-10"))).toBe(6);
+  });
+
+  it("el largo del mes y el salto de mes respetan bisiestos y fin de año", () => {
+    expect(enZona(() => daysInMonth(2028, 2))).toBe(29);
+    expect(enZona(() => daysInMonth(2026, 2))).toBe(28);
+    expect(enZona(() => daysInMonth(2026, 12))).toBe(31);
+    // When se salta de un 31 a un mes más corto / Then cae en su último día
+    expect(enZona(() => shiftMonths("2026-01-31", 1))).toBe("2026-02-28");
+    expect(enZona(() => shiftMonths("2026-12-15", 1))).toBe("2027-01-15");
+    expect(enZona(() => shiftMonths("2025-01-10", -2))).toBe("2024-11-10");
+    expect(enZona(() => monthStart("2026-05-23"))).toBe("2026-05-01");
+  });
+
   it("tolera nulos y basura sin romper la vista", () => {
     expect(enZona(() => instanteEnSitio(null))).toBe("—");
     expect(enZona(() => instanteEnSitio("no-es-fecha"))).toBe("no-es-fecha");
     expect(enZona(() => diaEnSitio(undefined))).toBe("—");
+  });
+
+  it("el momento de un hilo dice «hoy» con el día del sitio, no el de la máquina", () => {
+    // Given las 02:30 UTC del 6 de octubre, que en el sitio son las 20:30 del 5
+    const ahora = new Date("2026-10-06T03:00:00Z");
+    // When se rotula un instante de la misma noche del sitio y otro del día anterior
+    // Then el primero es «hoy» y el segundo lleva su fecha corta
+    expect(enZona(() => momentoEnSitio(new Date("2026-10-06T02:30:00Z"), ahora))).toBe("hoy 20:30");
+    expect(enZona(() => momentoEnSitio(new Date("2026-10-04T15:05:00Z"), ahora))).toBe("4 oct 09:05");
+    expect(enZona(() => momentoEnSitio(new Date("2025-09-04T15:05:00Z"), ahora))).toBe("4 set 2025 09:05");
+  });
+});
+
+describe("rótulos de calendario", () => {
+  it("nombra el mes y la fecha completa en español de Costa Rica", () => {
+    expect(monthLabel("2025-09-04")).toBe("setiembre 2025");
+    expect(longDateLabel("2026-05-03")).toBe("3 de mayo de 2026");
+  });
+});
+
+describe("fechaCorta", () => {
+  it("abrevia el mes como en Costa Rica y agrega el año solo si se pide", () => {
+    expect(fechaCorta("2026-09-03", false)).toBe("3 set");
+    expect(fechaCorta("2026-01-31", true)).toBe("31 ene 2026");
+  });
+});
+
+describe("elapsedSince", () => {
+  const now = new Date("2026-10-06T16:15:00Z");
+
+  it.each([
+    ["2026-10-06T16:14:52Z", "hace 8 s"],
+    ["2026-10-06T16:14:00Z", "hace 1 min"],
+    ["2026-10-06T15:15:01Z", "hace 59 min"],
+    ["2026-10-06T14:15:00Z", "hace 2 h"],
+    ["2026-10-05T16:15:00Z", "hace 1 d"],
+  ])("desde %s se lee «%s», en la unidad más grande que cabe entera", (since, expected) => {
+    expect(elapsedSince(new Date(since), now)).toBe(expected);
+  });
+
+  it("un instante en el futuro (relojes desfasados) no da un tiempo negativo", () => {
+    expect(elapsedSince(new Date("2026-10-06T16:16:00Z"), now)).toBe("hace 0 s");
   });
 });

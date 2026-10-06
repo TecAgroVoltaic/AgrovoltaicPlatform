@@ -25,6 +25,10 @@ type Paso = any;
 
 const NUM = /^[+-]?\d+([.,]\d+)?$/;
 
+// Marcadores que la interfaz dibuja (ChartSpec y DescargaSpec): volcarlos acá
+// sería repetir en texto lo que ya se ve como gráfico o como tarjeta.
+const PINTADOS = new Set(["_grafico", "_descarga"]);
+
 // Campos que valen la pena de la salida de una herramienta, en orden. El resto
 // (los que repiten la entrada, la nota larga) va a la salida cruda.
 const DESTACADOS = [
@@ -61,7 +65,7 @@ function filas(obj: any, prefijo = ""): [string, string][] {
   if (typeof obj !== "object" || Array.isArray(obj)) return [[prefijo, valorCorto(obj)]];
   const salida: [string, string][] = [];
   for (const [k, v] of Object.entries(obj)) {
-    if (k === "_grafico") continue;             // el gráfico se pinta, no se lista
+    if (PINTADOS.has(k)) continue;              // el gráfico y la descarga se pintan, no se listan
     const clave = prefijo ? `${prefijo}.${k}` : k;
     if (v !== null && typeof v === "object" && !Array.isArray(v)) {
       const enLinea = objetoEnLinea(v as any);
@@ -80,7 +84,7 @@ function filasDestacadas(salida: any): { filas: [string, string][]; ocultos: num
   if (!salida || typeof salida !== "object" || Array.isArray(salida)) {
     return { filas: filas(salida), ocultos: 0 };
   }
-  const claves = Object.keys(salida).filter((k) => k !== "_grafico");
+  const claves = Object.keys(salida).filter((k) => !PINTADOS.has(k));
   const elegidas = DESTACADOS.filter((k) => k in salida && salida[k] !== null);
   if (!elegidas.length) return { filas: filas(salida), ocultos: 0 };
   const sub: Record<string, any> = {};
