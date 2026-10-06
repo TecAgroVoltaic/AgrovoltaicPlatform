@@ -27,3 +27,14 @@ export function horizontalShift(
   const minLeft = boundary.left + margin;
   return box.left + shiftLeft < minLeft ? minLeft - box.left : shiftLeft;
 }
+
+/** El espacio donde tiene que caber el calendario: el diálogo que lo contiene
+ *  (el desplegable del chip de rango, la ficha de una alerta) o, si no hay, la pantalla. */
+export function containingBoundary(picker: HTMLElement | null): HorizontalBoundary {
+  const dialog = picker?.parentElement?.closest('[role="dialog"]');
+  if (dialog) {
+    const { left, right } = dialog.getBoundingClientRect();
+    return { left, right };
+  }
+  return { left: 0, right: document.documentElement.clientWidth };
+}

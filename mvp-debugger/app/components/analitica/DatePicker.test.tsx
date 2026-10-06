@@ -145,4 +145,26 @@ describe("DatePicker", () => {
     renderPicker({ status: "empty" });
     expect(day(/^22 de mayo de 2026$/)).not.toHaveAttribute("aria-disabled");
   });
+
+  it("hacia adelante: sin fecha muestra el rótulo, y los días previos a la mínima no se eligen", () => {
+    // Given un selector de próxima revisión que arranca el 6 oct 2026, todavía vacío
+    const onChange = vi.fn();
+    render(
+      <>
+        <span id="rotulo">Próxima revisión</span>
+        <DatePicker id="campo" labelId="rotulo" value={null} minDate="2026-10-06" placeholder="sin fecha" onChange={onChange} />
+      </>,
+    );
+    const trigger = screen.getByRole("button", { name: "Próxima revisión sin fecha" });
+    // When se abre el calendario
+    fireEvent.click(trigger);
+    // Then ayer está en gris por haber pasado, no por falta de datos, y no se elige
+    const yesterday = day(/^5 de octubre de 2026, ya pasó/);
+    expect(yesterday).toHaveAttribute("aria-disabled", "true");
+    fireEvent.click(yesterday);
+    expect(onChange).not.toHaveBeenCalled();
+    // And un día posterior sí se elige
+    fireEvent.click(day(/^10 de octubre de 2026$/));
+    expect(onChange).toHaveBeenCalledWith("2026-10-10");
+  });
 });

@@ -15,11 +15,14 @@ export type DayButtonProps = {
   readonly isSelected: boolean;
   readonly isToday: boolean;
   readonly isSelectable: boolean;
+  /** Por qué no se elige, si no se elige: «sin datos», «ya pasó». */
+  readonly unavailableLabel: string;
   readonly onChoose: (date: IsoDate) => void;
 };
 
-export function DayButton({ date, isActive, isSelected, isToday, isSelectable, onChoose }: DayButtonProps) {
-  const label = `${longDateLabel(date)}${isSelectable ? "" : ", sin datos"}${isToday ? ", hoy" : ""}`;
+export function DayButton(props: DayButtonProps) {
+  const { date, isActive, isSelected, isToday, isSelectable, unavailableLabel, onChoose } = props;
+  const label = `${longDateLabel(date)}${isSelectable ? "" : `, ${unavailableLabel}`}${isToday ? ", hoy" : ""}`;
   return (
     <button
       type="button"

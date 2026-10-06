@@ -5,20 +5,22 @@
 // Propio y no `<input type="date">`: el nativo no deja deshabilitar días sueltos,
 // y lo que se pidió es justo eso, que no se pueda elegir un día sin datos.
 //
+// También sirve para fechas hacia adelante (la próxima revisión de una alerta):
+// con `minDate` en vez de `daysWithData` se elige cualquier día desde esa fecha,
+// y con `value` nulo el botón muestra `placeholder` hasta que se elija uno.
+//
 // El desplegable atrapa el foco (Tab da la vuelta adentro), Escape lo cierra
 // SIN cerrar el desplegable que lo contenga (el chip de contexto del Asistente
 // también cierra con Escape: lo marca con `defaultPrevented`) y un clic afuera
 // lo cierra.
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 
-import { dayAvailability } from "@/app/components/analitica/datePicker/availability";
+import { pickerDays, type DaySource } from "@/app/components/analitica/datePicker/availability";
 import { IconCalendar } from "@/app/components/analitica/datePicker/icons";
 import { MonthCalendar } from "@/app/components/analitica/datePicker/MonthCalendar";
-import { horizontalShift } from "@/app/components/analitica/datePicker/placement";
+import { containingBoundary, horizontalShift } from "@/app/components/analitica/datePicker/placement";
 import styles from "@/app/components/analitica/datePicker/datePicker.module.css";
-import { VERIFIED_COVERAGE } from "@/app/lib/analitica/coverage";
-import { addDays, type IsoDate } from "@/app/lib/analitica/dateRange";
-import type { DaysWithDataState } from "@/app/lib/analitica/useDaysWithData";
+import type { IsoDate } from "@/app/lib/analitica/dateRange";
 import { fechaCorta, hoyEnSitio } from "@/app/lib/tiempo";
 
 // Medir antes de pintar evita un cuadro con el calendario fuera de la pantalla;
@@ -27,17 +29,23 @@ const useLayoutEffectInBrowser = typeof window === "undefined" ? useEffect : use
 
 const FOCUSABLE_SELECTOR = 'button:not([disabled]):not([tabindex="-1"]), select:not([disabled])';
 
-export type DatePickerProps = {
+const DEFAULT_PLACEHOLDER = "Elegir fecha";
+
+export type DatePickerProps = DaySource & {
   /** id del botón; el `<label htmlFor>` del formulario apunta acá. */
   readonly id: string;
   /** id del rótulo visible: el botón se nombra «rótulo + fecha». */
   readonly labelId: string;
-  readonly value: IsoDate;
+  readonly value: IsoDate | null;
   readonly onChange: (date: IsoDate) => void;
-  readonly daysWithData: DaysWithDataState;
+  /** Lo que dice el botón mientras no hay fecha elegida. */
+  readonly placeholder?: string;
+  /** «above» para un selector al pie de la pantalla, donde abajo no hay sitio. */
+  readonly placement?: "below" | "above";
 };
 
-export function DatePicker({ id, labelId, value, onChange, daysWithData }: DatePickerProps) {
+export function DatePicker(props: DatePickerProps) {
+  const { id, labelId, value, onChange, placeholder = DEFAULT_PLACEHOLDER, placement = "below" } = props;
   const [open, setOpen] = useState(false);
   const [shiftPx, setShiftPx] = useState(0);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -45,8 +53,8 @@ export function DatePicker({ id, labelId, value, onChange, daysWithData }: DateP
   const popoverRef = useRef<HTMLDivElement>(null);
   const valueId = useId();
   const popoverId = useId();
-  const availability = dayAvailability(daysWithData);
-  const coverage = daysWithData.status === "ready" ? daysWithData.bounds : VERIFIED_COVERAGE;
+  const { availability, span } = pickerDays(props);
+  const initialDate = value ?? span.first;
 
   const close = useCallback(() => {
     setOpen(false);
@@ -113,7 +121,7 @@ export function DatePicker({ id, labelId, value, onChange, daysWithData }: DateP
         onClick={() => setOpen((current) => !current)}
       >
         <IconCalendar />
-        <span id={valueId}>{fechaCorta(value, true)}</span>
+        <span id={valueId}>{value ? fechaCorta(value, true) : placeholder}</span>
       </button>
       {open ? (
         <div
@@ -121,16 +129,16 @@ export function DatePicker({ id, labelId, value, onChange, daysWithData }: DateP
           id={popoverId}
           role="dialog"
           aria-labelledby={labelId}
-          className={styles.popover}
+          className={`${styles.popover} ${placement === "above" ? styles.popoverAbove : ""}`}
           style={{ transform: `translateX(${shiftPx}px)` }}
           onKeyDown={onPopoverKeyDown}
         >
           <MonthCalendar
-            initialDate={value}
+            initialDate={initialDate}
             selectedDate={value}
             today={hoyEnSitio()}
             availability={availability}
-            span={{ first: coverage.from, last: addDays(coverage.toExclusive, -1) }}
+            span={span}
             onSelect={(date) => {
               onChange(date);
               close();
@@ -143,15 +151,4 @@ export function DatePicker({ id, labelId, value, onChange, daysWithData }: DateP
       ) : null}
     </div>
   );
-}
-
-/** El espacio donde tiene que caber el calendario: el diálogo que lo contiene
- *  (el desplegable del chip de contexto) o, si no hay, la pantalla. */
-function containingBoundary(picker: HTMLElement | null) {
-  const dialog = picker?.parentElement?.closest('[role="dialog"]');
-  if (dialog) {
-    const { left, right } = dialog.getBoundingClientRect();
-    return { left, right };
-  }
-  return { left: 0, right: document.documentElement.clientWidth };
 }

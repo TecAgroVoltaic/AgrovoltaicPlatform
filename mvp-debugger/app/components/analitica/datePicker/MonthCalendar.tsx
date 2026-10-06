@@ -26,7 +26,8 @@ const WEEKDAYS = [
 
 export type MonthCalendarProps = {
   readonly initialDate: IsoDate;
-  readonly selectedDate: IsoDate;
+  /** null = todavía no se eligió ninguna. */
+  readonly selectedDate: IsoDate | null;
   readonly today: IsoDate;
   readonly availability: DayAvailability;
   /** Primer y último día que ofrece el salto rápido de mes. */
@@ -99,6 +100,7 @@ export function MonthCalendar({ initialDate, selectedDate, today, availability, 
                       isSelected={day === selectedDate}
                       isToday={day === today}
                       isSelectable={isSelectableDay(availability, day)}
+                      unavailableLabel={availability.unavailableLabel}
                       onChoose={choose}
                     />
                   </td>
