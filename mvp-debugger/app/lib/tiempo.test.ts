@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   daysInMonth,
   diaEnSitio,
+  elapsedSince,
   longDateLabel,
   monthLabel,
   monthStart,
@@ -123,5 +124,23 @@ describe("fechaCorta", () => {
   it("abrevia el mes como en Costa Rica y agrega el año solo si se pide", () => {
     expect(fechaCorta("2026-09-03", false)).toBe("3 set");
     expect(fechaCorta("2026-01-31", true)).toBe("31 ene 2026");
+  });
+});
+
+describe("elapsedSince", () => {
+  const now = new Date("2026-10-06T16:15:00Z");
+
+  it.each([
+    ["2026-10-06T16:14:52Z", "hace 8 s"],
+    ["2026-10-06T16:14:00Z", "hace 1 min"],
+    ["2026-10-06T15:15:01Z", "hace 59 min"],
+    ["2026-10-06T14:15:00Z", "hace 2 h"],
+    ["2026-10-05T16:15:00Z", "hace 1 d"],
+  ])("desde %s se lee «%s», en la unidad más grande que cabe entera", (since, expected) => {
+    expect(elapsedSince(new Date(since), now)).toBe(expected);
+  });
+
+  it("un instante en el futuro (relojes desfasados) no da un tiempo negativo", () => {
+    expect(elapsedSince(new Date("2026-10-06T16:16:00Z"), now)).toBe("hace 0 s");
   });
 });

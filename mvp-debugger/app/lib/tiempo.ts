@@ -193,3 +193,24 @@ export function momentoEnSitio(instanteReal: Date, ahora: Date = new Date()): st
   const otroAnio = momento.fecha.slice(0, LARGO_ANIO) !== hoy.slice(0, LARGO_ANIO);
   return `${fechaCorta(momento.fecha, otroAnio)} ${hora}`;
 }
+
+// ── 4. Tiempo transcurrido ───────────────────────────────────────────────────
+
+const MS_PER_SECOND = 1000;
+const SECONDS_PER_MINUTE = 60;
+const MINUTES_PER_HOUR = 60;
+const HOURS_PER_DAY = 24;
+
+/** Cuánto pasó entre dos instantes, en la unidad más grande que cabe entera:
+ *  «hace 8 s», «hace 12 min», «hace 2 h», «hace 3 d». Es una resta de instantes,
+ *  así que no depende de ninguna zona. Un `since` en el futuro (relojes
+ *  desfasados entre servidor y navegador) se lee como «hace 0 s», no negativo. */
+export function elapsedSince(since: Date, now: Date = new Date()): string {
+  const seconds = Math.max(0, Math.floor((now.getTime() - since.getTime()) / MS_PER_SECOND));
+  if (seconds < SECONDS_PER_MINUTE) return `hace ${seconds} s`;
+  const minutes = Math.floor(seconds / SECONDS_PER_MINUTE);
+  if (minutes < MINUTES_PER_HOUR) return `hace ${minutes} min`;
+  const hours = Math.floor(minutes / MINUTES_PER_HOUR);
+  if (hours < HOURS_PER_DAY) return `hace ${hours} h`;
+  return `hace ${Math.floor(hours / HOURS_PER_DAY)} d`;
+}

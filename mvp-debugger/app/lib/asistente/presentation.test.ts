@@ -9,7 +9,6 @@ import { CHART_SPEC_BY_KIND } from "@/app/lib/asistente/fixtures";
 import {
   chartSizeLabel,
   liveStepDurations,
-  rangeLabel,
   stepsSummary,
   threadCostUsd,
 } from "@/app/lib/asistente/presentation";
@@ -84,16 +83,5 @@ describe("chartSizeLabel", () => {
     if (!parsed.ok || !bars.ok) throw new Error("fixture inválido");
     expect(chartSizeLabel(parsed.spec)).toBe("2 puntos");
     expect(chartSizeLabel(bars.spec)).toBe("2 celdas");
-  });
-});
-
-describe("rangeLabel", () => {
-  it.each([
-    [{ from: "2026-05-03", toExclusive: "2026-06-02", granularity: "day" }, "3 may – 1 jun 2026 · diaria"],
-    [{ from: "2026-05-03", toExclusive: "2026-05-10", granularity: "hour" }, "3 – 9 may 2026 · horaria"],
-    [{ from: "2024-11-10", toExclusive: "2026-06-02", granularity: "month" }, "10 nov 2024 – 1 jun 2026 · mensual"],
-    [{ from: "2026-08-12", toExclusive: "2026-08-13", granularity: "hour" }, "12 ago 2026 · horaria"],
-  ] as const)("%o se lee «%s», con el fin inclusivo", (range, expected) => {
-    expect(rangeLabel(range)).toBe(expected);
   });
 });

@@ -1,22 +1,18 @@
 // Los rótulos que la vista del Asistente deriva de los datos que ya tiene: el
 // costo de un hilo, el resumen de los pasos de una respuesta, cuánto tardó cada
-// tool en vivo, cuántos elementos dibuja un gráfico y el rango en corto.
+// tool en vivo y cuántos elementos dibuja un gráfico. El rango en corto vive en
+// `app/lib/analitica/rangeLabel.ts`: lo comparten todas las secciones.
 //
 // Funciones puras y sin React: el texto exacto que ve la persona se prueba acá,
 // y los componentes solo lo pintan.
-import { addDays, type DateRange } from "@/app/lib/analitica/dateRange";
-import { GRANULARITY_LABEL } from "@/app/lib/analitica/granularity";
 import type { AgentStep } from "@/app/lib/asistente/contracts/chatEvents";
 import type { ChartSpec } from "@/app/lib/asistente/contracts/chartSpec";
 import type { Thread } from "@/app/lib/asistente/threads";
 import type { LiveStep } from "@/app/lib/asistente/turnReducer";
-import { fechaCorta } from "@/app/lib/tiempo";
 
 const LOCALE = "es-CR";
 const MS_PER_SECOND = 1000;
 const USD_DECIMALS = 3;
-const YEAR_LENGTH = 4;
-const MONTH_LENGTH = 7;
 
 const usdFormat = new Intl.NumberFormat(LOCALE, {
   minimumFractionDigits: USD_DECIMALS,
@@ -103,20 +99,4 @@ export function chartSizeLabel(spec: ChartSpec): string {
     case "crestas":
       return plural(spec.datos.curves.length, "curva", "curvas");
   }
-}
-
-/** «3 may – 1 jun 2026 · diaria». El fin se muestra INCLUSIVO, como lo lee una
- *  persona, y el año va una sola vez si las dos puntas lo comparten. */
-export function rangeLabel(range: DateRange): string {
-  const lastDay = addDays(range.toExclusive, -1);
-  const sameYear = range.from.slice(0, YEAR_LENGTH) === lastDay.slice(0, YEAR_LENGTH);
-  const sameMonth = range.from.slice(0, MONTH_LENGTH) === lastDay.slice(0, MONTH_LENGTH);
-  const end = fechaCorta(lastDay, true);
-  const dates =
-    range.from === lastDay
-      ? end
-      : sameMonth
-        ? `${Number(range.from.slice(-2))} – ${end}`
-        : `${fechaCorta(range.from, !sameYear)} – ${end}`;
-  return `${dates} · ${GRANULARITY_LABEL[range.granularity]}`;
 }
