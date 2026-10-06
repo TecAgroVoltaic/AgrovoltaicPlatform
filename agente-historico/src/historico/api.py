@@ -22,7 +22,7 @@ from pydantic import BaseModel
 from historico import datos, db, errores, exportar, limites, tools, uso
 from historico.alertas import api as alertas_api
 from historico.analitica import (
-    carpeta, catalogo, comparativa, completitud, correlacion, crestas,
+    carpeta, catalogo, cobertura_dias, comparativa, completitud, correlacion, crestas,
     distribucion, fuente, rendimiento, resumen, series, ventana,
 )
 from historico.calidad import corrida
@@ -701,6 +701,12 @@ def analitica_completitud(desde: str | None = Query(None),
                           granularidad: str | None = Query(None)) -> dict:
     """Puntos reales contra esperados por periodo, y los tramos sin datos (Fig. 4)."""
     return completitud.calcular(ventana.crear(desde, hasta, granularidad))
+
+
+@app.get("/analitica/dias-con-datos", dependencies=[Depends(_verificar_api_key)])
+def analitica_dias_con_datos() -> dict:
+    """Los dias con al menos una lectura, en total y por fuente. Para el calendario."""
+    return cobertura_dias.calcular()
 
 
 @app.get("/analitica/series", dependencies=[Depends(_verificar_api_key)])
