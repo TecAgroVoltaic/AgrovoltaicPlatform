@@ -8,6 +8,7 @@ import {
   INVALID_TRANSITION_MESSAGE,
   OPEN_ALERT_EXISTS_MESSAGE,
   runAlertAction,
+  runEvaluation,
   VALIDATION_MESSAGE,
 } from "@/app/lib/alertas/client";
 import {
@@ -160,5 +161,39 @@ describe("lectura de la lista", () => {
       offset: "20",
     });
     expect(result.ok).toBe(true);
+  });
+});
+
+describe("evaluar ahora", () => {
+  it("manda el período con hasta exclusivo y devuelve cuántas creó y actualizó", async () => {
+    // Given un servicio que evalúa sin problemas
+    const httpFetch = respondWith(200, { creadas: 2, actualizadas: 3, revisadas: 6, notas: 0, rango: null });
+
+    // When se evalúa agosto
+    const result = await runEvaluation(
+      { from: "2026-08-01", toExclusive: "2026-09-01", granularity: "day" },
+      { httpFetch },
+    );
+
+    // Then sale un POST a /evaluar con el rango del contrato
+    const [url, init] = httpFetch.mock.calls[0];
+    expect(url).toBe("/api/historico/alertas/evaluar");
+    expect(init?.method).toBe("POST");
+    expect(JSON.parse(String(init?.body))).toEqual({ desde: "2026-08-01", hasta: "2026-09-01" });
+    expect(result).toEqual({ ok: true, data: { created: 2, updated: 3, reviewed: 6, warning: null } });
+  });
+
+  it("un fallo del servicio vuelve con su código HTTP para mostrarlo", async () => {
+    // Given un evaluador que revienta
+    const httpFetch = respondWith(500, { detail: "relation alertas does not exist" });
+
+    // When se evalúa
+    const result = await runEvaluation(
+      { from: "2026-08-01", toExclusive: "2026-09-01", granularity: "day" },
+      { httpFetch },
+    );
+
+    // Then el fallo trae el estado HTTP
+    expect(result).toMatchObject({ ok: false, failure: { code: "UPSTREAM_ERROR", status: 500 } });
   });
 });

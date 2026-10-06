@@ -12,6 +12,7 @@ import {
   ALERT_SEVERITY_WIRE,
   ALERT_STATUS_WIRE,
   ALL_ALERT_STATUSES,
+  CLOSED_ALERT_STATUSES,
   OPEN_ALERT_STATUSES,
   SEVERITY_FROM_WIRE,
   STATUS_FROM_WIRE,
@@ -32,9 +33,10 @@ export const ALERTS_PAGE_SIZE = 20;
 const FIRST_OFFSET = 0;
 const WIRE_LIST_SEPARATOR = ",";
 
-/** Los cortes de estado que ofrece la vista: las abiertas (por defecto), uno
- *  solo, o todos. Combinaciones arbitrarias no se ofrecen: nadie las pidió. */
-export type StatusFilter = "open" | "all" | AlertStatus;
+/** Los cortes de estado que ofrece la vista: las abiertas (por defecto), las
+ *  cerradas, uno solo, o todos. Combinaciones arbitrarias no se ofrecen: nadie
+ *  las pidió. */
+export type StatusFilter = "open" | "closed" | "all" | AlertStatus;
 
 export type AlertFilters = {
   readonly status: StatusFilter;
@@ -86,6 +88,7 @@ export function isDefaultFilters(filters: AlertFilters): boolean {
 
 export function statusesOf(filter: StatusFilter): readonly AlertStatus[] {
   if (filter === "open") return OPEN_ALERT_STATUSES;
+  if (filter === "closed") return CLOSED_ALERT_STATUSES;
   if (filter === "all") return ALL_ALERT_STATUSES;
   return [filter];
 }
@@ -100,7 +103,7 @@ function statusWire(filter: StatusFilter): string {
  *  filtro que de verdad se aplica, así que la corrección queda a la vista. */
 function parseStatus(raw: string | null): StatusFilter {
   if (raw === null) return "open";
-  const candidates: readonly StatusFilter[] = ["open", "all", ...ALL_ALERT_STATUSES];
+  const candidates: readonly StatusFilter[] = ["open", "closed", "all", ...ALL_ALERT_STATUSES];
   return candidates.find((filter) => statusWire(filter) === raw) ?? "open";
 }
 

@@ -11,6 +11,7 @@ import {
   EVENT_TYPE_FROM_WIRE,
   SEVERITY_FROM_WIRE,
   STATUS_FROM_WIRE,
+  type AlertStatus,
   type WireReader,
 } from "@/app/lib/alertas/vocabulary";
 
@@ -160,6 +161,14 @@ export const alertsSummarySchema = z
     ultima_evaluacion: z.string().nullable(),
   })
   .transform((raw) => ({
+    // Conteos de TODA la tabla, no del período: el resumen no recibe rango.
+    byStatus: {
+      new: raw.por_estado.nueva,
+      acknowledged: raw.por_estado.reconocida,
+      tracking: raw.por_estado.en_seguimiento,
+      resolved: raw.por_estado.resuelta,
+      dismissed: raw.por_estado.descartada,
+    } satisfies Record<AlertStatus, number>,
     openCritical: raw.abiertas_graves,
     openTotal: raw.abiertas_total,
     lastEvaluation: raw.ultima_evaluacion,
@@ -182,6 +191,24 @@ export const alertDetailSchema = z
   }));
 
 export type AlertDetail = z.infer<typeof alertDetailSchema>;
+
+/** `POST /alertas/evaluar`. `advertencia` llega cuando no había hallazgos que
+ *  recorrer: cero creadas por eso no es lo mismo que cero porque todo está bien. */
+export const evaluationResultSchema = z
+  .object({
+    creadas: countSchema,
+    actualizadas: countSchema,
+    revisadas: countSchema,
+    advertencia: z.string().optional(),
+  })
+  .transform((raw) => ({
+    created: raw.creadas,
+    updated: raw.actualizadas,
+    reviewed: raw.revisadas,
+    warning: raw.advertencia ?? null,
+  }));
+
+export type EvaluationResult = z.infer<typeof evaluationResultSchema>;
 
 export const alertActionResponseSchema = z
   .object({ alerta: alertSchema })

@@ -26,6 +26,9 @@ export const ALL_ALERT_STATUSES: readonly AlertStatus[] = [
 /** Lo que el backend lista por defecto y lo que cuenta como «abierta». */
 export const OPEN_ALERT_STATUSES: readonly AlertStatus[] = ["new", "acknowledged", "tracking"];
 
+/** Lo que ya no pide nada: resuelta u olvidada. Juntas forman la pestaña «Cerradas». */
+export const CLOSED_ALERT_STATUSES: readonly AlertStatus[] = ["resolved", "dismissed"];
+
 /** Subconjunto de la gravedad de calidad: una alerta nunca es informativa. */
 export type AlertSeverity = "critical" | "warning";
 

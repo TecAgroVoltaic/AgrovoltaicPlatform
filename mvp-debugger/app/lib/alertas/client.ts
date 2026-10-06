@@ -18,11 +18,13 @@ import {
   alertsPageSchema,
   alertsSummarySchema,
   alertConflictSchema,
+  evaluationResultSchema,
   type Alert,
   type AlertDetail,
   type AlertsPage,
   type AlertsSummary,
   type AlertConflict,
+  type EvaluationResult,
 } from "@/app/lib/alertas/contracts";
 import { alertsListParams, type AlertsQuery } from "@/app/lib/alertas/query";
 import { ALERT_ACTION_PATH, type AlertAction } from "@/app/lib/alertas/vocabulary";
@@ -63,6 +65,19 @@ export function fetchAlertDetail(
   deps?: AnalyticsDeps,
 ): Promise<AnalyticsResult<AlertDetail>> {
   return fetchResource({ path: `${ALERTS_PATH}/${id}`, schema: alertDetailSchema }, deps);
+}
+
+/** Corre el evaluador sobre el período: `hasta` exclusivo, igual que el rango
+ *  de la URL y que `[desde, hasta)` del backend. */
+export function runEvaluation(range: DateRange, deps?: AnalyticsDeps): Promise<AnalyticsResult<EvaluationResult>> {
+  return postAnalytics(
+    {
+      path: `${ALERTS_PATH}/evaluar`,
+      body: { desde: range.from, hasta: range.toExclusive },
+      schema: evaluationResultSchema,
+    },
+    deps,
+  );
 }
 
 export type AlertActionInput = {

@@ -16,6 +16,7 @@ export const STATUS_LABEL: Readonly<Record<AlertStatus, string>> = {
 
 export const STATUS_FILTER_LABEL: Readonly<Record<StatusFilter, string>> = {
   open: "Abiertas",
+  closed: "Cerradas",
   ...STATUS_LABEL,
   all: "Todas",
 };

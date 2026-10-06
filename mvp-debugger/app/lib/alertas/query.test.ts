@@ -72,6 +72,23 @@ describe("leer la consulta de la URL", () => {
   });
 });
 
+describe("el corte «cerradas»", () => {
+  it("se escribe con resuelta y descartada, y se vuelve a leer igual", () => {
+    // Given la pestaña Cerradas
+    const query = reduceAlertsQuery(DEFAULT_QUERY, {
+      kind: "filters",
+      filters: { ...DEFAULT_ALERT_FILTERS, status: "closed" },
+    });
+
+    // When se escribe y se vuelve a leer
+    const search = alertsQueryToSearch(query);
+
+    // Then la URL lleva los dos estados cerrados y el ida y vuelta conserva el corte
+    expect(search).toBe("?estado=resuelta%2Cdescartada");
+    expect(parse(search.slice(1)).filters.status).toBe("closed");
+  });
+});
+
 describe("escribir la consulta en la URL", () => {
   it("conserva el rango y omite lo que vale el defecto", () => {
     // Given una URL con rango y una página vieja

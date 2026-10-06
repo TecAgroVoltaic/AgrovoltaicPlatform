@@ -9,6 +9,7 @@ import {
   alertsPageSchema,
   alertsSummarySchema,
   alertConflictSchema,
+  evaluationResultSchema,
 } from "@/app/lib/alertas/contracts";
 import {
   ALERT_DETAIL_WIRE,
@@ -85,6 +86,30 @@ describe("contrato de la lista, el resumen y la ficha", () => {
     // Then la ausencia de evaluación queda en null, no en una fecha falsa
     expect(summary.openCritical).toBe(0);
     expect(summary.lastEvaluation).toBeNull();
+  });
+
+  it("el resumen publica el conteo de cada estado con el vocabulario de la aplicación", () => {
+    // Given el resumen del contrato / When se valida
+    const summary = alertsSummarySchema.parse(ALERTS_SUMMARY_WIRE);
+
+    // Then cada estado conserva su conteo, ya traducido
+    expect(summary.byStatus).toEqual({ new: 3, acknowledged: 1, tracking: 2, resolved: 7, dismissed: 4 });
+  });
+
+  it("evaluar distingue «sin hallazgos que recorrer» de «nada nuevo»", () => {
+    // Given dos respuestas de /evaluar: una normal y otra con la tabla de hallazgos vacía
+    const normal = evaluationResultSchema.parse({ creadas: 2, actualizadas: 1, revisadas: 5, notas: 0, rango: null });
+    const empty = evaluationResultSchema.parse({
+      creadas: 0,
+      actualizadas: 0,
+      revisadas: 0,
+      rango: null,
+      advertencia: "hallazgos_calidad esta vacio",
+    });
+
+    // Then la advertencia viaja solo cuando el backend la manda
+    expect(normal).toEqual({ created: 2, updated: 1, reviewed: 5, warning: null });
+    expect(empty.warning).toBe("hallazgos_calidad esta vacio");
   });
 
   it("la ficha traduce eventos y enlaces", () => {
