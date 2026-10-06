@@ -24,6 +24,11 @@ export type AnalysisSection = {
   readonly Icon: ComponentType<{ size?: number }>;
   /** Indicador opcional junto a la etiqueta del menú (p. ej. un contador). */
   readonly Badge?: ComponentType;
+  /** La sección dibuja su propia cabecera a ancho completo: el cascarón no le
+   *  pone la barra de rango, ni el pie, ni la barra superior del cajón (el botón
+   *  del menú lo pone ella con `useSectionMenu`). Hoy solo el Asistente, donde
+   *  el chat es el protagonista y el rango viaja como contexto del hilo. */
+  readonly ownsHeader?: true;
 };
 
 export const ANALYSIS_SECTIONS: readonly AnalysisSection[] = [
@@ -75,6 +80,7 @@ export const ANALYSIS_SECTIONS: readonly AnalysisSection[] = [
     description:
       "Preguntas en lenguaje natural sobre los datos: responde con los mismos algoritmos de las vistas, grafica y prepara descargas.",
     Icon: IconoAsistente,
+    ownsHeader: true,
   },
   {
     path: "/alertas",

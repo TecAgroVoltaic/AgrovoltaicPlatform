@@ -4,11 +4,14 @@
 // El rango vive en el cascarón y no en cada página porque acota TODO lo que se
 // mira: moverlo cambia el tablero, las series y la calidad a la vez. Va envuelto
 // en <Suspense> porque lee la query de la URL, que Next resuelve del lado del
-// cliente.
+// cliente. Las secciones con cabecera propia (hoy el Asistente) no lo reciben:
+// lo decide `SectionContent`, y el rango les llega como contexto del hilo.
 import { Suspense } from "react";
 
 import { BrandMark } from "@/app/components/BrandMark";
 import { RangeSelector } from "@/app/components/analitica/RangeSelector";
+import { SectionContent } from "@/app/components/analitica/SectionContent";
+import { SectionMenuProvider } from "@/app/components/analitica/SectionMenu";
 import { SectionNav } from "@/app/components/analitica/SectionNav";
 import { SidebarDrawer } from "@/app/components/analitica/SidebarDrawer";
 import { ThemeToggle } from "@/app/components/ThemeToggle";
@@ -30,46 +33,53 @@ const SITE = "San Carlos (10,33°N · 84,42°O) · UTC−6";
 // así que su barra no puede volverse cajón sin quedar inalcanzable.
 export default function AnalisisLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="app has-drawer">
-      <SidebarDrawer>
-        <div className="brand">
-          <BrandMark />
-          <div>
-            <b>AgroVoltaic</b>
-            <div className="sub muted mono">evaluación de datos</div>
+    <SectionMenuProvider>
+      <div className="app has-drawer">
+        <SidebarDrawer>
+          <div className="brand">
+            <BrandMark />
+            <div>
+              <b>AgroVoltaic</b>
+              <div className="sub muted mono">evaluación de datos</div>
+            </div>
           </div>
-        </div>
 
-        <Suspense fallback={<div className="nav muted small">Secciones…</div>}>
-          <SectionNav />
-        </Suspense>
+          <Suspense fallback={<div className="nav muted small">Secciones…</div>}>
+            <SectionNav />
+          </Suspense>
 
-        <div className="navsep" />
-        <a className="navitem" href="/consola">
-          <IconoGrafo size={ICON_SIZE} />
-          <span>Consola de agentes ↗</span>
-        </a>
-        <a className="navitem" href="/docs">
-          <IconoDocs size={ICON_SIZE} />
-          <span>Documentación ↗</span>
-        </a>
+          <div className="navsep" />
+          <a className="navitem" href="/consola">
+            <IconoGrafo size={ICON_SIZE} />
+            <span>Consola de agentes ↗</span>
+          </a>
+          <a className="navitem" href="/docs">
+            <IconoDocs size={ICON_SIZE} />
+            <span>Documentación ↗</span>
+          </a>
 
-        <div className="sidefoot">
-          <span className="live mono">datos PV</span>
-          <ThemeToggle />
-        </div>
-      </SidebarDrawer>
+          <div className="sidefoot">
+            <span className="live mono">datos PV</span>
+            <ThemeToggle />
+          </div>
+        </SidebarDrawer>
 
-      <main className="content">
-        <Suspense fallback={<div className="rng muted small">Cargando el rango…</div>}>
-          <RangeSelector />
-        </Suspense>
-        {children}
-        <div className="foot">
-          <span>AgroVoltaic · sistema de evaluación de datos</span>
-          <span>{SITE}</span>
-        </div>
-      </main>
-    </div>
+        <SectionContent
+          rangeBar={
+            <Suspense fallback={<div className="rng muted small">Cargando el rango…</div>}>
+              <RangeSelector />
+            </Suspense>
+          }
+          footer={
+            <div className="foot">
+              <span>AgroVoltaic · sistema de evaluación de datos</span>
+              <span>{SITE}</span>
+            </div>
+          }
+        >
+          {children}
+        </SectionContent>
+      </div>
+    </SectionMenuProvider>
   );
 }

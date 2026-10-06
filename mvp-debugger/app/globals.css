@@ -137,6 +137,11 @@ button, input, textarea, select { font-family:inherit; }
    `minmax(min(320px,100%),1fr)` en vez de un piso fijo. `min-width:0` sigue
    siendo lo que impide que un hijo estire la columna. */
 .content { flex:1; min-width:0; max-width:1280px; margin:0 auto; padding:30px 34px 90px; }
+/* La columna de una sección con cabecera propia (`ownsHeader`, ver
+   SectionContent): a ancho completo y sin márgenes, porque su cabecera y su
+   compositor son bandas de borde a borde. Dos clases para ganarle por
+   especificidad al `.content` de los escalones de abajo sin depender del orden. */
+.content.content-bare { max-width:none; padding:0; }
 .phead { margin-bottom:6px; }
 .phead h1 { font-size:20px; }
 .phead p { margin:4px 0 0; color:var(--muted); font-size:13px; max-width:74ch; }
