@@ -28,6 +28,7 @@ export function ContextChip({ threadOpen }: ContextChipProps) {
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const chipRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const panelId = useId();
   const label = rangeLabel(range);
 
@@ -38,7 +39,7 @@ export function ContextChip({ threadOpen }: ContextChipProps) {
 
   useEffect(() => {
     if (!open) return;
-    wrapperRef.current?.querySelector<HTMLInputElement>("input")?.focus();
+    panelRef.current?.querySelector<HTMLElement>("button, select")?.focus();
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") close();
     };
@@ -69,7 +70,7 @@ export function ContextChip({ threadOpen }: ContextChipProps) {
         <IconChevronDown size={CHEVRON_ICON_SIZE} strokeWidth={ICON_STROKE} />
       </button>
       {open ? (
-        <div id={panelId} className={styles.popover} role="dialog" aria-label="Rango de contexto">
+        <div ref={panelRef} id={panelId} className={styles.popover} role="dialog" aria-label="Rango de contexto">
           <p className={styles.popoverTitle}>Rango de contexto</p>
           <RangeForm idPrefix={FORM_ID_PREFIX} onApplied={close} />
           <p className={styles.popoverNote}>

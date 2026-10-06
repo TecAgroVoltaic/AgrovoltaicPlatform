@@ -13,6 +13,10 @@ const navigation = vi.hoisted(() => ({
 }));
 const router = navigation.router;
 
+// Sin lista de días (cargando): el calendario deja elegir todo, y el chip se
+// prueba sin red. Los días deshabilitados se prueban en DatePicker y RangeForm.
+vi.mock("@/app/lib/analitica/useDaysWithData", () => ({ useDaysWithData: () => ({ status: "loading" }) }));
+
 vi.mock("next/navigation", () => ({
   useRouter: () => navigation.router,
   usePathname: () => "/asistente",
@@ -35,8 +39,11 @@ describe("ContextChip", () => {
     const chip = screen.getByRole("button", { name: CHIP_NAME });
     fireEvent.click(chip);
     expect(chip).toHaveAttribute("aria-expanded", "true");
-    // When se cambia el inicio y se aplica
-    fireEvent.change(screen.getByLabelText("Desde"), { target: { value: "2026-05-20" } });
+    // Then el foco entra al formulario, en el primer campo
+    expect(screen.getByRole("button", { name: "Desde 3 may 2026" })).toHaveFocus();
+    // When se elige otro inicio en el calendario y se aplica
+    fireEvent.click(screen.getByRole("button", { name: "Desde 3 may 2026" }));
+    fireEvent.click(screen.getByRole("button", { name: "20 de mayo de 2026" }));
     fireEvent.click(screen.getByRole("button", { name: "Aplicar" }));
     // Then la URL pasa a tener ese rango, conservando la ruta
     expect(router.push).toHaveBeenCalledWith("/asistente?desde=2026-05-20&hasta=2026-06-02&granularidad=dia");
@@ -47,10 +54,22 @@ describe("ContextChip", () => {
   it("un rango inválido no toca la URL y lo dice", () => {
     render(<ContextChip threadOpen={false} />);
     fireEvent.click(screen.getByRole("button", { name: CHIP_NAME }));
-    fireEvent.change(screen.getByLabelText("Hasta (exclusivo)"), { target: { value: "2026-05-01" } });
+    // When «Hasta» queda antes que «Desde»
+    fireEvent.click(screen.getByRole("button", { name: "Hasta 1 jun 2026" }));
+    fireEvent.click(screen.getByRole("button", { name: "Mes anterior" }));
+    fireEvent.click(screen.getByRole("button", { name: "1 de mayo de 2026" }));
     fireEvent.click(screen.getByRole("button", { name: "Aplicar" }));
     expect(router.push).not.toHaveBeenCalled();
-    expect(screen.getByRole("alert")).toHaveTextContent("posterior a «desde»");
+    expect(screen.getByRole("alert")).toHaveTextContent("«Hasta» no puede ser anterior a «Desde»");
+  });
+
+  it("Escape dentro del calendario cierra solo el calendario, no el desplegable", () => {
+    render(<ContextChip threadOpen={false} />);
+    fireEvent.click(screen.getByRole("button", { name: CHIP_NAME }));
+    fireEvent.click(screen.getByRole("button", { name: "Desde 3 may 2026" }));
+    fireEvent.keyDown(screen.getByRole("grid"), { key: "Escape" });
+    expect(screen.queryByRole("grid")).toBeNull();
+    expect(screen.getByRole("dialog", { name: "Rango de contexto" })).toBeInTheDocument();
   });
 
   it("Escape cierra el desplegable y devuelve el foco al chip", () => {

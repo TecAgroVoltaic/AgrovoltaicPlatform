@@ -3,16 +3,21 @@
 // avisos sobre el rango vigente. Lo usan la barra del cascarón (`RangeSelector`)
 // y el chip de contexto del Asistente.
 //
-// El formulario NO valida por su cuenta: le pasa lo que la persona escribió al
-// MISMO intérprete que lee la URL. Así una fecha inválida escrita a mano y una
-// pegada en la barra de direcciones fallan igual y con el mismo mensaje.
+// Las fechas se eligen en un calendario que no deja tomar un día sin datos
+// (`DatePicker`). La persona elige el ÚLTIMO DÍA INCLUIDO («Hasta»): el fin
+// exclusivo de la URL es un detalle técnico, y se convierte (+1 día) recién al
+// aplicar. Lo demás lo valida el MISMO intérprete que lee la URL, así un rango
+// armado acá y uno pegado en la barra de direcciones fallan igual.
 import { useEffect, useState, type FormEvent } from "react";
 
+import { DatePicker } from "@/app/components/analitica/DatePicker";
 import { RangeNotices } from "@/app/components/analitica/RangeNotices";
 import { useDateRange } from "@/app/lib/analitica/useDateRange";
-import { GRANULARITIES, GRANULARITY_LABEL, granularityToWire } from "@/app/lib/analitica/granularity";
+import { useDaysWithData } from "@/app/lib/analitica/useDaysWithData";
+import { GRANULARITIES, GRANULARITY_LABEL } from "@/app/lib/analitica/granularity";
 import { DEFAULT_RANGE, RANGE_PRESETS } from "@/app/lib/analitica/coverage";
-import { parseRangeParams, readerFromRecord, type RangeProblem } from "@/app/lib/analitica/urlRange";
+import { draftFromRange, draftToRange } from "@/app/lib/analitica/rangeDraft";
+import type { RangeProblem } from "@/app/lib/analitica/urlRange";
 import type { DateRange } from "@/app/lib/analitica/dateRange";
 
 export type RangeFormProps = {
@@ -25,14 +30,17 @@ export type RangeFormProps = {
 
 export function RangeForm({ idPrefix, onApplied }: RangeFormProps) {
   const { range, parse, setRange } = useDateRange();
-  const [draft, setDraft] = useState(range);
+  const daysWithData = useDaysWithData();
+  const [draft, setDraft] = useState(() => draftFromRange(range));
   const [problems, setProblems] = useState<readonly RangeProblem[]>([]);
   const fieldId = { from: `${idPrefix}-desde`, to: `${idPrefix}-hasta`, granularity: `${idPrefix}-grano` };
+  const labelId = { from: `${fieldId.from}-rotulo`, to: `${fieldId.to}-rotulo` };
   const summaryId = `${idPrefix}-resumen`;
+  const publishedCoverage = daysWithData.status === "ready" ? daysWithData.bounds : undefined;
 
   // La URL manda: si cambia (por un atajo, por el botón atrás, por un enlace
   // compartido), el formulario refleja lo que se está mirando de verdad.
-  useEffect(() => setDraft(range), [range]);
+  useEffect(() => setDraft(draftFromRange(range)), [range]);
 
   function commit(next: DateRange) {
     setProblems([]);
@@ -42,45 +50,36 @@ export function RangeForm({ idPrefix, onApplied }: RangeFormProps) {
 
   function apply(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const attempt = parseRangeParams(
-      readerFromRecord({
-        desde: draft.from,
-        hasta: draft.toExclusive,
-        granularidad: granularityToWire(draft.granularity),
-      }),
-    );
-    if (attempt.outcome !== "parsed") {
-      setProblems(attempt.outcome === "fallback" ? attempt.problems : []);
-      return;
-    }
-    commit(attempt.range);
+    const attempt = draftToRange(draft);
+    if (attempt.ok) commit(attempt.range);
+    else setProblems(attempt.problems);
   }
 
   return (
     <>
       <form className="rng-form" onSubmit={apply}>
         <div className="rng-campo">
-          <label className="lbl" htmlFor={fieldId.from}>
+          <label className="lbl" id={labelId.from} htmlFor={fieldId.from}>
             Desde
           </label>
-          <input
+          <DatePicker
             id={fieldId.from}
-            className="input input-sm"
-            type="date"
+            labelId={labelId.from}
             value={draft.from}
-            onChange={(event) => setDraft({ ...draft, from: event.target.value })}
+            daysWithData={daysWithData}
+            onChange={(from) => setDraft({ ...draft, from })}
           />
         </div>
         <div className="rng-campo">
-          <label className="lbl" htmlFor={fieldId.to}>
-            Hasta (exclusivo)
+          <label className="lbl" id={labelId.to} htmlFor={fieldId.to}>
+            Hasta
           </label>
-          <input
+          <DatePicker
             id={fieldId.to}
-            className="input input-sm"
-            type="date"
-            value={draft.toExclusive}
-            onChange={(event) => setDraft({ ...draft, toExclusive: event.target.value })}
+            labelId={labelId.to}
+            value={draft.lastIncludedDay}
+            daysWithData={daysWithData}
+            onChange={(lastIncludedDay) => setDraft({ ...draft, lastIncludedDay })}
           />
         </div>
         <div className="rng-campo">
@@ -107,13 +106,19 @@ export function RangeForm({ idPrefix, onApplied }: RangeFormProps) {
         </div>
         <div className="rng-presets" role="group" aria-label="Rangos rápidos">
           {RANGE_PRESETS.map((preset) => (
-            <button key={preset.id} className="chip" type="button" onClick={() => commit(preset.build())}>
+            <button key={preset.id} className="chip" type="button" onClick={() => commit(preset.build(publishedCoverage))}>
               {preset.label}
             </button>
           ))}
         </div>
       </form>
-      <RangeNotices range={range} parse={parse} formProblems={problems} summaryId={summaryId} />
+      <RangeNotices
+        range={range}
+        parse={parse}
+        formProblems={problems}
+        summaryId={summaryId}
+        daysWithData={daysWithData}
+      />
     </>
   );
 }
