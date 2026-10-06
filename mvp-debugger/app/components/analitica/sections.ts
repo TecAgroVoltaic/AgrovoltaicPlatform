@@ -75,6 +75,8 @@ export const ANALYSIS_SECTIONS: readonly AnalysisSection[] = [
     description:
       "Preguntas en lenguaje natural sobre los datos: responde con los mismos algoritmos de las vistas, grafica y prepara descargas.",
     Icon: IconoAsistente,
+  },
+  {
     path: "/alertas",
     label: "Alertas",
     description:
