@@ -206,6 +206,12 @@ CREATE INDEX IF NOT EXISTS idx_alertas_eventos_alerta ON alertas_eventos (alerta
 -- RLS + GRANT SELECT a joshua_ro, igual que hallazgos_calidad (ver sql/001).
 ```
 
+**Agregado en la rama `feat/alertas-backend`** (ver `sql/004_alertas.sql`):
+- tabla `alertas_evaluaciones (id, desde, hasta, creadas, actualizadas, revisadas, notas, evaluada_en)`,
+  una fila por corrida del generador. Es de donde sale `ultima_evaluacion` del resumen: sin ella,
+  "nada nuevo" y "el generador no corrió" se ven igual;
+- `CHECK (fecha_fin >= fecha_inicio)` y `CHECK (ocurrencias >= 1)` en `alertas`.
+
 ### 4.2 Ciclo de vida (seguimiento)
 
 ```
@@ -228,6 +234,25 @@ nueva ──reconocer──▶ reconocida ──seguimiento──▶ en_seguimie
   - Si una alerta `en_seguimiento` lleva **7 días** sin ocurrencias nuevas, el generador registra un
     evento `nota` "sin ocurrencias desde {fecha}; se puede resolver" (una sola vez). No cambia el estado.
 
+**Precisiones de implementación** (`alertas/ciclo.py`, `alertas/evaluar.py`):
+
+| Acción | Desde | Hacia | Evento |
+|---|---|---|---|
+| reconocer | nueva | reconocida | `reconocida` |
+| seguimiento | reconocida, en_seguimiento | en_seguimiento | `seguimiento` (se repite) |
+| resolver | en_seguimiento | resuelta | `resuelta` |
+| descartar | nueva, reconocida, en_seguimiento | descartada | `descartada` |
+| reabrir | resuelta, **descartada** | **reconocida** | `reabierta` |
+
+- `reabrir` también desde `descartada` ("olvidar" por error se puede deshacer) y lleva a `reconocida`.
+  Si ya hay otra alerta abierta con la misma `clave`, responde **409** `alerta_abierta_existente`.
+- `proxima_revision`: el seguimiento la fija (o la borra si no viene), resolver y descartar la borran.
+- Los eventos que escribe el generador llevan `autor = "generador"`. Un evento `ocurrencia` por día nuevo
+  con `datos = {fecha}`; `creada` con `datos = {fechas}`; la nota con `datos = {sin_ocurrencias_desde}`.
+- Los 7 días se cuentan hasta el **último día que cubrió el barrido** (`max(fecha)` de
+  `hallazgos_calidad`, acotado por `hasta`), no hasta hoy: si la carga se atrasa, no tener hallazgos
+  no significa que el problema se fue. La nota sale una vez por cada `fecha_fin`.
+
 ### 4.3 Tipos de alerta v1 (`alertas/reglas.py`)
 
 | `tipo` | Deriva de (`hallazgos_calidad.tipo`) | Severidad | Título |
@@ -238,7 +263,19 @@ nueva ──reconocer──▶ reconocida ──seguimiento──▶ en_seguimie
 | `incongruencia_temp_irradiancia` | `incongruencia_temp_irradiancia` (prueba **nueva**, ver 4.4) | grave | "Temperatura de módulo no responde a la irradiancia" |
 
 `evidencia` guarda al menos `{fechas:[...], hallazgos:[{fecha,fuente,variable,tipo}], cifras:{...}}`.
-Cada tipo tiene su entrada en `QUE_ES` (un test ya exige que todo tipo la tenga).
+En la implementación cada referencia lleva además `severidad`, y `cifras` trae `lecturas_afectadas`
+(suma de `n_afectadas`) más el máximo de los campos del `detalle` que importan por tipo
+(`ghi_max_wm2`, `lecturas_en_85`, `kt_max`/`peor`, `temp_max`/`ghi_max`).
+
+**Precisiones de implementación:**
+- La explicación de cada **tipo de alerta** vive en `alertas/reglas.DEFINICIONES[tipo].que_es`, no en
+  `tools/hallazgos.QUE_ES`: ese diccionario es el `enum` de tipos de **hallazgo** y un test prohíbe
+  que tenga tipos que ningún detector escribe. El tipo de hallazgo nuevo
+  `incongruencia_temp_irradiancia` sí está en `QUE_ES`.
+- `inversor_parado_con_sol` usa `variable = '*'`: las tres variables AC del mismo apagón son UNA alerta.
+- `irradiancia_imposible` usa la clave del **catálogo** (`irradiancia_incidente_wm2`) aunque
+  `kt_imposible` guarde el nombre crudo: el mismo sensor no abre dos alertas.
+- `incongruencia_temp_irradiancia` solo toma los hallazgos `grave` (los `info` son días sin juzgar).
 
 ### 4.4 Prueba nueva `incongruencia_temp_irradiancia` (`calidad/pruebas/entre_sensores.py`)
 
@@ -258,6 +295,18 @@ Regla inicial, **pendiente de validación por Hugo** (los umbrales van en `umbra
 - Un hallazgo por día y variable, `detalle` con `{r, temp_max, ghi_max, bins_evaluados, motivo: 1|2|3}`,
   severidad `grave`.
 - Estado `sin_fuente` si falta la irradiancia del día (no se calla: patrón `sin_irradiancia`).
+
+**Precisiones de implementación** (`calidad/pruebas/entre_sensores.py`):
+- El `sin_fuente` es un hallazgo `info` del mismo tipo con `detalle = {estado:"sin_fuente",
+  motivo:"sin_irradiancia"|"sin_ventana_solar"}`. `info` no toca el veredicto. `sin_ventana_solar`
+  cubre el día que `ventana_solar` no tiene (el fallo de `regla-post-carga.md`).
+- Un día con **cualquier** lectura en 85 no se evalúa. Un día nublado (menos de 2 h emparejadas con
+  GHI ≥ 300) tampoco, y no deja hallazgo.
+- `detalle` trae además `motivos` (lista, si se cumple más de uno; `motivo` es el primero),
+  `minutos_con_sol`, `minutos_caliente_sin_sol`, `emparejamiento` y `origen`. `r` es `null` si la
+  temperatura no varía (y eso dispara el motivo 1).
+- `n_afectadas` = lecturas emparejadas del día (motivos 1 y 2) o las de la racha (solo motivo 3).
+  El hallazgo grave **sí** entra al veredicto de calidad de `temp_*`: juzga el dato, no el equipo.
 
 ### 4.5 Endpoints (`APIRouter` en `historico/alertas/api.py`, montado en `api.py` bajo `/alertas`)
 
@@ -279,6 +328,24 @@ Transición inválida (p. ej. resolver una descartada) → **409** con `{codigo:
 Id inexistente → 404.
 
 `Alerta` = todas las columnas de la tabla con fechas ISO. `Evento` = `{id, tipo, nota, autor, datos, creado_en}`.
+
+**Precisiones de implementación:**
+- Todo error trae `{detail, codigo}` más sus datos: 409 `transicion_invalida` `{de, a}`,
+  409 `alerta_abierta_existente` `{id, abierta_id}`, 404 `alerta_inexistente` `{id}`,
+  400 `parametro_invalido` (estado/severidad/tipo desconocido), 400 `fecha_ilegible`. Un cuerpo
+  inválido (seguimiento sin nota o con nota en blanco, nota > 2000, autor > 80, fecha ilegible en
+  `/evaluar`) es **422** de validación de FastAPI.
+- `GET /alertas`: `desde`/`hasta` filtran por solapamiento (`fecha_fin >= desde`, `fecha_inicio < hasta`).
+  `q` busca en `titulo` o `variable` sin distinguir mayúsculas. Orden: graves primero, `fecha_fin`
+  descendente, `id` descendente.
+- `GET /alertas/resumen`: `ultima_evaluacion` es el `timestamptz` ISO de la última corrida
+  (un instante real, con zona) o `null` si nunca corrió.
+- `GET /alertas/{id}`: `enlaces` usan `hasta = fecha_fin + 1` (exclusivo). Las variables de `series`
+  dependen del tipo: inversor → `voltaje_vac,potencia_total_wac,irradiancia_incidente_wm2`;
+  incongruencia → `{variable},irradiancia_incidente_wm2`; las demás → `{variable}`.
+- `POST /alertas/evaluar`: sin rango toma lo que cubre `hallazgos_calidad`. Devuelve además `notas`
+  (notas de 7 días escritas) y `referencia_sin_ocurrencias`. `revisadas` = claves con candidatos en
+  el rango. Con `hallazgos_calidad` vacío devuelve ceros, `rango: null` y `advertencia`.
 
 ### 4.6 Frontend `/alertas`
 

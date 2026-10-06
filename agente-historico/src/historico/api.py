@@ -20,6 +20,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from historico import datos, db, errores, exportar, limites, tools, uso
+from historico.alertas import api as alertas_api
 from historico.analitica import (
     carpeta, catalogo, comparativa, completitud, correlacion, crestas,
     distribucion, fuente, rendimiento, resumen, series, ventana,
@@ -846,3 +847,6 @@ def calidad_pruebas(variable: str = Query(...), desde: str | None = Query(None),
     """
     v = ventana.crear(desde, hasta)
     return corrida.como_dict(v, variable, corrida.evaluar(v, variable))
+
+
+app.include_router(alertas_api.router, dependencies=[Depends(_verificar_api_key)])

@@ -111,8 +111,9 @@ class ContextoDisponibilidad(Contexto):
     """El `Contexto` comun mas la irradiancia con que se gradua la severidad.
 
     Va como SUBCLASE y no como campo nuevo del contrato porque la irradiancia la
-    necesita una sola familia y el contrato lo comparten las cinco: quien corre el
-    catalogo entero puede pasar esto y las otras cuatro pruebas ni se enteran.
+    necesitan dos familias de seis: quien corre el catalogo entero puede pasar esto
+    y las demas ni se enteran. La sexta (`entre_sensores`) lee este MISMO mapa para
+    cruzar la temperatura de modulo con el sol: un solo emparejamiento.
 
     El mapa esta indexado por BIN de 5 minutos (`bin_de_emparejamiento`), no por
     marca: ver el docstring del modulo. Lo arma `irradiancia_por_bin()`.

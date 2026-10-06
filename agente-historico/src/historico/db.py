@@ -1,4 +1,4 @@
-"""Acceso a la DB — responsabilidad unica: consultar, y escribir solo los hallazgos.
+"""Acceso a la DB — responsabilidad unica: consultar, y escribir hallazgos y alertas.
 
 DOS POOLS, y la separacion es una garantia, no una optimizacion:
 
@@ -6,9 +6,11 @@ DOS POOLS, y la separacion es una garantia, no una optimizacion:
     herramientas, o sea todo lo que el LLM puede disparar. Una tool no puede
     escribir en la base porque su conexion no se lo permite, no porque el prompt
     se lo pida. Misma idea que restringir el juego de herramientas.
-  * `ejecutar()`/`ejecutar_muchos()` van por un pool con escritura. Los usa UNICAMENTE
-    el barrido por lotes (`historico.calidad.barrido`), que corre por cron y jamas
-    desde una pregunta.
+  * `ejecutar()`/`ejecutar_muchos()` van por un pool con escritura. Los usa el
+    barrido por lotes (`historico.calidad.barrido`), que corre por cron y jamas
+    desde una pregunta. `transaccion()` va por el mismo pool y la usan las alertas
+    (`historico.alertas.store`): el generador y las acciones de la consola. Ninguna
+    tool del LLM llega a este pool.
 
 Usa un POOL de conexiones (psycopg_pool): abrir una conexion al pooler de Supabase
 cuesta ~700 ms (TLS + auth + latencia a us-east-1), mucho mas que la consulta en si
@@ -43,6 +45,7 @@ from __future__ import annotations
 import os
 import threading
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Callable, Iterator, TypeVar
@@ -186,8 +189,15 @@ def query(sql: str, params: tuple = ()) -> list[dict]:
     with _get_pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute(sql, params)
-            cols = [d.name for d in cur.description]
-            return [{c: _limpiar(v) for c, v in zip(cols, row)} for row in cur.fetchall()]
+            return _filas(cur)
+
+
+def _filas(cur) -> list[dict]:
+    """Lo que devolvio el ultimo `execute`, como dicts limpios. [] si no devuelve filas."""
+    if cur.description is None:
+        return []
+    cols = [d.name for d in cur.description]
+    return [{c: _limpiar(v) for c, v in zip(cols, row)} for row in cur.fetchall()]
 
 
 def uno(sql: str, params: tuple = ()) -> dict:
@@ -270,6 +280,43 @@ def ejecutar_muchos(sql: str, filas: list[tuple]) -> int:
             cur.executemany(sql, filas)
     cache.invalidar_todo()
     return len(filas)
+
+
+class Transaccion:
+    """Lo que se puede hacer dentro de `transaccion()`: leer y escribir en el mismo BEGIN."""
+
+    def __init__(self, conn) -> None:
+        self._conn = conn
+
+    def query(self, sql: str, params: tuple = ()) -> list[dict]:
+        with self._conn.cursor() as cur:
+            cur.execute(sql, params)
+            return _filas(cur)
+
+    def uno(self, sql: str, params: tuple = ()) -> dict:
+        filas = self.query(sql, params)
+        return filas[0] if filas else {}
+
+    def ejecutar_muchos(self, sql: str, filas: list[tuple]) -> int:
+        if filas:
+            with self._conn.cursor() as cur:
+                cur.executemany(sql, filas)
+        return len(filas)
+
+
+@contextmanager
+def transaccion() -> Iterator[Transaccion]:
+    """Escritura de VARIOS pasos que se aplica entera o no se aplica.
+
+    La usan las alertas, que necesitan lo que `ejecutar` no da: `RETURNING` (el id
+    de la alerta recien creada para colgarle su evento) y `SELECT ... FOR UPDATE`
+    (que dos personas no transicionen la misma alerta a la vez). Si algo revienta
+    a mitad, el `with` hace ROLLBACK y la alerta no queda sin su evento.
+    """
+    with _get_pool_rw().connection() as conn:
+        with conn.transaction():
+            yield Transaccion(conn)
+    cache.invalidar_todo()
 
 
 def cerrar() -> None:
