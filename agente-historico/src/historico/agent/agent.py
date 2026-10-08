@@ -5,7 +5,9 @@ tools disponibles; cuando el modelo llama una, el lazo la ejecuta (DISPATCH) y l
 devuelve el JSON; el modelo redacta la respuesta final en espanol. Patron manual
 (no el tool-runner beta) para control total y no filtrar el razonamiento interno.
 
-Es GENERICO sobre el registro de tools: no hay logica de ninguna tool aqui.
+Es GENERICO sobre el registro de tools: no hay logica de ninguna tool aqui. Los
+lazos viven en `lazo_preguntar` (traza de `/preguntar`) y `lazo_chat` (eventos del
+chat); esta clase arma el historial y delega.
 """
 from __future__ import annotations
 
@@ -14,14 +16,11 @@ from typing import Iterator
 
 import anthropic
 
-from historico import config, costos, tools
-from historico.agent import lazo
-from historico.agent.prompts import CHAT_SYSTEM, SYSTEM_PROMPT
+from historico import config
+from historico.agent import lazo, lazo_chat, lazo_preguntar
+from historico.agent.lazo_chat import WEB_SEARCH  # noqa: F401
 from historico.analitica.resumen import hoy_en_sitio
 
-# Web search del lado servidor (Anthropic la ejecuta). max_uses acota el gasto:
-# cada busqueda tiene costo y mete ~miles de tokens de resultados -> pocas.
-WEB_SEARCH = {"type": "web_search_20250305", "name": "web_search", "max_uses": 3}
 # Ultimos mensajes del historial que viajan al modelo (~8 turnos).
 _TOPE_HISTORIAL = 16
 
@@ -42,64 +41,7 @@ class Historico:
         cruda, error, ms). El dict es JSON-serializable tal cual. `preguntar()`
         es azucar sobre esto -> una sola fuente de verdad del lazo (DRY).
         """
-        messages = [{"role": "user", "content": pregunta}]
-        pasos: list[dict] = []
-        usage = {"input_tokens": 0, "output_tokens": 0, "requests": 0}
-        t0 = time.perf_counter()
-        respuesta = ""
-        while True:
-            resp = self.client.messages.create(
-                model=self.model,
-                max_tokens=config.MAX_TOKENS,
-                system=SYSTEM_PROMPT,
-                tools=tools.SCHEMAS,
-                messages=messages,
-            )
-            usage["requests"] += 1
-            if resp.usage:
-                usage["input_tokens"] += resp.usage.input_tokens
-                usage["output_tokens"] += resp.usage.output_tokens
-
-            # Registrar el turno del modelo: su texto (razonamiento/redaccion) y
-            # las tools que decide llamar.
-            texto = "".join(b.text for b in resp.content if b.type == "text").strip()
-            solicita = [{"id": b.id, "nombre": b.name, "input": b.input}
-                        for b in resp.content if b.type == "tool_use"]
-            if texto or solicita:
-                pasos.append({"tipo": "modelo", "texto": texto,
-                              "solicita": solicita, "stop_reason": resp.stop_reason})
-
-            if resp.stop_reason == "refusal":
-                respuesta = "No puedo responder a eso."
-                break
-
-            if resp.stop_reason in ("end_turn", "max_tokens"):
-                respuesta = texto
-                break
-
-            if resp.stop_reason == "pause_turn":
-                messages.append({"role": "assistant", "content": resp.content})
-                continue
-
-            # stop_reason == "tool_use": ejecutar la(s) tool(s) y devolver resultados.
-            messages.append({"role": "assistant", "content": resp.content})
-            resultados = []
-            for b in resp.content:
-                if b.type == "tool_use":
-                    paso, resultado = lazo.ejecutar_tool(b)
-                    pasos.append(paso)
-                    resultados.append(resultado)
-            messages.append({"role": "user", "content": resultados})
-
-        return {
-            "pregunta": pregunta,
-            "respuesta": respuesta,
-            "modelo": self.model,
-            "pasos": pasos,
-            "usage": usage,
-            "costo": costos.costo(usage, self.model),  # USD de esta consulta
-            "ms_total": int((time.perf_counter() - t0) * 1000),
-        }
+        return lazo_preguntar.conversar(self.client, self.model, pregunta)
 
     def preguntar(self, pregunta: str) -> str:
         """Responde una pregunta en lenguaje natural (solo el texto final)."""
@@ -152,22 +94,6 @@ class Historico:
         ms[-1]["content"] = f"[Hoy en el sitio: {hoy_en_sitio().isoformat()}]\n{ms[-1]['content']}"
         return ms[-_TOPE_HISTORIAL:]
 
-    def _turno(self, en_vivo: bool, **kwargs):
-        """Una llamada al modelo. En vivo emite los deltas de texto; devuelve el
-        mensaje final (el mismo objeto que `messages.create`) via `yield from`."""
-        if not en_vivo:
-            return self.client.messages.create(**kwargs)
-        with self.client.messages.stream(**kwargs) as stream:
-            for evento in stream:
-                if evento.type == "text" and evento.text:
-                    yield lazo.TEXTO, {"delta": evento.text}
-            return stream.get_final_message()
-
-    def _traza(self, respuesta: str, pasos: list[dict], usage: dict, t0: float) -> dict:
-        return {"respuesta": respuesta, "modelo": self.model, "pasos": pasos,
-                "usage": usage, "costo": costos.costo(usage, self.model),
-                "ms_total": int((time.perf_counter() - t0) * 1000)}
-
     def _lazo_chat(self, mensajes: list[dict], contexto: str | None,
                    en_vivo: bool) -> Iterator[tuple[str, dict]]:
         """El lazo del chat como eventos. Unica implementacion de `chat` y `chat_stream`."""
@@ -175,45 +101,7 @@ class Historico:
         yield lazo.INICIO, {"modelo": self.model}
         ms = self._historial(mensajes, contexto)
         if ms is None:
-            yield lazo.FIN, {**self._traza("", [], lazo.uso_vacio(), t0), "ms_total": 0}
+            vacia = lazo_chat.traza(self.model, "", [], lazo.uso_vacio(), t0)
+            yield lazo.FIN, {**vacia, "ms_total": 0}
             return
-        system = [{"type": "text", "text": CHAT_SYSTEM, "cache_control": {"type": "ephemeral"}}]
-        client_tools = [dict(s) for s in tools.SCHEMAS]
-        client_tools[-1] = {**client_tools[-1], "cache_control": {"type": "ephemeral"}}
-        herramientas = client_tools + [WEB_SEARCH]
-
-        pasos: list[dict] = []
-        usage = lazo.uso_vacio()
-        while True:
-            resp = yield from self._turno(en_vivo, model=self.model,
-                                          max_tokens=config.MAX_TOKENS, system=system,
-                                          tools=herramientas, messages=ms)
-            lazo.sumar_uso(usage, resp.usage)
-            texto, nuevos = lazo.pasos_del_turno(resp)
-            for paso in nuevos:
-                pasos.append(paso)
-                yield lazo.PASO, paso
-
-            if resp.stop_reason == "refusal":
-                respuesta = "No puedo responder a eso."
-                break
-            if resp.stop_reason in ("end_turn", "max_tokens"):
-                respuesta = texto
-                break
-            ms.append({"role": "assistant", "content": resp.content})
-            if resp.stop_reason == "pause_turn":  # p.ej. web_search a mitad de turno
-                continue
-
-            # stop_reason == "tool_use": ejecutar las tools CLIENTE.
-            resultados = []
-            for b in resp.content:
-                if b.type != "tool_use":
-                    continue
-                yield lazo.TOOL_INICIO, {"id": b.id, "nombre": b.name, "input": b.input}
-                paso, resultado = lazo.ejecutar_tool(b)
-                pasos.append(paso)
-                resultados.append(resultado)
-                yield lazo.PASO, paso
-            ms.append({"role": "user", "content": resultados})
-
-        yield lazo.FIN, self._traza(respuesta, pasos, usage, t0)
+        yield from lazo_chat.eventos(self.client, self.model, ms, en_vivo, t0)
