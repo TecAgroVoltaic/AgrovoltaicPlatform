@@ -1,0 +1,99 @@
+/* ── Shell con barra lateral ─────────────────────────────────────────────── */
+/* El ancho de la barra lateral es un token y no un número suelto porque aparece
+   tres veces (ancho, base de flex y el escalón de tablet). Cuando estaba escrito
+   a mano en cada sitio, cambiarlo obligaba a acertar los tres o el contenido
+   quedaba descuadrado contra la barra. */
+:root { --lado-ancho:230px; }
+.app { display:flex; align-items:flex-start; min-height:100vh; transition:padding-right .22s ease; }
+/* Con el chat abierto en pantallas anchas: reserva la franja derecha y el
+   contenido se re-centra en el espacio restante (no queda tapado por el panel). */
+/* El chat abierto solo APARTA el contenido cuando lo que queda sigue siendo
+   usable. El umbral no es redondo a ojo: el lienzo de arquitectura mide 1140 px
+   fijos, más la barra lateral y los márgenes; por debajo de ~1900 px, reservarle
+   580 px al panel dejaba el lienzo en media columna y había que leerlo a través
+   de una rendija. En pantallas más chicas el panel FLOTA por encima, que tapa
+   parte del contenido pero no lo deforma. */
+@media (min-width:1900px){ body.chat-abierto .app { padding-right:580px; } }
+.side { width:var(--lado-ancho); flex:0 0 var(--lado-ancho); align-self:stretch; background:var(--panel);
+  border-right:1px solid var(--line); position:sticky; top:0; height:100vh;
+  display:flex; flex-direction:column; gap:18px; padding:22px 16px;
+  transition:width .18s ease, flex-basis .18s ease, padding .18s ease; }
+.brand { display:flex; align-items:center; gap:10px; padding:0 6px; }
+.plegar { margin-left:auto; border:1px solid transparent; background:transparent;
+  color:var(--muted); width:26px; height:26px; border-radius:7px; cursor:pointer;
+  display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto; }
+.plegar:hover { color:var(--ink); background:var(--panel2); border-color:var(--line); }
+.brand .mark { width:22px; height:22px; flex:0 0 auto; }
+.brand b { font-size:15px; letter-spacing:-.02em; font-weight:600; }
+.brand .sub { font-size:10.5px; }
+.agent { display:flex; background:var(--panel2); border:1px solid var(--line); border-radius:9px; padding:3px; gap:2px; }
+.agent button { flex:1; border:0; background:transparent; color:var(--ink2); cursor:pointer; padding:6px 8px; border-radius:6px; font-size:12.5px; font-weight:540; letter-spacing:-.01em; }
+.agent button.on { background:var(--raise); color:var(--ink); }
+.nav { display:flex; flex-direction:column; gap:1px; }
+.navitem { width:100%; border:0; cursor:pointer; background:transparent; color:var(--ink2); text-align:left; padding:9px 12px; border-radius:8px; font-size:13.5px; font-weight:500; letter-spacing:-.01em; border-left:2px solid transparent; text-decoration:none;
+  display:flex; align-items:center; gap:10px; }
+.navitem svg { flex:0 0 auto; }
+.navitem:hover { background:var(--panel2); color:var(--ink); }
+.navitem.on { background:var(--panel2); color:var(--ink); border-left-color:var(--accent); font-weight:560; }
+.navsep { height:1px; background:var(--line); margin:10px 8px; }
+.sidefoot { margin-top:auto; display:flex; align-items:center; justify-content:space-between; gap:8px; padding-top:14px; border-top:1px solid var(--line); }
+.live { display:inline-flex; align-items:center; gap:7px; font-family:var(--mono); font-size:11px; color:var(--ink2); }
+.pulse { width:7px; height:7px; border-radius:50%; background:var(--good); flex:0 0 auto; animation:pulse 2.6s infinite; }
+.pulse.off { background:var(--crit); animation:none; }
+@keyframes pulse { 0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--good) 55%,transparent);} 70%{box-shadow:0 0 0 6px transparent;} 100%{box-shadow:0 0 0 0 transparent;} }
+@media (prefers-reduced-motion:reduce){ .pulse{animation:none;} }
+.tgl { border:1px solid var(--line); background:var(--panel2); color:var(--ink2); width:32px; height:28px; border-radius:7px; cursor:pointer; font-size:14px; flex:0 0 auto; }
+
+/* ── Barra lateral compacta: PROPIEDAD DE /consola ────────────────────────
+   Solo iconos, en una columna de 60 px. El nombre de cada vista vive en el
+   `data-tip` que atiende ChartTooltip: se lee al pasar el mouse, sin ocupar
+   ancho permanente. `.solo-ancha` es el interruptor: todo lo textual cuelga
+   de esa clase, así el marcado es el mismo en los dos estados.
+
+   Quién la enciende: `app/components/console/Console.tsx` con su botón
+   `.plegar`. El sistema de evaluación de datos NO la usa y no debe usarla: ahí
+   el problema de ancho se resuelve con el escalón de tablet y con el cajón, que
+   no le piden a la persona que descubra un botón para poder leer. Si algún día
+   este bloque queda sin usuarios, se borra con `.plegar` y `.solo-ancha`; hasta
+   entonces no es CSS muerto. */
+.side.compacta { width:60px; flex-basis:60px; padding:22px 10px; gap:14px; align-items:center; }
+.side.compacta .solo-ancha { display:none; }
+/* En 60 px no entran el logo y el botón uno al lado del otro (22 + 26 + gap
+   contra 40 px útiles): se apilan. */
+.side.compacta .brand { padding:0; flex-direction:column; gap:8px; }
+.side.compacta .plegar { margin-left:0; }
+.side.compacta .agent { flex-direction:column; width:100%; padding:2px; }
+.side.compacta .agent button { padding:6px 0; text-align:center; font-family:var(--mono); font-size:12px; }
+.side.compacta .nav { width:100%; }
+.side.compacta .navitem { justify-content:center; padding:10px 0; gap:0; border-left:0;
+  border-right:2px solid transparent; }
+.side.compacta .navitem.on { border-right-color:var(--accent); }
+.side.compacta .navsep { width:60%; margin:8px auto; }
+.side.compacta .sidefoot { flex-direction:column; gap:10px; width:100%; justify-content:center; }
+.side.compacta .live { justify-content:center; }
+
+/* Sin `overflow-x:clip`. Lo tenía, y lo que hacía era ESCONDER el problema: un
+   elemento más ancho que la columna quedaba cortado por el borde, sin barra de
+   desplazamiento y sin ninguna señal de que faltaba dato. Quien mira no puede
+   saber que le están ocultando media tabla. Ahora un desbordamiento se ve (la
+   página se desplaza de lado) y por eso se arregla en su origen: cada bloque
+   ancho lleva su propio contenedor con `overflow-x:auto` (`.scroll`,
+   `.tbl-scroll`, `.md-tabla-wrap`, `.arq-scroll`) y las rejillas usan
+   `minmax(min(320px,100%),1fr)` en vez de un piso fijo. `min-width:0` sigue
+   siendo lo que impide que un hijo estire la columna. */
+.content { flex:1; min-width:0; max-width:1280px; margin:0 auto; padding:30px 34px 90px; }
+/* La columna de una sección con cabecera propia (`ownsHeader`, ver
+   SectionContent): a ancho completo y sin márgenes, porque su cabecera y su
+   compositor son bandas de borde a borde. Dos clases para ganarle por
+   especificidad al `.content` de los escalones de abajo sin depender del orden. */
+.content.content-bare { max-width:none; padding:0; }
+.phead { margin-bottom:6px; }
+.phead h1 { font-size:20px; }
+.phead p { margin:4px 0 0; color:var(--muted); font-size:13px; max-width:74ch; }
+.note { font-size:12px; color:var(--muted); font-family:var(--mono); border-left:2px solid var(--line2); padding:2px 0 2px 12px; margin:18px 0; }
+.note b { color:var(--ink2); font-weight:600; }
+.note a { color:var(--accent); text-decoration:none; border-bottom:1px solid color-mix(in srgb, var(--accent) 35%, transparent); }
+.note a:hover { border-bottom-color:var(--accent); }
+.banner { display:flex; gap:12px; background:var(--panel); border:1px solid var(--line); border-left:2px solid var(--accent); border-radius:10px; padding:12px 15px; margin:0 0 20px; font-size:12.5px; color:var(--ink2); }
+.banner b { color:var(--ink); }
+
