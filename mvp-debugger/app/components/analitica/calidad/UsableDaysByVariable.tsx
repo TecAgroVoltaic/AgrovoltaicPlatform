@@ -9,7 +9,7 @@
 // números. Lo único que se añade es lo que esa frase no dice.
 //
 // Los días y la cobertura vienen del backend tal cual: acá no se divide nada.
-import styles from "@/app/components/analitica/calidad/calidad.module.css";
+import styles from "@/app/components/analitica/calidad/tables.module.css";
 import { formatCount, formatFraction } from "@/app/components/analitica/calidad/format";
 import type { VariableUsability } from "@/app/lib/analitica/contracts/calidad";
 

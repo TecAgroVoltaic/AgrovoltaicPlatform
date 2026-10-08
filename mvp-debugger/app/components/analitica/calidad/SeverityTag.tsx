@@ -3,7 +3,7 @@
 // El signo va con `aria-hidden` porque la palabra ya está escrita al lado: un
 // lector de pantalla que dijera "triángulo negro apuntando arriba, grave" hace
 // ruido sin añadir nada.
-import styles from "@/app/components/analitica/calidad/calidad.module.css";
+import styles from "@/app/components/analitica/calidad/findings.module.css";
 import { SEVERITY_BADGE, SEVERITY_INK } from "@/app/components/analitica/calidad/labels";
 import type { Severity } from "@/app/lib/analitica/contracts/calidad";
 

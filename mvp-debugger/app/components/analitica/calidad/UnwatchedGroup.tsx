@@ -3,7 +3,7 @@
 // publica ningún endpoint, y calcularlo acá lo haría discrepar del agente el día
 // que el backend cambie qué cuenta. Cada cifra sale del payload tal cual, con el
 // total del período al lado para que la escala se vea sin aritmética.
-import styles from "@/app/components/analitica/calidad/calidad.module.css";
+import styles from "@/app/components/analitica/calidad/findings.module.css";
 import { formatCount } from "@/app/components/analitica/calidad/format";
 import type { UnwatchedVariable } from "@/app/lib/analitica/contracts/calidad";
 

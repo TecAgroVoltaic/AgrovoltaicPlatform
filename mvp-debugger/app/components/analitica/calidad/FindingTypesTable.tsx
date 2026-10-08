@@ -10,7 +10,8 @@
 // acá, y llega en su propia lectura: el glosario son 32 KB que solo sirven en
 // esta pestaña. Si esa lectura falla, la tabla se pinta igual y admite el hueco;
 // sus conteos no dependen del glosario.
-import styles from "@/app/components/analitica/calidad/calidad.module.css";
+import calidadStyles from "@/app/components/analitica/calidad/calidad.module.css";
+import styles from "@/app/components/analitica/calidad/tables.module.css";
 import { SectionState } from "@/app/components/analitica/calidad/SectionState";
 import { SeverityTag } from "@/app/components/analitica/calidad/SeverityTag";
 import { SEVERITY_BADGE } from "@/app/components/analitica/calidad/labels";
@@ -92,7 +93,7 @@ function SeverityGroup({ severity, rows, glossary, onSelectType }: SeverityGroup
         tabIndex={0}
       >
         <table className="tbl">
-          <caption className={styles.srOnly}>
+          <caption className={calidadStyles.srOnly}>
             Hallazgos de gravedad {SEVERITY_BADGE[severity].label}
           </caption>
           <thead>

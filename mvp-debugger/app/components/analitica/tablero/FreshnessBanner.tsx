@@ -15,7 +15,7 @@ import {
   formatLocalStamp,
 } from "@/app/components/analitica/tablero/format";
 import type { Freshness, FreshnessState } from "@/app/lib/analitica/contracts/tablero";
-import styles from "@/app/components/analitica/tablero/tablero.module.css";
+import styles from "@/app/components/analitica/tablero/freshness.module.css";
 
 const HEADLINE: Readonly<Record<FreshnessState, string>> = {
   up_to_date: "El dato está al día",

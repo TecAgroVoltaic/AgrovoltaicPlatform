@@ -12,7 +12,8 @@
 import type { Cut, CutSample } from "@/app/components/analitica/comparativa/cuts";
 import { formatCount } from "@/app/components/analitica/comparativa/format";
 import { ARRAY_LABEL } from "@/app/components/analitica/comparativa/vocabulary";
-import styles from "@/app/components/analitica/comparativa/comparativa.module.css";
+import styles from "@/app/components/analitica/comparativa/method.module.css";
+import variantsStyles from "@/app/components/analitica/comparativa/variants.module.css";
 
 const TABLE_LABEL = "Qué arreglo queda arriba con cada método";
 const IMPOSSIBLE_TEXT = "PR imposible";
@@ -70,7 +71,7 @@ function widthOf({ value, total }: CutSample): string {
 
 function CutOutcome({ cut }: { readonly cut: Cut }) {
   if (cut.status === "impossible") {
-    return <span className={styles.impossibleTag}>{IMPOSSIBLE_TEXT}</span>;
+    return <span className={variantsStyles.impossibleTag}>{IMPOSSIBLE_TEXT}</span>;
   }
   if (cut.status === "missing") {
     return (

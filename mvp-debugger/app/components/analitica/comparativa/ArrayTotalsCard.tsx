@@ -14,7 +14,7 @@ import {
   ARRAY_PEAK_POWER_WP,
   describeMissingReason,
 } from "@/app/components/analitica/comparativa/vocabulary";
-import styles from "@/app/components/analitica/comparativa/comparativa.module.css";
+import styles from "@/app/components/analitica/comparativa/cards.module.css";
 
 const ENERGY_DECIMALS = 0;
 const YIELD_DECIMALS = 1;
