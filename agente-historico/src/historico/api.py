@@ -19,11 +19,11 @@ from __future__ import annotations
 
 from fastapi import Depends, FastAPI
 
-from historico import datos, db, errores, exportar, limites, tools, uso  # noqa: F401
+from historico import datos, db, errores, exportar, informe, limites, tools, uso  # noqa: F401
 from historico.alertas import api as alertas_api
 from historico.rutas import (
     agente, analitica, calidad, datos as rutas_datos, exportacion, hallazgos,
-    rendimiento, salud, variables,
+    informe as rutas_informe, rendimiento, salud, variables,
 )
 from historico.rutas.agente import (  # noqa: F401
     ChatBody, ChatMsg, Pregunta, chat, chat_stream, consumo, preguntar,
@@ -41,6 +41,9 @@ from historico.rutas.datos import (  # noqa: F401
 from historico.rutas.dependencias import (  # noqa: F401
     ENV_API_KEY, ENV_API_KEY_PREVIO, _agente, _asistente, _frenar_consumo, _identidad,
     _verificar_api_key,
+)
+from historico.rutas.informe import (  # noqa: F401
+    CABECERA_LECTURA, CON_LECTURA, SIN_LECTURA, informe_excel,
 )
 from historico.rutas.exportacion import (  # noqa: F401
     MAX_EXPORTACIONES, _con_cupo, _exportaciones, _filtros_exportar, _http_exportar,
@@ -71,7 +74,7 @@ app = FastAPI(
 errores.registrar(app)
 
 for _modulo in (salud, agente, rutas_datos, exportacion, calidad, hallazgos,
-                variables, analitica, rendimiento):
+                variables, analitica, rendimiento, rutas_informe):
     app.include_router(_modulo.router)
 
 app.include_router(alertas_api.router, dependencies=[Depends(_verificar_api_key)])

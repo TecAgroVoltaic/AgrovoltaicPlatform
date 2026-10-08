@@ -1,6 +1,7 @@
 "use client";
 // Lo que acompaña a una respuesta del agente: sus gráficos, las herramientas y
 // búsquedas que usó, el costo y la traza plegable.
+import { BotonInforme } from "@/app/components/analitica/descargas/BotonInforme";
 import { ChartSpecRenderer } from "@/app/components/asistente/ChartSpecRenderer";
 import type { Traza } from "@/app/components/TraceViewer";
 import { TrazaLegible } from "@/app/components/TrazaLegible";
@@ -11,6 +12,7 @@ import { esGraficoViejo, graficoHTML, serieColor } from "./legacyChart";
 export function MsgExtras({ traza, abierto, onToggle }: { traza: Traza; abierto: boolean; onToggle: () => void }) {
   const pasos = (traza.pasos || []) as any[];
   const graficos = pasos.filter((p) => p.tipo === "tool" && p.salida && typeof p.salida === "object" && p.salida._grafico).map((p) => p.salida._grafico);
+  const informes: string[] = pasos.filter((p) => p.tipo === "tool" && typeof p.salida?.descarga?.ruta === "string").map((p) => p.salida.descarga.ruta);
   const herramientas = pasos.filter((p) => p.tipo === "tool").map((p) => p.nombre);
   const webs = pasos.filter((p) => p.tipo === "web").map((p) => p.query);
   const u: any = traza.usage || {};
@@ -33,6 +35,9 @@ export function MsgExtras({ traza, abierto, onToggle }: { traza: Traza; abierto:
           </div>
         );
       })}
+      {informes.map((ruta, i) => (
+        <BotonInforme key={i} url={`/api/historico${ruta}`} conLectura etiqueta="Descargar informe (Excel)" />
+      ))}
       <div className="chat-meta">
         <button className="chat-trazabtn" onClick={onToggle}>{abierto ? "▾" : "▸"} traza</button>
         {herramientas.map((t, i) => <span key={i} className="chat-chip">{t}</span>)}

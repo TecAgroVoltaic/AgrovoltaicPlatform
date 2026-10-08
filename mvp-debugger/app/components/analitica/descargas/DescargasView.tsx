@@ -19,6 +19,7 @@ import { EstimatePanel } from "./EstimatePanel";
 import { ExportPreview } from "./ExportPreview";
 import { FiltersPanel } from "./FiltersPanel";
 import { FormatPicker } from "./FormatPicker";
+import { InformeExcel } from "./InformeExcel";
 import { exportFileName } from "./helpers";
 import { RangePanel } from "./RangePanel";
 import { SourcePicker } from "./SourcePicker";
@@ -92,6 +93,7 @@ export function DescargasView() {
               <DownloadControls download={download} format={format} ready={ready} onDownload={() => download.start(url, fileName)} />
               <ExportPreview preview={estimate.preview} />
             </div>
+            <InformeExcel desde={hasTime ? from : ""} hasta={hasTime ? to : ""} />
           </aside>
         </div>
       )}
