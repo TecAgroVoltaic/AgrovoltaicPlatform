@@ -1,0 +1,10 @@
+/* Estilos propios del informe en Excel. `app/globals.css` es de todos: acá va
+   solo el acomodo de la tarjeta, que ninguna clase del cascarón resuelve. */
+.tarjeta { margin-top: 14px; }
+.titulo {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
+  cursor: pointer; font-weight: 600;
+}
+.opcion { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 13px; }
+.ancho { width: 100%; margin-top: 8px; }
+.nota { margin: 8px 0 0; }

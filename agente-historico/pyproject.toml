@@ -17,6 +17,7 @@ dependencies = [
     "pandas",   # idem
     "numpy",    # estadistica de `analitica` (cuartiles, OLS, crestas, MAD)
     "scipy",    # densidades KDE del grafico de crestas
+    "openpyxl", # el libro de Excel de `informe`
 ]
 
 [project.optional-dependencies]

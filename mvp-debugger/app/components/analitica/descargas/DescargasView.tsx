@@ -9,6 +9,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { jget, mensajeError, type Resp } from "@/app/lib/client";
 import { Estado } from "@/app/components/console/Estado";
 import { hoyEnSitio, moverDias } from "@/app/lib/tiempo";
+import { InformeExcel } from "./InformeExcel";
 
 type Columna = { nombre: string; tipo: string };
 type Dataset = {
@@ -460,6 +461,7 @@ export function DescargasView() {
                 </div>
               )}
             </div>
+            <InformeExcel desde={conTiempo ? desde : ""} hasta={conTiempo ? hasta : ""} />
           </aside>
         </div>
       )}

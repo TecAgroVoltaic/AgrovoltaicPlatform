@@ -9,6 +9,7 @@ import { IconoMinimizar } from "@/app/components/Iconos";
 import { jpost } from "@/app/lib/client";
 import { renderMd } from "@/app/lib/markdown";
 import { TrazaLegible } from "@/app/components/TrazaLegible";
+import { BotonInforme } from "@/app/components/analitica/descargas/BotonInforme";
 import { lineChart, palette } from "@/app/lib/charts";
 import type { Traza } from "@/app/components/TraceViewer";
 
@@ -189,6 +190,7 @@ export function ChatWidget({ agent, contexto, onTraza }: {
 function MsgExtras({ traza, abierto, onToggle }: { traza: Traza; abierto: boolean; onToggle: () => void }) {
   const pasos = (traza.pasos || []) as any[];
   const graficos = pasos.filter((p) => p.tipo === "tool" && p.salida && typeof p.salida === "object" && p.salida._grafico).map((p) => p.salida._grafico);
+  const informes: string[] = pasos.filter((p) => p.tipo === "tool" && typeof p.salida?.descarga?.ruta === "string").map((p) => p.salida.descarga.ruta);
   const herramientas = pasos.filter((p) => p.tipo === "tool").map((p) => p.nombre);
   const webs = pasos.filter((p) => p.tipo === "web").map((p) => p.query);
   const u: any = traza.usage || {};
@@ -210,6 +212,9 @@ function MsgExtras({ traza, abierto, onToggle }: { traza: Traza; abierto: boolea
           </div>
         );
       })}
+      {informes.map((ruta, i) => (
+        <BotonInforme key={i} url={`/api/historico${ruta}`} conLectura etiqueta="Descargar informe (Excel)" />
+      ))}
       <div className="chat-meta">
         <button className="chat-trazabtn" onClick={onToggle}>{abierto ? "▾" : "▸"} traza</button>
         {herramientas.map((t, i) => <span key={i} className="chat-chip">{t}</span>)}

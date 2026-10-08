@@ -10,7 +10,8 @@ para dibujar el agente, y la que dice de que trata cada pregunta.
                 los KPIs de cabecera, las series con su recta, la distribucion
                 mensual, la irradiacion acumulada, el perfil horario, la correlacion
                 entre dos variables, las crestas por sensor y el comparativo
-                inclinado contra vertical.
+                inclinado contra vertical. Y el informe en Excel del periodo,
+                que junta todo lo anterior en un libro descargable.
   * CALIDAD   — si el dato sirve: veredicto del periodo, hallazgos, cielo,
                 diagnostico de un dia suelto, completitud con sus huecos y las
                 cuatro familias de pruebas del documento de evaluacion.
@@ -51,6 +52,7 @@ from historico.tools import (
     irradiacion_mensual,
     irradiancia,
     performance,
+    preparar_informe,
     pruebas_calidad,
     resumen_dashboard,
     serie_variable,
@@ -62,7 +64,7 @@ ANALISIS = [energia, performance, irradiancia, temperatura, tendencia,
             cobertura, catalogo, graficar,
             resumen_dashboard, serie_variable, distribucion_mensual,
             irradiacion_mensual, carpeta_dia_hora, correlacion_variables,
-            crestas_distribucion, comparativa_arreglos]
+            crestas_distribucion, comparativa_arreglos, preparar_informe]
 # El agente hablando de si mismo. Va en CALIDAD y no en ANALISIS porque responde
 # "se puede confiar en esto", que es la misma pregunta que el resto de la familia.
 CALIDAD = [calidad_periodo, hallazgos, cielo_periodo, diagnostico_dia,
