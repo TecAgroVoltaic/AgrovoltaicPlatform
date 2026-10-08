@@ -26,6 +26,7 @@ const DIRECTORIOS_LINTEADOS = [
   "app/lib/asistente",
   "app/lib/descargas",
   "app/lib/alertas",
+  "app/lib/tiempo",
 ];
 
 const nextConfig = {
