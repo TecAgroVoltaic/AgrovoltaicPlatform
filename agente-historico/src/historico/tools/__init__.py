@@ -53,6 +53,7 @@ from historico.tools import (
     irradiancia,
     performance,
     pruebas_calidad,
+    rangos_con_datos,
     resumen_dashboard,
     serie_variable,
     temperatura,
@@ -60,7 +61,7 @@ from historico.tools import (
 )
 
 ANALISIS = [energia, performance, irradiancia, temperatura, tendencia,
-            cobertura, catalogo, graficar,
+            cobertura, rangos_con_datos, catalogo, graficar,
             resumen_dashboard, serie_variable, distribucion_mensual,
             irradiacion_mensual, carpeta_dia_hora, correlacion_variables,
             crestas_distribucion, comparativa_arreglos]
