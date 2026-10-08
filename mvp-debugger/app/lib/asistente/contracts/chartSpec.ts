@@ -9,163 +9,20 @@
 // categoría, una celda dentro de la rejilla, una densidad por punto de x). Sin
 // eso un spec "válido" se dibujaría a medias, que es peor que no dibujarlo.
 //
-// Pasa de 150 líneas a propósito: son los seis esquemas espejo de las
-// primitivas, y la unión discriminada los necesita juntos.
+// Cada esquema de `datos` vive en `chartSpec/`, uno por primitiva; acá queda
+// la unión discriminada que los junta.
 import { z } from "zod";
 
 import { describeFirstIssue } from "@/app/lib/asistente/contracts/issues";
 
-import type {
-  BarsData,
-  BoxPlotData,
-  CalendarHeatmapData,
-  RidgelineData,
-  ScatterFitData,
-  SeriesColorToken,
-  TimeSeriesData,
-} from "@/app/components/charts";
+import { barsDataSchema } from "./chartSpec/bars";
+import { boxPlotDataSchema } from "./chartSpec/boxPlot";
+import { calendarHeatmapDataSchema } from "./chartSpec/calendarHeatmap";
+import { ridgelineDataSchema } from "./chartSpec/ridgeline";
+import { scatterFitDataSchema } from "./chartSpec/scatterFit";
+import { timeSeriesDataSchema } from "./chartSpec/timeSeries";
 
 export const CHART_SPEC_VERSION = 1;
-
-const COLOR_TOKENS = [
-  "accent", "real", "pred", "ceil", "good", "warn", "crit",
-] as const satisfies readonly SeriesColorToken[];
-
-const colorSchema = z.enum(COLOR_TOKENS).optional();
-const nullableNumber = z.number().nullable();
-
-const timePointSchema = z.object({ timestamp: z.string(), value: nullableNumber });
-
-const timeSeriesDataSchema: z.ZodType<TimeSeriesData> = z.object({
-  lines: z.array(
-    z.object({
-      id: z.string(),
-      label: z.string(),
-      points: z.array(timePointSchema),
-      color: colorSchema,
-      trend: z.array(timePointSchema).optional(),
-      movingAverage: z.array(timePointSchema).optional(),
-      deviationBand: z
-        .array(z.object({ timestamp: z.string(), lower: nullableNumber, upper: nullableNumber }))
-        .optional(),
-    }),
-  ),
-  unit: z.string(),
-});
-
-const barsDataSchema: z.ZodType<BarsData> = z
-  .object({
-    categories: z.array(z.string()),
-    series: z.array(
-      z.object({
-        id: z.string(),
-        label: z.string(),
-        values: z.array(nullableNumber),
-        color: colorSchema,
-        valueLabels: z.array(z.string().nullable()).optional(),
-      }),
-    ),
-    unit: z.string(),
-    orientation: z.enum(["vertical", "horizontal"]).optional(),
-  })
-  .superRefine((data, ctx) => {
-    data.series.forEach((serie, index) => {
-      if (serie.values.length !== data.categories.length) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["series", index, "values"],
-          message: `la serie «${serie.label}» trae ${serie.values.length} valores para ${data.categories.length} categorías`,
-        });
-      }
-      if (serie.valueLabels && serie.valueLabels.length !== serie.values.length) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["series", index, "valueLabels"],
-          message: `la serie «${serie.label}» trae etiquetas que no corresponden a sus valores`,
-        });
-      }
-    });
-  });
-
-const boxPlotDataSchema: z.ZodType<BoxPlotData> = z.object({
-  boxes: z.array(
-    z.object({
-      label: z.string(),
-      min: z.number(),
-      q1: z.number(),
-      median: z.number(),
-      q3: z.number(),
-      max: z.number(),
-      count: z.number().int().nonnegative(),
-      outliers: z.array(z.number()).optional(),
-    }),
-  ),
-  unit: z.string(),
-  color: colorSchema,
-});
-
-const calendarHeatmapDataSchema: z.ZodType<CalendarHeatmapData> = z
-  .object({
-    columns: z.array(z.string()),
-    rows: z.array(z.string()),
-    cells: z.array(
-      z.object({
-        column: z.number().int().nonnegative(),
-        row: z.number().int().nonnegative(),
-        value: nullableNumber,
-      }),
-    ),
-    unit: z.string(),
-    min: z.number().optional(),
-    max: z.number().optional(),
-  })
-  .superRefine((data, ctx) => {
-    const outside = data.cells.findIndex(
-      (cell) => cell.column >= data.columns.length || cell.row >= data.rows.length,
-    );
-    if (outside >= 0) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["cells", outside],
-        message: "hay celdas fuera de la rejilla de filas y columnas",
-      });
-    }
-  });
-
-const scatterFitDataSchema: z.ZodType<ScatterFitData> = z.object({
-  points: z.array(z.object({ x: z.number(), y: z.number(), label: z.string().optional() })),
-  fit: z.object({ slope: z.number(), intercept: z.number(), r2: z.number() }).nullable(),
-  xUnit: z.string(),
-  yUnit: z.string(),
-  color: colorSchema,
-});
-
-const ridgelineDataSchema: z.ZodType<RidgelineData> = z
-  .object({
-    curves: z.array(
-      z.object({
-        id: z.string(),
-        label: z.string(),
-        x: z.array(z.number()),
-        density: z.array(z.number()),
-        tailProbability: z.number().nullable().optional(),
-        color: colorSchema,
-      }),
-    ),
-    unit: z.string(),
-    threshold: z.object({ value: z.number(), label: z.string() }).nullable().optional(),
-  })
-  .superRefine((data, ctx) => {
-    data.curves.forEach((curve, index) => {
-      if (curve.x.length !== curve.density.length) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["curves", index, "density"],
-          message: `la curva «${curve.label}» trae ${curve.density.length} densidades para ${curve.x.length} puntos`,
-        });
-      }
-    });
-  });
 
 const headerShape = {
   version: z.literal(CHART_SPEC_VERSION),

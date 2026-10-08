@@ -1,0 +1,90 @@
+/* Arquitectura del Histórico: familias, destinos de lectura y el barrido.
+   Reusa el lienzo del Predictivo (.arq-lienzo, .arq-nodo, .arq-edges, .arq-capa):
+   son dos agentes del mismo sistema y cambiar el lenguaje visual entre uno y otro
+   obliga a releer la pantalla desde cero. Acá solo van las piezas que el otro
+   agente no tiene. */
+.arq-fam-analisis { border-left:3px solid var(--pred); }
+.arq-fam-calidad  { border-left:3px solid var(--real); }
+.arq-grp-analisis { color:var(--pred); } .arq-grp-analisis i { background:var(--pred); }
+.arq-grp-calidad  { color:var(--real); } .arq-grp-calidad  i { background:var(--real); }
+
+/* Los dos destinos de lectura. Son botones (abren su ficha), así que hay que
+   apagarles el estilo de botón que el navegador pone por su cuenta. */
+.arq-destino { text-align:left; font:inherit; cursor:pointer; gap:5px; transition:border-color .16s; }
+.arq-destino:hover { border-color:var(--accent); }
+.arq-dest-analisis { border-left:3px solid var(--pred); }
+.arq-dest-calidad  { border-left:3px solid var(--real); }
+.arq-dest-filas { display:flex; flex-direction:column; align-items:flex-start; gap:4px;
+  margin-top:auto; width:100%; }
+.arq-dest-filas span { display:block; max-width:100%; font-size:10.5px; color:var(--ink2);
+  background:var(--panel2); border:1px solid var(--line); border-radius:5px; padding:2px 6px;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+/* El barrido. Punteado y con su propio color porque es el único camino que no
+   pasa por el modelo, y esa diferencia es el punto de todo el dibujo. */
+.arq-barrido { border:1px dashed color-mix(in srgb,var(--ceil) 60%,transparent);
+  border-left:3px solid var(--ceil); background:color-mix(in srgb,var(--ceil) 9%,transparent); }
+.arq-sinllm { margin-top:auto; font-family:var(--mono); font-size:9.5px; text-transform:uppercase;
+  letter-spacing:.09em; color:var(--ceil); }
+.arq-edges path.arq-escribe { stroke:var(--ceil); stroke-width:2; stroke-dasharray:5 4; opacity:.85; }
+
+/* Título y marca comparten la fila de arriba del nodo.
+   El título tiene que poder ENCOGERSE: en flex, un texto largo no baja de su
+   ancho de contenido salvo que se le diga, así que `temperatura_por_arreglo`
+   empujaba su chip fuera del borde del nodo. Con min-width:0 el título recorta
+   con puntos suspensivos (el nombre completo está en el hover y en la ficha) y
+   la marca queda SIEMPRE a la misma distancia del borde. */
+.arq-fam-analisis .arq-cer-h, .arq-fam-calidad .arq-cer-h { align-items:center; gap:8px; }
+.arq-fam-analisis .arq-n-t, .arq-fam-calidad .arq-n-t { flex:1 1 auto; min-width:0;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.arq-fam-analisis .arq-chip, .arq-fam-calidad .arq-chip { flex:0 0 auto; font-size:9px;
+  padding:1px 6px; line-height:1.5; }
+.arq-fam-analisis .arq-n-s, .arq-fam-calidad .arq-n-s { display:-webkit-box;
+  -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+/* La marca de «sin documentar» comparte fila con el título igual que el chip: en
+   una fila propia empujaba el subtítulo fuera del nodo. */
+.arq-fam-analisis .arq-sd, .arq-fam-calidad .arq-sd { flex:0 0 auto; margin-top:0; }
+
+
+/* Modal de nodo */
+.arq-modal { border:1px solid var(--line2); border-radius:15px; padding:0; max-width:760px; width:calc(100% - 36px); background:var(--panel); color:var(--ink); box-shadow:0 24px 70px #00000033; }
+.arq-modal::backdrop { background:#191613a8; }
+.arq-m-head { display:flex; align-items:flex-start; justify-content:space-between; gap:14px; padding:20px 22px 14px; border-bottom:1px solid var(--line); }
+.arq-m-head h3 { font-family:var(--mono); font-size:17px; letter-spacing:-.02em; }
+.arq-m-kind { font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:.11em; color:var(--muted); margin-top:5px; display:block; }
+.arq-m-x { border:1px solid var(--line); background:var(--panel2); color:var(--ink2); width:30px; height:30px; border-radius:8px; cursor:pointer; font-size:15px; flex:0 0 auto; line-height:1; }
+.arq-m-x:hover { color:var(--ink); border-color:var(--line2); }
+.arq-m-body { padding:18px 22px 24px; display:flex; flex-direction:column; gap:18px; max-height:min(72vh,660px); overflow-y:auto; }
+.arq-m-body section { display:flex; flex-direction:column; gap:7px; }
+.arq-desc { margin:0; font-size:12.5px; color:var(--ink2); line-height:1.5; font-family:var(--mono); }
+.arq-li { margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:6px; }
+.arq-li li { font-size:12.5px; color:var(--ink2); line-height:1.5; padding-left:15px; position:relative; }
+/* renderMd envuelve en <p>: sin esto el margen por defecto del navegador baja el
+   texto y deja el punto colgado arriba. */
+.arq-li li > p { margin:0; }
+.arq-li li > p + p { margin-top:6px; }
+.arq-li li::before { content:""; position:absolute; left:2px; top:.62em; width:4px; height:4px;
+  border-radius:50%; background:var(--line2); }
+.arq-li code, .arq-tbl code { font-family:var(--mono); font-size:11.5px; color:var(--ink); background:var(--panel2); border-radius:4px; padding:1px 5px; overflow-wrap:anywhere; }
+.arq-li strong { color:var(--ink); font-weight:600; }
+/* «En qué ayuda»: la respuesta a por qué existe la pieza. Va con un filete a la
+   izquierda para separarla del «qué hace» sin abrir otra tarjeta, que en un modal
+   que ya tiene seis secciones sumaría ruido en vez de jerarquía. */
+.arq-porque { border-left:2px solid var(--accent); padding-left:13px; }
+.arq-porque .lbl { color:var(--accent); }
+
+.arq-sindoc { flex-direction:row !important; align-items:flex-start; gap:9px !important; font-size:12.5px; color:var(--warn); line-height:1.45; }
+.arq-sindoc svg { flex:0 0 auto; margin-top:2px; }
+.arq-sindoc b { color:var(--ink); }
+.arq-tblwrap { overflow-x:auto; border:1px solid var(--line); border-radius:9px; }
+.arq-tbl { border-collapse:collapse; width:100%; font-size:12px; min-width:440px; }
+.arq-tbl th { font-family:var(--mono); font-size:9.5px; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); font-weight:500; text-align:left; padding:8px 11px; background:var(--panel2); border-bottom:1px solid var(--line); white-space:nowrap; }
+.arq-tbl td { padding:8px 11px; border-bottom:1px solid var(--line); color:var(--ink2); vertical-align:top; line-height:1.4; }
+.arq-tbl tr:last-child td { border-bottom:0; }
+.arq-tbl td.k { font-family:var(--mono); color:var(--ink); font-size:11.5px; white-space:nowrap; }
+.arq-tbl td.req { font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:.08em; }
+.arq-tbl td.req.si { color:var(--crit); } .arq-tbl td.req.no { color:var(--muted); }
+.arq-tbl td p { margin:0; }
+.arq-m-file { font-family:var(--mono); font-size:11px; color:var(--muted); }
+@media (prefers-reduced-motion:reduce){ .arq-nodo, .arq-fila { transition:none; } }
+

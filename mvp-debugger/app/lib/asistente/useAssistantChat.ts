@@ -3,21 +3,15 @@
 // llegando y las acciones (enviar, cancelar, reintentar, cambiar de hilo).
 //
 // Las dependencias con efectos (almacenamiento, red, reloj, ids) se inyectan:
-// así la vista se prueba con un stream simulado y un almacenamiento en memoria.
-// Algo más de 150 líneas: es un solo estado (hilos + turno) con sus acciones, y
-// partirlo obligaría a sincronizar dos hooks sobre el mismo almacén.
+// así la vista se prueba con un stream simulado y un almacenamiento en memoria.// Los hilos y su persistencia viven en `useThreadStore`; acá queda el turno y
+// las acciones sobre el mismo almacén.
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { HttpFetch } from "@/app/lib/analitica/client";
 import { messageFromTurn, toWireHistory, userMessage } from "@/app/lib/asistente/messages";
 import { streamChat } from "@/app/lib/asistente/stream";
+import type { StorageAccess } from "@/app/lib/asistente/threadStorage";
 import {
-  loadThreadStore,
-  saveThreadStore,
-  type StorageAccess,
-} from "@/app/lib/asistente/threadStorage";
-import {
-  EMPTY_STORE,
   activeThread,
   appendMessage,
   dropFailedAnswer,
@@ -25,9 +19,9 @@ import {
   selectThread,
   startThread,
   type Thread,
-  type ThreadStore,
 } from "@/app/lib/asistente/threads";
 import { IDLE_TURN, beginTurn, turnReducer, type TurnState } from "@/app/lib/asistente/turnReducer";
+import { useThreadStore } from "@/app/lib/asistente/useThreadStore";
 
 export type AssistantChatDeps = {
   readonly storage?: StorageAccess;
@@ -63,36 +57,9 @@ export function useAssistantChat({
   now = wallClock,
   newId = randomId,
 }: AssistantChatDeps = {}): AssistantChat {
-  const [store, setStore] = useState<ThreadStore>(EMPTY_STORE);
-  const [hydrated, setHydrated] = useState(false);
-  const [storageNotice, setStorageNotice] = useState<string | null>(null);
+  const { store, storeRef, commit, storageNotice } = useThreadStore(storage);
   const [turn, setTurn] = useState<TurnState>(IDLE_TURN);
-  // Espejo síncrono del almacén: un turno largo lee y escribe el hilo después
-  // de varios `await`, y el valor del render en que empezó ya es viejo.
-  const storeRef = useRef(store);
   const abortRef = useRef<AbortController | null>(null);
-
-  const commit = useCallback((update: (current: ThreadStore) => ThreadStore) => {
-    const next = update(storeRef.current);
-    storeRef.current = next;
-    setStore(next);
-  }, []);
-
-  useEffect(() => {
-    const loaded = loadThreadStore(storage);
-    storeRef.current = loaded.store;
-    setStore(loaded.store);
-    setStorageNotice(loaded.notice);
-    setHydrated(true);
-  }, [storage]);
-
-  // Guardar recién después de cargar: antes, `store` es el vacío inicial y
-  // escribirlo borraría el historial que todavía no se leyó.
-  useEffect(() => {
-    if (!hydrated) return;
-    const saved = saveThreadStore(storage, store);
-    if (!saved.ok) setStorageNotice(saved.notice);
-  }, [hydrated, storage, store]);
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
@@ -114,7 +81,7 @@ export function useAssistantChat({
       if (answer) commit((current) => appendMessage(current, threadId, answer, now()));
       setTurn(IDLE_TURN);
     },
-    [commit, httpFetch, now],
+    [commit, httpFetch, now, storeRef],
   );
 
   const send = useCallback(
@@ -130,7 +97,7 @@ export function useAssistantChat({
       );
       void runTurn(threadId);
     },
-    [commit, newId, now, runTurn],
+    [commit, newId, now, runTurn, storeRef],
   );
 
   const retry = useCallback(() => {
@@ -140,7 +107,7 @@ export function useAssistantChat({
     if (!withoutFailure) return;
     commit(() => withoutFailure);
     void runTurn(current.id);
-  }, [commit, runTurn]);
+  }, [commit, runTurn, storeRef]);
 
   const cancel = useCallback(() => abortRef.current?.abort(), []);
   const newThread = useCallback(() => commit((current) => selectThread(current, null)), [commit]);

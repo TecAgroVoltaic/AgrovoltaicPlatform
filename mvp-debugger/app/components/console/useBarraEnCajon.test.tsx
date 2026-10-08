@@ -13,7 +13,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ANCHO_MAXIMO_DE_CAJON_PX, useBarraEnCajon } from "@/app/components/console/useBarraEnCajon";
 
-const RUTA_GLOBALS = path.join(process.cwd(), "app/globals.css");
+const RUTA_GLOBALS = path.join(process.cwd(), "app/styles/nav-drawer.css");
 const CLASE_DEL_CASCARON = ".app.consola";
 
 const matchMediaOriginal = window.matchMedia;

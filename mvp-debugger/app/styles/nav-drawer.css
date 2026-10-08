@@ -1,0 +1,118 @@
+/* ── Cajón de navegación para pantallas angostas ──────────────────────────
+   Piezas apagadas en escritorio; el marcado las trae siempre y son los escalones
+   de abajo los que las encienden. Quién las dibuja:
+   `app/components/analitica/SidebarDrawer.tsx`.
+
+   Por qué un cajón y no un riel horizontal desplazable: hay SIETE destinos
+   (cinco secciones más consola y documentación) y la etiqueta es lo que
+   distingue a «Calidad» de «Comparativa»; el icono solo, no. En un riel a 390 px
+   entran tres etiquetas y las otras cuatro quedan fuera de pantalla sin nada que
+   lo anuncie, y además la sección activa se va de la vista al desplazarse. El
+   cajón conserva las siete etiquetas enteras y deja el nombre de la sección
+   actual siempre visible arriba, a cambio de un toque. Es también el patrón que
+   /docs ya resolvió (`app/docs/DocsShell.tsx`): dos gramáticas de navegación en
+   la misma aplicación obligan a aprender dos veces lo mismo. */
+.shell-topbar, .shell-scrim, .shell-close { display:none; }
+
+/* ── Escalón de tablet (761 a 1100 px) ────────────────────────────────────
+   La franja que no existía. Con la barra de 230 px fijos, a 1024 px quedaban
+   unos 470 px útiles de contenido: menos que en un teléfono en horizontal,
+   mientras las rejillas de las vistas piden columnas de 320 px. Acá la barra
+   adelgaza y el contenido recupera algo más de 300 px.
+
+   Que la barra de rango deje de estar pegada NO se decide acá: tiene su propio
+   umbral (1280 px, medido aparte) y vive junto a la regla base de `.rng`, porque
+   escrita en este bloque la pisaba la base que aparece después. Ver el
+   comentario de allá antes de mover nada. */
+@media (max-width:1100px) {
+  /* Solo el cascarón de análisis. /consola arranca con la barra plegada a 60 px
+     y tiene un botón para ensancharla: si la persona la abrió, la abrió a
+     propósito, y adelgazársela le parte las etiquetas en dos renglones a cambio
+     de 46 px que no pidió. */
+  .app.has-drawer { --lado-ancho:184px; }
+  .content { padding:26px 22px 80px; }
+}
+
+/* ── Escalón de cajón (hasta 900 px) ──────────────────────────────────────
+   Incluye los 768 px del iPad vertical, que con el corte anterior en 760 px
+   caía del lado del escritorio y se comía la pantalla entera. */
+@media (max-width:900px) {
+  /* Con el cajón fuera de flujo ya no hay dos columnas que repartir. Los DOS
+     cascarones con cajón entran acá: el de análisis (`has-drawer`) y /consola
+     (`consola`, ver `app/components/console/ConsoleDrawer.tsx`). Siguen con
+     nombres distintos porque solo el de análisis quiere además la barra de
+     184 px del escalón de tablet; /consola arranca plegada a 60 px y no la
+     necesita. No va sobre `.app` a secas para que un cascarón sin cajón no
+     quede con la navegación fuera de alcance.
+
+     Un tercer cascarón TIENE que sumarse a esta lista, y no es solo por el
+     ancho: este `display:block` es además lo único que hoy evita que la página
+     entera se desplace de lado. Un `.app` que siga en flex se apila en columna,
+     y ahí el ancho pasa a ser el eje transversal: con el `align-items:flex-start`
+     que trae la regla base, `.content` queda en shrink-to-fit y cualquier hijo
+     cuyo ancho mínimo de contenido supere la ventana (un <select> con una opción
+     larga alcanza) ensancha el documento. Ni `flex:1` ni `min-width:0` lo
+     impiden: los dos trabajan sobre el eje principal, que en columna es el
+     vertical. En bloque el problema no existe. */
+  .app.has-drawer, .app.consola { display:block; }
+
+  .shell-topbar { display:flex; align-items:center; gap:12px; position:sticky;
+    top:0; z-index:30; height:52px; padding:0 14px; background:var(--panel);
+    border-bottom:1px solid var(--line); }
+  /* El título recorta con puntos suspensivos. Hoy el más largo mide 23
+     caracteres y entra, pero es el único texto de ancho libre de la barra: una
+     sección con nombre más largo empujaría el botón del menú fuera de la
+     pantalla, y ese botón es la única puerta a la navegación. El `min-width:0`
+     es la mitad que se olvida: un ítem de flex no baja de su ancho de contenido
+     salvo que se le diga, y sin eso `text-overflow` no llega a activarse nunca. */
+  .shell-title { font-size:13.5px; font-weight:600; letter-spacing:-.01em;
+    min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .shell-burger { display:inline-flex; align-items:center; justify-content:center;
+    flex:0 0 auto; width:34px; height:30px; border:1px solid var(--line2);
+    background:var(--panel2); color:var(--ink); border-radius:7px; cursor:pointer; }
+  .shell-burger:hover { border-color:var(--accent); }
+
+  .shell-scrim { display:block; position:fixed; inset:0; z-index:40; background:#0006; }
+
+  .side.drawer { position:fixed; left:0; top:0; z-index:45; width:min(284px,84vw);
+    flex:none; height:100dvh; overflow-y:auto; padding:22px 16px;
+    box-shadow:0 0 40px #00000030; transform:translateX(-100%);
+    /* `visibility` y no solo `transform`: un cajón corrido fuera de pantalla
+       sigue siendo enfocable, y con el teclado se cae dentro de un menú que no
+       se ve. Al abrir se muestra al instante; al cerrar espera a que termine el
+       deslizamiento, si no desaparecería de golpe. */
+    visibility:hidden; transition:transform .2s ease, visibility 0s linear .2s; }
+  .side.drawer.is-open { transform:none; visibility:visible;
+    transition:transform .2s ease, visibility 0s; }
+
+  .shell-close { display:inline-flex; align-items:center; justify-content:center;
+    position:absolute; top:14px; right:12px; width:28px; height:28px;
+    border:1px solid var(--line); background:var(--panel2); color:var(--ink2);
+    border-radius:7px; cursor:pointer; }
+  .shell-close:hover { color:var(--ink); border-color:var(--line2); }
+
+  .content { padding:18px 18px 72px; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .side.drawer, .side.drawer.is-open { transition:none; }
+}
+
+/* ── Último escalón, hasta 760 px ─────────────────────────────────────────
+   Acá vivían las reglas que envolvían la barra de /consola en filas, porque esa
+   pantalla no tenía botón para abrir un cajón y cambiarla la habría dejado
+   inalcanzable en un teléfono. Envuelta seguía costando 281 px de una pantalla
+   de 844, un tercio de chrome antes del primer dato. Ya no hacen falta: /consola
+   tiene su propio cajón y su propio botón (`console/ConsoleDrawer.tsx`), así que
+   los dos cascarones entran por el escalón de 900 px y ninguna `.side` queda en
+   flujo. Lo que queda son los márgenes del contenido, que sí siguen vivos.
+
+   Acá también había un `.app { flex-direction:column; align-items:stretch }`
+   que evitaba que la página se desplazara de lado. Se borró después de medir que
+   `.app` computa `display:block` en los dos cascarones a 360 px, con lo cual la
+   regla no se ejecutaba: en bloque no hay `align-items` que valga. La razón se
+   mudó al escalón de 900 px, que es donde se decide qué cascarón pasa a bloque y
+   donde sí la va a leer quien agregue el tercero. */
+@media (max-width:760px) {
+  .content { padding:16px 16px 64px; }
+}
+
