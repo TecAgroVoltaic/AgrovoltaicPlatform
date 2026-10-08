@@ -9,7 +9,7 @@ const MUESTRA_DE_NOMBRES_VIEJOS = 8;
 const NOMBRES_VIEJOS = /Analizador|Comparador|Pron[óo]stico ambiental|analizadorActivo|\bANALIZADOR_|\bCOMPARADOR_|\bPRONOSTICO_|\/api\/(analizador|pronostico|comparador)/g;
 
 /** Fuente de la consola: el contenedor y lo que se haya separado de él. */
-export const fuenteConsola = () => fuente("app/components/console/Console.tsx");
+export const fuenteConsola = () => fuente("app/components/console/Console.tsx", "app/components/console/shell");
 
 export function verificarConsola() {
   const consola = fuenteConsola();

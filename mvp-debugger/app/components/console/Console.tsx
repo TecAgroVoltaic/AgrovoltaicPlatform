@@ -12,74 +12,19 @@
 // va siempre ancha: adentro de un cajón de 284 px no hay ancho que ahorrar, y el
 // mouse que mostraba los nombres no existe. Ver `useBarraEnCajon` para por qué la
 // condición se evalúa en JS y no solo con una media query.
-import { Fragment, useEffect, useState, type ComponentType } from "react";
-import { jget } from "@/app/lib/client";
+//
+// Las piezas viven en `shell/`: el catálogo de agentes y vistas, la barra, la
+// vista activa y los hooks de tema y salud del servicio.
+import { useState } from "react";
 import { ChartTooltip } from "@/app/components/ChartTooltip";
-import { ConsoleDrawer } from "@/app/components/console/ConsoleDrawer";
-import { useBarraEnCajon } from "@/app/components/console/useBarraEnCajon";
-import {
-  IconoCalidad, IconoCosto, IconoDatos, IconoDocs, IconoGrafo, IconoPanel,
-  IconoPrediccion, IconoReconciliar, IconoRendimiento, IconoSalud, IconoTablero,
-} from "@/app/components/Iconos";
-import { CalidadView } from "@/app/components/console/CalidadView";
-import { ReconView } from "@/app/components/console/ReconView";
-import { PredView } from "@/app/components/console/PredView";
-import { ArqView } from "@/app/components/console/arquitectura/ArqView";
-import { DatosView } from "@/app/components/console/datos/DatosView";
-import { PerfView } from "@/app/components/console/PerfView";
-import { CostoView } from "@/app/components/console/CostoView";
-import { SaludView } from "@/app/components/console/SaludView";
 import { ChatWidget } from "@/app/components/chat/ChatWidget";
+import { useBarraEnCajon } from "@/app/components/console/useBarraEnCajon";
+import { BarraLateral } from "@/app/components/console/shell/BarraLateral";
+import { useServicioVivo } from "@/app/components/console/shell/useServicioVivo";
+import { useTema } from "@/app/components/console/shell/useTema";
+import { VistaActiva } from "@/app/components/console/shell/VistaActiva";
+import { AGENTES, LABEL, VISTAS_AGENTE, agenteDe, type View } from "@/app/components/console/shell/vistas";
 import type { Traza } from "@/app/components/TraceViewer";
-
-type View = "recon" | "pred" | "arq" | "calidad" | "datos" | "perf" | "costo" | "salud";
-type Icono = ComponentType<{ size?: number }>;
-
-// DOS AGENTES. No hay más, y estos son sus nombres.
-type Agente = { id: string; nombre: string; inicial: string; sub: string };
-const AGENTES: Agente[] = [
-  { id: "historico",  nombre: "Agente Histórico",  inicial: "H",
-    sub: "qué pasó y si el dato sirve" },
-  { id: "predictivo", nombre: "Agente Predictivo", inicial: "P",
-    sub: "humedad e irradiancia" },
-];
-
-// La navegación tiene DOS mitades y se arma sola.
-//
-// Arriba, las vistas DEL AGENTE: cambian al cambiar de agente porque hablan de
-// ese agente. «Arquitectura» aparece en las dos y NO es la misma vista con otros
-// datos: cada agente tiene su propia pantalla porque no están organizados igual
-// (el Predictivo por modos, el Histórico por familias). `ArqView` despacha.
-//
-// Abajo, las FIJAS: se ven siempre, con cualquier agente, porque no son de
-// ninguno. La base de datos es una sola, el costo se mira junto y la salud del
-// sistema es del sistema.
-const VISTAS_AGENTE: Record<string, [View, string, Icono][]> = {
-  historico: [
-    ["calidad", "Calidad de datos", IconoCalidad],
-    ["recon", "Reconciliación", IconoReconciliar],
-    ["perf", "Rendimiento", IconoRendimiento],
-    ["arq", "Arquitectura del agente", IconoGrafo],
-  ],
-  predictivo: [
-    ["pred", "Predicción vs Real", IconoPrediccion],
-    ["arq", "Arquitectura del agente", IconoGrafo],
-  ],
-};
-const VISTAS_FIJAS: [View, string, Icono][] = [
-  ["datos", "Base de datos", IconoDatos],
-  ["costo", "Costo y uso", IconoCosto],
-  ["salud", "Salud del sistema", IconoSalud],
-];
-
-const LABEL = Object.fromEntries(
-  [...Object.values(VISTAS_AGENTE).flat(), ...VISTAS_FIJAS].map(([v, l]) => [v, l]),
-) as Record<View, string>;
-
-/** ¿A qué agente pertenece la vista? undefined = es fija (de ninguno). */
-function agenteDe(v: View): string | undefined {
-  return Object.keys(VISTAS_AGENTE).find((a) => VISTAS_AGENTE[a].some(([x]) => x === v));
-}
 
 /**
  * `historico` = ¿está habilitado el Q&A del Agente Histórico? Viene del servidor
@@ -91,13 +36,9 @@ function agenteDe(v: View): string | undefined {
 export function Console({ historico = true }: { historico?: boolean }) {
   const [agent, setAgent] = useState("predictivo");
   const [view, setView] = useState<View>("pred");
-  // La barra se rearma con el agente elegido: sus vistas arriba, las fijas abajo.
-  const vistas: [View, string, Icono][] = [
-    ...(VISTAS_AGENTE[agent] || []), ...VISTAS_FIJAS,
-  ];
-  const [theme, setTheme] = useState("");
+  const { theme, toggleTheme } = useTema();
   const [sesion, setSesion] = useState<{ agent: string; traza: Traza }[]>([]);
-  const [up, setUp] = useState(true);
+  const up = useServicioVivo(agent);
   // Compacta en cada carga: expandir es deliberado y dura lo que dura la sesión
   // de pantalla, no se persiste.
   const [anchaPorPreferencia, setAnchaPorPreferencia] = useState(false);
@@ -107,19 +48,6 @@ export function Console({ historico = true }: { historico?: boolean }) {
   // nombre del agente, así que en un teléfono convivían un menú de iconos mudos
   // con un selector en «H»/«P»: dos idiomas para la misma barra.
   const ancha = enCajon || anchaPorPreferencia;
-
-  useEffect(() => {
-    if (theme) document.documentElement.setAttribute("data-theme", theme);
-    else document.documentElement.removeAttribute("data-theme");
-  }, [theme]);
-
-  // Salud del servicio del agente activo.
-  useEffect(() => {
-    let vivo = true;
-    const ping = () => jget(`/api/${agent}/health`).then((r) => { if (vivo) setUp(r.ok && r.data?.status === "ok"); });
-    ping(); const id = setInterval(ping, 15000);
-    return () => { vivo = false; clearInterval(id); };
-  }, [agent]);
 
   function goView(v: View) {
     setView(v);
@@ -138,10 +66,6 @@ export function Console({ historico = true }: { historico?: boolean }) {
     }
   }
 
-  function toggleTheme() {
-    const eff = theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-    setTheme(eff === "dark" ? "light" : "dark");
-  }
   const addTraza = (ag: string, traza: Traza) => setSesion((s) => [...s, { agent: ag, traza }]);
   // El chat habla con el agente de la sección (goView ya sincroniza `agent`).
   const agenteActivo = AGENTES.find((a) => a.id === agent);
@@ -155,87 +79,13 @@ export function Console({ historico = true }: { historico?: boolean }) {
     // renglones a cambio de 46 px.
     <div className="app consola">
       <ChartTooltip />
-      <ConsoleDrawer
-        titulo={LABEL[view]}
-        claveActiva={`${agent}·${view}`}
-        claseBarra={ancha ? "" : "compacta"}
-      >
-        <div className="brand">
-          <svg className="mark" viewBox="0 0 40 40" aria-hidden="true">
-            <circle cx="20" cy="20" r="7" fill="none" stroke="var(--accent)" strokeWidth="2.4" />
-            <g stroke="var(--accent)" strokeWidth="2.2" strokeLinecap="round">
-              <path d="M20 4v4M20 32v4M4 20h4M32 20h4M9 9l3 3M28 28l3 3M31 9l-3 3M12 28l-3 3" />
-            </g>
-          </svg>
-          <div className="solo-ancha"><b>AgroVoltaic</b><div className="sub muted mono">consola de evaluación</div></div>
-          {/* Dentro del cajón NO se dibuja: plegar ahí no ahorraría nada y solo
-              taparía las etiquetas del menú que se acaba de abrir para leer. */}
-          {!enCajon && (
-            <button
-              className="plegar"
-              onClick={() => setAnchaPorPreferencia((a) => !a)}
-              data-tip={ancha ? "Plegar la barra" : "Desplegar la barra"}
-              aria-label={ancha ? "Plegar la barra lateral" : "Desplegar la barra lateral"}
-              aria-expanded={ancha}
-            >
-              <IconoPanel size={15} />
-            </button>
-          )}
-        </div>
-        <div className="agent">
-          {AGENTES.map((a) => (
-            <button key={a.id} className={agent === a.id ? "on" : ""}
-                    onClick={() => goAgent(a.id)} data-tip={`${a.nombre}: ${a.sub}`}
-                    aria-pressed={agent === a.id}>
-              {ancha ? a.nombre.replace("Agente ", "") : a.inicial}
-            </button>
-          ))}
-        </div>
-        <nav className="nav">
-          {vistas.map(([v, l, Icono]) => (
-            <Fragment key={v}>
-              {v === VISTAS_FIJAS[0][0] && <div className="navsep" />}
-              <button className={"navitem" + (view === v ? " on" : "")} onClick={() => goView(v)}
-                      data-tip={ancha ? undefined : l} aria-label={l}>
-                <Icono size={16} />
-                <span className="solo-ancha">{l}</span>
-              </button>
-            </Fragment>
-          ))}
-        </nav>
-        <a className="navitem" href="/" data-tip={ancha ? undefined : "Evaluación de datos"}
-           aria-label="Evaluación de datos">
-          <IconoTablero size={16} />
-          <span className="solo-ancha">Evaluación de datos ↗</span>
-        </a>
-        <a className="navitem" href="/docs" data-tip={ancha ? undefined : "Documentación"}
-           aria-label="Documentación">
-          <IconoDocs size={16} />
-          <span className="solo-ancha">Documentación ↗</span>
-        </a>
-        <div className="sidefoot">
-          <span className="live" data-tip={ancha ? undefined : (up ? "DB en vivo" : "servicio caído")}>
-            <span className={"pulse" + (up ? "" : " off")} />
-            <span className="solo-ancha">{up ? "DB en vivo" : "servicio caído"}</span>
-          </span>
-          <button className="tgl" onClick={toggleTheme} data-tip="Cambiar tema" aria-label="Cambiar tema">◐</button>
-        </div>
-      </ConsoleDrawer>
+      <BarraLateral
+        agent={agent} view={view} ancha={ancha} enCajon={enCajon} up={up}
+        onPlegar={() => setAnchaPorPreferencia((a) => !a)}
+        goAgent={goAgent} goView={goView} toggleTheme={toggleTheme}
+      />
 
-      <main className="content">
-        {view === "recon" && <ReconView />}
-        {view === "pred" && <PredView theme={theme} />}
-        {view === "arq" && <ArqView agent={agent} />}
-        {view === "calidad" && <CalidadView />}
-        {view === "datos" && <DatosView />}
-        {view === "perf" && <PerfView theme={theme} />}
-        {view === "costo" && <CostoView agent={agent} theme={theme} sesion={sesion} />}
-        {view === "salud" && <SaludView />}
-        <div className="foot">
-          <span>AgroVoltaic · debugger de agentes</span>
-          <span>datos: Supabase PV · San Carlos (10.33°N, 84.42°O) · UTC−6</span>
-        </div>
-      </main>
+      <VistaActiva view={view} agent={agent} theme={theme} sesion={sesion} />
 
       {(agent === "predictivo" || historico) && (
         <ChatWidget agent={agent} contexto={contexto} onTraza={addTraza} />
