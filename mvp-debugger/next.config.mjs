@@ -28,6 +28,7 @@ const DIRECTORIOS_LINTEADOS = [
   "app/lib/alertas",
   "app/lib/tiempo",
   "app/components/Iconos",
+  "app/components/console/arquitectura/catalogoHistorico",
 ];
 
 const nextConfig = {

@@ -10,7 +10,7 @@
     "verificar": "node scripts/verificar-vistas.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "eslint \"app/(analisis)\" app/components/analitica app/components/charts app/lib/analitica app/components/asistente app/lib/asistente app/lib/descargas app/lib/alertas app/lib/tiempo app/components/Iconos --ext .ts,.tsx --max-warnings 0",
+    "lint": "eslint \"app/(analisis)\" app/components/analitica app/components/charts app/lib/analitica app/components/asistente app/lib/asistente app/lib/descargas app/lib/alertas app/lib/tiempo app/components/Iconos app/components/console/arquitectura/catalogoHistorico --ext .ts,.tsx --max-warnings 0",
     "lint:todo": "eslint app --ext .ts,.tsx"
   },
   "dependencies": {
