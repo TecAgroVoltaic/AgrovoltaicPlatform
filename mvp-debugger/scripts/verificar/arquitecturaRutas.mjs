@@ -16,7 +16,7 @@ export function verificarArquitecturaRutas() {
   verificarCopiaPredictivo();
 
   const despachador = fuente(`${ARQ}/ArqView.tsx`);
-  const pred = fuente(`${ARQ}/ArqPredictivo.tsx`);
+  const pred = fuente(`${ARQ}/ArqPredictivo.tsx`, `${ARQ}/predictivo`);
   const hist = fuente(`${ARQ}/ArqHistorico.tsx`);
   const hook = fuente(`${ARQ}/useMapaHistorico.ts`);
 
