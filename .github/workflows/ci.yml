@@ -19,14 +19,6 @@ env:
   NODE_VERSION: "22"
 
 jobs:
-  tamano-archivos:
-    name: Guard de 150 líneas por archivo
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Ningún archivo de código supera 150 líneas
-        run: python3 scripts/max-lineas.py
-
   predictivo:
     name: Agente Predictivo (pytest)
     runs-on: ubuntu-latest

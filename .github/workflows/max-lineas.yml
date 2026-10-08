@@ -1,0 +1,20 @@
+name: Máximo 150 líneas por archivo
+
+# Regla del proyecto: ningún archivo de código supera 150 líneas (una
+# responsabilidad por archivo). Corre en TODO push, de cualquier rama, y en
+# cada pull request, así un archivo largo se rechaza antes de llegar a master.
+# El mismo guard corre en local como hook pre-commit (scripts/instalar-hooks.sh).
+# Para exigirlo en GitHub: Settings > Branches > master > Require status checks
+# > "Guard de 150 líneas".
+on:
+  push:
+  pull_request:
+
+jobs:
+  guard:
+    name: Guard de 150 líneas
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ningún archivo de código supera 150 líneas
+        run: python3 scripts/max-lineas.py
