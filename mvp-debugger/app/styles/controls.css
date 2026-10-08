@@ -1,0 +1,54 @@
+/* ── Filtros ─────────────────────────────────────────────────────────────── */
+.controls { display:flex; flex-wrap:wrap; gap:14px 30px; align-items:flex-end; margin:22px 0; }
+.ctl { display:flex; flex-direction:column; gap:7px; }
+.chips { display:flex; gap:6px; flex-wrap:wrap; }
+/* El grano del período, dentro del propio botón: es donde se elige, y es la
+   diferencia entre leer la curva como diaria o como semanal. */
+.chip-sub { font-family:var(--mono); font-size:9.5px; text-transform:uppercase;
+  letter-spacing:.08em; color:var(--muted); margin-left:5px; }
+.chip.on .chip-sub { color:var(--accent); }
+/* La muestra de la referencia: punteada, porque no es una medición más. */
+.sw-ref { background:transparent !important; border-top:2px dashed var(--muted); height:0; }
+.chip { border:1px solid var(--line2); background:var(--panel); color:var(--ink2); border-radius:7px; padding:5px 11px; font-size:12.5px; cursor:pointer; font-weight:500; letter-spacing:-.01em; transition:border-color .12s,color .12s; }
+.chip:hover { border-color:var(--accent); }
+.chip.on { background:var(--panel2); border-color:var(--accent); color:var(--ink); }
+
+/* ── Área de toque en pantallas táctiles ──────────────────────────────────
+   `pointer: coarse` = el dispositivo apunta con un dedo, no con un mouse. Es la
+   consulta correcta acá y no un ancho: hay portátiles táctiles anchos y hay
+   teléfonos que se usan con teclado. Un chip mide 27 px de alto, y 27 px es
+   menos de lo que un dedo puede acertar sin fallar al de al lado; el mínimo
+   aceptado son 44. A puntero fino NO se toca nada, porque agrandar todo en
+   escritorio solo aleja los controles entre sí.
+
+   Va en la hoja global porque `.chip` es global: repetir la variante táctil en
+   cada módulo (ya pasó en `calidad` y en `comparativa`) garantiza que el día que
+   cambie el número queden tres valores distintos en la aplicación. Los otros
+   dos bloques pueden borrarse cuando sus dueños pasen por ahí. */
+@media (pointer: coarse) {
+  .chip { min-height:44px; padding:8px 13px; }
+  /* Los tres controles del cascarón. El de abrir el menú es, en un teléfono, la
+     única puerta a las siete secciones: es el último botón que puede fallar. */
+  .shell-burger, .shell-close { min-width:44px; min-height:44px; }
+  .tgl { min-width:44px; min-height:44px; }
+}
+
+/* ── Tarjetas / grid / KPIs ──────────────────────────────────────────────── */
+.grid { display:grid; gap:16px; }
+.g2 { grid-template-columns:1fr 1fr; }
+.g3 { grid-template-columns:repeat(3,1fr); }
+.g4 { grid-template-columns:repeat(4,1fr); }
+@media (max-width:1000px){ .g4 { grid-template-columns:1fr 1fr; } }
+@media (max-width:820px){ .g2,.g3 { grid-template-columns:1fr; } }
+@media (max-width:560px){ .g4 { grid-template-columns:1fr; } }
+.card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:20px; }
+.card h3 { font-size:14.5px; }
+.card .hint { font-size:12.5px; color:var(--muted); margin:4px 0 16px; max-width:78ch; }
+.kpi { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px 17px; }
+.kpi .k { font-size:25px; font-weight:600; letter-spacing:-.03em; margin:4px 0 2px; font-family:var(--mono); font-variant-numeric:tabular-nums; }
+.kpi .k small { font-size:12px; color:var(--muted); font-weight:500; margin-left:4px; font-family:system-ui; }
+.kpi .d { font-size:11.5px; color:var(--ink2); }
+.kpi .spark { margin-top:10px; }
+.metric { display:flex; flex-direction:column; gap:3px; }
+.metric .v { font-family:var(--mono); font-size:23px; font-weight:600; letter-spacing:-.02em; font-variant-numeric:tabular-nums; }
+

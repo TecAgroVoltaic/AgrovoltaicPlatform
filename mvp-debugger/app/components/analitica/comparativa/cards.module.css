@@ -1,0 +1,66 @@
+/* Las tarjetas de cifra: una por arreglo y el cruce punto a punto. */
+
+.arrayCard {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px 16px;
+  background: var(--panel2);
+}
+
+.arrayLead {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+}
+
+.arrayName {
+  font-size: 14px;
+  margin: 0;
+}
+
+.arrayGeometry {
+  margin: 2px 0 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.valueLine {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 0 0 10px;
+}
+
+.value {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  /* Explícito porque este número también se pinta dentro de un pliegue, y el
+     cuerpo del pliegue es texto apagado: una cifra grande en gris se lee como
+     deshabilitada. */
+  color: var(--ink);
+}
+
+.value small {
+  font-family: system-ui, sans-serif;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.valueMissing {
+  composes: value;
+  color: var(--muted);
+  font-size: 17px;
+}
+
+/* --- El cruce punto a punto --- */
+/* Mismo motivo que en `.arrayGrid`: el suelo del `minmax` tiene que poder ceder.
+   Acá aprieta más, porque este panel vive dentro de un pliegue y de una tarjeta,
+   y a 360 px le quedan 244 px de ancho útil. */
+.crossGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+  gap: 14px;
+  margin-top: 12px;
+}

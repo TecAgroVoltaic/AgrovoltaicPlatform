@@ -17,9 +17,20 @@
 // rompiendo el despliegue, que es lo que hay que proteger.
 const DIRECTORIOS_LINTEADOS = [
   "app/(analisis)",
+  "app/(analisis)/alertas",
   "app/components/analitica",
+  "app/components/analitica/alertas",
   "app/components/charts",
   "app/lib/analitica",
+  "app/components/asistente",
+  "app/lib/asistente",
+  "app/lib/descargas",
+  "app/lib/alertas",
+  "app/lib/tiempo",
+  "app/components/Iconos",
+  "app/components/console/arquitectura/catalogoHistorico",
+  "app/components/chat",
+  "app/components/traza",
 ];
 
 const nextConfig = {

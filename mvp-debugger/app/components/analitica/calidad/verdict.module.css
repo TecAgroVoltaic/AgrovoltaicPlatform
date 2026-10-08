@@ -1,0 +1,40 @@
+/* La barra de proporción del veredicto: dos ejes (dato y equipo) y la cifra grande. */
+
+/* `min(320px, 100%)` y no `320px` a secas: `minmax(320px, 1fr)` nunca baja de
+   320, así que en un contenedor de 317 px (una ventana de 360) la columna se
+   salía por el borde. Con `min()` el suelo cede cuando no hay 320 que dar. */
+.split {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+  align-items: stretch;
+}
+
+.axis {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.axisEje {
+  border-left: 3px solid var(--accent);
+}
+
+.axisEquipo {
+  border-left: 3px dashed var(--warn);
+}
+
+.axisTag {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.big {
+  font-size: 34px;
+  font-weight: 650;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}

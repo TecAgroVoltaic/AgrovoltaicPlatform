@@ -39,6 +39,11 @@ _MAL_ESCRITO = status.HTTP_400_BAD_REQUEST
 # El parametro se entiende pero la peticion no se puede servir con estos datos: 422.
 _IMPOSIBLE_DE_SERVIR = status.HTTP_422_UNPROCESSABLE_CONTENT
 
+# El recurso pedido no existe: 404.
+_NO_EXISTE = status.HTTP_404_NOT_FOUND
+# La peticion choca con el estado actual del recurso: 409.
+_EN_CONFLICTO = status.HTTP_409_CONFLICT
+
 # Codigo de un `ValueError` sin codigo propio (cola invalida, unidades mezcladas,
 # grupos vacios, agregacion invalida): el parametro es del que pregunta igual.
 CODIGO_GENERICO = "parametro_invalido"
@@ -51,6 +56,9 @@ ESTADO_POR_CODIGO: dict[str, int] = {
     CODIGO_GENERICO: _MAL_ESCRITO,
     "ventana_demasiado_fina": _IMPOSIBLE_DE_SERVIR,
     "fuente_ausente": _IMPOSIBLE_DE_SERVIR,
+    "alerta_inexistente": _NO_EXISTE,
+    "transicion_invalida": _EN_CONFLICTO,
+    "alerta_abierta_existente": _EN_CONFLICTO,
 }
 
 
@@ -67,9 +75,14 @@ class ParametroInvalido(ValueError):
 
 
 def traducir(exc: Exception) -> tuple[int, dict]:
-    """(estado HTTP, cuerpo) de un error de parametro. Puro: se prueba sin servidor."""
+    """(estado HTTP, cuerpo) de un error de parametro. Puro: se prueba sin servidor.
+
+    `datos` del error viaja al cuerpo: una transicion invalida dice `de` y `a` en
+    campos propios para que el cliente no tenga que leerlos de la prosa.
+    """
     codigo = getattr(exc, "codigo", None) or CODIGO_GENERICO
     return ESTADO_POR_CODIGO.get(codigo, _MAL_ESCRITO), {
+        **(getattr(exc, "datos", None) or {}),
         "detail": str(exc) or exc.__class__.__name__,
         "codigo": codigo,
     }

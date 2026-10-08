@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+# Bloquea el commit si algún archivo de código del índice supera 150 líneas.
+# Instalación: scripts/instalar-hooks.sh (fija core.hooksPath a .githooks).
+# Mismo criterio y mismo script que el CI (scripts/max-lineas.py --staged).
+exec python3 "$(git rev-parse --show-toplevel)/scripts/max-lineas.py" --staged

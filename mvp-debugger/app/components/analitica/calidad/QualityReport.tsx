@@ -29,7 +29,7 @@ import {
   type FindingsQuery,
 } from "@/app/components/analitica/calidad/useFindingsQuery";
 import type { QualityOverview } from "@/app/components/analitica/calidad/useQualityOverview";
-import styles from "@/app/components/analitica/calidad/calidad.module.css";
+import styles from "@/app/components/analitica/calidad/verdict.module.css";
 import type { DateRange } from "@/app/lib/analitica/dateRange";
 import {
   findingGlossarySchema,

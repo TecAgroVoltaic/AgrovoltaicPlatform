@@ -6,7 +6,7 @@
 // muestra es como leer el número sin saber de dónde sale.
 import { formatDays } from "@/app/components/analitica/comparativa/format";
 import type { Variant, VariantId } from "@/app/components/analitica/comparativa/variants";
-import styles from "@/app/components/analitica/comparativa/comparativa.module.css";
+import styles from "@/app/components/analitica/comparativa/variants.module.css";
 
 export type VariantChipsProps = {
   readonly options: readonly Variant[];

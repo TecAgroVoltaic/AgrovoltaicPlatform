@@ -1,0 +1,91 @@
+/* Las cifras con barra: el reparto de días usables, el ranking del servicio y los
+   titulares de la vigilancia. */
+
+/* La tira comprimida del desglose por variable. Alta como el rango entero: que
+   ni la mejor variable llegue a la mitad es el dato, no un defecto del dibujo. */
+.spread {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 34px;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+  border-bottom: 1px solid var(--line2);
+}
+
+.spreadSlot {
+  display: flex;
+  align-items: flex-end;
+  flex: 1 1 0;
+  height: 100%;
+}
+
+.spreadBar {
+  width: 100%;
+  min-height: 2px;
+  border-radius: 1px 1px 0 0;
+  background: var(--accent);
+}
+
+/* El ranking que ya ordenó el servicio. */
+.ranking {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  counter-reset: none;
+}
+
+.rankingRow {
+  display: grid;
+  gap: 3px;
+}
+
+.rankingHead {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: baseline;
+  font-size: 12.5px;
+}
+
+.rankingFigures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  align-items: baseline;
+  font-size: 12px;
+}
+
+/* La barra de proporción: los dos números van escritos al lado, así que el
+   ancho es geometría y nunca la única forma de leer la cifra. */
+.track {
+  display: block;
+  height: 7px;
+  border-radius: 4px;
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.fill {
+  display: block;
+  height: 100%;
+  background: var(--crit);
+}
+
+/* Los dos titulares de la vigilancia: el corte que no puede quedar plegado. */
+.headline {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--ink2);
+}
+
+.headlineCount {
+  font-family: var(--mono);
+  font-size: 15px;
+  color: var(--ink);
+}

@@ -4,9 +4,14 @@ Responsabilidad única (SRP): traducir un `usage` (tokens in/out) + modelo a USD
 No corre el LLM ni acumula nada (eso es uso.py); solo aritmética de tarifa.
 
 Tarifas verificadas contra la documentación OFICIAL de Anthropic
-(https://platform.claude.com/docs/en/about-claude/pricing, consultado 2026-08-10):
-Haiku 4.5 = $1/$5, Sonnet 5 = $3/$15 (intro $2/$10 hasta 2026-08-31), Opus 5 y
-Opus 4.8 = $5/$25, Fable 5 = $10/$50 por millón (input/output, tier base sin caché).
+(https://platform.claude.com/docs/en/about-claude/pricing, consultado 2026-10-06):
+Haiku 4.5 = $1/$5, Sonnet 5 y Sonnet 5.5 = $2/$10 (los $2/$10 de lanzamiento de
+Sonnet 5 quedaron como precio estándar: la suba a $3/$15 no ocurrió), Opus 5.5 =
+$4/$20, Opus 5 y Opus 4.8 = $5/$25, Fable 5 = $10/$50 por millón (input/output,
+tier base sin caché).
+
+Las versiones `x-5` van con entrada PROPIA y no por prefijo: `claude-sonnet-5-5`
+empieza con `claude-sonnet-5` y sin su fila heredaba la tarifa de Sonnet 5.
 
 Override por entorno para no quemar la tarifa: definí `PRECIOS_JSON` con un dict
 {modelo: [usd_in_mtok, usd_out_mtok]} y se fusiona sobre los defaults (gana el env).

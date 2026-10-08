@@ -1,0 +1,40 @@
+/* La cabecera del hilo. La fila de 52 px, el botón del menú y el bloque de
+   título son los de toda sección con cabecera propia (`sectionHeader.module.css`);
+   acá va lo del Asistente: hilos, costo, «Nueva» y su acomodo en el teléfono. */
+
+.header { composes:header from "../analitica/sectionHeader.module.css"; }
+.menu { composes:menu from "../analitica/sectionHeader.module.css"; }
+.titleBlock { composes:titleBlock from "../analitica/sectionHeader.module.css"; }
+.title { composes:title from "../analitica/sectionHeader.module.css"; }
+.meta { composes:meta from "../analitica/sectionHeader.module.css"; }
+
+.button { composes:ghost from "./controls.module.css"; }
+.iconButton { composes:ghost from "./controls.module.css"; padding:0 8px; }
+
+.cost { composes:pill from "./controls.module.css"; font-family:var(--mono); }
+
+/* El chip de rango es el compartido (`RangeChip`); estas dos clases solo lo
+   ubican y lo compactan en el teléfono. */
+.context { flex:none; }
+.contextChip { flex:none; }
+
+/* Teléfono: iconos y el rango como subtítulo, como el artboard móvil. La rejilla
+   pone el chip de contexto bajo el título sin cambiar el orden del DOM, que es
+   el del teclado y el del lector de pantalla. Los selectores del chip y del menú
+   llevan `.header` delante para ganarle a sus hojas compartidas sin depender del
+   orden en que se carguen. */
+@media (max-width:760px) {
+  .header { display:grid; grid-template-columns:auto minmax(0, 1fr) auto auto;
+    grid-template-areas:"menu title threads new" "menu context threads new";
+    align-content:center; column-gap:10px; row-gap:0; padding:0 12px; }
+  .header .menu { grid-area:menu; }
+  .threads { grid-area:threads; }
+  .titleBlock { grid-area:title; }
+  .header .context { grid-area:context; }
+  .newThread { grid-area:new; }
+  .header .menu, .threads, .newThread { width:34px; height:30px; padding:0; }
+  .meta, .cost, .newLabel { display:none; }
+  .header .contextChip { height:auto; padding:0; border:0; background:none; border-radius:0;
+    font-family:var(--mono); font-size:10.5px; color:var(--muted); }
+  .header .contextChip > svg:first-child { display:none; }
+}

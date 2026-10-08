@@ -1,0 +1,102 @@
+/* La matriz de variantes: sus celdas y marcas, la caja ancha que se desplaza y
+   los chips que eligen la variante. */
+
+.variantCell {
+  white-space: nowrap;
+}
+
+.provisionalTag,
+.impossibleTag {
+  display: inline-block;
+  margin-left: 7px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  border-radius: 5px;
+  padding: 1px 6px;
+}
+
+.provisionalTag {
+  color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 14%, transparent);
+}
+
+.impossibleTag {
+  color: var(--crit);
+  background: color-mix(in srgb, var(--crit) 14%, transparent);
+}
+
+/* Lo largo scrollea DENTRO de su caja, nunca arrastrando la página entera.
+   El borde ya dice que hay recorte vertical; lo que faltaba era el aviso
+   horizontal, que llega con `.tablaAncha`, y el `min-width:0` que deja a la caja
+   encogerse por debajo de la tabla que lleva dentro. */
+.scrollBox {
+  max-height: 420px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0 12px;
+}
+
+/* ── Lo que no cabe ──────────────────────────────────────────────────────────
+   La matriz de variantes son cinco columnas de cifras a tres decimales, y la
+   comparación se hace ENTRE columnas: el PR del Inclinado contra el del Vertical
+   en la misma fila. Replegarla a pares etiqueta-valor pondría los dos números que
+   hay que comparar en renglones distintos, que es exactamente lo que la tabla
+   existe para evitar. Se desplaza de lado y se avisa de que hay más. */
+
+/* `.tbl-scroll` del cascarón pone `overflow-x:auto` y nada más: ni deja que la
+   caja se encoja por debajo de su tabla dentro de una rejilla (`min-width:0`), ni
+   da señal de que quede contenido a la derecha. Las sombras salen de
+   `background-attachment`: las tapas van con `local` y viajan con el contenido,
+   las sombras van con `scroll` y se quedan quietas, así que cada una solo asoma
+   por el lado que aún tiene tabla. Sin JavaScript. */
+.tablaAncha {
+  min-width: 0;
+  overscroll-behavior-x: contain;
+  background-image:
+    linear-gradient(to right, var(--panel) 30%, transparent),
+    linear-gradient(to left, var(--panel) 30%, transparent),
+    /* La sombra se mezcla desde la tinta y no desde el negro: en el tema
+       oscuro un negro sobre panel oscuro no se ve, y el aviso se perdía
+       justo en el tema que trae la consola por defecto. */
+    linear-gradient(to right, color-mix(in srgb, var(--ink) 26%, transparent), transparent),
+    linear-gradient(to left, color-mix(in srgb, var(--ink) 26%, transparent), transparent);
+  background-position: left center, right center, left center, right center;
+  background-repeat: no-repeat;
+  background-size: 26px 100%, 26px 100%, 11px 100%, 11px 100%;
+  background-attachment: local, local, scroll, scroll;
+}
+
+/* Es una parada de tabulador porque dentro no hay ningún control: sin esto, con
+   el teclado no había forma de mover lo que queda escondido. */
+.tablaAncha:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* Los puntos de corte miran `.medida` (ver `comparativa.module.css`), no la ventana. */
+/* 620 px: con menos que eso la matriz de variantes (544 px medidos con los
+   nombres sin partir) obliga a desplazar. Dejar que el nombre del método envuelva
+   la baja a 408 px y la mayoría de los teléfonos deja de necesitar el gesto. El
+   `nowrap` se conserva donde hay sitio, que es donde de verdad ayuda a leer el
+   método como una unidad. */
+@container (max-width: 620px) {
+  .variantCell {
+    white-space: normal;
+  }
+}
+
+/* Dedo, no ratón: ver la nota de `comparativa.module.css`. */
+@media (pointer: coarse) {
+  .variantes {
+    gap: 8px;
+  }
+
+  .variantes :global(.chip) {
+    min-height: 44px;
+    padding: 8px 13px;
+  }
+}

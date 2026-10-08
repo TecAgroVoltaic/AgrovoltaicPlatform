@@ -35,6 +35,20 @@ Los tres corren en GitHub Actions en cada push y cada PR (`.github/workflows/ci.
 Ninguno necesita credenciales ni red hacia Supabase: si un test empieza a pedirlas,
 dejó de ser unitario.
 
+### Regla: máximo 150 líneas por archivo de código
+
+Una responsabilidad por archivo y un techo duro de **150 líneas** (Python, TS, TSX, CSS, MJS;
+los tests y las `fixtures.ts` quedan fuera). Se hace cumplir en tres sitios con el mismo script:
+
+```bash
+scripts/instalar-hooks.sh          # una vez por clon: activa el hook pre-commit que bloquea el commit
+python3 scripts/max-lineas.py      # a mano; --top 20 lista los más grandes; --staged solo el índice
+```
+
+En GitHub lo corre `.github/workflows/max-lineas.yml` en todo push y PR. Para que un PR no pueda
+fusionarse con el guard en rojo hay que marcar el check "Guard de 150 líneas" como obligatorio en
+*Settings > Branches > master*.
+
 ## Salud del sistema
 
 La ingesta y el gasto se miran sin entrar al servidor:

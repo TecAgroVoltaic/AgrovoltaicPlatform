@@ -8,7 +8,7 @@
 // mandó el backend, y ninguno se deriva de otro. Lo único que se calcula es el
 // ancho en píxeles, igual que hace cualquier gráfico de barras.
 import { formatInteger } from "@/app/components/analitica/tablero/format";
-import styles from "@/app/components/analitica/tablero/tablero.module.css";
+import styles from "@/app/components/analitica/tablero/statBars.module.css";
 
 const FULL_WIDTH_PERCENT = 100;
 

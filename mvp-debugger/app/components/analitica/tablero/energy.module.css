@@ -1,0 +1,77 @@
+/* La tarjeta de energía del sistema: el balance entre la energía registrada y la
+   de la planta, y la nota del hueco entre las dos. */
+
+/* --- Las DOS energías, enfrentadas en un solo marco --- */
+.balance {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+  gap: 14px;
+  margin-top: 4px;
+}
+
+.question {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px 16px;
+  background: var(--panel2);
+}
+
+/* La registrada manda porque es la que comparten las otras ocho casillas. */
+.questionPrimary {
+  border-color: var(--accent);
+}
+
+.questionTitle {
+  font-size: 13.5px;
+  font-weight: 600;
+  margin: 0 0 6px;
+}
+
+.questionValue {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  margin: 0 0 6px;
+}
+
+.questionValue small {
+  font-family: system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  margin-left: 5px;
+}
+
+.questionMissing {
+  color: var(--muted);
+  font-size: 20px;
+}
+
+.questionNote {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+  max-width: 46ch;
+}
+
+.questionTag {
+  display: inline-block;
+  margin-top: 8px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+}
+
+.gapNote {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border: 1px dashed var(--line2);
+  border-radius: 8px;
+  font-size: 12.5px;
+  color: var(--ink2);
+  max-width: 90ch;
+}

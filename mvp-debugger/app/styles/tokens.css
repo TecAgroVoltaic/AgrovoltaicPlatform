@@ -1,0 +1,28 @@
+/* Consola de evaluación — paleta pastel cohesiva, sin emojis, minimalista. */
+:root {
+  --ground:#F4F1EB; --panel:#FAF8F3; --panel2:#ECE8DF; --raise:#FFFFFF;
+  --line:#E5E1D7; --line2:#D7D1C4;
+  --ink:#2E2B26; --ink2:#5A554B; --muted:#958F83;
+  --accent:#AE7B3B; --real:#5A9A83; --pred:#7A84C4; --ceil:#B7AC94;
+  --good:#6C9C6E; --warn:#BF9755; --crit:#BC8383;
+  --grid:#0000000e;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground:#191613; --panel:#211D19; --panel2:#292420; --raise:#241F1B;
+    --line:#332E27; --line2:#443E35;
+    --ink:#ECE7DE; --ink2:#C3BCB0; --muted:#938C80;
+    --accent:#D6B37F; --real:#8FC9B2; --pred:#AEB4E8; --ceil:#BBB097;
+    --good:#9AC79A; --warn:#DBBA83; --crit:#D7A7A7;
+    --grid:#ffffff0e;
+  }
+}
+:root[data-theme="dark"] {
+  --ground:#191613; --panel:#211D19; --panel2:#292420; --raise:#241F1B;
+  --line:#332E27; --line2:#443E35;
+  --ink:#ECE7DE; --ink2:#C3BCB0; --muted:#938C80;
+  --accent:#D6B37F; --real:#8FC9B2; --pred:#AEB4E8; --ceil:#BBB097;
+  --good:#9AC79A; --warn:#DBBA83; --crit:#D7A7A7;
+  --grid:#ffffff0e;
+}

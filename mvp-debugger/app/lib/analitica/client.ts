@@ -11,24 +11,22 @@
 // consulta (carga, dato, vacío, error) son igual de normales en este producto, y
 // un try/catch los reparte entre dos caminos distintos.
 import type { ZodType } from "zod";
-
-import { servidorApagado } from "@/app/lib/client";
 import { failure, type AnalyticsResult } from "@/app/lib/analitica/errors";
 import { rangeToParams } from "@/app/lib/analitica/urlRange";
 import type { DateRange } from "@/app/lib/analitica/dateRange";
+import { describeError, describeHttpFailure, validate } from "@/app/lib/analitica/responseReading";
 
 const ANALYTICS_BASE_PATH = "/api/historico";
 const DEFAULT_TIMEOUT_MS = 30_000;
-const UNAUTHORIZED_STATUS = 401;
 
 /** Firma mínima de `fetch`: se inyecta para poder probar sin red (DIP). */
 export type HttpFetch = (input: string, init?: RequestInit) => Promise<Response>;
 
-export type AnalyticsRequest<TData> = {
+/** Lo común a toda petición al servicio: ruta, query, contrato y corte. */
+export type ServiceRequest<TData> = {
   /** Ruta bajo `/api/historico`, sin barra inicial (`"analitica/energia"`). */
   readonly path: string;
-  readonly range: DateRange;
-  /** Parámetros propios del endpoint, además del rango. */
+  /** Parámetros propios del endpoint. */
   readonly query?: Readonly<Record<string, string>>;
   /** Contrato de la respuesta. Se valida SIEMPRE antes de devolverla. */
   readonly schema: ZodType<TData>;
@@ -36,23 +34,66 @@ export type AnalyticsRequest<TData> = {
   readonly timeoutMs?: number;
 };
 
+/** Lectura acotada por el rango de la URL: la forma de casi todas las vistas. */
+export type AnalyticsRequest<TData> = ServiceRequest<TData> & { readonly range: DateRange };
+
+/** Escritura con cuerpo JSON (las acciones de alertas). */
+export type AnalyticsPostRequest<TData> = ServiceRequest<TData> & { readonly body: unknown };
+
 export type AnalyticsDeps = { readonly httpFetch?: HttpFetch };
+
+export function buildServiceUrl(
+  path: string,
+  query: Readonly<Record<string, string>> = {},
+): string {
+  const params = new URLSearchParams({ ...query }).toString();
+  return params ? `${ANALYTICS_BASE_PATH}/${path}?${params}` : `${ANALYTICS_BASE_PATH}/${path}`;
+}
 
 export function buildAnalyticsUrl(
   path: string,
   range: DateRange,
   query: Readonly<Record<string, string>> = {},
 ): string {
-  const params = new URLSearchParams({ ...rangeToParams(range), ...query });
-  return `${ANALYTICS_BASE_PATH}/${path}?${params.toString()}`;
+  return buildServiceUrl(path, { ...rangeToParams(range), ...query });
 }
 
-export async function fetchAnalytics<TData>(
+export function fetchAnalytics<TData>(
   request: AnalyticsRequest<TData>,
   deps: AnalyticsDeps = {},
 ): Promise<AnalyticsResult<TData>> {
-  const httpFetch = deps.httpFetch ?? globalThis.fetch;
   const url = buildAnalyticsUrl(request.path, request.range, request.query);
+  return send(url, { method: "GET" }, request, deps);
+}
+
+/** GET sin rango: recursos que no dependen del período (una alerta, un resumen). */
+export function fetchResource<TData>(
+  request: ServiceRequest<TData>,
+  deps: AnalyticsDeps = {},
+): Promise<AnalyticsResult<TData>> {
+  return send(buildServiceUrl(request.path, request.query), { method: "GET" }, request, deps);
+}
+
+export function postAnalytics<TData>(
+  request: AnalyticsPostRequest<TData>,
+  deps: AnalyticsDeps = {},
+): Promise<AnalyticsResult<TData>> {
+  const init: RequestInit = {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(request.body),
+  };
+  return send(buildServiceUrl(request.path, request.query), init, request, deps);
+}
+
+/** Un solo camino para timeout, red, HTTP y contrato: GET y POST fallan igual. */
+async function send<TData>(
+  url: string,
+  init: RequestInit,
+  request: ServiceRequest<TData>,
+  deps: AnalyticsDeps,
+): Promise<AnalyticsResult<TData>> {
+  const httpFetch = deps.httpFetch ?? globalThis.fetch;
   const abort = new AbortController();
   let timedOut = false;
   const timer = setTimeout(() => {
@@ -62,7 +103,7 @@ export async function fetchAnalytics<TData>(
   request.signal?.addEventListener("abort", () => abort.abort(), { once: true });
 
   try {
-    const response = await httpFetch(url, { cache: "no-store", signal: abort.signal });
+    const response = await httpFetch(url, { ...init, cache: "no-store", signal: abort.signal });
     const body = await response.text();
     if (!response.ok) return { ok: false, failure: describeHttpFailure(response.status, body) };
     return validate(body, request.schema);
@@ -72,60 +113,4 @@ export async function fetchAnalytics<TData>(
   } finally {
     clearTimeout(timer);
   }
-}
-
-function validate<TData>(body: string, schema: ZodType<TData>): AnalyticsResult<TData> {
-  let parsedJson: unknown;
-  try {
-    parsedJson = JSON.parse(body);
-  } catch (error) {
-    return {
-      ok: false,
-      failure: failure("MALFORMED_RESPONSE", { detail: describeError(error) }),
-    };
-  }
-  const result = schema.safeParse(parsedJson);
-  if (!result.success) {
-    return {
-      ok: false,
-      failure: failure("MALFORMED_RESPONSE", { detail: result.error.message }),
-    };
-  }
-  return { ok: true, data: result.data };
-}
-
-function describeHttpFailure(status: number, body: string) {
-  const detail = readDetail(body);
-  if (status === UNAUTHORIZED_STATUS) return failure("UNAUTHORIZED", { status });
-  if (servidorApagado({ status, ok: false, data: safeJson(body) })) {
-    return failure("SERVICE_UNAVAILABLE", { status, detail });
-  }
-  return failure("UPSTREAM_ERROR", {
-    status,
-    detail,
-    ...(detail ? { message: detail } : {}),
-  });
-}
-
-/** FastAPI responde `{detail}`; el proxy de /api/*, `{error}`. */
-function readDetail(body: string): string | undefined {
-  const parsed = safeJson(body);
-  if (parsed === null) return undefined;
-  const detail = "detail" in parsed ? parsed.detail : "error" in parsed ? parsed.error : null;
-  return typeof detail === "string" ? detail : undefined;
-}
-
-function safeJson(body: string): object | null {
-  try {
-    const parsed: unknown = JSON.parse(body);
-    return typeof parsed === "object" ? parsed : null;
-  } catch {
-    // Un cuerpo que no es JSON no es un fallo aparte: el código HTTP ya dijo qué
-    // pasó y el cuerpo crudo viaja en `detail`.
-    return null;
-  }
-}
-
-function describeError(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }

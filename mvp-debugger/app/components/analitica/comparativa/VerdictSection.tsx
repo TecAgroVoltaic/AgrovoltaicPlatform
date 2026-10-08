@@ -22,7 +22,7 @@ import {
   ARRAY_LABEL,
   describeMissingReason,
 } from "@/app/components/analitica/comparativa/vocabulary";
-import styles from "@/app/components/analitica/comparativa/comparativa.module.css";
+import styles from "@/app/components/analitica/comparativa/verdict.module.css";
 
 export type VerdictSectionProps = {
   readonly comparison: AnalyticsResult<ArrayComparison> | null;

@@ -1,0 +1,38 @@
+/* Los estados de la lista y de la ficha. Tres vacíos que se ven distintos
+   porque piden cosas distintas (evaluar, nada, quitar un filtro) y el fallo del
+   servicio, con su detalle técnico a mano. Ninguno es una caja punteada. */
+
+.panel { display:flex; flex-direction:column; align-items:flex-start; gap:14px; padding:28px;
+  border:1px solid var(--line); border-radius:14px; background:var(--panel); max-width:720px; }
+.panel[data-align="center"] { align-items:center; text-align:center; margin:0 auto; padding:36px 28px; }
+.panel[data-tone="error"] { border-color:color-mix(in srgb, var(--crit) 40%, var(--line)); }
+
+.mark { display:flex; align-items:center; justify-content:center; width:44px; height:44px; border-radius:12px;
+  background:var(--panel2); color:var(--accent); }
+.mark[data-tone="good"] { background:color-mix(in srgb, var(--good) 16%, var(--panel)); color:var(--good); }
+.mark[data-tone="error"] { background:color-mix(in srgb, var(--crit) 16%, var(--panel)); color:var(--crit); }
+
+.heading { margin:0; font-size:18px; font-weight:700; line-height:1.25; color:var(--ink); }
+.text { margin:0; max-width:64ch; font-size:13.5px; color:var(--ink2); }
+.actions { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.primary { composes:actionPrimary from "../../asistente/controls.module.css"; height:36px; padding:0 14px; font-size:13px; }
+.ghost { composes:action from "../../asistente/controls.module.css"; height:36px; padding:0 14px; font-size:13px; }
+.since { font-family:var(--mono); font-size:11px; color:var(--muted); }
+
+.details { font-size:12.5px; color:var(--muted); max-width:100%; }
+.details summary { cursor:pointer; color:var(--ink2); }
+.details summary:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.technical { margin:6px 0 0; padding:8px 10px; border-radius:6px; background:var(--ground);
+  font-family:var(--mono); font-size:11.5px; overflow-wrap:anywhere; }
+
+.loading { margin:0; padding:14px 0; font-size:12.5px; color:var(--muted); }
+/* La espera inicial de la página: la columna llega sin márgenes (`content-bare`). */
+.pageLoading { composes:loading; padding:20px 24px; }
+
+/* La ficha mientras carga o si falla: lo mismo en chico. */
+.inline { display:flex; flex-direction:column; align-items:flex-start; gap:8px; margin:0; font-size:13px; color:var(--ink2); }
+.inline p { margin:0; }
+
+@media (max-width:760px) {
+  .panel { padding:20px; }
+}

@@ -7,6 +7,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+import { SectionMenuProvider } from "@/app/components/analitica/SectionMenu";
 import { SidebarDrawer } from "@/app/components/analitica/SidebarDrawer";
 
 const navigation = { path: "/series" };
@@ -22,9 +23,11 @@ const CERRAR = "Cerrar el menú";
 // se saltee el renderizado, y el test mediría el atajo de React en vez del
 // componente: en la aplicación real el cambio de ruta llega por contexto.
 const cascaron = () => (
-  <SidebarDrawer>
-    <a href="/calidad">Calidad</a>
-  </SidebarDrawer>
+  <SectionMenuProvider>
+    <SidebarDrawer>
+      <a href="/calidad">Calidad</a>
+    </SidebarDrawer>
+  </SectionMenuProvider>
 );
 
 function renderDrawer() {
@@ -104,5 +107,17 @@ describe("SidebarDrawer", () => {
     // Then dice el nombre de esa sección, que es lo único que queda visible
     // cuando el menú está cerrado
     expect(titulo).toBeInTheDocument();
+  });
+
+  it("una sección con cabecera propia no recibe la barra superior del cajón", () => {
+    // Given la ruta del Asistente, que pone su propio botón de menú
+    navigation.path = "/asistente";
+
+    // When se pinta el cascarón
+    render(cascaron());
+
+    // Then no hay una segunda banda arriba, pero el cajón sigue existiendo
+    expect(screen.queryByRole("button", { name: ABRIR })).toBeNull();
+    expect(screen.getByRole("complementary")).toBeInTheDocument();
   });
 });

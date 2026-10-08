@@ -1,0 +1,57 @@
+/* Las tarjetas de una respuesta: el gráfico (con su ampliación) y la descarga. */
+
+.chart { display:flex; flex-direction:column; gap:6px; min-width:0; }
+
+.card { margin:0; min-width:0; overflow:hidden; border:1px solid var(--line); background:var(--panel);
+  border-radius:12px; }
+
+.cardHead { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding:14px 16px 0; }
+.cardTitle { margin:0; font-size:14px; font-weight:600; color:var(--ink); }
+.cardSub { margin:0; font-family:var(--mono); font-size:11px; color:var(--muted); }
+.zoom { composes:ghost from "./controls.module.css"; height:28px; padding:0 8px; }
+
+/* La primitiva trae su propio marco (`.gr`, con título y panel). Dentro de la
+   tarjeta el título ya está en la cabecera y el panel es la tarjeta: se apagan
+   los dos para no dibujar el mismo encabezado y el mismo borde dos veces. El
+   título sigue siendo el nombre accesible del lienzo. */
+.cardChart { padding:6px 8px 0; min-width:0; }
+.cardChart :global(.gr) { background:none; border:0; padding:0; border-radius:0; }
+.cardChart :global(.gr-cab) { display:none; }
+
+.cardFoot { display:flex; align-items:center; gap:8px; padding:10px 14px; border-top:1px solid var(--line);
+  background:var(--ground); min-width:0; }
+.cardFacts { margin-left:auto; min-width:0; font-family:var(--mono); font-size:11px; color:var(--muted);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+/* Ampliar: el mismo gráfico en un diálogo modal casi a pantalla completa. */
+.zoomDialog { width:min(1100px, calc(100vw - 32px)); max-height:calc(100dvh - 32px); padding:0;
+  border:1px solid var(--line2); border-radius:14px; background:var(--panel); color:var(--ink); }
+.zoomDialog::backdrop { background:#0008; }
+.zoomBody { display:flex; flex-direction:column; gap:8px; padding:16px 18px 18px; min-width:0; }
+
+/* La descarga: un renglón con el archivo, su descripción y el botón. */
+.download { display:flex; flex-wrap:wrap; align-items:center; gap:14px; padding:12px 14px; }
+.fileIcon { flex:0 0 38px; height:44px; border-radius:6px; background:var(--panel2); border:1px solid var(--line2);
+  display:flex; align-items:flex-end; justify-content:center; padding-bottom:4px;
+  font-family:var(--mono); font-size:9.5px; font-weight:700; color:var(--accent); text-transform:uppercase; }
+.fileText { flex:1 1 180px; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.fileName { margin:0; font-family:var(--mono); font-size:13px; color:var(--ink);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.fileMeta { margin:0; font-family:var(--mono); font-size:11px; color:var(--muted); overflow-wrap:anywhere; }
+.fileMetaShort { display:none; }
+.fileStatus { margin:0; font-size:11.5px; color:var(--muted); }
+.fileStatus:empty { display:none; }
+.fileActions { display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; gap:8px; margin-left:auto; }
+.downloadError { padding:0 14px 12px; }
+.downloadError :global(.alert) { margin:0; }
+
+@media (max-width:760px) {
+  .cardHead { padding:12px 12px 0; }
+  .cardChart { padding:4px 4px 0; }
+  .cardFoot { padding:8px 10px; gap:6px; }
+  .download { gap:10px; padding:10px 12px; }
+  .fileIcon { flex-basis:32px; height:38px; }
+  .fileName { font-size:12px; }
+  .fileMetaLong { display:none; }
+  .fileMetaShort { display:inline; }
+}

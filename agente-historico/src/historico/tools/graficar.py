@@ -1,80 +1,85 @@
-"""Tool `graficar` — arma un GRAFICO de una metrica del sistema PV en un periodo.
+"""Tool `graficar` — un grafico de datos REALES para mostrarselo al usuario.
 
-Para que el agente pueda MOSTRARLE una tendencia al usuario en el chat. Devuelve
-datos REALES (reusa datos.serie, solo lectura sobre las vistas limpias) + un
-marcador `_grafico` que el widget del chat pinta. El LLM NO recibe los arreglos
-grandes (el lazo del chat le pasa solo el `resumen`) -> no quema tokens; el grafico
-lo consume el frontend. Cero invencion: el grafico ES la salida de una tool.
+Devuelve un `ChartSpec` (contrato §1, `docs/referencia/contratos-asistente-alertas.md`)
+en `_grafico`: el sobre con los datos de UNA de las seis primitivas del frontend,
+que lo pinta sin transformar. Cada tipo reusa el MISMO algoritmo de `analitica` que
+sirve al endpoint equivalente; aca solo se elige cual y se adapta su salida
+(`_chartspec`). Los graficadores por tipo viven en `_graficadores`. Cero
+invencion: el grafico es la salida de un algoritmo.
+
+El LLM no recibe los arreglos: el lazo del chat quita toda clave que empiece con
+`_` y le pasa solo `resumen` y `nota` (n, min, max, media por serie, periodo).
 """
 from __future__ import annotations
 
-from historico import datos
+from historico.tools import _chartspec as cs
+from historico.tools import opciones
+from historico.tools._graficadores import _barras, _cajas, _carpeta, _crestas, _dispersion, _serie
+from historico.tools._ventana_grafico import crear
 
-# metrica -> (relacion, [(columna, nombre_serie)], unidad, titulo). Todas las
-# relaciones/columnas estan en la allowlist de datos.py -> seguras.
-_METRICAS = {
-    "potencia":     ("electrico_corregido", [("potencia_pv1_w", "PV1"), ("potencia_pv2_w", "PV2")], "W", "Potencia media por arreglo"),
-    "irradiancia":  ("radiacion_calibrada", [("irradiancia_incidente_wm2", "GHI")], "W/m2", "Irradiancia global (GHI)"),
-    "kt":           ("radiacion_calibrada", [("kt_star", "kt*")], "", "Indice de claridad kt*"),
-    "pr":           ("performance", [("pr_pv1", "PR PV1"), ("pr_pv2", "PR PV2")], "", "Performance Ratio por arreglo"),
-    "temperatura":  ("electrico_corregido", [("temp_inclinado", "PV1"), ("temp_vertical", "PV2")], "C", "Temperatura media por arreglo"),
-}
+_NOTA = ("Grafico de datos reales: la interfaz lo dibuja. Comenta la tendencia o lo que "
+         "llame la atencion; no repitas los numeros.")
 
 SCHEMA = {
     "name": "graficar",
     "description": (
-        "Genera un GRAFICO de tendencia de una metrica del sistema PV para MOSTRARSELO al usuario. "
-        "Usalo cuando el usuario quiera VER la evolucion en el tiempo (no solo un numero). Metricas: "
-        "'potencia' (W por arreglo), 'irradiancia' (GHI W/m2), 'kt' (indice de claridad), "
-        "'pr' (performance ratio por arreglo), 'temperatura' (C por arreglo). Devuelve los puntos "
-        "reales de la base; nunca inventes una serie."
+        "Genera un GRAFICO de datos reales para MOSTRARSELO al usuario. Usalo cuando "
+        "quiera VER algo, no solo un numero. Tipos: 'serie' = evolucion en el tiempo "
+        "(una o varias variables de la MISMA unidad, con tendencia y media movil); "
+        "'barras' = una cantidad por periodo (energia_hoy_wh/energia_pv1_wh/energia_pv2_wh "
+        "suman el cierre diario en kWh; una irradiancia W/m2 da la irradiacion acumulada "
+        "por mes en kWh/m2; el resto, la media por periodo); 'cajas' = distribucion mes "
+        "a mes de UNA variable (mediana, cuartiles, atipicos); 'carpeta' = mapa de calor "
+        "dia x hora local de UNA variable (forma del dia a lo largo de semanas); "
+        "'dispersion' = UNA variable (variables[0], eje Y) contra `variable_x` con su "
+        "recta y R2; 'crestas' = densidades de varias variables de la misma unidad "
+        "(comparar sensores o arreglos). Las variables son claves del catalogo. Fechas "
+        "en hora local de Costa Rica, `hasta` exclusivo."
     ),
     "input_schema": {
         "type": "object",
         "properties": {
-            "metrica": {"type": "string", "enum": list(_METRICAS),
-                        "description": "Que graficar."},
-            "desde": {"type": "string", "description": "Inicio ISO (opcional; omitir = todo)."},
-            "hasta": {"type": "string", "description": "Fin ISO exclusivo (opcional)."},
-            "bucket": {"type": "string", "enum": ["day", "week", "month"],
-                       "description": "Granularidad temporal. Default 'day'."},
+            "tipo": {"type": "string", "enum": list(cs.TIPOS),
+                     "description": "Que primitiva dibujar."},
+            "variables": opciones.variables(
+                "Claves del catalogo. En 'dispersion' la primera es el eje Y."),
+            **opciones.ventana(con_granularidad=True),
+            "variable_x": opciones.variable("Solo 'dispersion': la variable del eje X."),
         },
-        "required": ["metrica"],
+        "required": ["tipo", "variables"],
         "additionalProperties": False,
     },
 }
 
 
-def run(metrica: str, desde: str | None = None, hasta: str | None = None,
-        bucket: str = "day") -> dict:
-    if metrica not in _METRICAS:
-        raise ValueError(f"metrica desconocida: {metrica!r} ({', '.join(_METRICAS)})")
-    if bucket not in ("day", "week", "month"):
-        raise ValueError(f"bucket invalido: {bucket!r} (day|week|month)")
+_GRAFICADORES = {cs.SERIE: _serie, cs.BARRAS: _barras, cs.CAJAS: _cajas,
+                 cs.CARPETA: _carpeta, cs.DISPERSION: _dispersion, cs.CRESTAS: _crestas}
+_CON_GRANULARIDAD = (cs.SERIE, cs.BARRAS)
 
-    rel, cols, unidad, titulo = _METRICAS[metrica]
-    series, resumen = [], []
-    x: list[str] = []
-    for col, nombre in cols:
-        s = datos.serie(rel, col, bucket, "avg", desde, hasta)
-        pts = s["puntos"]
-        if not x:
-            x = [p["t"][:10] for p in pts]
-        valores = [p["v"] for p in pts]
-        series.append({"nombre": nombre, "valores": valores})
-        limpios = [v for v in valores if v is not None]
-        resumen.append({
-            "serie": nombre, "n": len(limpios),
-            "min": round(min(limpios), 3) if limpios else None,
-            "max": round(max(limpios), 3) if limpios else None,
-            "media": round(sum(limpios) / len(limpios), 3) if limpios else None,
-        })
-        periodo = s["periodo"]
 
+def _validar(tipo: str, claves: list[str], granularidad: str | None,
+             variable_x: str | None) -> None:
+    if tipo not in _GRAFICADORES:
+        raise ValueError(f"tipo de grafico desconocido: {tipo!r} ({', '.join(cs.TIPOS)})")
+    if not claves:
+        raise ValueError("hace falta al menos una variable para graficar")
+    if granularidad and tipo not in _CON_GRANULARIDAD:
+        raise ValueError(f"'granularidad' solo aplica a {', '.join(_CON_GRANULARIDAD)}")
+    if (tipo == cs.DISPERSION) != (variable_x is not None):
+        raise ValueError("'variable_x' es obligatoria en 'dispersion' y solo vale ahi")
+
+
+def run(tipo: str, variables: str | list[str], desde: str | None = None,
+        hasta: str | None = None, granularidad: str | None = None,
+        variable_x: str | None = None) -> dict:
+    claves = [variables] if isinstance(variables, str) else list(variables or [])
+    _validar(tipo, claves, granularidad, variable_x)
+    v = crear(desde, hasta, granularidad)
+    grafico, resumen = _GRAFICADORES[tipo](v, claves, granularidad, variable_x)
     return {
-        "metrica": metrica, "bucket": bucket, "periodo": periodo, "unidad": unidad,
-        "resumen": resumen,
-        "_grafico": {"tipo": "linea", "titulo": titulo, "unidad": unidad, "x": x, "series": series},
-        "nota": "Grafico de datos reales de la base. Mostraselo al usuario y comenta la tendencia; "
-                "no repitas todos los numeros.",
+        "resumen": {"tipo": tipo, "titulo": grafico["titulo"],
+                    "periodo": {"desde": v.desde.isoformat(), "hasta": v.hasta.isoformat()},
+                    "unidad": grafico["unidad"], **resumen},
+        "_grafico": grafico,
+        "nota": _NOTA,
     }

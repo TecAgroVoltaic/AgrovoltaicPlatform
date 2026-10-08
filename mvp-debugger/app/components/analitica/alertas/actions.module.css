@@ -1,0 +1,30 @@
+/* La barra de acciones de la ficha, fija al pie, y el paso en línea que algunas
+   piden (nota de seguimiento, confirmación de olvidar). */
+
+.bar { flex:none; display:flex; flex-direction:column; gap:10px; padding:14px 20px 18px;
+  border-top:1px solid var(--line); background:var(--ground); }
+.buttons { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.spacer { flex:1; }
+.primary { composes:actionPrimary from "../../asistente/controls.module.css"; height:36px; padding:0 14px; font-size:13px; }
+.ghost { composes:action from "../../asistente/controls.module.css"; height:36px; padding:0 14px; font-size:13px; }
+.quiet { composes:ghost; color:var(--muted); }
+
+.step { display:flex; flex-direction:column; gap:8px; padding:12px; border:1px solid var(--line2);
+  border-radius:10px; background:var(--panel); }
+.stepText { margin:0; font-size:13px; color:var(--ink2); }
+.label { font-family:var(--mono); font-size:10px; font-weight:500; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); }
+.note { width:100%; min-width:0; box-sizing:border-box; resize:none; padding:6px 8px; border:1px solid var(--line);
+  border-radius:8px; background:var(--ground); color:var(--ink); font:inherit; font-size:13.5px; }
+.note:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
+.note[aria-invalid="true"] { border-color:var(--crit); }
+.stepRow { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.small { height:32px; }
+.clearDate { composes:action from "../../asistente/controls.module.css"; height:28px; padding:0 8px; font-size:12px; }
+
+.problem { margin:0; color:var(--crit); font-size:12.5px; font-weight:600; }
+.done { margin:0; font-size:12.5px; color:var(--good); }
+.done:empty { display:none; }
+
+@media (max-width:760px) {
+  .bar { padding:12px 14px 14px; }
+}

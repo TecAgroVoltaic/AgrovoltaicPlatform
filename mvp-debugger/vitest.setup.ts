@@ -46,3 +46,24 @@ if (typeof window !== "undefined" && !window.matchMedia) {
     }),
   });
 }
+
+// jsdom tampoco implementa el <dialog> modal. El sustituto hace lo mínimo que
+// el navegador garantiza y que las vistas usan: `showModal` lo abre, `close` lo
+// cierra y avisa con el evento `close`. La inercia del resto de la página no se
+// imita: eso es del navegador y se verifica en él.
+if (typeof HTMLDialogElement !== "undefined" && typeof HTMLDialogElement.prototype.showModal !== "function") {
+  Object.defineProperties(HTMLDialogElement.prototype, {
+    showModal: {
+      value(this: HTMLDialogElement) {
+        this.setAttribute("open", "");
+      },
+    },
+    close: {
+      value(this: HTMLDialogElement) {
+        if (!this.hasAttribute("open")) return;
+        this.removeAttribute("open");
+        this.dispatchEvent(new Event("close"));
+      },
+    },
+  });
+}

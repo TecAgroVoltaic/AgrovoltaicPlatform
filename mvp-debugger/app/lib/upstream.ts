@@ -12,6 +12,16 @@ import type { Servicio } from "@/app/lib/config";
 // (server, date, connection…) es del upstream y no se propaga.
 const HEADERS_RESPUESTA = ["content-type", "content-disposition", "content-length", "x-informe-lectura"];
 
+// Un stream de eventos (`/chat/stream`) tiene que llegar evento por evento. Sin
+// estos headers, un proxy intermedio (nginx, la CDN) puede juntar la respuesta
+// entera antes de soltarla, y la lista de pasos "en vivo" aparecería de golpe al
+// final. `no-transform` además impide que se comprima, que también bufferiza.
+const HEADERS_STREAM_EVENTOS: Record<string, string> = {
+  "cache-control": "no-cache, no-transform",
+  "x-accel-buffering": "no",
+};
+const TIPO_STREAM_EVENTOS = "text/event-stream";
+
 export async function proxy(
   svc: Servicio,
   path: string[],
@@ -23,7 +33,10 @@ export async function proxy(
   const headers: Record<string, string> = {};
   if (svc.key) headers["x-api-key"] = svc.key;
 
-  const init: RequestInit = { method: req.method, headers };
+  // La señal del request: si el navegador cancela (el botón «Detener» del
+  // asistente), se corta también la llamada al servicio, que si no seguiría
+  // gastando tokens para nadie.
+  const init: RequestInit = { method: req.method, headers, signal: req.signal };
   if (req.method !== "GET" && req.method !== "HEAD") {
     headers["content-type"] = "application/json";
     init.body = await req.text();
@@ -37,6 +50,9 @@ export async function proxy(
       if (v) out.set(h, v);
     }
     if (!out.has("content-type")) out.set("content-type", "application/json");
+    if (out.get("content-type")?.startsWith(TIPO_STREAM_EVENTOS)) {
+      for (const [h, v] of Object.entries(HEADERS_STREAM_EVENTOS)) out.set(h, v);
+    }
     return new Response(r.body, { status: r.status, headers: out });
   } catch (e: any) {
     // El servicio Python esta caido / inalcanzable: 502 legible (no un stack).

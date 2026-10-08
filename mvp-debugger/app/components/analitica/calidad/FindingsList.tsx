@@ -3,7 +3,7 @@
 // Cada fila lleva la frase del servicio (`que_es`) y, cuando el detalle trae una
 // nota redactada, también esa: son las que explican por qué un hallazgo grave
 // puede no ser un problema del dato (el inversor sin acoplar, por ejemplo).
-import styles from "@/app/components/analitica/calidad/calidad.module.css";
+import styles from "@/app/components/analitica/calidad/findings.module.css";
 import { FindingsPager } from "@/app/components/analitica/calidad/FindingsPager";
 import { SeverityTag } from "@/app/components/analitica/calidad/SeverityTag";
 import { formatCount } from "@/app/components/analitica/calidad/format";

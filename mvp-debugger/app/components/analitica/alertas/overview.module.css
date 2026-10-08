@@ -1,0 +1,81 @@
+/* El cuerpo de la vista sobre la lista: la columna, el aviso de evaluación, las
+   cuatro cifras y la barra de pestañas y filtros. */
+
+.page { display:flex; flex-direction:column; gap:20px; width:100%; max-width:1240px; margin:0 auto;
+  padding:20px 24px 32px; box-sizing:border-box; min-width:0; }
+
+/* El aviso de «Evaluar ahora». La región existe siempre (aria-live) y se pinta
+   solo cuando tiene algo que decir. */
+.notice:empty { display:none; }
+.notice { display:flex; align-items:center; gap:10px; padding:10px 12px; border:1px solid var(--line2);
+  border-radius:10px; background:var(--panel); font-size:13px; color:var(--ink2); }
+.notice[data-tone="error"] { border-color:color-mix(in srgb, var(--crit) 45%, var(--line2)); }
+.noticeText { flex:1; min-width:0; margin:0; }
+.noticeText b { color:var(--ink); font-weight:600; }
+.noticeClose { composes:ghost from "../../asistente/controls.module.css"; height:28px; padding:0 8px; }
+
+/* Las cuatro cifras: 4 en fila en escritorio, 2 × 2 debajo. */
+.cards { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:12px; margin:0; }
+.card { display:flex; flex-direction:column; gap:2px; min-width:0; padding:12px 16px;
+  border:1px solid var(--line); border-radius:10px; background:var(--panel); }
+.card[data-tone="crit"] { border-color:color-mix(in srgb, var(--crit) 40%, var(--line)); }
+.cardLabel { font-family:var(--mono); font-size:10px; font-weight:500; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--muted); }
+.cardValue { margin:0; font-size:26px; font-weight:700; line-height:1.1; letter-spacing:-.01em; color:var(--ink);
+  font-variant-numeric:tabular-nums; }
+.cardValue[data-tone="crit"] { color:var(--crit); }
+.cardValue[data-tone="warn"] { color:var(--warn); }
+.cardValue[data-tone="good"] { color:var(--good); }
+.cardNote { margin:0; font-family:var(--mono); font-size:11px; color:var(--muted); }
+.cardsProblem { margin:0; font-size:12.5px; color:var(--muted); }
+.retry { composes:ghost from "../../asistente/controls.module.css"; height:28px; margin-left:8px; }
+
+/* Pestañas a la izquierda, filtros a la derecha, sobre la misma línea de base. */
+.toolbar { display:flex; align-items:flex-end; gap:8px 16px; flex-wrap:wrap; border-bottom:1px solid var(--line); }
+.tabs { display:flex; gap:18px; min-width:0; max-width:100%; overflow-x:auto; scrollbar-width:none; }
+.tab { display:inline-flex; align-items:center; gap:6px; flex:none; height:36px; padding:0 4px; border:0;
+  border-bottom:2px solid transparent; background:none; color:var(--muted); font:inherit; font-size:13.5px; cursor:pointer; }
+.tab:hover { color:var(--ink2); }
+.tab[aria-selected="true"] { color:var(--ink); border-bottom-color:var(--accent); }
+.tab:focus-visible { outline:2px solid var(--accent); outline-offset:-2px; }
+.tabCount { font-family:var(--mono); font-size:11px; padding:1px 7px; border-radius:999px;
+  background:var(--panel2); color:var(--ink2); }
+
+.filters { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-left:auto; padding-bottom:6px; min-width:0; }
+.chipGroup { display:flex; gap:6px; }
+.separator { width:1px; height:18px; margin:0 4px; background:var(--line2); }
+.chip { composes:pill from "../../asistente/controls.module.css"; cursor:pointer; }
+.chip:hover { border-color:var(--accent); color:var(--ink); }
+.chip[aria-pressed="true"] { border-color:var(--accent); color:var(--ink);
+  background:color-mix(in srgb, var(--accent) 10%, var(--panel)); }
+.chip:focus-visible, .typeChip:focus-within, .search:focus-within { outline:2px solid var(--accent); outline-offset:2px; }
+
+.typeChip { composes:pill from "../../asistente/controls.module.css"; position:relative; padding:0; }
+.typeChip select { appearance:none; height:100%; padding:0 28px 0 10px; border:0; border-radius:999px;
+  background:transparent; color:inherit; font:inherit; font-size:12px; cursor:pointer; outline:none; }
+.typeChip select option { background:var(--raise); color:var(--ink); }
+.typeChip svg { position:absolute; right:10px; pointer-events:none; }
+
+.search { display:flex; align-items:center; gap:6px; width:200px; height:28px; padding:0 10px; box-sizing:border-box;
+  border:1px solid var(--line2); border-radius:999px; background:var(--panel); color:var(--muted); }
+.search input { flex:1; min-width:0; border:0; background:transparent; color:var(--ink); font:inherit; font-size:12.5px; outline:none; }
+
+.srOnly { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+
+/* Los mismos cortes que la lista (`list.module.css`): 2 × 2 bajo escritorio. */
+@media (max-width:1023px) {
+  .cards { grid-template-columns:repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width:639px) {
+  .cards { gap:8px; }
+  .card { padding:10px 12px; }
+  .cardValue { font-size:22px; }
+  .tabs { gap:16px; flex:1 1 100%; }
+  .filters { margin-left:0; flex:1 1 100%; }
+  .search { flex:1 1 160px; width:auto; }
+}
+
+@media (max-width:760px) {
+  .page { padding:14px 14px 28px; gap:14px; }
+}

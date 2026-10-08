@@ -13,18 +13,16 @@
 // De ese reparto sale la propiedad que hace confiable a la vista: no puede
 // mostrar una herramienta que no existe, ni ocultar una que sí. Si el catálogo y
 // el servicio se separan, la discrepancia se muestra en pantalla.
-import { useCallback, useEffect, useRef, useState } from "react";
-import { jget } from "@/app/lib/client";
-import { IconoAlerta } from "@/app/components/Iconos";
-import { HERRAMIENTAS } from "./catalogo";
+//
+// El mapa se pide en `predictivo/useMapaPredictivo.ts`; la leyenda y el aviso de
+// catálogo son componentes propios.
+import { useCallback, useRef, useState } from "react";
 import { Lienzo } from "./Lienzo";
 import { NodoModal, type Detalle } from "./NodoModal";
-import type { Mapa } from "./mapa";
-
-import { MEDICION_OCULTA, MEDICION_VISIBLE, MODO } from "@/app/components/console/modos";
-import { MAPA_RESPALDO } from "./mapaRespaldo";
-
-const RUTA = "/api/predictivo/arquitectura";
+import { MEDICION_OCULTA, MEDICION_VISIBLE } from "@/app/components/console/modos";
+import { AvisoCatalogo } from "./predictivo/AvisoCatalogo";
+import { LeyendaLienzo } from "./predictivo/LeyendaLienzo";
+import { useMapaPredictivo } from "./predictivo/useMapaPredictivo";
 
 // Qué gana el lector al cambiar de modo. Es el momento de la presentación: la
 // garantía del sistema no es una promesa del prompt, es una herramienta ausente.
@@ -34,32 +32,9 @@ const LEYENDA: Record<string, string> = {
 };
 
 export function ArqPredictivo() {
-  const [mapa, setMapa] = useState<Mapa | null>(null);
-  // Si el mapa que se esta viendo salio de la copia y no del servicio, hay que
-  // decirlo: una copia y la realidad no valen lo mismo.
-  const [esRespaldo, setEsRespaldo] = useState(false);
-  const [modo, setModo] = useState<string>(MEDICION_VISIBLE);
+  const { mapa, esRespaldo, modo, setModo } = useMapaPredictivo();
   const [detalle, setDetalle] = useState<Detalle | null>(null);
   const marco = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    let vivo = true;
-    jget<Mapa>(RUTA).then((r) => {
-      if (!vivo) return;
-      // El mapa describe la FORMA del agente, no datos medidos: cambia con el
-      // codigo, no con la hora. Si el servicio no esta (apagado de noche o el
-      // fin de semana), se dibuja la copia en vez de dejar la pantalla vacia.
-      // `modos` es la firma del mapa del Predictivo. Sirve de doble chequeo: si
-      // llegara un JSON de otra forma, no se dibuja como si fuera este agente.
-      const vivo_ok = r.ok && !!r.data?.modos;
-      const usable = vivo_ok ? r.data : (MAPA_RESPALDO as unknown as Mapa);
-      setEsRespaldo(!vivo_ok);
-      setMapa(usable);
-      // El modo inicial es el primero que publica el servicio, no uno fijo.
-      setModo(Object.keys(usable.modos ?? {})[0] || MEDICION_VISIBLE);
-    });
-    return () => { vivo = false; };
-  }, []);
 
   const pantallaCompleta = useCallback(() => {
     const el = marco.current;
@@ -80,11 +55,6 @@ export function ArqPredictivo() {
   }
 
   const modos = Object.keys(mapa.modos);
-  const publicadas = new Set(mapa.herramientas.map((h) => h.nombre));
-  // Fichas del catálogo que ya no corresponden a ninguna herramienta viva. No se
-  // dibujan; se avisan. Una vista que calla esto es una vista que miente.
-  const huerfanas = Object.keys(HERRAMIENTAS).filter((n) => !publicadas.has(n));
-  const sinDocumentar = mapa.herramientas.filter((h) => !HERRAMIENTAS[h.nombre]);
 
   return (
     <section className="vista">
@@ -127,34 +97,10 @@ export function ArqPredictivo() {
         <div className="arq-scroll">
           <Lienzo mapa={mapa} modo={modo} onAbrir={setDetalle} />
         </div>
-        <div className="arq-leyenda">
-          <span><i style={{ background: "var(--ceil)" }} /> entrada / servidor</span>
-          <span><i style={{ background: "var(--warn)" }} /> puerta de acceso</span>
-          <span><i style={{ background: "var(--accent)" }} /> el modelo</span>
-          <span><i style={{ background: "var(--pred)" }} /> herramienta {MODO.medicion_visible.etiqueta}</span>
-          <span><i style={{ background: "var(--real)" }} /> herramienta {MODO.medicion_oculta.etiqueta}</span>
-          <span><i style={{ background: "var(--muted)" }} /> cálculo y datos</span>
-          <span className="arq-ayuda">Pasá el mouse para el resumen · hacé clic para el detalle</span>
-        </div>
+        <LeyendaLienzo />
       </div>
 
-      {(huerfanas.length > 0 || sinDocumentar.length > 0) && (
-        <p className="arq-aviso">
-          <IconoAlerta size={14} />
-          {huerfanas.length > 0 && (
-            <span>
-              La consola documenta {huerfanas.join(", ")}, que el servicio ya no expone.
-              {sinDocumentar.length > 0 ? " " : ""}
-            </span>
-          )}
-          {sinDocumentar.length > 0 && (
-            <span>
-              {sinDocumentar.map((h) => h.nombre).join(", ")} corre en el servicio sin ficha
-              en la consola: se dibuja con su contrato, sin explicación.
-            </span>
-          )}
-        </p>
-      )}
+      <AvisoCatalogo mapa={mapa} />
 
       <p className="note">
         <b>Cómo se pone a prueba.</b> Pruebas unitarias sobre física, esquemas, límites y

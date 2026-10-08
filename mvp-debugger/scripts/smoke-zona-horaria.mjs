@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Guard de zona horaria: ningún archivo de la consola usa el reloj LOCAL del
-// navegador. Toda cuenta de fechas pasa por `app/lib/tiempo.ts`.
+// navegador. Toda cuenta de fechas pasa por `app/lib/tiempo.ts` (y su carpeta `tiempo/`).
 //
 //   node scripts/smoke-zona-horaria.mjs
 //
@@ -22,8 +22,9 @@ const RAIZ = fileURLToPath(new URL("..", import.meta.url));
 const FUENTE = join(RAIZ, "app");
 const PERMITIDO = "// zona-horaria: ok";
 
-// El único archivo que puede hablar de zonas, y los tests (que fijan fechas).
-const EXENTOS = [/app\/lib\/tiempo\.ts$/, /\.test\.tsx?$/];
+// El único módulo que puede hablar de zonas (el barril `tiempo.ts` y su carpeta
+// `tiempo/`), y los tests (que fijan fechas).
+const EXENTOS = [/app\/lib\/tiempo\.ts$/, /app\/lib\/tiempo\//, /\.test\.tsx?$/];
 
 const REGLAS = [
   {

@@ -1,0 +1,72 @@
+"""Las columnas de la hoja Diario: clave, etiqueta, unidad, formato y definicion."""
+from __future__ import annotations
+
+from historico.informe.tabla import DECIMAL_2, DECIMAL_3, ENTERO, FECHA, Columna
+
+COLUMNAS_DIARIO = (
+    Columna("fecha", "Fecha", "", FECHA, "Día local de Costa Rica (UTC-6)."),
+    Columna("filas_electrico", "Lecturas eléctricas", "", ENTERO,
+            "Filas del inversor ese día (cadencia nominal de 5 min)."),
+    Columna("filas_radiacion", "Lecturas de radiación", "", ENTERO,
+            "Filas del piranómetro ese día."),
+    Columna("energia_ac_kwh", "Energía AC", "kWh", DECIMAL_2,
+            "Cierre diario del contador del inversor (energia_hoy_wh, que está en kWh "
+            "pese al nombre). Es la energía del tablero."),
+    Columna("energia_dc_inclinado_kwh", "Energía DC inclinado (contador)", "kWh",
+            DECIMAL_2, "Cierre diario de energia_pv1_wh (PV1, 20°/150°)."),
+    Columna("energia_dc_vertical_kwh", "Energía DC vertical (contador)", "kWh",
+            DECIMAL_2, "Cierre diario de energia_pv2_wh (PV2, 90°/50°)."),
+    Columna("energia_dc_inclinado_integral_kwh", "Energía DC inclinado (integral)",
+            "kWh", DECIMAL_2,
+            "Potencia PV1 integrada en el tiempo. Subestima frente al contador."),
+    Columna("energia_dc_vertical_integral_kwh", "Energía DC vertical (integral)",
+            "kWh", DECIMAL_2,
+            "Potencia PV2 integrada en el tiempo. Subestima frente al contador."),
+    Columna("irradiacion_ghi_kwh_m2", "Irradiación horizontal", "kWh/m²", DECIMAL_3,
+            "Irradiancia incidente integrada con el intervalo real entre lecturas."),
+    Columna("irradiacion_poa_inclinado_kwh_m2", "Irradiación plano inclinado",
+            "kWh/m²", DECIMAL_3,
+            "POA bifacial modelada con pvlib. Provisional: falta el aval de la "
+            "transposición."),
+    Columna("irradiacion_poa_vertical_kwh_m2", "Irradiación plano vertical",
+            "kWh/m²", DECIMAL_3,
+            "POA bifacial modelada con pvlib. Provisional: falta el aval de la "
+            "transposición."),
+    Columna("pr_inclinado_ghi", "PR inclinado (horizontal)", "", DECIMAL_3,
+            "Energía del contador sobre 1,42 kWp, dividida por la irradiación "
+            "horizontal. Solo en días aptos."),
+    Columna("pr_vertical_ghi", "PR vertical (horizontal)", "", DECIMAL_3,
+            "Igual que el anterior, para el arreglo vertical."),
+    Columna("pr_inclinado_poa", "PR inclinado (plano propio)", "", DECIMAL_3,
+            "Contador contra la POA bifacial del arreglo. Provisional."),
+    Columna("pr_vertical_poa", "PR vertical (plano propio)", "", DECIMAL_3,
+            "Contador contra la POA bifacial del arreglo. Provisional."),
+    Columna("pr_inclinado_ghi_integral", "PR inclinado (integral)", "", DECIMAL_3,
+            "Como el PR horizontal, con la integral de potencia en vez del contador. "
+            "Cubre los días sin contador."),
+    Columna("pr_vertical_ghi_integral", "PR vertical (integral)", "", DECIMAL_3,
+            "Como el PR horizontal, con la integral de potencia en vez del contador."),
+    Columna("apto_pr", "Apto para PR", "", None,
+            "si: radiación y eléctrico cubren el día solar y coinciden en el tramo."),
+    Columna("motivo", "Motivo", "", None,
+            "Por qué el día no es apto, o qué aviso lleva su PR."),
+    Columna("horas_sol", "Horas de sol", "h", DECIMAL_2,
+            "Duración del día solar calculada para el sitio."),
+    Columna("cobertura_radiacion", "Cobertura radiación", "", DECIMAL_3,
+            "Horas con radiación sobre horas de sol."),
+    Columna("cobertura_electrico", "Cobertura eléctrico", "", DECIMAL_3,
+            "Horas con dato eléctrico sobre horas de sol."),
+    Columna("cielo", "Cielo", "", None,
+            "Clase del día por índice de claridad y variabilidad."),
+    Columna("kt_medio", "kt medio", "", DECIMAL_3,
+            "Irradiancia medida sobre la de cielo despejado. Mayor a 1 de forma "
+            "sostenida indica irradiancia sin calibrar."),
+    Columna("planta_parada", "Planta parada", "", None,
+            "si: hubo lecturas con las variables AC en cero entre las 7 y las 17 h."),
+    Columna("horas_parada", "Horas parada", "h", DECIMAL_2,
+            "Lecturas sin acoplar por 5 minutos."),
+    Columna("parada_bajo_sol", "Parada con sol", "", None,
+            "si: la parada coincidió con irradiancia alta."),
+    Columna("calidad", "Calidad del dato", "", None,
+            "Veredicto del barrido: ok, aviso, grave o sin_datos."),
+)

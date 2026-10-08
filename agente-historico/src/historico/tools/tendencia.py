@@ -1,16 +1,27 @@
 """Tool `tendencia` — resumen de la evolucion de una metrica (SIN la serie completa).
 
-Version 'lean' de `graficar` pensada para agentes de TEXTO (p.ej. VisioneFlow),
-donde no hay donde pintar un grafico y devolver toda la serie punto a punto solo
-quema tokens. En vez de los arrays, devuelve el RESUMEN por serie (n, min, max,
-media) + el periodo cubierto. Reusa el mismo mapa de metricas y `datos.serie`
-que `graficar`, asi que los numeros son identicos: agregados de datos REALES de la
-base (solo lectura sobre las vistas limpias). Cero invencion.
+Pensada para agentes de TEXTO (p.ej. VisioneFlow), donde no hay donde pintar un
+grafico y devolver toda la serie punto a punto solo quema tokens. En vez de los
+arrays, devuelve el RESUMEN por serie (n, min, max, media) + el periodo cubierto,
+sobre `datos.serie`: agregados de datos REALES de la base (solo lectura sobre las
+vistas limpias). Cero invencion.
+
+El mapa de metricas vivia en `graficar`; se mudo aca cuando `graficar` paso a
+pedir claves del catalogo y a devolver un `ChartSpec`.
 """
 from __future__ import annotations
 
 from historico import datos
-from historico.tools.graficar import _METRICAS  # unica fuente de verdad metrica->cols
+
+# metrica -> (relacion, [(columna, nombre_serie)], unidad, titulo). Todas las
+# relaciones/columnas estan en la allowlist de datos.py -> seguras.
+_METRICAS = {
+    "potencia":     ("electrico_corregido", [("potencia_pv1_w", "PV1"), ("potencia_pv2_w", "PV2")], "W", "Potencia media por arreglo"),
+    "irradiancia":  ("radiacion_calibrada", [("irradiancia_incidente_wm2", "GHI")], "W/m2", "Irradiancia global (GHI)"),
+    "kt":           ("radiacion_calibrada", [("kt_star", "kt*")], "", "Indice de claridad kt*"),
+    "pr":           ("performance", [("pr_pv1", "PR PV1"), ("pr_pv2", "PR PV2")], "", "Performance Ratio por arreglo"),
+    "temperatura":  ("electrico_corregido", [("temp_inclinado", "PV1"), ("temp_vertical", "PV2")], "C", "Temperatura media por arreglo"),
+}
 
 SCHEMA = {
     "name": "tendencia",

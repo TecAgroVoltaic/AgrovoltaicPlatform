@@ -1,0 +1,87 @@
+/* La cabecera del veredicto: la cifra que gana, la línea de acuerdo y la rejilla
+   de las dos tarjetas de arreglo. */
+
+/* --- El veredicto ---
+   Pesa más que el resto a propósito: una pantalla donde todo grita no deja nada
+   destacado, y acá lo único que hay que leer sí o sí es quién produce más. */
+.hero {
+  border-color: var(--line2);
+  padding: 24px 22px 20px;
+}
+
+.verdict {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 11px;
+  margin: 14px 0 6px;
+  font-size: 27px;
+  letter-spacing: -0.03em;
+}
+
+.verdictReading {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--ink2);
+  max-width: 78ch;
+}
+
+/* Que el ganador no dependa del método es la segunda cosa que hay que saber, y
+   por eso viaja con el veredicto y no en la sección que lo desglosa. */
+.agreement {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: var(--ink2);
+}
+
+.agreementAside {
+  margin-left: 11px;
+  padding-left: 11px;
+  border-left: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--crit);
+}
+
+/* El ganador se dice con PALABRAS, no con un color: quien no distinga el matiz
+   tiene que poder leer el resultado igual. */
+.winnerTag {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--line));
+  border-radius: 99px;
+  padding: 2px 9px;
+}
+
+/* `min(250px, 100%)` y no `250px`: `minmax(250px, 1fr)` nunca baja de 250, así
+   que en el contenedor de 280 px que deja una ventana de 360 la tarjeta se salía
+   por el borde. Con `min()` el suelo cede cuando no hay 250 que repartir. */
+.arrayGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr));
+  gap: 14px;
+  margin-top: 14px;
+}
+
+/* Los puntos de corte miran `.medida` (ver `comparativa.module.css`), no la ventana. */
+@container (max-width: 520px) {
+  /* El aparte del PR imposible cuelga de una raya vertical pensada para ir al
+     final de la línea. Cuando la frase envuelve, esa raya queda flotando en
+     medio del párrafo: en angosto pasa a ser un renglón propio. */
+  .agreementAside {
+    display: block;
+    margin: 4px 0 0;
+    padding: 0 0 0 11px;
+  }
+
+  .hero {
+    padding: 18px 16px 16px;
+  }
+
+  .verdict {
+    font-size: 22px;
+    gap: 8px;
+  }
+}

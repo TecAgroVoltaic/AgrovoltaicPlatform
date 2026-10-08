@@ -1,7 +1,7 @@
 """El contrato entre las secciones del informe y quien lo escribe. Sin logica.
 
 Una `Hoja` es una tabla ya calculada: sus columnas con unidad y definicion, y sus
-filas como dicts. `secciones.py` las arma (puro), `libro.py` las vuelca a Excel y
+filas como dicts. `secciones/` las arma (puro), `libro.py` las vuelca a Excel y
 ninguno de los dos sabe del otro mas que esto.
 
 Un `Hecho` es un numero del informe con nombre propio. Es lo UNICO que ve el modelo

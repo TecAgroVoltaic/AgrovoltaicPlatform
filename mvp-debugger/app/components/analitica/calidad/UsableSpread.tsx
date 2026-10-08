@@ -11,7 +11,8 @@
 // así que lo bajo que se queda incluso la mejor se ve sin leer una cifra. Los
 // nombres de los dos extremos van escritos porque la advertencia del backend,
 // que va justo debajo, trae los números pero no dice de qué variable son.
-import styles from "@/app/components/analitica/calidad/calidad.module.css";
+import calidadStyles from "@/app/components/analitica/calidad/calidad.module.css";
+import styles from "@/app/components/analitica/calidad/figures.module.css";
 import { formatCount, formatFraction, toCssHeight } from "@/app/components/analitica/calidad/format";
 import type { VariableUsability } from "@/app/lib/analitica/contracts/calidad";
 
@@ -44,7 +45,7 @@ export function UsableSpread({ variables }: UsableSpreadProps) {
           </li>
         ))}
       </ul>
-      <p className={styles.ends}>
+      <p className={calidadStyles.ends}>
         <span>
           peor <b className="mono">{worst.variable}</b>
         </span>

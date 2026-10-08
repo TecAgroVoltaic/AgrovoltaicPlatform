@@ -12,7 +12,7 @@ import {
   ARRAY_LABEL,
   describeMissingReason,
 } from "@/app/components/analitica/comparativa/vocabulary";
-import styles from "@/app/components/analitica/comparativa/comparativa.module.css";
+import styles from "@/app/components/analitica/comparativa/variants.module.css";
 
 const IMPOSSIBLE_TEXT = "PR imposible";
 const TIE_TEXT = "empatan";

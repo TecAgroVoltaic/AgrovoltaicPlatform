@@ -47,6 +47,7 @@ from historico.tools import (
     diagnostico_dia,
     distribucion_mensual,
     energia,
+    exportar_datos,
     graficar,
     hallazgos,
     irradiacion_mensual,
@@ -54,6 +55,7 @@ from historico.tools import (
     performance,
     preparar_informe,
     pruebas_calidad,
+    rangos_con_datos,
     resumen_dashboard,
     serie_variable,
     temperatura,
@@ -61,10 +63,12 @@ from historico.tools import (
 )
 
 ANALISIS = [energia, performance, irradiancia, temperatura, tendencia,
-            cobertura, catalogo, graficar,
+            cobertura, rangos_con_datos, catalogo, graficar,
             resumen_dashboard, serie_variable, distribucion_mensual,
             irradiacion_mensual, carpeta_dia_hora, correlacion_variables,
             crestas_distribucion, comparativa_arreglos, preparar_informe]
+# La ficha de descarga: no analiza, pero sirve a la misma pregunta ("dame estos datos").
+ANALISIS.append(exportar_datos)
 # El agente hablando de si mismo. Va en CALIDAD y no en ANALISIS porque responde
 # "se puede confiar en esto", que es la misma pregunta que el resto de la familia.
 CALIDAD = [calidad_periodo, hallazgos, cielo_periodo, diagnostico_dia,

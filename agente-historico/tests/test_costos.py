@@ -67,3 +67,14 @@ def test_usage_vacio_o_nulo_da_cero(usage):
     # Given/When/Then: una traza sin usage no debe explotar
     r = costos.costo(usage, "claude-haiku-4-5")
     assert r["usd_total"] == 0.0
+
+
+@pytest.mark.parametrize("modelo, tarifa", [
+    ("claude-sonnet-5-5", (2.00, 10.00)),
+    ("claude-opus-5-5", (4.00, 20.00)),
+    ("claude-opus-5", (5.00, 25.00)),
+])
+def test_las_versiones_punto_cinco_no_heredan_la_tarifa_por_prefijo(modelo, tarifa):
+    # Given/When: `claude-opus-5-5` empieza con `claude-opus-5`
+    # Then: gana su fila propia, no la del prefijo
+    assert costos.tarifa(modelo) == tarifa

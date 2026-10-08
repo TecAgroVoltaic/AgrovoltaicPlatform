@@ -27,6 +27,10 @@ export type AnalyticsFailure = {
   readonly status?: number;
   /** Detalle técnico para la consola del navegador, nunca para la pantalla. */
   readonly detail?: string;
+  /** Cuerpo JSON del error tal como llegó. Lo interpreta la capa que conoce
+   *  ese endpoint (p. ej. el 409 `transicion_invalida` de alertas); esta capa
+   *  no sabe leerlo y por eso no lo convierte en otro código. */
+  readonly payload?: unknown;
 };
 
 export type AnalyticsResult<TData> =

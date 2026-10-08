@@ -12,7 +12,8 @@
 //
 // La explicación de cada tipo NO va acá: la escribe el glosario del servicio y
 // se lee en "Qué está roto", que es donde se va a mirar de cerca.
-import styles from "@/app/components/analitica/calidad/calidad.module.css";
+import calidadStyles from "@/app/components/analitica/calidad/calidad.module.css";
+import styles from "@/app/components/analitica/calidad/figures.module.css";
 import { SeverityTag } from "@/app/components/analitica/calidad/SeverityTag";
 import { formatCount, pluralizeDays } from "@/app/components/analitica/calidad/format";
 import type { TopProblem } from "@/app/lib/analitica/contracts/calidad";
@@ -31,7 +32,7 @@ export type TopProblemsProps = {
 
 export function TopProblems({ problems, daysWithData }: TopProblemsProps) {
   return (
-    <section className={`card ${styles.aside}`} aria-labelledby="mas-frecuentes">
+    <section className={`card ${calidadStyles.aside}`} aria-labelledby="mas-frecuentes">
       <h2 className="kpi-title" id="mas-frecuentes">
         {TITLE}
       </h2>

@@ -4,7 +4,7 @@
 //
 // El orden del servicio se enseña porque es lo que hace fiable pasar de página:
 // con un orden ambiguo, avanzar repite un hallazgo y se salta otro en silencio.
-import styles from "@/app/components/analitica/calidad/calidad.module.css";
+import styles from "@/app/components/analitica/calidad/findings.module.css";
 import { formatCount } from "@/app/components/analitica/calidad/format";
 import type { FindingsPage } from "@/app/lib/analitica/contracts/calidad";
 
