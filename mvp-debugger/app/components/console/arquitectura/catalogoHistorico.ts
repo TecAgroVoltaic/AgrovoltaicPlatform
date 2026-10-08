@@ -89,20 +89,6 @@ export const HERRAMIENTAS_HISTORICO: Record<string, Ficha> = {
     archivo: "tools/exportar_datos.py",
   },
 
-  rangos_con_datos: {
-    resumen: "qué fechas tienen datos",
-    hover: "Tramos contiguos con datos, los últimos N días con datos y el día con datos más cercano a una fecha pedida.",
-    hace: "Sobre la misma cobertura por día que usa el calendario, devuelve tramos, huecos, los últimos N días con datos y, para una fecha pedida, el día más cercano que sí tiene.",
-    ayuda: "Convierte «el 12 de agosto» o «los últimos 15 días» en fechas que existen. Sin ella el agente se disculpa por un hueco en vez de proponer el día más cercano, y «15 días» termina siendo calendario en vez de días con datos.",
-    archivo: "tools/rangos_con_datos.py",
-  },
-  exportar_datos: {
-    resumen: "prepara una descarga",
-    hover: "Valida tabla, rango y columnas, estima filas y devuelve la ficha de descarga; el archivo lo sirve el mismo endpoint que Descargas.",
-    hace: "Devuelve `_descarga` con la URL de `GET /datos/exportar` ya armada y la estimación de filas; nunca genera el archivo ni lo pasa por el modelo.",
-    ayuda: "El chat y la vista Descargas comparten una sola vía de exportación: no hay dos formas de generar un csv que puedan dar resultados distintos, y los bytes nunca pasan por el LLM.",
-    archivo: "tools/exportar_datos.py",
-  },
 
   // ── Familia CALIDAD: si el dato sirve ───────────────────────────────────
   calidad_periodo: {

@@ -25,7 +25,6 @@ const TOOL_PROGRESS_LABEL: Readonly<Record<string, string>> = {
   completitud_datos: "Revisando la completitud",
   cobertura_datos: "Revisando la cobertura de datos",
   rangos_con_datos: "Buscando fechas con datos",
-  rangos_con_datos: "Buscando fechas con datos",
   catalogo_variables: "Consultando el catálogo de variables",
   arquitectura_agente: "Revisando su propia arquitectura",
   web_search: "Buscando en la web",
