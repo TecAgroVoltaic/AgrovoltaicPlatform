@@ -10,7 +10,7 @@ import { cargar, estilosGlobales, fuente } from "./entorno.mjs";
 const LARGO_MAXIMO_PIE_NUBE = 110;
 
 /** Fuente de la vista de rendimiento: el archivo y lo que se haya separado de él. */
-export const fuentePerf = () => fuente("app/components/console/PerfView.tsx");
+export const fuentePerf = () => fuente("app/components/console/PerfView.tsx", "app/components/console/perf");
 
 export function verificarRendimientoGrano() {
   const cat = cargar("app/components/console/perfCatalogo.js");
