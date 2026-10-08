@@ -19,7 +19,7 @@ export function verificarRegresion() {
   verificarDatosReales(R);
 
   // El gráfico ya no miente con la unidad.
-  const chartsSrc = fuente("app/lib/charts.ts");
+  const chartsSrc = fuente("app/lib/charts.ts", "app/lib/charts");
   check("el tooltip de la nube ya no dice kWh sobre vatios",
     !/data-tip="GHI \$\{fmt\(p\[0\], 0\)\} W\/m² · \$\{fmt\(p\[1\], 2\)\} kWh"/.test(chartsSrc),
     "el eje trae potencia en W; el hover decía kWh");

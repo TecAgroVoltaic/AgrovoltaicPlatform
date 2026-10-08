@@ -45,7 +45,7 @@ function verificarCompletar(S) {
   check("no se inventa ni se pierde ningún dato real",
     MESES_REALES.every((m) => lleno.find((p) => p.t === m.t)?.v === m.v));
   check("el gráfico corta la línea en un null",
-    /if \(!p\) \{ st = false; return; \}/.test(fuente("app/lib/charts.ts")),
+    /if \(!p\) \{ st = false; return; \}/.test(fuente("app/lib/charts.ts", "app/lib/charts")),
     "sin esto, llenar de nulos no serviría de nada");
 
   // Semanas: date_trunc arranca el LUNES.
