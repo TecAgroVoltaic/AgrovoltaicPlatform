@@ -30,6 +30,7 @@ const DIRECTORIOS_LINTEADOS = [
   "app/components/Iconos",
   "app/components/console/arquitectura/catalogoHistorico",
   "app/components/chat",
+  "app/components/traza",
 ];
 
 const nextConfig = {
