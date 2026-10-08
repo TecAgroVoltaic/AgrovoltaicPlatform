@@ -2,7 +2,7 @@
    cuatro cifras y la barra de pestañas y filtros. */
 
 .page { display:flex; flex-direction:column; gap:20px; width:100%; max-width:1240px; margin:0 auto;
-  padding:20px 24px 32px; box-sizing:border-box; min-width:0; container-type:inline-size; }
+  padding:20px 24px 32px; box-sizing:border-box; min-width:0; }
 
 /* El aviso de «Evaluar ahora». La región existe siempre (aria-live) y se pinta
    solo cuando tiene algo que decir. */
@@ -14,7 +14,7 @@
 .noticeText b { color:var(--ink); font-weight:600; }
 .noticeClose { composes:ghost from "../../asistente/controls.module.css"; height:28px; padding:0 8px; }
 
-/* Las cuatro cifras: 4 en fila, 2 × 2 en angosto. */
+/* Las cuatro cifras: 4 en fila en escritorio, 2 × 2 debajo. */
 .cards { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:12px; margin:0; }
 .card { display:flex; flex-direction:column; gap:2px; min-width:0; padding:12px 16px;
   border:1px solid var(--line); border-radius:10px; background:var(--panel); }
@@ -62,8 +62,13 @@
 
 .srOnly { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
 
-@container (max-width:640px) {
-  .cards { grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px; }
+/* Los mismos cortes que la lista (`list.module.css`): 2 × 2 bajo escritorio. */
+@media (max-width:1023px) {
+  .cards { grid-template-columns:repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width:639px) {
+  .cards { gap:8px; }
   .card { padding:10px 12px; }
   .cardValue { font-size:22px; }
   .tabs { gap:16px; flex:1 1 100%; }
