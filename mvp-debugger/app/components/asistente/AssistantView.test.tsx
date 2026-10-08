@@ -8,7 +8,7 @@ import { describe, expect, it, vi } from "vitest";
 import { AssistantView } from "@/app/components/asistente/AssistantView";
 import { SectionMenuProvider } from "@/app/components/analitica/SectionMenu";
 import { DESCARGA_SPEC, chartTurnEvents, sseEvent, streamedResponse } from "@/app/lib/asistente/fixtures";
-import { EXAMPLE_INTENTS } from "@/app/lib/asistente/intents";
+import { buildExamples } from "@/app/lib/asistente/examples";
 import type { AssistantChatDeps } from "@/app/lib/asistente/useAssistantChat";
 import { THREADS_STORAGE_KEY } from "@/app/lib/asistente/threadStorage";
 import { controllableStream, memoryStorage, requestBody } from "@/app/lib/asistente/testSupport";
@@ -23,7 +23,13 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams("desde=2026-08-01&hasta=2026-09-01&granularidad=dia"),
 }));
 
-const CHART_QUESTION = EXAMPLE_INTENTS.find((intent) => intent.kind === "chart")?.example ?? "";
+// Sin cobertura: los ejemplos sin fecha, y el estado vacío no sale a la red.
+const EXAMPLES = buildExamples({ coverage: null, latestOutageDate: null });
+vi.mock("@/app/lib/asistente/useExamples", () => ({
+  useExamples: () => ({ examples: EXAMPLES, bounds: null }),
+}));
+
+const CHART_QUESTION = EXAMPLES.find((example) => example.kind === "chart")?.question ?? "";
 
 function renderView(deps: AssistantChatDeps) {
   return render(
@@ -47,7 +53,7 @@ describe("AssistantView", () => {
     const httpFetch = vi.fn(async (_url: string, _init?: RequestInit) => streamedResponse(chartTurnEvents()));
     renderView({ storage: memoryStorage, httpFetch });
     expect(screen.getByRole("heading", { name: "¿Qué querés saber de la planta?" })).toBeInTheDocument();
-    EXAMPLE_INTENTS.forEach((intent) => expect(screen.getByRole("button", { name: intent.example })).toBeInTheDocument());
+    EXAMPLES.forEach((example) => expect(screen.getByRole("button", { name: example.question })).toBeInTheDocument());
     // When se pulsa el ejemplo del gráfico
     fireEvent.click(screen.getByRole("button", { name: CHART_QUESTION }));
     // Then llega el gráfico y el comentario, y el contexto lleva el rango de la URL

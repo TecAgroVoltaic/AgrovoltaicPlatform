@@ -27,7 +27,11 @@ import {
   type EvaluationResult,
 } from "@/app/lib/alertas/contracts";
 import { alertsListParams, type AlertsQuery } from "@/app/lib/alertas/query";
-import { ALERT_ACTION_PATH, type AlertAction } from "@/app/lib/alertas/vocabulary";
+import {
+  ALERT_ACTION_PATH,
+  PLANT_OUTAGE_ALERT_TYPE,
+  type AlertAction,
+} from "@/app/lib/alertas/vocabulary";
 
 const ALERTS_PATH = "alertas";
 const CONFLICT_STATUS = 409;
@@ -54,6 +58,26 @@ export function fetchAlertsPage(
     { path: ALERTS_PATH, range, query: alertsListParams(query), schema: alertsPageSchema },
     deps,
   );
+}
+
+const OPEN_OUTAGE_QUERY: AlertsQuery = {
+  filters: { status: "open", severity: "critical", type: PLANT_OUTAGE_ALERT_TYPE, search: "" },
+  offset: 0,
+  selectedId: null,
+};
+
+/** La última alerta grave abierta de planta sin generar, o null si no hay.
+ *  Sin rango: el backend ordena por `fecha_fin` descendente y basta la primera. */
+export async function fetchLatestOpenOutage(deps?: AnalyticsDeps): Promise<AnalyticsResult<Alert | null>> {
+  const result = await fetchResource(
+    {
+      path: ALERTS_PATH,
+      query: { ...alertsListParams(OPEN_OUTAGE_QUERY), limite: "1" },
+      schema: alertsPageSchema,
+    },
+    deps,
+  );
+  return result.ok ? { ok: true, data: result.data.alerts[0] ?? null } : result;
 }
 
 export function fetchAlertsSummary(deps?: AnalyticsDeps): Promise<AnalyticsResult<AlertsSummary>> {

@@ -14,6 +14,7 @@ const READY: DaysWithDataState = {
   status: "ready",
   days: new Set(MAY_DAYS),
   bounds: { from: "2026-03-01", toExclusive: "2026-06-02" },
+  daysBySource: { electrical: MAY_DAYS, radiation: MAY_DAYS },
 };
 
 function renderPicker(daysWithData: DaysWithDataState = READY, value = "2026-05-21") {
