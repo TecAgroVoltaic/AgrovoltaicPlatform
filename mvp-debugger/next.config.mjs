@@ -29,6 +29,7 @@ const DIRECTORIOS_LINTEADOS = [
   "app/lib/tiempo",
   "app/components/Iconos",
   "app/components/console/arquitectura/catalogoHistorico",
+  "app/components/chat",
 ];
 
 const nextConfig = {

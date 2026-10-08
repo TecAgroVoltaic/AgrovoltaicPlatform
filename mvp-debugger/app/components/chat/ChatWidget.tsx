@@ -3,92 +3,27 @@
 // SEPARADOS por agente (no se mezclan). Manda el historial de texto limpio +
 // contexto de la vista a /api/<agente>/chat. Renderiza gráficos inline (de datos
 // reales, marcador _grafico), un indicador con frases genéricas mientras espera,
-// y una traza plegable por respuesta. Persiste por agente en localStorage.
+// y una traza plegable por respuesta. Persiste por agente en localStorage.//
+// Este archivo pinta el panel; los hilos y el envío viven en `useChatThreads` y
+// lo que acompaña a cada respuesta en `MsgExtras`.
 import { useEffect, useRef, useState } from "react";
 import { IconoMinimizar } from "@/app/components/Iconos";
-import { jpost } from "@/app/lib/client";
 import { renderMd } from "@/app/lib/markdown";
-import { TrazaLegible } from "@/app/components/TrazaLegible";
-import { lineChart, palette } from "@/app/lib/charts";
-import { ChartSpecRenderer } from "@/app/components/asistente/ChartSpecRenderer";
 import type { Traza } from "@/app/components/TraceViewer";
 
-type Msg = { rol: "user" | "assistant"; texto: string; traza?: Traza };
-type Threads = Record<string, Msg[]>;
-
-const FRASES = [
-  "Analizando tu pregunta…",
-  "Consultando la base de datos…",
-  "Revisando los datos reales…",
-  "Buscando en la web…",
-  "Armando la respuesta…",
-];
-// Arranques de conversación por agente. Las claves son los IDs REALES de los
-// agentes: estuvieron mal (`analizador`/`pronostico`, de un renombre a medias) y
-// como el acceso es por índice, no fallaba nada: simplemente no salía ni un
-// ejemplo, y el hilo se guardaba bajo una clave que nadie leía.
-//
-// Hay uno de cada clase a propósito: sobre los datos, y sobre el AGENTE. El
-// segundo no es relleno, es lo que hace evidente que se le puede auditar
-// preguntándole, que es de lo que va esta consola.
-const EJEMPLOS: Record<string, string[]> = {
-  historico: [
-    "¿Cuál arreglo rinde mejor?",
-    "¿Por qué no hay datos en febrero de 2025?",
-    "¿Qué herramientas tenés y qué umbrales usás?",
-  ],
-  predictivo: [
-    "¿Cuánta irradiancia en dos horas?",
-    "Pronosticá la humedad de suelo en 1 hora",
-    "¿Cómo estás construido?",
-  ],
-};
-
-const serieColor = (P: any, i: number) => [P.accent, P.real, P.pred, P.ceil][i % 4];
-
-// Formato viejo de `graficar` ({tipo:"linea", x, series}). Se mantiene solo
-// hasta que el backend con ChartSpec (version 1) esté desplegado; todo lo demás
-// lo pinta `ChartSpecRenderer`, que es la única forma de dibujar un gráfico del
-// agente.
-const esGraficoViejo = (g: any) => g?.tipo === "linea" && Array.isArray(g?.series);
-
-function graficoHTML(g: any): string {
-  const P = palette();
-  const series = g.series.map((s: any, i: number) => ({
-    points: s.valores, color: serieColor(P, i), name: s.nombre, area: g.series.length === 1,
-  }));
-  return lineChart(series, { x: g.x, w: 500, height: 300, unit: g.unidad, yfmt: (v) => v.toLocaleString("es-CR", { maximumFractionDigits: 1 }) });
-}
+import { EJEMPLOS } from "./constants";
+import { MsgExtras } from "./MsgExtras";
+import { useChatThreads } from "./useChatThreads";
 
 export function ChatWidget({ agent, contexto, onTraza }: {
   agent: string; contexto: string; onTraza?: (agent: string, t: Traza) => void;
 }) {
   const [abierto, setAbierto] = useState(false);
-  const [threads, setThreads] = useState<Threads>({ historico: [], predictivo: [] });
   const [input, setInput] = useState("");
-  const [cargando, setCargando] = useState(false);
-  const [frase, setFrase] = useState(0);
   const [verTraza, setVerTraza] = useState<number | null>(null);
   const finRef = useRef<HTMLDivElement>(null);
-  const cur = threads[agent] || [];
+  const { mensajes: cur, cargando, frase, enviar: enviarPregunta, limpiar: vaciarHilo } = useChatThreads({ agent, contexto, onTraza });
 
-  // Cargar hilos persistidos (una vez).
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem("agrov-chat");
-      if (raw) setThreads({ historico: [], predictivo: [], ...JSON.parse(raw) });
-    } catch { /* ignore */ }
-  }, []);
-  // Persistir.
-  useEffect(() => {
-    try { localStorage.setItem("agrov-chat", JSON.stringify(threads)); } catch { /* ignore */ }
-  }, [threads]);
-  // Rotar frases mientras espera.
-  useEffect(() => {
-    if (!cargando) return;
-    const id = setInterval(() => setFrase((f) => (f + 1) % FRASES.length), 1600);
-    return () => clearInterval(id);
-  }, [cargando]);
   // Autoscroll.
   useEffect(() => { finRef.current?.scrollIntoView({ behavior: "smooth" }); }, [cur.length, cargando, abierto]);
   // Reserva espacio a la derecha en pantallas anchas para que el panel no tape el contenido.
@@ -97,28 +32,12 @@ export function ChatWidget({ agent, contexto, onTraza }: {
     return () => document.body.classList.remove("chat-abierto");
   }, [abierto]);
 
-  async function enviar(texto: string) {
-    const t = texto.trim();
-    if (!t || cargando) return;
-    const nuevo = [...cur, { rol: "user", texto: t } as Msg];
-    setThreads((s) => ({ ...s, [agent]: nuevo }));
-    setInput("");
-    setCargando(true);
-    setFrase(0);
-    const historial = nuevo.map((m) => ({ rol: m.rol, texto: m.texto }));
-    const r = await jpost<Traza>(`/api/${agent}/chat`, { mensajes: historial, contexto });
-    setCargando(false);
-    if (!r.ok) {
-      setThreads((s) => ({ ...s, [agent]: [...nuevo, { rol: "assistant", texto: `Error del servicio (HTTP ${r.status}). Reintentá en un momento.` } as Msg] }));
-      return;
-    }
-    const traza = r.data;
-    setThreads((s) => ({ ...s, [agent]: [...nuevo, { rol: "assistant", texto: traza.respuesta || "(sin respuesta)", traza } as Msg] }));
-    onTraza?.(agent, traza);
+  function enviar(texto: string) {
+    if (enviarPregunta(texto)) setInput("");
   }
 
   function limpiar() {
-    setThreads((s) => ({ ...s, [agent]: [] }));
+    vaciarHilo();
     setVerTraza(null);
   }
 
@@ -177,8 +96,7 @@ export function ChatWidget({ agent, contexto, onTraza }: {
         ))}
 
         {cargando && (
-          <div className="chat-msg chat-assistant">
-            <div className="chat-bub chat-working"><span className="chat-dots"><i /><i /><i /></span> {FRASES[frase]}</div>
+          <div className="chat-msg chat-assistant">            <div className="chat-bub chat-working"><span className="chat-dots"><i /><i /><i /></span> {frase}</div>
           </div>
         )}
         <div ref={finRef} />
@@ -190,46 +108,5 @@ export function ChatWidget({ agent, contexto, onTraza }: {
         <button className="btn" type="submit" disabled={cargando || !input.trim()}>Enviar</button>
       </form>
     </div>
-  );
-}
-
-function MsgExtras({ traza, abierto, onToggle }: { traza: Traza; abierto: boolean; onToggle: () => void }) {
-  const pasos = (traza.pasos || []) as any[];
-  const graficos = pasos.filter((p) => p.tipo === "tool" && p.salida && typeof p.salida === "object" && p.salida._grafico).map((p) => p.salida._grafico);
-  const herramientas = pasos.filter((p) => p.tipo === "tool").map((p) => p.nombre);
-  const webs = pasos.filter((p) => p.tipo === "web").map((p) => p.query);
-  const u: any = traza.usage || {};
-  return (
-    <>
-      {graficos.map((g, i) => {
-        if (!esGraficoViejo(g)) return <div key={i} className="chat-graf"><ChartSpecRenderer spec={g} /></div>;
-        const P = palette();
-        return (
-          <div key={i} className="chat-graf">
-            <div className="chat-graf-t mono">{g.titulo}{g.unidad ? ` · ${g.unidad}` : ""}</div>
-            <figure dangerouslySetInnerHTML={{ __html: graficoHTML(g) }} />
-            {g.series.length > 1 && (
-              <div className="legend">
-                {g.series.map((s: any, j: number) => (
-                  <span key={j}><span className="sw" style={{ background: serieColor(P, j) }} />{s.nombre}</span>
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      })}
-      <div className="chat-meta">
-        <button className="chat-trazabtn" onClick={onToggle}>{abierto ? "▾" : "▸"} traza</button>
-        {herramientas.map((t, i) => <span key={i} className="chat-chip">{t}</span>)}
-        {webs.length > 0 && <span className="chat-chip web">web ×{webs.length}</span>}
-        {(traza as any).costo && <span className="chat-chip cost">${((traza as any).costo.usd_total || 0).toFixed(5)}</span>}
-      </div>
-      {abierto && (
-        <div className="chat-traza">
-          <TrazaLegible pasos={pasos} usage={u} ms={traza.ms_total}
-                        costo={(traza as any).costo?.usd_total ?? null} />
-        </div>
-      )}
-    </>
   );
 }
