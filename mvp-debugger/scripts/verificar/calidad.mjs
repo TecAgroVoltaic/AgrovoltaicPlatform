@@ -20,7 +20,7 @@ export function verificarCalidad() {
   check("CalidadView se exporta", typeof mod.CalidadView === "function");
 
   // Invariantes de vocabulario: los nombres que el equipo acordó, y los que no.
-  const src = fuente("app/components/console/CalidadView.tsx");
+  const src = fuente("app/components/console/CalidadView.tsx", "app/components/console/calidad");
   // El invariante que importa no es "no aparece el 85", sino que la separacion en
   // TRES casos siga en pie: de 307 "sensores planos" ninguno lo era, eran 129
   // clavados en 85 (DS18B20) y 178 en cero (el inversor no genero). Si alguien
