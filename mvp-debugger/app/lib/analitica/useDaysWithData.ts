@@ -15,6 +15,7 @@ import { fetchResource, type AnalyticsDeps } from "@/app/lib/analitica/client";
 import {
   daysWithDataSchema,
   type CoverageBounds,
+  type DaysWithData,
 } from "@/app/lib/analitica/contracts/daysWithData";
 import type { AnalyticsFailure } from "@/app/lib/analitica/errors";
 
@@ -22,7 +23,13 @@ const DAYS_WITH_DATA_PATH = "analitica/dias-con-datos";
 
 export type DaysWithDataState =
   | { readonly status: "loading" }
-  | { readonly status: "ready"; readonly days: ReadonlySet<string>; readonly bounds: CoverageBounds }
+  | {
+      readonly status: "ready";
+      readonly days: ReadonlySet<string>;
+      readonly bounds: CoverageBounds;
+      /** Los días de cada fuente por separado: un día eléctrico no trae radiación. */
+      readonly daysBySource: DaysWithData["daysBySource"];
+    }
   /** La base respondió bien pero no tiene ningún día con datos. */
   | { readonly status: "empty" }
   | { readonly status: "error"; readonly failure: AnalyticsFailure };
@@ -50,9 +57,9 @@ export function loadDaysWithData(deps: AnalyticsDeps = {}): Promise<DaysWithData
 async function requestDaysWithData(deps: AnalyticsDeps): Promise<DaysWithDataState> {
   const result = await fetchResource({ path: DAYS_WITH_DATA_PATH, schema: daysWithDataSchema }, deps);
   if (!result.ok) return { status: "error", failure: result.failure };
-  const { bounds, days } = result.data;
+  const { bounds, days, daysBySource } = result.data;
   if (bounds === null || days.length === 0) return { status: "empty" };
-  return { status: "ready", days: new Set(days), bounds };
+  return { status: "ready", days: new Set(days), bounds, daysBySource };
 }
 
 /** Olvida lo pedido. Solo para tests: en la app la caché dura la sesión. */

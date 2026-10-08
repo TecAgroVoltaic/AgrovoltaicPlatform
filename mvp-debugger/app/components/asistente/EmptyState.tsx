@@ -2,10 +2,9 @@
 // Lo que se ve antes de la primera pregunta: qué se le puede pedir al asistente,
 // un ejemplo de cada intención que se manda con un clic, y los hilos recientes.
 //
-// La línea de cobertura no lleva fechas a propósito: la única cobertura a mano
-// (`VERIFIED_COVERAGE`) quedó vieja con la carga de setiembre, y ningún dato que
-// esta vista ya pida la publica. Una fecha equivocada acá contestaría mal la
-// primera pregunta antes de que la persona la haga.
+// La línea de cobertura y los ejemplos salen de lo que la base de verdad tiene
+// (`useExamples`), nunca de fechas escritas a mano: una fecha equivocada acá
+// contestaría mal la primera pregunta antes de que la persona la haga.
 import type { ComponentType } from "react";
 
 import {
@@ -16,8 +15,10 @@ import {
   IconTrend,
 } from "@/app/components/asistente/AssistantIcons";
 import styles from "@/app/components/asistente/empty.module.css";
-import { EXAMPLE_INTENTS, type IntentKind } from "@/app/lib/asistente/intents";
+import { describeCoverage } from "@/app/lib/asistente/examples";
+import type { IntentKind } from "@/app/lib/asistente/intents";
 import type { Thread } from "@/app/lib/asistente/threads";
+import { useExamples } from "@/app/lib/asistente/useExamples";
 
 const MARK_ICON_SIZE = 22;
 const MARK_ICON_STROKE = 2.2;
@@ -42,6 +43,7 @@ export type EmptyStateProps = {
 
 export function EmptyState({ onAsk, recentThreads, onOpenThread, disabled }: EmptyStateProps) {
   const recent = recentThreads.slice(0, RECENT_THREADS_SHOWN);
+  const { examples, bounds } = useExamples();
   return (
     <div className={styles.empty}>
       <div className={styles.intro}>
@@ -50,24 +52,24 @@ export function EmptyState({ onAsk, recentThreads, onOpenThread, disabled }: Emp
         </div>
         <h2 className={styles.heading}>¿Qué querés saber de la planta?</h2>
         <p className={styles.lead}>
-          Datos de la planta de San Carlos. Respondo con los mismos cálculos de las vistas, grafico y
+          {describeCoverage(bounds)} Respondo con los mismos cálculos de las vistas, grafico y
           preparo descargas.
         </p>
       </div>
 
       <div className={styles.grid}>
-        {EXAMPLE_INTENTS.map((intent) => {
-          const Icon = INTENT_ICON[intent.kind];
+        {examples.map((example) => {
+          const Icon = INTENT_ICON[example.kind];
           return (
-            <div key={intent.kind} className={styles.intent}>
+            <div key={example.kind} className={styles.intent}>
               <span className={styles.intentTitle}>
                 <Icon size={INTENT_ICON_SIZE} strokeWidth={INTENT_ICON_STROKE} />
-                {intent.title}
+                {example.title}
               </span>
-              <button type="button" className={styles.example} disabled={disabled} onClick={() => onAsk(intent.example)}>
-                <span className={styles.exampleText}>{intent.example}</span>
+              <button type="button" className={styles.example} disabled={disabled} onClick={() => onAsk(example.question)}>
+                <span className={styles.exampleText}>{example.question}</span>
               </button>
-              <span className={styles.scope}>{intent.scope}</span>
+              <span className={styles.scope}>{example.scope}</span>
             </div>
           );
         })}

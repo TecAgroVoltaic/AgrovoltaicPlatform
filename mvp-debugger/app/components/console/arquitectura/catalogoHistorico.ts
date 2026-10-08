@@ -57,6 +57,16 @@ export const HERRAMIENTAS_HISTORICO: Record<string, Ficha> = {
     ayuda: "Es la pregunta previa a cualquier otra. Sin ella el agente puede reportar el promedio de un período que tiene tres días de datos y presentarlo como el promedio del mes.",
     archivo: "tools/cobertura.py",
   },
+  rangos_con_datos: {
+    resumen: "qué fechas tienen datos",
+    hover: "Tramos contiguos con datos, los últimos N días con datos y el día con datos más cercano a una fecha.",
+    hace: "Dice qué fechas tienen datos: tramos contiguos, los últimos N días con datos y el día más cercano a una fecha pedida.",
+    ayuda: "Es la que deja al agente ir un paso adelante: ante «el 12 de agosto» (un día vacío) o «la última semana», en vez de disculparse **propone el día o el tramo con datos más cercano**. Lee la misma cobertura que el calendario de la consola y devuelve tramos, nunca la lista de ~330 días, así que preguntar no cuesta tokens.",
+    limites: [
+      "Un día cuenta si grabó al menos una lectura de la fuente: no dice si el día está completo. Eso lo mide `completitud_datos`.",
+    ],
+    archivo: "tools/rangos_con_datos.py",
+  },
   catalogo_variables: {
     resumen: "qué significa cada columna",
     hover: "Definiciones aprobadas por el equipo para cada variable de los datos.",
@@ -70,6 +80,28 @@ export const HERRAMIENTAS_HISTORICO: Record<string, Ficha> = {
     hace: "Devuelve la serie real más un marcador `_grafico` que el widget del chat pinta.",
     ayuda: "El gráfico **es la salida de una herramienta**, no una imagen que el modelo describa: no puede dibujar una tendencia que los datos no tengan. Además el lazo le pasa al modelo solo el resumen y no los arreglos, así que mostrar no cuesta tokens.",
     archivo: "tools/graficar.py",
+  },
+  exportar_datos: {
+    resumen: "prepara una descarga",
+    hover: "Arma la descarga csv/dat/mat de una tabla y un rango, con las filas estimadas.",
+    hace: "Prepara una descarga csv/dat/mat de una tabla y rango, estimando filas; el archivo lo sirve el mismo endpoint que Descargas.",
+    ayuda: "La herramienta **no genera el archivo**: valida con las mismas funciones que `GET /datos/exportar` y devuelve la URL de ese endpoint. Así lo que baja el chat es byte a byte lo que baja la vista Descargas, y el modelo nunca ve el contenido.",
+    archivo: "tools/exportar_datos.py",
+  },
+
+  rangos_con_datos: {
+    resumen: "qué fechas tienen datos",
+    hover: "Tramos contiguos con datos, los últimos N días con datos y el día con datos más cercano a una fecha pedida.",
+    hace: "Sobre la misma cobertura por día que usa el calendario, devuelve tramos, huecos, los últimos N días con datos y, para una fecha pedida, el día más cercano que sí tiene.",
+    ayuda: "Convierte «el 12 de agosto» o «los últimos 15 días» en fechas que existen. Sin ella el agente se disculpa por un hueco en vez de proponer el día más cercano, y «15 días» termina siendo calendario en vez de días con datos.",
+    archivo: "tools/rangos_con_datos.py",
+  },
+  exportar_datos: {
+    resumen: "prepara una descarga",
+    hover: "Valida tabla, rango y columnas, estima filas y devuelve la ficha de descarga; el archivo lo sirve el mismo endpoint que Descargas.",
+    hace: "Devuelve `_descarga` con la URL de `GET /datos/exportar` ya armada y la estimación de filas; nunca genera el archivo ni lo pasa por el modelo.",
+    ayuda: "El chat y la vista Descargas comparten una sola vía de exportación: no hay dos formas de generar un csv que puedan dar resultados distintos, y los bytes nunca pasan por el LLM.",
+    archivo: "tools/exportar_datos.py",
   },
 
   // ── Familia CALIDAD: si el dato sirve ───────────────────────────────────

@@ -16,6 +16,7 @@ const READY: DaysWithDataState = {
   status: "ready",
   days: new Set(MAY_DAYS),
   bounds: { from: "2024-11-10", toExclusive: "2026-09-01" },
+  daysBySource: { electrical: MAY_DAYS, radiation: MAY_DAYS },
 };
 
 const harness = vi.hoisted(() => ({

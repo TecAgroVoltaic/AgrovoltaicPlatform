@@ -73,8 +73,11 @@ export const ALERT_ACTION_PATH: Readonly<Record<AlertAction, string>> = {
 
 /** Los tipos v1 (contrato §4.3). El tipo viaja como texto libre: uno nuevo del
  *  backend se muestra con su clave cruda en vez de romper la lista. */
+/** El único tipo que dice «la planta no generó»: el inversor parado con sol pleno. */
+export const PLANT_OUTAGE_ALERT_TYPE = "inversor_parado_con_sol";
+
 export const KNOWN_ALERT_TYPES: readonly string[] = [
-  "inversor_parado_con_sol",
+  PLANT_OUTAGE_ALERT_TYPE,
   "sensor_temperatura_saturado",
   "irradiancia_imposible",
   "incongruencia_temp_irradiancia",

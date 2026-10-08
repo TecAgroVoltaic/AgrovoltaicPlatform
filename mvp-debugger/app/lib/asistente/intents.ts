@@ -25,37 +25,18 @@ export const COMPOSER_INTENTS: readonly ComposerIntent[] = [
 
 export type IntentKind = "query" | "chart" | "download" | "diagnose";
 
-export type ExampleIntent = {
+/** Una tarjeta del estado vacío sin su pregunta: la pregunta lleva fechas con
+ *  datos y la arma `buildExamples` (`app/lib/asistente/examples.ts`). */
+export type IntentCard = {
   readonly kind: IntentKind;
   readonly title: string;
-  readonly example: string;
   /** Qué abarca, en una línea: lo que el agente devuelve con esa intención. */
   readonly scope: string;
 };
 
-export const EXAMPLE_INTENTS: readonly ExampleIntent[] = [
-  {
-    kind: "query",
-    title: "Consultar",
-    example: "¿Cómo estuvo la irradiancia el 12 de agosto?",
-    scope: "cifras, cobertura, huecos",
-  },
-  {
-    kind: "chart",
-    title: "Graficar",
-    example: "Graficá la potencia de agosto por arreglo",
-    scope: "series, barras, cajas, carpeta, dispersión, crestas",
-  },
-  {
-    kind: "download",
-    title: "Descargar",
-    example: "Dame la temperatura de la última semana en csv",
-    scope: "csv, dat, mat · mismas tablas que Descargas",
-  },
-  {
-    kind: "diagnose",
-    title: "Diagnosticar",
-    example: "¿Por qué el 26 de agosto la planta no generó?",
-    scope: "calidad del dato, inversor, cielo",
-  },
+export const INTENT_CARDS: readonly IntentCard[] = [
+  { kind: "query", title: "Consultar", scope: "cifras, cobertura, huecos" },
+  { kind: "chart", title: "Graficar", scope: "series, barras, cajas, carpeta, dispersión, crestas" },
+  { kind: "download", title: "Descargar", scope: "csv, dat, mat · mismas tablas que Descargas" },
+  { kind: "diagnose", title: "Diagnosticar", scope: "calidad del dato, inversor, cielo" },
 ];
