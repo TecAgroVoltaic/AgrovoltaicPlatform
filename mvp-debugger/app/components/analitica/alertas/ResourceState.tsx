@@ -1,49 +1,31 @@
-// Carga, error y vacío de un bloque de la vista Alertas. A diferencia del de
-// Calidad, el error ya trae su encabezado redactado (quién falló: el servicio
-// que no respondió no es lo mismo que el que respondió mal) y el vacío puede
-// ofrecer la salida que corresponde, como volver a la primera página.
-import styles from "@/app/components/analitica/alertas/alertas.module.css";
+// Carga y error de la ficha. El error ya trae su encabezado redactado (quién
+// falló: el servicio que no respondió no es lo mismo que el que respondió mal).
+import styles from "@/app/components/analitica/alertas/states.module.css";
 import type { ChartState } from "@/app/components/charts";
 
 export type ResourceStateProps = {
-  /** Qué se está cargando, en minúsculas: «las alertas del rango». */
+  /** Qué se está cargando, en minúsculas: «la ficha de la alerta». */
   readonly what: string;
   readonly state: ChartState<unknown>;
-  readonly emptyAction?: { readonly label: string; readonly onClick: () => void };
 };
 
-export function ResourceState({ what, state, emptyAction }: ResourceStateProps) {
+export function ResourceState({ what, state }: ResourceStateProps) {
   if (state.status === "ready") return null;
-  if (state.status === "loading") {
+  if (state.status === "loading" || state.status === "empty") {
     return (
-      <p className={`${styles.state} muted`} role="status">
-        Cargando {what}…
+      <p className={styles.loading} role="status">
+        {state.status === "loading" ? `Cargando ${what}…` : state.reason.message}
       </p>
-    );
-  }
-  if (state.status === "error") {
-    return (
-      <div className={styles.state} role="alert">
-        <p>
-          <b>{state.message}</b>
-        </p>
-        {state.onRetry ? (
-          <button className="btn-sm" type="button" onClick={state.onRetry}>
-            Reintentar
-          </button>
-        ) : null}
-      </div>
     );
   }
   return (
-    <div className={styles.state} role="status">
+    <div className={styles.inline} role="alert">
       <p>
-        <b>{state.reason.message}</b>
+        <b>{state.message}</b>
       </p>
-      {state.reason.hint ? <p className="muted small">{state.reason.hint}</p> : null}
-      {emptyAction ? (
-        <button className="btn-sm" type="button" onClick={emptyAction.onClick}>
-          {emptyAction.label}
+      {state.onRetry ? (
+        <button className={styles.ghost} type="button" onClick={state.onRetry}>
+          Reintentar
         </button>
       ) : null}
     </div>

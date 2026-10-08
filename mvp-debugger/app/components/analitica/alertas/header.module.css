@@ -1,0 +1,29 @@
+/* La cabecera de Alertas: la fila de 52 px compartida con el Asistente
+   (`sectionHeader.module.css`) con el título, cuándo se evaluó, el período y
+   «Evaluar ahora». En el teléfono el período pasa al subtítulo y los dos
+   controles quedan como iconos con su nombre en `aria-label`. */
+
+.header { composes:header from "../sectionHeader.module.css"; }
+.menu { composes:menu from "../sectionHeader.module.css"; }
+.titleBlock { composes:titleBlock from "../sectionHeader.module.css"; flex-direction:row; align-items:baseline; gap:12px; }
+.title { composes:title from "../sectionHeader.module.css"; flex:none; font-size:16px; font-weight:700; }
+.meta { composes:meta from "../sectionHeader.module.css"; min-width:0; }
+.metaRange { display:none; }
+
+.context { flex:none; }
+.contextChip { flex:none; }
+
+.evaluate { composes:ghost from "../../asistente/controls.module.css"; }
+.evaluate[aria-busy="true"] svg { animation:spin 1s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+@media (prefers-reduced-motion:reduce) { .evaluate[aria-busy="true"] svg { animation:none; } }
+
+@media (max-width:760px) {
+  .header { padding:0 12px; gap:8px; }
+  .titleBlock { flex-direction:column; align-items:stretch; gap:0; }
+  .title { font-size:15px; }
+  .metaRange { display:inline; }
+  .header .menu, .header .contextChip, .evaluate { width:34px; height:30px; padding:0; justify-content:center; }
+  .header .contextChip { border-radius:7px; background:transparent; }
+  .header .contextChip > span, .header .contextChip > svg:last-child, .evaluateLabel { display:none; }
+}

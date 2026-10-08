@@ -4,9 +4,12 @@
 // pedidos al servicio y ocho entradas de historial.
 import { useEffect, useId, useRef, useState } from "react";
 
-import styles from "@/app/components/analitica/alertas/alertas.module.css";
+import { IconSearch } from "@/app/components/asistente/AssistantIcons";
+import styles from "@/app/components/analitica/alertas/overview.module.css";
 
 export const SEARCH_DEBOUNCE_MS = 350;
+const ICON_SIZE = 13;
+const ICON_STROKE = 2;
 
 export type SearchBoxProps = {
   /** Lo que dice la URL. */
@@ -45,18 +48,16 @@ export function SearchBox({ value, onCommit }: SearchBoxProps) {
   };
 
   return (
-    <p className={`${styles.field} ${styles.searchField}`}>
-      <label className="lbl" htmlFor={inputId}>
-        Buscar
-      </label>
+    <label className={styles.search} htmlFor={inputId}>
+      <IconSearch size={ICON_SIZE} strokeWidth={ICON_STROKE} />
+      <span className={styles.srOnly}>Buscar</span>
       <input
         id={inputId}
         type="search"
-        className="input input-sm"
-        placeholder="título o variable"
+        placeholder="Buscar título o variable"
         value={draft}
         onChange={(event) => update(event.target.value)}
       />
-    </p>
+    </label>
   );
 }

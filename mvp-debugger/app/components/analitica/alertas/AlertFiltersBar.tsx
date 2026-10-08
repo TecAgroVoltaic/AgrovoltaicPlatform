@@ -1,39 +1,31 @@
 "use client";
-// Los filtros de la lista: estado, gravedad, tipo y búsqueda. Selectores nativos
-// (teclado y lector de pantalla gratis) y una búsqueda que espera a que se deje
-// de escribir antes de pedir nada.
+// Los filtros finos de la lista, a la derecha de las pestañas: gravedad como dos
+// chips conmutables, tipo como chip con menú y la búsqueda. Todo escribe la
+// misma consulta de la URL por el mismo reductor que antes.
 import { useId } from "react";
 
-import styles from "@/app/components/analitica/alertas/alertas.module.css";
+import { IconChevronDown, IconClose } from "@/app/components/asistente/AssistantIcons";
 import { SearchBox } from "@/app/components/analitica/alertas/SearchBox";
-import {
-  STATUS_FILTER_LABEL,
-  STATUS_FILTER_OPTIONS,
-  typeLabel,
-} from "@/app/components/analitica/alertas/labels";
+import { STATUS_FILTER_LABEL, STATUS_TABS, typeLabel } from "@/app/components/analitica/alertas/labels";
+import styles from "@/app/components/analitica/alertas/overview.module.css";
 import type { HistoryMode } from "@/app/components/analitica/alertas/useAlertsQuery";
-import { SEVERITY_BADGE } from "@/app/components/analitica/calidad/labels";
-import {
-  DEFAULT_ALERT_FILTERS,
-  isDefaultFilters,
-  type AlertFilters,
-  type StatusFilter,
-} from "@/app/lib/alertas/query";
-import {
-  ALL_ALERT_SEVERITIES,
-  KNOWN_ALERT_TYPES,
-  type AlertSeverity,
-} from "@/app/lib/alertas/vocabulary";
+import { DEFAULT_ALERT_FILTERS, type AlertFilters } from "@/app/lib/alertas/query";
+import { KNOWN_ALERT_TYPES, type AlertSeverity } from "@/app/lib/alertas/vocabulary";
 
-const ANY = "";
+const ANY_TYPE = "";
+const ICON_SIZE = 12;
+const ICON_STROKE = 2;
 
-/** El `value` de un `select` es siempre `string`: se estrecha, no se castea. */
-function toStatusFilter(value: string): StatusFilter {
-  return STATUS_FILTER_OPTIONS.find((option) => option === value) ?? DEFAULT_ALERT_FILTERS.status;
-}
+const SEVERITY_CHIPS: readonly { readonly severity: AlertSeverity; readonly label: string }[] = [
+  { severity: "critical", label: "Graves" },
+  { severity: "warning", label: "Avisos" },
+];
 
-function toSeverity(value: string): AlertSeverity | null {
-  return ALL_ALERT_SEVERITIES.find((severity) => severity === value) ?? null;
+/** Los dos chips encendidos = sin filtro. Apagar uno deja solo el otro; apagar
+ *  el único encendido no hace nada: una lista sin ninguna gravedad no existe. */
+function toggleSeverity(current: AlertSeverity | null, clicked: AlertSeverity): AlertSeverity | null {
+  if (current === null) return clicked === "critical" ? "warning" : "critical";
+  return current === clicked ? current : null;
 }
 
 export type AlertFiltersBarProps = {
@@ -42,80 +34,57 @@ export type AlertFiltersBarProps = {
 };
 
 export function AlertFiltersBar({ filters, onChange }: AlertFiltersBarProps) {
-  const statusId = useId();
-  const severityId = useId();
   const typeId = useId();
   // Un tipo que llegó por URL y no está entre los conocidos sigue siendo el
-  // filtro aplicado: se ofrece como opción para que el selector no mienta.
+  // filtro aplicado: se ofrece como opción para que el chip no mienta.
   const typeOptions =
-    filters.type && !KNOWN_ALERT_TYPES.includes(filters.type)
-      ? [...KNOWN_ALERT_TYPES, filters.type]
-      : KNOWN_ALERT_TYPES;
+    filters.type && !KNOWN_ALERT_TYPES.includes(filters.type) ? [...KNOWN_ALERT_TYPES, filters.type] : KNOWN_ALERT_TYPES;
+  const statusOutsideTabs = !STATUS_TABS.includes(filters.status);
 
   return (
     <div className={styles.filters} role="search" aria-label="Filtrar alertas">
-      <p className={styles.field}>
-        <label className="lbl" htmlFor={statusId}>
-          Estado
-        </label>
-        <select
-          id={statusId}
-          className="select"
-          value={filters.status}
-          onChange={(event) => onChange({ ...filters, status: toStatusFilter(event.target.value) })}
+      {statusOutsideTabs ? (
+        <button
+          type="button"
+          className={styles.chip}
+          aria-label={`Quitar el filtro de estado ${STATUS_FILTER_LABEL[filters.status]}`}
+          onClick={() => onChange({ ...filters, status: DEFAULT_ALERT_FILTERS.status })}
         >
-          {STATUS_FILTER_OPTIONS.map((option) => (
-            <option key={option} value={option}>
-              {STATUS_FILTER_LABEL[option]}
-            </option>
-          ))}
-        </select>
-      </p>
-      <p className={styles.field}>
-        <label className="lbl" htmlFor={severityId}>
-          Gravedad
-        </label>
-        <select
-          id={severityId}
-          className="select"
-          value={filters.severity ?? ANY}
-          onChange={(event) => onChange({ ...filters, severity: toSeverity(event.target.value) })}
-        >
-          <option value={ANY}>Todas</option>
-          {ALL_ALERT_SEVERITIES.map((severity) => (
-            <option key={severity} value={severity}>
-              {SEVERITY_BADGE[severity].label}
-            </option>
-          ))}
-        </select>
-      </p>
-      <p className={styles.field}>
-        <label className="lbl" htmlFor={typeId}>
-          Tipo
-        </label>
+          Estado: {STATUS_FILTER_LABEL[filters.status]}
+          <IconClose size={ICON_SIZE} strokeWidth={ICON_STROKE} />
+        </button>
+      ) : null}
+      <div role="group" aria-label="Gravedad" className={styles.chipGroup}>
+        {SEVERITY_CHIPS.map(({ severity, label }) => (
+          <button
+            key={severity}
+            type="button"
+            className={styles.chip}
+            aria-pressed={filters.severity === null || filters.severity === severity}
+            onClick={() => onChange({ ...filters, severity: toggleSeverity(filters.severity, severity) })}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <span className={styles.separator} aria-hidden="true" />
+      <label className={styles.typeChip} htmlFor={typeId}>
+        <span className={styles.srOnly}>Tipo</span>
         <select
           id={typeId}
-          className="select"
-          value={filters.type ?? ANY}
+          value={filters.type ?? ANY_TYPE}
           onChange={(event) => onChange({ ...filters, type: event.target.value || null })}
         >
-          <option value={ANY}>Todos</option>
+          <option value={ANY_TYPE}>Tipo: todos</option>
           {typeOptions.map((type) => (
             <option key={type} value={type}>
               {typeLabel(type)}
             </option>
           ))}
         </select>
-      </p>
-      <SearchBox
-        value={filters.search}
-        onCommit={(search) => onChange({ ...filters, search }, "replace")}
-      />
-      {!isDefaultFilters(filters) ? (
-        <button className="btn-sm" type="button" onClick={() => onChange(DEFAULT_ALERT_FILTERS)}>
-          Quitar filtros
-        </button>
-      ) : null}
+        <IconChevronDown size={ICON_SIZE} strokeWidth={ICON_STROKE} />
+      </label>
+      <SearchBox value={filters.search} onCommit={(search) => onChange({ ...filters, search }, "replace")} />
     </div>
   );
 }

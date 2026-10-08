@@ -10,13 +10,19 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { errorChart, loadingChart, readyChart, type ChartState } from "@/app/components/charts";
-import { isRetryable, type AnalyticsResult } from "@/app/lib/analitica/errors";
+import { isRetryable, type AnalyticsFailure, type AnalyticsResult } from "@/app/lib/analitica/errors";
 import { describeFailure } from "@/app/components/analitica/alertas/labels";
+
+/** El último fallo tal como llegó y cuándo, para el detalle técnico de la
+ *  pantalla de error («GET /alertas → 500», «último intento hace 8 s»). */
+export type ResourceFailure = { readonly failure: AnalyticsFailure; readonly at: Date };
 
 export type ReloadableResource<TData> = {
   readonly state: ChartState<TData>;
   /** Vuelve a pedir sin pasar por el estado de carga. */
   readonly reload: () => void;
+  /** Solo mientras `state` es un error; nulo en cualquier otro estado. */
+  readonly lastFailure: ResourceFailure | null;
 };
 
 export function useReloadableResource<TData>(
@@ -26,6 +32,7 @@ export function useReloadableResource<TData>(
   toState: (data: TData) => ChartState<TData> = readyChart,
 ): ReloadableResource<TData> {
   const [state, setState] = useState<ChartState<TData>>(loadingChart);
+  const [lastFailure, setLastFailure] = useState<ResourceFailure | null>(null);
   const [generation, setGeneration] = useState(0);
   const reload = useCallback(() => setGeneration((previous) => previous + 1), []);
   // En refs porque quien llama los crea en cada render: como dependencias del
@@ -52,6 +59,7 @@ export function useReloadableResource<TData>(
     }
     void loadRef.current().then((result) => {
       if (cancelled) return;
+      setLastFailure(result.ok ? null : { failure: result.failure, at: new Date() });
       setState(
         result.ok
           ? toStateRef.current(result.data)
@@ -63,5 +71,5 @@ export function useReloadableResource<TData>(
     };
   }, [key, generation, reload]);
 
-  return { state, reload };
+  return { state, reload, lastFailure: state.status === "error" ? lastFailure : null };
 }

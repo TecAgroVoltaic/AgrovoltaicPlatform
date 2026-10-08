@@ -1,6 +1,7 @@
-// Los iconos del Asistente, copiados de los artboards del rediseño: SVG inline de
-// trazo con `currentColor`, así toman el color del tema y del estado del botón.
-// Viven acá y no en `Iconos.tsx` porque solo los usa esta sección.
+// Los iconos de las secciones con cabecera propia (Asistente y Alertas), copiados
+// de los artboards de sus rediseños: SVG inline de trazo con `currentColor`, así
+// toman el color del tema y del estado del botón. Los de la navegación de la
+// consola siguen en `Iconos.tsx`.
 import type { ReactNode } from "react";
 
 type IconProps = { readonly size?: number; readonly strokeWidth?: number };
@@ -72,6 +73,13 @@ export const IconFailed = icon(
   <>
     <circle cx="12" cy="12" r="9" />
     <path d="M12 7.5v5.5M12 16.5v.01" />
+  </>,
+);
+export const IconRefresh = icon(<path d="M21 12a9 9 0 1 1-3-6.7M21 3v6h-6" />);
+export const IconClock = icon(
+  <>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 7v5l3 2" />
   </>,
 );
 export const IconSpinner = icon(<circle cx="12" cy="12" r="8" strokeDasharray="32 18" />);
