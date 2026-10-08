@@ -41,7 +41,9 @@ export function AlertRow({ alert, selected, onSelect }: AlertRowProps) {
         {headline ? <span className={`${styles.cell} ${styles.headline}`}>{headline}</span> : null}
       </span>
       <span className={styles.variable}>
-        <code className={styles.code}>{variableShortLabel(alert.variable)}</code>
+        <code className={styles.code} title={alert.variable}>
+          {variableShortLabel(alert.variable)}
+        </code>
       </span>
       <span className={`${styles.cell} ${styles.dates}`}>
         <span className={styles.mono}>{dateSpanLabel(alert.firstDate, alert.lastDate, false)}</span>
