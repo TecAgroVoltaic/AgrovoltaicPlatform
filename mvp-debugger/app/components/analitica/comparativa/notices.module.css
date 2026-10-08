@@ -1,0 +1,51 @@
+/* Los avisos redactados por el backend: el PR imposible y el aval pendiente. */
+
+/* --- Avisos --- */
+.noticeCritical,
+.noticeWarning {
+  border: 1px solid var(--line);
+  border-left-width: 3px;
+  border-radius: 10px;
+  padding: 12px 15px;
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.noticeCritical {
+  border-left-color: var(--crit);
+  background: color-mix(in srgb, var(--crit) 7%, transparent);
+}
+
+.noticeWarning {
+  border-left-color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 7%, transparent);
+}
+
+.noticeTitle {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.noticeItem {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.noticeHead {
+  margin: 0;
+  font-size: 12.5px;
+}
+
+/* Un mes con PR imposible se nombra en texto: la barra no puede decirlo. */
+.impossibleMonths {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--crit);
+}

@@ -1,0 +1,102 @@
+/* La sección de método: la tabla de cortes con su barra de muestra y las tablas
+   plegadas. */
+
+/* --- Los métodos, uno por fila ---
+   Sin bordes de tarjeta ni relleno de tabla larga: son siete filas de una línea
+   y tienen que leerse de un vistazo, no invitar a estudiarlas. */
+.cutTable {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 14px;
+  font-size: 13px;
+}
+
+.cutTable th,
+.cutTable td {
+  text-align: left;
+  padding: 7px 12px 7px 0;
+  border-bottom: 1px solid var(--line);
+  vertical-align: baseline;
+}
+
+.cutTable thead th {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.cutTable tbody th {
+  font-weight: 500;
+  color: var(--ink2);
+}
+
+.cutTable tbody tr:last-child th,
+.cutTable tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* La muestra de cada método, dibujada: que un método conserve una décima parte
+   de las lecturas se ve antes de leerse. El ancho es lo único que sale de acá;
+   los dos números son del backend. */
+.sample {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.sampleTrack {
+  flex: none;
+  width: 54px;
+  height: 7px;
+  border-radius: 99px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.sampleFill {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--accent) 60%, var(--line2));
+}
+
+/* Los pliegues de una sección, apilados y separados del contenido que resumen. */
+.disclosures {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+/* --- La matriz de variantes ---
+   La tabla de números vive dentro de un pliegue, cuyo cuerpo es prosa apagada de
+   12 px. Un dato no se lee en el mismo tono que la nota que lo acompaña. */
+.foldedTable {
+  color: var(--ink2);
+  font-size: 12.5px;
+}
+/* Los puntos de corte miran `.medida` (ver `comparativa.module.css`), no la ventana. */
+/* 520 px: por debajo de eso la tabla de métodos deja tres columnas de menos de
+   170 px y «Contador · POA bifacial» se parte en tres renglones. */
+@container (max-width: 520px) {
+  /* La barra de la muestra se pone ENCIMA de sus dos números en vez de al lado.
+     No se quita: dibujar que un método conserva 1.383 de 3.347 lecturas es la
+     mitad del argumento de la tabla. Lo que sobra en angosto es que compita por
+     el ancho con el texto, no la barra en sí. */
+  .sample {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+  }
+
+  .sampleTrack {
+    width: 100%;
+  }
+}
