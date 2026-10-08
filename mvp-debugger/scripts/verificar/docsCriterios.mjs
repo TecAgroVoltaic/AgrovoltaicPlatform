@@ -26,7 +26,7 @@ export function verificarDocsCriterios() {
 
   // La prueba de que no están transcritas: ningún umbral aparece escrito en el
   // fuente de la doc. Si alguien copia uno a mano, esto lo caza.
-  const fuenteDoc = fuente("app/docs/content/agentes.tsx");
+  const fuenteDoc = fuente("app/docs/content/agentes.tsx", "app/docs/content/agentes");
   const transcritos = m.umbrales.map((u) => u.clave).filter((k) => fuenteDoc.includes(k));
   check("los umbrales NO están escritos a mano en la doc",
     // COBERTURA_MINIMA es la excepción declarada: la prosa la NOMBRA para buscar
