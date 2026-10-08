@@ -10,7 +10,8 @@
 //
 // El eje del dato lleva pegado el desglose comprimido: su número no puede
 // aparecer nunca solo, ni siquiera con otra pestaña abierta.
-import styles from "@/app/components/analitica/calidad/calidad.module.css";
+import calidadStyles from "@/app/components/analitica/calidad/calidad.module.css";
+import styles from "@/app/components/analitica/calidad/verdict.module.css";
 import { UsableSpread } from "@/app/components/analitica/calidad/UsableSpread";
 import { formatCount } from "@/app/components/analitica/calidad/format";
 import type { EquipmentAvailability, QualityVerdict } from "@/app/lib/analitica/contracts/calidad";
@@ -44,7 +45,7 @@ function DataAxis({ verdict, note }: VerdictSplitProps) {
       </p>
       <UsableSpread variables={verdict.byVariable} />
       {verdict.warning ? (
-        <p className={styles.warning} role="note">
+        <p className={calidadStyles.warning} role="note">
           {verdict.warning}
         </p>
       ) : null}
@@ -64,13 +65,13 @@ function EquipmentAxis({ availability }: { readonly availability: EquipmentAvail
           de {formatCount(availability.ofDaysWithData)} con datos
         </span>
       </p>
-      <p className={styles.ends}>
+      <p className={calidadStyles.ends}>
         <span>
           con sol pleno <b className="mono">{formatCount(availability.stoppedUnderSunDays)}</b>
         </span>
       </p>
       {availability.warning ? (
-        <p className={styles.warning} role="note">
+        <p className={calidadStyles.warning} role="note">
           {availability.warning}
         </p>
       ) : null}
