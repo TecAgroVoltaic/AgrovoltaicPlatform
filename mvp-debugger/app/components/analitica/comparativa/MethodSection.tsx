@@ -25,7 +25,7 @@ import { VariantsTable } from "@/app/components/analitica/comparativa/VariantsTa
 import { PointToPointPanel } from "@/app/components/analitica/comparativa/PointToPointPanel";
 import { ImpossiblePrNotice } from "@/app/components/analitica/comparativa/ImpossiblePrNotice";
 import { PendingApprovalNotice } from "@/app/components/analitica/comparativa/PendingApprovalNotice";
-import styles from "@/app/components/analitica/comparativa/comparativa.module.css";
+import styles from "@/app/components/analitica/comparativa/method.module.css";
 
 const PANEL_TITLE = "¿Cambia el ganador según el método?";
 const NUMBERS_LABEL = "¿Cuánto da exactamente cada método?";

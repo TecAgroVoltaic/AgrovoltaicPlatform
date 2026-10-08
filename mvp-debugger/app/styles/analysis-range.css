@@ -1,0 +1,60 @@
+/* ── Sistema de evaluación de datos ───────────────────────────────────────────
+   Los estilos de la sección de análisis: el selector de rango (la pieza central
+   del PDF) y el marco de los gráficos. Todo sale de los mismos tokens que el
+   resto de la consola: acá no entra ni un color nuevo. */
+
+/* Barra de rango. Pegada arriba SOLO por encima de 1280 px, porque el rango es
+   el parámetro del que cuelga todo lo demás y ahí entra en un solo renglón de
+   controles. Más angosto el formulario envuelve y la barra se dispara: dejarla
+   pegada sería regalar un quinto de la pantalla de forma permanente. El apagado
+   está en la regla de justo abajo, y ahí tiene que quedarse: el comentario
+   explica por qué. */
+.rng { position:sticky; top:0; z-index:15; background:var(--ground);
+  padding:12px 0 14px; border-bottom:1px solid var(--line); margin-bottom:22px; }
+/* El apagado va PEGADO a la regla de arriba, y no allá en el escalón de tablet
+   donde está el resto de esa franja. La razón es una trampa de cascada que se
+   cobró este mismo arreglo una vez: una media query NO suma especificidad, así
+   que `.rng` dentro de `@media` y `.rng` a secas empatan en (0,1,0) y desempata
+   el ORDEN. Escrito arriba, la regla base de esta línea lo pisaba y el apagado
+   no ocurría a ningún ancho: la barra seguía pegada, midiendo 342 px a 390 px
+   (el 38 % de la pantalla), peor que el defecto que vino a corregir. Mientras
+   las dos reglas sean `.rng` a secas, la de abajo manda: separarlas las rompe.
+
+   Por qué 1280 y no el 1100 del escalón de tablet: son dos preguntas distintas.
+   1100 es dónde la barra LATERAL estorba; 1280 es, medido, dónde el formulario
+   de rango pasa de dos renglones a uno (95 px de alto contra 56). Pegada con dos
+   renglones son 165 px, más de un quinto de una pantalla de 800: se pega solo
+   cuando es una sola línea de controles.
+
+   Y por qué también hay una condición de ALTO. Lo que hay que acotar es una
+   razón (cuánta pantalla se queda la barra), y una razón tiene dos términos: a
+   1280x800 la barra mide 132 px, que son el 16,5 %, mientras que a 1440x900 los
+   mismos 132 px son el 14,6 %. Mirar solo el ancho deja fuera justo el caso
+   malo. 132 / 0,15 = 880, así que por debajo de 880 px de alto vuelve a fluir.
+   La coma es un O: se despega si es angosta O si es baja. */
+@media (max-width:1279px), (max-height:879px) { .rng { position:static; padding-top:4px; } }
+
+/* El rótulo arrastraba los márgenes que el navegador le pone a un <p>: 10 px
+   arriba y 10 abajo, 20 px de nada dentro de la única barra de la aplicación que
+   se queda pegada. Se corrige acá y no en `.lbl`, que es una utilidad usada en
+   media aplicación y no le toca cargar con el interlineado de esta barra. */
+.rng > .lbl { margin:0 0 6px; }
+.rng-form { display:flex; flex-wrap:wrap; align-items:flex-end; gap:12px 20px; }
+.rng-campo { display:flex; flex-direction:column; gap:6px; }
+.rng-campo .input { min-width:0; }
+.rng-acciones { display:flex; gap:8px; align-items:center; }
+.rng-presets { display:flex; gap:6px; flex-wrap:wrap; }
+.rng-resumen { margin:10px 0 0; font-family:var(--mono); font-size:11.5px; color:var(--muted); }
+.rng-resumen b { color:var(--ink2); font-weight:600; }
+.rng-aviso { margin:10px 0 0; font-size:12px; color:var(--warn); display:flex;
+  flex-direction:column; gap:2px; }
+.rng-aviso b { color:var(--ink); font-weight:600; }
+@media (max-width:760px) {
+  /* Que deje de estar pegada arriba lo resuelve el escalón de 1100 px, que es
+     donde empieza a ser demasiado alta. Acá solo se acomoda el formulario: dos
+     campos por renglón y el resto a lo ancho. */
+  .rng-campo { flex:1 1 46%; }
+  .rng-presets { flex:1 1 100%; }
+  .rng-acciones, .rng-acciones .btn { flex:1 1 100%; }
+}
+

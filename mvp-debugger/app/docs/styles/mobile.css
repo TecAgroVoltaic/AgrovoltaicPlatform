@@ -1,0 +1,32 @@
+/* barra superior móvil */
+.dx-topbar { display:none; }
+@media (max-width:900px){
+  /* `display:block` NO es cosmético y es el arreglo de fondo de esta pantalla.
+     `.dx-app` es una fila flex, y al encender la barra superior esta entraba
+     como UNA COLUMNA MÁS al lado del contenido en vez de como una banda arriba:
+     se llevaba 134 px de ancho, así que a 390 px el texto quedaba en 220 px y a
+     360 px la página entera se desplazaba de lado. Con la barra lateral fija
+     (fuera de flujo) no queda nada que repartir en fila. */
+  .dx-app { display:block; }
+
+  .dx-side { position:fixed; left:0; top:0; z-index:50; width:min(288px,84vw);
+    transform:translateX(-100%); box-shadow:0 0 40px #00000030;
+    /* `visibility` además del desplazamiento: un cajón corrido fuera de pantalla
+       sigue siendo enfocable, y con el teclado se cae dentro de un menú que no
+       se ve. Al abrir aparece al instante; al cerrar espera a que termine el
+       deslizamiento, si no desaparecería de golpe. */
+    visibility:hidden; transition:transform .2s ease, visibility 0s linear .2s; }
+  .dx-side.open { transform:translateX(0); visibility:visible;
+    transition:transform .2s ease, visibility 0s; }
+  .dx-topbar { display:flex; align-items:center; gap:12px; position:sticky; top:0; z-index:40;
+    background:var(--panel); border-bottom:1px solid var(--line); padding:10px 14px; }
+  .dx-burger { flex:0 0 auto; border:1px solid var(--line2); background:var(--panel2); color:var(--ink); border-radius:7px; width:34px; height:30px; cursor:pointer; font-size:15px; }
+  /* El nombre de la sección se recorta con puntos suspensivos en vez de empujar:
+     es una etiqueta de ubicación, y ninguna vale deformar la pantalla. */
+  .dx-topbar b { font-size:13px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .dx-page { padding:22px 18px 90px; }
+  .dx-scrim { position:fixed; inset:0; z-index:45; background:#0006; }
+}
+@media (prefers-reduced-motion:reduce){
+  .dx-side, .dx-side.open { transition:none; }
+}

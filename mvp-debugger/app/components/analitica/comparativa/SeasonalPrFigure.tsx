@@ -24,6 +24,7 @@ import {
 import { VariantChips } from "@/app/components/analitica/comparativa/VariantChips";
 import { ARRAY_KEYS } from "@/app/components/analitica/comparativa/vocabulary";
 import styles from "@/app/components/analitica/comparativa/comparativa.module.css";
+import noticesStyles from "@/app/components/analitica/comparativa/notices.module.css";
 
 /** El camino que cubre los 197 días válidos, y contra la irradiancia MEDIDA:
  *  es el punto de partida que no depende de ningún modelo. */
@@ -120,7 +121,7 @@ function ImpossibleMonths({
     .map((month) => month.month);
   if (flagged.length === 0) return null;
   return (
-    <p className={styles.impossibleMonths}>
+    <p className={noticesStyles.impossibleMonths}>
       Con esta variante el PR supera 1 en {flagged.join(MONTH_SEPARATOR)}: ahí el número no
       mide rendimiento, mide una irradiancia mal medida o mal modelada.
     </p>

@@ -1,0 +1,75 @@
+/* ── Vista de arquitectura del agente ─────────────────────────────────────
+   El grafo: lienzo de coordenadas fijas dentro de un contenedor con scroll
+   horizontal propio (el cuerpo de la página nunca se desplaza de lado). Los
+   colores salen de los tokens que ya usa la consola: --pred para las
+   herramientas de análisis, --real para las de predicción, --crit para la
+   barrera anti-fuga. */
+.arq-barra { display:flex; align-items:center; gap:16px; flex-wrap:wrap; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px 14px; }
+.arq-seg { display:flex; background:var(--panel2); border:1px solid var(--line); border-radius:9px; padding:3px; gap:2px; flex:0 0 auto; }
+.arq-seg button { border:0; background:transparent; color:var(--ink2); cursor:pointer; padding:7px 14px; border-radius:6px; font-size:12.5px; font-weight:540; letter-spacing:-.01em; text-transform:capitalize; }
+.arq-seg button[aria-pressed="true"] { background:var(--raise); color:var(--ink); }
+.arq-cap { flex:1 1 320px; min-width:260px; margin:0; font-size:12.5px; color:var(--muted); line-height:1.5; }
+.arq-cap b { color:var(--ink); font-weight:600; }
+
+.arq-marco { padding:0; background:var(--panel); overflow:hidden; }
+.arq-marco:fullscreen { display:flex; flex-direction:column; justify-content:center; border-radius:0; }
+/* El scroll y la trama de puntos van en el scroller, no en la tarjeta: así los
+   puntos acompañan al lienzo al desplazarse y la leyenda se queda quieta. */
+.arq-scroll { overflow-x:auto;
+  background-image:radial-gradient(var(--line2) .9px, transparent .9px);
+  background-size:22px 22px; background-position:-1px -1px; }
+.arq-lienzo { position:relative; width:1140px; margin:0 auto; flex:0 0 auto; }
+.arq-edges { position:absolute; inset:0; width:1140px; height:100%; pointer-events:none; }
+.arq-edges path { fill:none; stroke:var(--line2); stroke-width:1.5; }
+.arq-edges path.viva { stroke:var(--accent); opacity:.7; }
+.arq-edges path.muerta { opacity:.18; stroke-dasharray:5 5; }
+.arq-edges path.punteada { stroke-dasharray:4 4; }
+.arq-lane { position:absolute; top:16px; font-family:var(--mono); font-size:9.5px; text-transform:uppercase; letter-spacing:.12em; color:var(--muted); }
+
+.arq-nodo { position:absolute; text-align:left; font:inherit; cursor:pointer; background:var(--raise); border:1px solid var(--line2); border-radius:10px; padding:9px 11px; display:flex; flex-direction:column; gap:2px; transition:border-color .16s, transform .16s, opacity .2s; }
+.arq-nodo:hover { border-color:var(--accent); transform:translateY(-1px); }
+.arq-nodo.apagado { opacity:.3; border-style:dashed; }
+.arq-nodo.apagado:hover { opacity:.6; }
+.arq-n-t { font-family:var(--mono); font-size:12.5px; font-weight:600; color:var(--ink); letter-spacing:-.01em; line-height:1.3; }
+.arq-n-s { font-size:11px; color:var(--muted); line-height:1.35; }
+.arq-sd { margin-top:2px; font-family:var(--mono); font-size:9.5px; text-transform:uppercase; letter-spacing:.09em; color:var(--warn); }
+
+.arq-entrada { border-left:3px solid var(--ceil); }
+.arq-puerta { border-left:3px solid var(--warn); }
+.arq-servidor { border-left:3px solid var(--ceil); border-style:dashed; }
+.arq-dato { border-left:3px solid var(--muted); }
+.arq-tool-medicion_visible { border-left:3px solid var(--pred); }
+.arq-tool-medicion_oculta { border-left:3px solid var(--real); }
+.arq-cerebro { border-left:3px solid var(--accent); padding:13px 14px; gap:9px; }
+.arq-cer-h { display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
+.arq-chip { font-family:var(--mono); font-size:10px; color:var(--accent); border:1px solid color-mix(in srgb,var(--accent) 40%,transparent); border-radius:99px; padding:1px 7px; white-space:nowrap; }
+.arq-cer-l { margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:5px; }
+.arq-cer-l li { font-size:11.5px; color:var(--ink2); line-height:1.35; padding-left:11px; position:relative; }
+.arq-cer-l li::before { content:""; position:absolute; left:0; top:7px; width:4px; height:4px; border-radius:50%; background:var(--line2); }
+.arq-cer-l b { color:var(--ink); font-weight:600; }
+.arq-cer-m { margin-top:auto; border-top:1px solid var(--line); padding-top:8px; font-family:var(--mono); font-size:10px; color:var(--muted); display:flex; justify-content:space-between; gap:6px; }
+.arq-cer-m span:last-child { color:var(--accent); font-weight:600; }
+
+.arq-grp { position:absolute; font-family:var(--mono); font-size:9.5px; text-transform:uppercase; letter-spacing:.11em; display:flex; align-items:center; gap:7px; }
+.arq-grp i { width:16px; height:2px; border-radius:2px; display:block; }
+.arq-grp-medicion_visible { color:var(--pred); } .arq-grp-medicion_visible i { background:var(--pred); }
+.arq-grp-medicion_oculta { color:var(--real); } .arq-grp-medicion_oculta i { background:var(--real); }
+.arq-grp.apagado { opacity:.32; }
+
+.arq-capa { position:absolute; border:1px solid var(--line2); border-radius:12px; background:color-mix(in srgb,var(--raise) 62%,transparent); display:flex; flex-direction:column; gap:8px; padding:11px; }
+.arq-fila { text-align:left; font:inherit; cursor:pointer; background:var(--raise); border:1px solid var(--line); border-left:3px solid var(--muted); border-radius:8px; padding:7px 9px; display:flex; flex-direction:column; gap:1px; transition:border-color .16s; }
+.arq-fila:hover { border-color:var(--accent); border-left-color:var(--accent); }
+.arq-fila .arq-n-t { font-size:11.5px; } .arq-fila .arq-n-s { font-size:10.5px; }
+.arq-barrera { border:1px dashed color-mix(in srgb,var(--crit) 55%,transparent); background:color-mix(in srgb,var(--crit) 9%,transparent); border-radius:8px; padding:6px 9px; display:flex; flex-direction:column; gap:1px; }
+.arq-b-t { font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:.1em; color:var(--crit); font-weight:600; }
+.arq-b-s { font-size:10.5px; color:var(--ink2); line-height:1.35; }
+.arq-b-s code { font-family:var(--mono); color:var(--ink); }
+
+.arq-leyenda { display:flex; flex-wrap:wrap; align-items:center; gap:10px 14px; padding:11px 16px; border-top:1px solid var(--line); font-size:11.5px; color:var(--muted); background:var(--panel); }
+.arq-leyenda span { display:inline-flex; align-items:center; gap:6px; }
+.arq-leyenda i { width:11px; height:11px; border-radius:3px; display:block; }
+.arq-ayuda { margin-left:auto; color:var(--ink2); }
+
+.arq-aviso { display:flex; align-items:flex-start; gap:8px; margin:0; font-size:12px; color:var(--warn); line-height:1.45; }
+.arq-aviso svg { flex:0 0 auto; margin-top:2px; }
+

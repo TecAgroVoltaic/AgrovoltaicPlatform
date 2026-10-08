@@ -9,7 +9,7 @@
 import { formatDays, formatPr } from "@/app/components/analitica/comparativa/format";
 import type { Variant } from "@/app/components/analitica/comparativa/variants";
 import { ARRAY_KEYS, ARRAY_LABEL } from "@/app/components/analitica/comparativa/vocabulary";
-import styles from "@/app/components/analitica/comparativa/comparativa.module.css";
+import styles from "@/app/components/analitica/comparativa/notices.module.css";
 
 export function ImpossiblePrNotice({ variants }: { readonly variants: readonly Variant[] }) {
   const flagged = variants.filter((variant) => variant.limitWarning !== null);

@@ -24,8 +24,7 @@ no toca el veredicto (solo cuentan `grave` y `aviso`) pero deja el hueco a la vi
 """
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta
-from statistics import StatisticsError, correlation
+from datetime import date
 
 from historico import config
 from historico.calidad.pruebas import umbrales
@@ -33,12 +32,11 @@ from historico.calidad.pruebas.contrato import (
     GRAVE, INFO, SIN_FUENTE, Contexto, Hallazgo, NoAplica, Serie, es_valor,
     indices_por_dia,
 )
-from historico.calidad.pruebas.disponibilidad import bin_de_emparejamiento
+from historico.calidad.pruebas.entre_sensores_cruce import (
+    _MINUTOS_POR_BIN, _pearson, _racha_mas_larga_min, _temperatura_por_bin,
+)
 
 TIPO = "incongruencia_temp_irradiancia"
-
-_BIN = timedelta(seconds=umbrales.BIN_DE_EMPAREJAMIENTO_SEG)
-_MINUTOS_POR_BIN = umbrales.BIN_DE_EMPAREJAMIENTO_SEG / 60
 
 
 def incongruencia_temp_irradiancia(serie: Serie, contexto: Contexto) -> list[Hallazgo]:
@@ -68,20 +66,6 @@ def incongruencia_temp_irradiancia(serie: Serie, contexto: Contexto) -> list[Hal
         if hallazgo:
             salida.append(hallazgo)
     return salida
-
-
-def _temperatura_por_bin(serie: Serie, indices, amanecer: datetime,
-                         atardecer: datetime) -> dict[datetime, tuple[float, int]]:
-    """{bin: (temperatura media, lecturas)} dentro de la ventana solar del dia.
-
-    Media y no primera lectura: en los tramos a 2 s caen decenas por bin.
-    """
-    temps: dict[datetime, list[float]] = {}
-    for i in indices:
-        marca, valor = serie.marcas[i], serie.valores[i]
-        if es_valor(valor) and amanecer <= marca < atardecer:
-            temps.setdefault(bin_de_emparejamiento(marca), []).append(valor)
-    return {b: (sum(v) / len(v), len(v)) for b, v in sorted(temps.items())}
 
 
 def _juzgar(serie: Serie, dia: date, pares: dict) -> Hallazgo | None:
@@ -125,25 +109,6 @@ def _juzgar(serie: Serie, dia: date, pares: dict) -> Hallazgo | None:
                  "origen": serie.origen,
                  "nota": "umbrales pendientes de validacion por Hugo, sobre "
                          "irradiancia sin calibrar"})
-
-
-def _pearson(temps: list[float], ghis: list[float]) -> float | None:
-    """r de Pearson, o None si una de las dos series no varia (no hay relacion)."""
-    try:
-        return correlation(temps, ghis)
-    except StatisticsError:
-        return None
-
-
-def _racha_mas_larga_min(bins: list[datetime]) -> float:
-    """Minutos de la racha mas larga de bins CONSECUTIVOS (separados por un bin)."""
-    mas_larga = actual = 0
-    previo = None
-    for ventana in sorted(bins):
-        actual = actual + 1 if previo is not None and ventana - previo == _BIN else 1
-        mas_larga = max(mas_larga, actual)
-        previo = ventana
-    return mas_larga * _MINUTOS_POR_BIN
 
 
 def _sin_fuente(serie: Serie, dia: date, motivo: str) -> Hallazgo:

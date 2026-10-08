@@ -9,7 +9,7 @@
 // JSON.
 import type { PendingApproval } from "@/app/lib/analitica/contracts/comparativa";
 import { INPUT_LABEL } from "@/app/components/analitica/comparativa/vocabulary";
-import styles from "@/app/components/analitica/comparativa/comparativa.module.css";
+import styles from "@/app/components/analitica/comparativa/notices.module.css";
 
 const SEPARATOR = " y ";
 

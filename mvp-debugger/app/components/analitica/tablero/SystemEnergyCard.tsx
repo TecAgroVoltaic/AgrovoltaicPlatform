@@ -14,7 +14,8 @@ import { formatMetric, isMeasured, type Metric } from "@/app/lib/analitica";
 import { KpiTile } from "@/app/components/analitica/tablero/KpiTile";
 import { formatDays, formatUnit } from "@/app/components/analitica/tablero/format";
 import type { EnergyAccounts } from "@/app/lib/analitica/contracts/tablero";
-import styles from "@/app/components/analitica/tablero/tablero.module.css";
+import styles from "@/app/components/analitica/tablero/energy.module.css";
+import tableroStyles from "@/app/components/analitica/tablero/tablero.module.css";
 
 export type SystemEnergyCardProps = {
   readonly accounts: EnergyAccounts;
@@ -33,10 +34,10 @@ export function SystemEnergyCard({
   periodLabel,
 }: SystemEnergyCardProps) {
   return (
-    <section className={`card ${styles.hero}`}>
-      <div className={styles.cardHead}>
-        <h2 className={styles.cardTitle}>Energía producida</h2>
-        <span className={styles.headStat}>{periodLabel}</span>
+    <section className={`card ${tableroStyles.hero}`}>
+      <div className={tableroStyles.cardHead}>
+        <h2 className={tableroStyles.cardTitle}>Energía producida</h2>
+        <span className={tableroStyles.headStat}>{periodLabel}</span>
       </div>
 
       <div className={styles.balance}>
@@ -60,7 +61,7 @@ export function SystemEnergyCard({
         <UnrecordedSentence unrecorded={accounts.unrecorded} />
       </p>
 
-      <div className={styles.tiles}>
+      <div className={tableroStyles.tiles}>
         <KpiTile title={recentTitle} metric={recentTotal} note={recentNote} />
       </div>
     </section>

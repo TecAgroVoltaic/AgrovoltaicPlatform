@@ -1,0 +1,87 @@
+/* ── Panel de salud ──────────────────────────────────────────────────────── */
+.pill-ok        { color:var(--good); border-color:color-mix(in srgb, var(--good) 40%, var(--line)); }
+.pill-stale     { color:var(--warn); border-color:color-mix(in srgb, var(--warn) 40%, var(--line)); }
+.pill-sin_datos { color:var(--crit); border-color:color-mix(in srgb, var(--crit) 40%, var(--line)); }
+.barra { height:6px; background:var(--panel2); border:1px solid var(--line); border-radius:99px; overflow:hidden; }
+.barra-fill { height:100%; background:var(--accent); transition:width .3s ease; }
+
+/* ── Predicción vs Real: cabecera con etiqueta de modo, lectura del agente y
+      pie de métricas. Todo pensado para quitar párrafos de la vista. ───────── */
+/* Apilado de una vista con ritmo uniforme. Cada vista venía separando sus
+   bloques con `style={{marginTop:N}}` a mano, con N distinto en cada archivo
+   (10, 14, 16, 22) — y donde alguien olvidaba ponerlo, dos tarjetas quedaban
+   pegadas. Acá el espacio lo pone el contenedor, una sola vez. */
+.vista { display:flex; flex-direction:column; gap:16px; }
+.vista > .phead { margin-bottom:0; }
+.vista > .controls { margin:6px 0 0; }
+.vista > .pie-metricas { margin-top:2px; }
+
+/* El control de la derecha no encoge (`.arq-seg` es `flex:0 0 auto`), así que sin
+   envolver se comía el ancho y dejaba el título en una columna de 110 px: «Predicción
+   vs Real» salía partido en cuatro renglones. El piso de 280 px es lo que decide
+   cuándo el control baja de línea en vez de estrangular al título. */
+.phead-row { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+.phead-row > :first-child { flex:1 1 280px; min-width:0; }
+.pill-modo { flex:none; margin-top:4px; cursor:help; border-color:color-mix(in srgb, var(--accent) 40%, var(--line)); color:var(--accent); }
+
+/* Los selectores de fecha/hora conviven con los chips: mismo alto visual. */
+.input-sm { min-width:0; padding:5px 10px; font-size:12.5px; font-family:var(--mono); }
+
+/* Lectura del agente: cabecera con acción a la derecha, prosa, y el pie con el
+   acceso a la traza. Antes el botón flotaba suelto sobre el texto y la tarjeta
+   se leía como un bloque sin jerarquia. */
+.lectura-head { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+.lectura-head h3 { margin:0; }
+.lectura-head .hint { margin:4px 0 0; }
+.lectura-head .btn { flex:none; }
+.lectura-espera { display:flex; align-items:center; gap:10px; font-size:12.5px; color:var(--muted); }
+
+/* ── Bloques de la lectura: algoritmo vs agente ──────────────────────────────
+   El punto de la tarjeta es que se VEA la separación — un algoritmo determinista
+   produce los números, el modelo los explica. Por eso cada bloque tiene su
+   icono, su color de acento y su borde: no es decoración, es la tesis. */
+.bloq { border:1px solid var(--line); border-radius:10px; padding:14px 16px; background:var(--panel2); }
+.bloq-h { display:flex; align-items:center; gap:9px; flex-wrap:wrap; }
+.bloq-ic { display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:7px; flex:none; }
+.bloq-ic-algo   { background:color-mix(in srgb, var(--accent) 16%, transparent); color:var(--accent); }
+.bloq-ic-agente { background:color-mix(in srgb, var(--pred) 18%, transparent); color:var(--pred); }
+.bloq-t { font-size:12.5px; font-weight:600; color:var(--ink); }
+.bloq-algo   { border-left:2px solid var(--accent); }
+.bloq-agente { border-left:2px solid var(--pred); }
+.bloq-metodo { margin:9px 0 0; font-size:11.5px; color:var(--muted); font-family:var(--mono); }
+.bloq-ctx { margin:11px 0 0; font-size:11.5px; color:var(--muted); font-family:var(--mono); }
+.bloq-agente .md { margin-top:11px; }
+.bloq-check { display:inline-flex; align-items:center; gap:5px; font-size:11px; font-family:var(--mono); padding:2px 8px; border-radius:11px; border:1px solid var(--line2); margin-left:auto; }
+.bloq-check.ok  { color:var(--good); border-color:color-mix(in srgb, var(--good) 40%, var(--line)); }
+.bloq-check.mal { color:var(--crit); border-color:color-mix(in srgb, var(--crit) 40%, var(--line)); }
+
+/* Fichas de lo que devolvió una herramienta. Pequeñas a propósito: son seis y
+   tienen que caber sin volverse el centro de la pantalla. */
+.fichas { display:grid; grid-template-columns:repeat(auto-fit,minmax(104px,1fr)); gap:8px; margin-top:12px; }
+.ficha { background:var(--panel); border:1px solid var(--line); border-radius:7px; padding:8px 10px; }
+.ficha-acento { border-color:color-mix(in srgb, var(--accent) 40%, var(--line)); background:color-mix(in srgb, var(--accent) 5%, var(--panel)); }
+.ficha-l { display:block; font-size:9.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ficha-v { display:block; margin-top:3px; font-size:15.5px; font-weight:600; letter-spacing:-.02em; font-family:var(--mono); font-variant-numeric:tabular-nums; color:var(--ink); }
+.ficha-v small { font-size:10px; color:var(--muted); font-weight:500; margin-left:3px; font-family:system-ui; }
+
+.lectura-txt { margin-top:16px; }
+.lectura { display:flex; flex-direction:column; gap:14px; }
+.lectura-pie { display:flex; align-items:center; gap:12px; padding-top:12px; border-top:1px solid var(--line); flex-wrap:wrap; margin:0; }
+
+/* ── Markdown de las respuestas del agente ───────────────────────────────────
+   El modelo escribe tablas y listas; sin estilos se veian los pipes crudos. */
+.md { font-size:13.5px; line-height:1.62; color:var(--ink2); }
+.md p { margin:0 0 10px; }
+.md p:last-child { margin-bottom:0; }
+.md strong { color:var(--ink); font-weight:600; }
+.md code { background:var(--panel2); border:1px solid var(--line); border-radius:4px; padding:1px 5px; font-family:var(--mono); font-size:12px; }
+.md .md-h { margin:14px 0 6px; }
+.md .md-h:first-child { margin-top:0; }
+.md .md-lista { margin:0 0 10px; padding-left:20px; }
+.md .md-lista li { margin:3px 0; }
+.md .md-tabla-wrap { overflow-x:auto; margin:0 0 12px; }
+.md .md-tabla { width:100%; border-collapse:collapse; font-size:12.5px; }
+.md .md-tabla th { text-align:left; font-weight:600; color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.04em; padding:0 14px 6px 0; border-bottom:1px solid var(--line2); white-space:nowrap; }
+.md .md-tabla td { padding:7px 14px 7px 0; border-bottom:1px solid var(--line); font-variant-numeric:tabular-nums; }
+.md .md-tabla tr:last-child td { border-bottom:0; }
+

@@ -3,7 +3,7 @@
 // Cada estado se define con TRES señales redundantes: una palabra, un signo
 // tipográfico y una clase con su trama. El color es la cuarta y nunca la única,
 // así que la pantalla se sigue leyendo sin distinguir rojo de verde.
-import styles from "@/app/components/analitica/calidad/calidad.module.css";
+import styles from "@/app/components/analitica/calidad/strip.module.css";
 import type { DayVerdict, Severity } from "@/app/lib/analitica/contracts/calidad";
 
 export type StateBadge = {

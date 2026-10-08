@@ -13,7 +13,7 @@
 // nada de peticiones.
 import { useId, useRef, type KeyboardEvent, type ReactNode } from "react";
 
-import styles from "@/app/components/analitica/calidad/calidad.module.css";
+import styles from "@/app/components/analitica/calidad/tabs.module.css";
 
 export type QualityTab = {
   readonly id: string;

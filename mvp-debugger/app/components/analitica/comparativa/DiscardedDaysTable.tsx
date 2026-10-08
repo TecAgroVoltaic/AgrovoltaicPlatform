@@ -11,7 +11,7 @@ import type {
 } from "@/app/lib/analitica/contracts/comparativa";
 import { formatDecimal, formatFraction } from "@/app/components/analitica/comparativa/format";
 import { describeDiscardReason } from "@/app/components/analitica/comparativa/vocabulary";
-import styles from "@/app/components/analitica/comparativa/comparativa.module.css";
+import styles from "@/app/components/analitica/comparativa/variants.module.css";
 
 const REASON_SEPARATOR = ", ";
 const SCROLL_LABEL = "Días descartados del cálculo, tabla desplazable";

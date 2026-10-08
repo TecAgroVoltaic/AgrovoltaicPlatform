@@ -17,7 +17,7 @@ import {
   ARRAY_LABEL,
   describeMissingReason,
 } from "@/app/components/analitica/comparativa/vocabulary";
-import styles from "@/app/components/analitica/comparativa/comparativa.module.css";
+import styles from "@/app/components/analitica/comparativa/cards.module.css";
 
 const CROSS_DECIMALS = 3;
 

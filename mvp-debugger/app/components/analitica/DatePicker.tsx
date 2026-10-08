@@ -16,6 +16,7 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 
 import { pickerDays, type DaySource } from "@/app/components/analitica/datePicker/availability";
+import { trapFocusWithin } from "@/app/components/analitica/datePicker/focusTrap";
 import { IconCalendar } from "@/app/components/analitica/datePicker/icons";
 import { MonthCalendar } from "@/app/components/analitica/datePicker/MonthCalendar";
 import { containingBoundary, horizontalShift } from "@/app/components/analitica/datePicker/placement";
@@ -26,8 +27,6 @@ import { fechaCorta, hoyEnSitio } from "@/app/lib/tiempo";
 // Medir antes de pintar evita un cuadro con el calendario fuera de la pantalla;
 // en el servidor no hay layout y useLayoutEffect solo dejaría un aviso.
 const useLayoutEffectInBrowser = typeof window === "undefined" ? useEffect : useLayoutEffect;
-
-const FOCUSABLE_SELECTOR = 'button:not([disabled]):not([tabindex="-1"]), select:not([disabled])';
 
 const DEFAULT_PLACEHOLDER = "Elegir fecha";
 
@@ -90,21 +89,7 @@ export function DatePicker(props: DatePickerProps) {
       close();
       return;
     }
-    if (event.key === "Tab") trapFocus(event);
-  }
-
-  function trapFocus(event: KeyboardEvent<HTMLDivElement>) {
-    const focusables = Array.from(popoverRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR) ?? []);
-    const first = focusables[0];
-    const last = focusables[focusables.length - 1];
-    if (!first || !last) return;
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    }
+    if (event.key === "Tab") trapFocusWithin(popoverRef.current, event);
   }
 
   return (

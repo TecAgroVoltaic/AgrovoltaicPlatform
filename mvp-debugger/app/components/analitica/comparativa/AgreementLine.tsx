@@ -8,7 +8,7 @@
 // llegar antes de que nadie decida seguir leyendo.
 import type { ArrayKey } from "@/app/lib/analitica/contracts/comparativa";
 import { agreementWith, type Cut } from "@/app/components/analitica/comparativa/cuts";
-import styles from "@/app/components/analitica/comparativa/comparativa.module.css";
+import styles from "@/app/components/analitica/comparativa/verdict.module.css";
 
 export type AgreementLineProps = {
   /** El ganador que declaró el backend. Acá no se elige por mayoría. */

@@ -12,6 +12,7 @@
 // variable. Escondido, no borrado: el corte de arriba no se entiende sin poder
 // llegar a ellos.
 import styles from "@/app/components/analitica/calidad/calidad.module.css";
+import figuresStyles from "@/app/components/analitica/calidad/figures.module.css";
 import { Disclosure } from "@/app/components/analitica/Disclosure";
 import { UnwatchedGroup } from "@/app/components/analitica/calidad/UnwatchedGroup";
 import { formatCount } from "@/app/components/analitica/calidad/format";
@@ -103,8 +104,8 @@ type HeadlineProps = {
 function Headline({ count, sentence, worst, of }: HeadlineProps) {
   if (!worst) return null;
   return (
-    <p className={styles.headline}>
-      <b className={styles.headlineCount}>{formatCount(count)}</b> {sentence} La mayor es{" "}
+    <p className={figuresStyles.headline}>
+      <b className={figuresStyles.headlineCount}>{formatCount(count)}</b> {sentence} La mayor es{" "}
       <span className="mono">{worst.key}</span>, con{" "}
       <b className="mono">{`${formatCount(worst.findingsInPeriod)} de ${formatCount(of)} hallazgos del período`}</b>
       .

@@ -1,35 +1,31 @@
 """Endpoints de alertas (contrato 4.5). Transporte: valida, delega en el store, responde.
 
 El router NO declara la API key: la exige `historico.api` al montarlo
-(`include_router(..., dependencies=[Depends(_verificar_api_key)])`), que es donde
-vive esa verificacion. Importarla desde aca cerraria un ciclo de imports.
+(`include_router(..., dependencies=[Depends(_verificar_api_key)])`); la
+verificacion vive en `historico.rutas.dependencias`. El WHERE del listado y los
+enlaces de la ficha estan en `historico.alertas.filtros`.
 
 Los errores (fecha ilegible, estado desconocido, transicion invalida, id
 inexistente) los traduce `historico.errores` por su `codigo`, no un try por ruta.
 """
 from __future__ import annotations
 
-from datetime import date, timedelta
-from urllib.parse import urlencode
+from datetime import date
 
 from fastapi import APIRouter, Body, Query
 from pydantic import BaseModel, Field, field_validator
 
 from historico.alertas import ciclo, evaluar, reglas, store
-from historico.analitica.ventana import VentanaInvalida
-from historico.calidad.pruebas.contrato import AVISO, GRAVE
+from historico.alertas.filtros import SEVERIDADES, _enlaces, _filtro  # noqa: F401
 
 router = APIRouter(prefix="/alertas", tags=["alertas"])
 
 LIMITE_POR_DEFECTO, LIMITE_MAXIMO = 20, 100
 LARGO_MAXIMO_NOTA, LARGO_MAXIMO_AUTOR = 2000, 80
 AUTOR_POR_DEFECTO = "consola"
-SEVERIDADES = (AVISO, GRAVE)
-_SEPARADOR = ","
 # Lo grave primero, lo mas reciente despues; el id desempata para que paginar
 # sea estable entre dos peticiones.
 _ORDEN = "(severidad = 'grave') DESC, fecha_fin DESC, id DESC"
-_ESCAPE_LIKE = str.maketrans({"\\": "\\\\", "%": "\\%", "_": "\\_"})
 
 
 class CuerpoAccion(BaseModel):
@@ -105,60 +101,3 @@ for _accion_simple in (ciclo.Accion.RECONOCER, ciclo.Accion.RESOLVER,
 def seguimiento(alerta_id: int, cuerpo: CuerpoSeguimiento) -> dict:
     return {"alerta": store.transicionar(alerta_id, ciclo.Accion.SEGUIMIENTO, cuerpo.nota,
                                          cuerpo.autor, cuerpo.proxima_revision)}
-
-
-def _filtro(estado, severidad, tipo, q, desde, hasta) -> tuple[str, list]:
-    """El WHERE que comparten el conteo y la pagina. Todo valor va por `%s`."""
-    estados = _lista(estado) or list(ciclo.ABIERTOS)
-    _exigir("estado", estados, ciclo.ESTADOS)
-    cond, params = ["estado = ANY(%s)"], [estados]
-    if severidad:
-        _exigir("severidad", [severidad], SEVERIDADES)
-        cond.append("severidad = %s")
-        params.append(severidad)
-    if tipo:
-        _exigir("tipo", [tipo], tuple(reglas.DEFINICIONES))
-        cond.append("tipo = %s")
-        params.append(tipo)
-    if q and q.strip():
-        patron = f"%{q.strip().translate(_ESCAPE_LIKE)}%"
-        cond.append("(titulo ILIKE %s ESCAPE '\\' OR variable ILIKE %s ESCAPE '\\')")
-        params += [patron, patron]
-    if desde:
-        cond.append("fecha_fin >= %s")
-        params.append(_fecha("desde", desde))
-    if hasta:
-        cond.append("fecha_inicio < %s")
-        params.append(_fecha("hasta", hasta))
-    return " AND ".join(cond), params
-
-
-def _lista(texto: str | None) -> list[str]:
-    return [p.strip() for p in (texto or "").split(_SEPARADOR) if p.strip()]
-
-
-def _exigir(campo: str, valores: list[str], validos) -> None:
-    desconocidos = [v for v in valores if v not in validos]
-    if desconocidos:
-        raise ValueError(f"{campo} desconocido: {', '.join(desconocidos)}; "
-                         f"validos: {', '.join(validos)}")
-
-
-def _fecha(campo: str, texto: str) -> date:
-    try:
-        return date.fromisoformat(texto)
-    except ValueError as exc:
-        raise VentanaInvalida(
-            "fecha_ilegible", f"{campo} no es una fecha ISO (aaaa-mm-dd): {texto!r}") from exc
-
-
-def _enlaces(alerta: dict, definicion: reglas.Definicion | None) -> dict:
-    """A Calidad y a Series con el rango de la alerta (`hasta` exclusivo)."""
-    hasta = date.fromisoformat(alerta["fecha_fin"]) + timedelta(days=1)
-    rango = {"desde": alerta["fecha_inicio"], "hasta": hasta.isoformat()}
-    variable = alerta["variable"]
-    variables = (definicion.variables_de_series(variable) if definicion
-                 else [] if variable == reglas.DIA_ENTERO else [variable])
-    return {"calidad": f"/calidad?{urlencode(rango)}",
-            "series": "/series?" + urlencode(
-                {"variables": _SEPARADOR.join(variables), **rango}, safe=_SEPARADOR)}

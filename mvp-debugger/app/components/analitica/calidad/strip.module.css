@@ -1,0 +1,78 @@
+/* La tira de días: una celda por día con su trama y la leyenda que la explica. */
+
+.strip {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin: 6px 0 0;
+  padding: 0;
+}
+
+.cell {
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+  border: 1px solid var(--line2);
+}
+
+/* Las cuatro tramas. `noData` es hueco a propósito: un día ausente no es un día
+   aprobado, y con relleno se leería como uno más. */
+.ok {
+  background: var(--good);
+  border-color: var(--good);
+}
+
+.warn {
+  background: repeating-linear-gradient(
+    45deg, var(--warn) 0 2px, transparent 2px 4px
+  );
+  border-color: var(--warn);
+}
+
+.crit {
+  background:
+    repeating-linear-gradient(45deg, var(--crit) 0 2px, transparent 2px 4px),
+    repeating-linear-gradient(-45deg, var(--crit) 0 2px, transparent 2px 4px);
+  border-color: var(--crit);
+}
+
+.noData {
+  background: transparent;
+  border-style: dotted;
+  border-color: var(--muted);
+}
+
+.running {
+  background: var(--panel2);
+  border-color: var(--line2);
+}
+
+.stopped {
+  background: repeating-linear-gradient(
+    90deg, var(--warn) 0 2px, transparent 2px 5px
+  );
+  border-color: var(--warn);
+}
+
+.stoppedSun {
+  background: var(--crit);
+  border-color: var(--crit);
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 11.5px;
+  color: var(--ink2);
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}

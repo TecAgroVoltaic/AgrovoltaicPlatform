@@ -6,7 +6,7 @@
 // nativo hace el mismo trabajo, se maneja con teclado y se puede buscar tecleando.
 import { useId } from "react";
 
-import styles from "@/app/components/analitica/calidad/calidad.module.css";
+import styles from "@/app/components/analitica/calidad/findings.module.css";
 import { DAY_VERDICT_BADGE, SEVERITY_BADGE } from "@/app/components/analitica/calidad/labels";
 import {
   isFiltered,

@@ -11,15 +11,13 @@
 // consulta (carga, dato, vacío, error) son igual de normales en este producto, y
 // un try/catch los reparte entre dos caminos distintos.
 import type { ZodType } from "zod";
-
-import { servidorApagado } from "@/app/lib/client";
 import { failure, type AnalyticsResult } from "@/app/lib/analitica/errors";
 import { rangeToParams } from "@/app/lib/analitica/urlRange";
 import type { DateRange } from "@/app/lib/analitica/dateRange";
+import { describeError, describeHttpFailure, validate } from "@/app/lib/analitica/responseReading";
 
 const ANALYTICS_BASE_PATH = "/api/historico";
 const DEFAULT_TIMEOUT_MS = 30_000;
-const UNAUTHORIZED_STATUS = 401;
 
 /** Firma mínima de `fetch`: se inyecta para poder probar sin red (DIP). */
 export type HttpFetch = (input: string, init?: RequestInit) => Promise<Response>;
@@ -115,62 +113,4 @@ async function send<TData>(
   } finally {
     clearTimeout(timer);
   }
-}
-
-function validate<TData>(body: string, schema: ZodType<TData>): AnalyticsResult<TData> {
-  let parsedJson: unknown;
-  try {
-    parsedJson = JSON.parse(body);
-  } catch (error) {
-    return {
-      ok: false,
-      failure: failure("MALFORMED_RESPONSE", { detail: describeError(error) }),
-    };
-  }
-  const result = schema.safeParse(parsedJson);
-  if (!result.success) {
-    return {
-      ok: false,
-      failure: failure("MALFORMED_RESPONSE", { detail: result.error.message }),
-    };
-  }
-  return { ok: true, data: result.data };
-}
-
-function describeHttpFailure(status: number, body: string) {
-  const detail = readDetail(body);
-  if (status === UNAUTHORIZED_STATUS) return failure("UNAUTHORIZED", { status });
-  if (servidorApagado({ status, ok: false, data: safeJson(body) })) {
-    return failure("SERVICE_UNAVAILABLE", { status, detail });
-  }
-  const payload = safeJson(body);
-  return failure("UPSTREAM_ERROR", {
-    status,
-    detail,
-    ...(detail ? { message: detail } : {}),
-    ...(payload !== null ? { payload } : {}),
-  });
-}
-
-/** FastAPI responde `{detail}`; el proxy de /api/*, `{error}`. */
-function readDetail(body: string): string | undefined {
-  const parsed = safeJson(body);
-  if (parsed === null) return undefined;
-  const detail = "detail" in parsed ? parsed.detail : "error" in parsed ? parsed.error : null;
-  return typeof detail === "string" ? detail : undefined;
-}
-
-function safeJson(body: string): object | null {
-  try {
-    const parsed: unknown = JSON.parse(body);
-    return typeof parsed === "object" ? parsed : null;
-  } catch {
-    // Un cuerpo que no es JSON no es un fallo aparte: el código HTTP ya dijo qué
-    // pasó y el cuerpo crudo viaja en `detail`.
-    return null;
-  }
-}
-
-function describeError(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }

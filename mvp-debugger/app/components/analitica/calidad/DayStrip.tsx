@@ -7,7 +7,7 @@
 // foco, así que en modo lectura se recorre día por día igual, sin convertir la
 // tira en una trampa de tabulador. La elección de un día se hace en el selector
 // accesible del explorador de hallazgos.
-import styles from "@/app/components/analitica/calidad/calidad.module.css";
+import styles from "@/app/components/analitica/calidad/strip.module.css";
 import type { StateBadge } from "@/app/components/analitica/calidad/labels";
 
 export type DayCell = {
