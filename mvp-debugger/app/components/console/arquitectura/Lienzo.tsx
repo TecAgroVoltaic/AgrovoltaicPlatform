@@ -9,108 +9,20 @@
 //
 // El hover no tiene código propio: cada nodo lleva `data-tip` y lo atiende
 // `ChartTooltip`, que ya está montado en la consola y funciona por delegación.
-import type { ReactNode } from "react";
-import type { Ficha, Grupo as GrupoNodo, NodoFijo } from "./catalogo";
-import { ANCHO, BARRERA, CAPA, CEREBRO, COL, HERRAMIENTAS, LIENZO, NODOS_FIJOS, TOOL } from "./catalogo";
-import { dia, type Cobertura, type Herramienta, type Mapa } from "./mapa";
+//
+// La disposición y las aristas viven en `lienzo/disposicion.ts`; el cerebro y
+// la capa determinista son componentes propios.
+import type { Ficha, NodoFijo } from "./catalogo";
+import { ANCHO, COL, LIENZO, NODOS_FIJOS, TOOL } from "./catalogo";
+import type { Mapa } from "./mapa";
 import type { Detalle } from "./NodoModal";
 import { etiquetaModo } from "@/app/components/console/modos";
+import { CapaDeterminista } from "./lienzo/CapaDeterminista";
+import { Cerebro } from "./lienzo/Cerebro";
+import { aristasDe, disponer, ROTULO } from "./lienzo/disposicion";
+import { Nodo } from "./lienzo/Nodo";
 
-// Puertos de salida/entrada de las aristas troncales.
-const PUERTO_CEREBRO = { x: CEREBRO.x + CEREBRO.w, y: CEREBRO.y + 125 };
-const PUERTO_PUERTA = { x: COL.puerta, y: 185 };
-// Fondo de todo lo que tiene posición fija. El lienzo termina justo debajo del
-// contenido: sin esto quedaba una franja muerta al pie.
-const FONDO_FIJO = Math.max(
-  ...NODOS_FIJOS.map((n) => n.y + n.h),
-  CEREBRO.y + CEREBRO.h,
-  CAPA.y + CAPA.h,
-);
-
-const ROTULO: Record<GrupoNodo, string> = {
-  entrada: "entrada · consola",
-  puerta: "puerta de acceso",
-  cerebro: "el modelo",
-  servidor: "herramienta de servidor",
-  dato: "fuente · solo lectura",
-};
-
-type Item = { h: Herramienta; ficha?: Ficha; y: number; centro: number; activa: boolean };
-type Grupo = { modo: string; yEncabezado: number; items: Item[] };
-
-/**
- * Cobertura real de cada variable, para la ficha del store. Sale del mapa que
- * publica el servicio, no del catálogo: unas fechas escritas a mano envejecen
- * sin que nadie se entere, que es justo lo que esta vista no puede permitirse.
- */
-function cobertura(datos: Record<string, Cobertura>): string[] {
-  return Object.entries(datos).map(([variable, c]) =>
-    c.error
-      ? `**${variable}**: no se pudo leer el rango (${c.error}).`
-      : `**${variable}**: ${(c.n ?? 0).toLocaleString("es-CR")} lecturas`
-        + ` de ${dia(c.desde)} a ${dia(c.hasta)}, en ${c.unidad || "sin unidad"}.`);
-}
-
-/** Curva horizontal suave entre dos puertos. */
-function curva(x1: number, y1: number, x2: number, y2: number): string {
-  const dx = Math.max(26, Math.abs(x2 - x1) * 0.55);
-  return `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
-}
-
-/**
- * Apila las herramientas por modo, en el orden que publica el servicio.
- * Una tool que estuviera en dos modos se dibuja una sola vez, en el primero que
- * la lista: no se duplica el nodo.
- */
-function disponer(mapa: Mapa, modo: string): { grupos: Grupo[]; alto: number } {
-  const porNombre = new Map(mapa.herramientas.map((h) => [h.nombre, h]));
-  const ya = new Set<string>();
-  const grupos: Grupo[] = [];
-  let y = TOOL.y0;
-
-  for (const [nombreModo, perfil] of Object.entries(mapa.modos)) {
-    const tools = perfil.herramientas
-      .filter((n) => !ya.has(n) && porNombre.has(n))
-      .map((n) => { ya.add(n); return porNombre.get(n)!; });
-    if (!tools.length) continue;
-    grupos.push({
-      modo: nombreModo,
-      yEncabezado: y - TOOL.encabezado,
-      items: tools.map((h, i) => {
-        const top = y + i * (TOOL.h + TOOL.gap);
-        return {
-          h, ficha: HERRAMIENTAS[h.nombre], y: top, centro: top + TOOL.h / 2,
-          activa: !!h.modos?.includes(modo),
-        };
-      }),
-    });
-    y += tools.length * (TOOL.h + TOOL.gap) - TOOL.gap + TOOL.entreGrupos;
-  }
-
-  const ultimo = grupos.at(-1)?.items.at(-1);
-  const fondoTools = ultimo ? ultimo.y + TOOL.h : TOOL.y0;
-  return { grupos, alto: Math.max(fondoTools, FONDO_FIJO) + LIENZO.margenInferior };
-}
-
-function Nodo({ id, clase, x, y, w, h, titulo, sub, tip, activo, onAbrir, extra }: {
-  id: string; clase: string; x: number; y: number; w: number; h: number;
-  titulo: string; sub: string; tip: string; activo: boolean;
-  onAbrir: () => void; extra?: ReactNode;
-}) {
-  return (
-    <button
-      className={`arq-nodo ${clase}` + (activo ? "" : " apagado")}
-      style={{ left: x, top: y, width: w, height: h }}
-      data-tip={tip}
-      onClick={onAbrir}
-      key={id}
-    >
-      <span className="arq-n-t">{titulo}</span>
-      <span className="arq-n-s">{sub}</span>
-      {extra}
-    </button>
-  );
-}
+const LARGO_RESUMEN = 64;
 
 export function Lienzo({ mapa, modo, onAbrir }: {
   mapa: Mapa;
@@ -119,27 +31,7 @@ export function Lienzo({ mapa, modo, onAbrir }: {
 }) {
   const { grupos, alto } = disponer(mapa, modo);
   const webActiva = mapa.web_search.modos.includes(modo);
-
-  // ── Aristas ──────────────────────────────────────────────────────────────
-  const aristas: { d: string; activa: boolean; clase?: string }[] = [];
-  for (const n of NODOS_FIJOS.filter((n) => n.grupo === "entrada")) {
-    aristas.push({ d: curva(n.x + n.w, n.y + n.h / 2, PUERTO_PUERTA.x, PUERTO_PUERTA.y), activa: true });
-  }
-  aristas.push({ d: curva(COL.puerta + ANCHO.puerta, PUERTO_PUERTA.y, CEREBRO.x, PUERTO_CEREBRO.y), activa: true });
-  for (const g of grupos) {
-    for (const it of g.items) {
-      aristas.push({
-        d: curva(PUERTO_CEREBRO.x, PUERTO_CEREBRO.y, COL.tool, it.centro),
-        activa: it.activa,
-      });
-      aristas.push({
-        d: curva(COL.tool + ANCHO.tool, it.centro, CAPA.puerto.x, CAPA.puerto.y),
-        activa: it.activa,
-      });
-    }
-  }
-  aristas.push({ d: `M 432 ${CEREBRO.y + CEREBRO.h} L 432 344`, activa: webActiva, clase: "punteada" });
-  aristas.push({ d: `M 1007 474 L 1007 ${CAPA.y + CAPA.h}`, activa: true });
+  const aristas = aristasDe(grupos, webActiva);
 
   const abrirFicha = (titulo: string, clase: string, ficha: Ficha) =>
     onAbrir({ titulo, clase, ficha });
@@ -175,27 +67,7 @@ export function Lienzo({ mapa, modo, onAbrir }: {
         />
       ))}
 
-      {/* El cerebro */}
-      <button
-        className="arq-nodo arq-cerebro"
-        style={{ left: CEREBRO.x, top: CEREBRO.y, width: CEREBRO.w, height: CEREBRO.h }}
-        data-tip={CEREBRO.ficha.hover}
-        onClick={() => abrirFicha(mapa.agente.nombre, `el modelo · ${mapa.agente.modelo}`, CEREBRO.ficha)}
-      >
-        <span className="arq-cer-h">
-          <span className="arq-n-t">{mapa.agente.nombre}</span>
-          <span className="arq-chip">{mapa.agente.modelo.replace(/^claude-/, "")}</span>
-        </span>
-        <ul className="arq-cer-l">
-          <li>Lazo <b>{mapa.agente.lazo}</b>: decide, ejecuta, vuelve a decidir</li>
-          <li>Prompt de sistema <b>por modo</b>, cacheado</li>
-          <li>Historial: <b>{mapa.limites.historial_mensajes}</b> mensajes · {mapa.limites.max_tokens} tokens</li>
-          <li>Devuelve la <b>traza</b>: cada paso, tokens y US$</li>
-        </ul>
-        <span className="arq-cer-m">
-          <span>modo activo</span><span>{etiquetaModo(modo)}</span>
-        </span>
-      </button>
+      <Cerebro mapa={mapa} modo={modo} abrirFicha={abrirFicha} />
 
       {/* Herramientas, apiladas por modo */}
       {grupos.map((g) => (
@@ -210,7 +82,7 @@ export function Lienzo({ mapa, modo, onAbrir }: {
           key={it.h.nombre} id={it.h.nombre} clase={`arq-tool arq-tool-${g.modo}`}
           x={COL.tool} y={it.y} w={ANCHO.tool} h={TOOL.h}
           titulo={it.h.nombre}
-          sub={it.ficha?.resumen || it.h.descripcion.slice(0, 64) + "…"}
+          sub={it.ficha?.resumen || it.h.descripcion.slice(0, LARGO_RESUMEN) + "…"}
           tip={it.ficha?.hover || it.h.descripcion}
           activo={it.activa}
           onAbrir={() => onAbrir({
@@ -223,34 +95,7 @@ export function Lienzo({ mapa, modo, onAbrir }: {
         />
       )))}
 
-      {/* Capa determinista */}
-      <div className="arq-capa" style={{ left: CAPA.x, top: CAPA.y, width: CAPA.w, height: CAPA.h }}>
-        <span className="lbl">Capa determinista · Python</span>
-        {CAPA.filas.slice(0, 2).map((f) => (
-          <button key={f.id} className="arq-fila" data-tip={f.ficha.hover}
-                  onClick={() => abrirFicha(f.titulo, "cálculo determinista", f.ficha)}>
-            <span className="arq-n-t">{f.titulo}</span>
-            <span className="arq-n-s">{f.sub}</span>
-          </button>
-        ))}
-        <div className="arq-barrera">
-          <span className="arq-b-t">{BARRERA.titulo}</span>
-          <span className="arq-b-s">
-            Toda lectura pasa por <code>get_recent_data</code>, que devuelve
-            estrictamente <code>timestamp &lt; ahora</code>.
-          </span>
-        </div>
-        {CAPA.filas.slice(2).map((f) => (
-          <button key={f.id} className="arq-fila" data-tip={f.ficha.hover}
-                  onClick={() => abrirFicha(f.titulo, "datos · solo lectura", {
-                    ...f.ficha,
-                    limites: [...cobertura(mapa.datos), ...(f.ficha.limites || [])],
-                  })}>
-            <span className="arq-n-t">{f.titulo}</span>
-            <span className="arq-n-s">{f.sub}</span>
-          </button>
-        ))}
-      </div>
+      <CapaDeterminista mapa={mapa} abrirFicha={abrirFicha} />
     </div>
   );
 }
