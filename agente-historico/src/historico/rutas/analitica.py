@@ -17,7 +17,7 @@ from fastapi import APIRouter, Depends, Query
 
 from historico import tools
 from historico.analitica import (
-    carpeta, cobertura_dias, comparativa, completitud, correlacion, crestas,
+    carpeta, climatologia, cobertura_dias, comparativa, completitud, correlacion, crestas,
     distribucion, resumen, series, ventana,
 )
 from historico.rutas.dependencias import _verificar_api_key
@@ -76,6 +76,12 @@ def analitica_irradiacion(
         desde: str | None = Query(None), hasta: str | None = Query(None)) -> dict:
     """Irradiacion acumulada por mes en kWh/m2 (Fig. 6, panel GHI)."""
     return distribucion.irradiacion_mensual(ventana.crear(desde, hasta), variable)
+
+
+@router.get("/analitica/climatologia")
+def analitica_climatologia(desde: str = Query(...), hasta: str = Query(...)) -> dict:
+    """Irradiacion, irradiancia, temperatura y humedad por mes calendario (hasta exclusivo)."""
+    return climatologia.calcular(ventana.crear(desde, hasta))
 
 
 @router.get("/analitica/carpeta")
