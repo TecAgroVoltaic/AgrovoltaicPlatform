@@ -6,14 +6,23 @@
 // forma de pintar una pantalla en blanco sin explicación.
 //
 // Es un componente de servidor: recibe el estado ya resuelto y no consulta nada.
-// Así se puede probar los cuatro caminos sin red y sin `act()`.
+// Así se puede probar los cuatro caminos sin red y sin `act()`. La climatología,
+// que sí consulta desde el cliente, entra por la ranura `climatology`.
+import type { ReactNode } from "react";
+
 import { DashboardSections } from "@/app/components/analitica/tablero/DashboardSections";
 import { findSection } from "@/app/components/analitica/sections";
 import type { DashboardState } from "@/app/components/analitica/tablero/loadDashboard";
 
 const TABLERO_PATH = "/";
 
-export function DashboardView({ state }: { readonly state: DashboardState }) {
+export type DashboardViewProps = {
+  readonly state: DashboardState;
+  /** Va arriba de los indicadores y no depende de su estado. */
+  readonly climatology?: ReactNode;
+};
+
+export function DashboardView({ state, climatology }: DashboardViewProps) {
   const section = findSection(TABLERO_PATH);
   return (
     <div className="vista">
@@ -21,6 +30,7 @@ export function DashboardView({ state }: { readonly state: DashboardState }) {
         <h1>{section?.label ?? "Tablero"}</h1>
         <p>{section?.description}</p>
       </header>
+      {climatology}
       <DashboardBody state={state} />
     </div>
   );
