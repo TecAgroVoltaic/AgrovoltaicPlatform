@@ -19,6 +19,7 @@ import {
   toTimeSeriesData,
 } from "@/app/components/analitica/series/seriesChart";
 import type { CatalogVariable } from "@/app/lib/analitica/contracts/variables";
+import { PHOTOVOLTAIC_SOURCE } from "@/app/lib/fuentes/registry";
 
 const SERIES_PATH = "analitica/series";
 const VARIABLE_PARAM = "variables";
@@ -60,6 +61,7 @@ export function VariableSeriesSection({ range, variable }: VariableSeriesSection
         </p>
       ) : null}
       <TimeSeriesChart
+        source={PHOTOVOLTAIC_SOURCE}
         title={`${variable.label} (${variable.unit})`}
         {...subtitleFor(movingAverage)}
         state={state}

@@ -1,0 +1,42 @@
+/* Mismo lenguaje que las píldoras de Alertas: borde fino, fondo de panel, punto
+   de color y texto --ink2. Nunca relleno sólido. */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  height: 20px;
+  padding: 0 8px 0 7px;
+  border: 1px solid var(--line2);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--ink2);
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: none;
+}
+
+.badge::before {
+  content: "";
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+.badge[data-tone="real"]::before { background: var(--real); }
+.badge[data-tone="ceil"]::before { background: var(--ceil); }
+.badge[data-tone="pred"]::before { background: var(--pred); }
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

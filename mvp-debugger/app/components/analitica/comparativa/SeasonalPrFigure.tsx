@@ -25,6 +25,7 @@ import { VariantChips } from "@/app/components/analitica/comparativa/VariantChip
 import { ARRAY_KEYS } from "@/app/components/analitica/comparativa/vocabulary";
 import styles from "@/app/components/analitica/comparativa/comparativa.module.css";
 import noticesStyles from "@/app/components/analitica/comparativa/notices.module.css";
+import { PHOTOVOLTAIC_SOURCE } from "@/app/lib/fuentes/registry";
 
 /** El camino que cubre los 197 días válidos, y contra la irradiancia MEDIDA:
  *  es el punto de partida que no depende de ningún modelo. */
@@ -65,6 +66,7 @@ export function SeasonalPrFigure({ result, onRetry }: SeasonalPrFigureProps) {
         <p className="muted small">{describeSelection(selected, result)}</p>
       ) : null}
       <BarsChart
+        source={PHOTOVOLTAIC_SOURCE}
         title="Performance Ratio mes a mes"
         subtitle="Cada mes sobre sus propios días válidos. Un mes sin barra es un mes sin ese dato, nunca un mes con rendimiento cero."
         state={state}

@@ -12,6 +12,7 @@ import type { CorrelationResponse } from "@/app/lib/analitica/contracts/estadist
 import { chartStateFrom, emptyBecause } from "@/app/components/analitica/estadistica/chartState";
 import { formatCount } from "@/app/components/analitica/estadistica/format";
 import type { FocusedFigureProps } from "@/app/components/analitica/estadistica/figures/props";
+import { PHOTOVOLTAIC_SOURCE } from "@/app/lib/fuentes/registry";
 
 // El código que manda el backend en `motivo` cuando la ventana no toca la
 // variable. No es prosa: la prosa viaja en `nota`.
@@ -64,6 +65,7 @@ export function CorrelationFigure(props: FocusedFigureProps<CorrelationResponse>
 
   return (
     <ScatterFitChart
+      source={PHOTOVOLTAIC_SOURCE}
       title={`Irradiancia incidente contra ${focusLabel}`}
       subtitle="Cada punto es un instante en que las dos variables tienen la misma marca de tiempo (Fig. 8)."
       caption={result?.ok ? describeCorrelation(result.data) : undefined}

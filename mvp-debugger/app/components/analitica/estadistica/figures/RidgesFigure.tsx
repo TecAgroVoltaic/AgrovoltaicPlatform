@@ -12,6 +12,7 @@ import type { DensityGroup, RidgesResponse } from "@/app/lib/analitica/contracts
 import { chartStateFrom, emptyBecause } from "@/app/components/analitica/estadistica/chartState";
 import type { FigureProps } from "@/app/components/analitica/estadistica/figures/props";
 import styles from "@/app/components/analitica/estadistica/vista.module.css";
+import { PHOTOVOLTAIC_SOURCE } from "@/app/lib/fuentes/registry";
 
 const CAPTION =
   "Cada cresta es la densidad de un sensor, escalada al máximo común: comparan forma, no cantidad. " +
@@ -82,6 +83,7 @@ export function RidgesFigure({ result, outOfCoverage, onRetry }: FigureProps<Rid
   return (
     <div className={styles.figura}>
       <RidgelineChart
+        source={PHOTOVOLTAIC_SOURCE}
         title="Distribución por sensor"
         subtitle="Densidad de cada sensor de temperatura en el rango, con su probabilidad de cola (Fig. 7)."
         caption={CAPTION}

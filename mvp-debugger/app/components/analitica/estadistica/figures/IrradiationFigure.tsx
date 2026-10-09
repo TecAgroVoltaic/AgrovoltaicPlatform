@@ -9,6 +9,7 @@ import { formatMetric, isMeasured } from "@/app/lib/analitica/contracts/metric";
 import type { IrradiationResponse } from "@/app/lib/analitica/contracts/estadistica";
 import { chartStateFrom } from "@/app/components/analitica/estadistica/chartState";
 import type { FigureProps } from "@/app/components/analitica/estadistica/figures/props";
+import { PHOTOVOLTAIC_SOURCE } from "@/app/lib/fuentes/registry";
 
 const SERIES_ID = "irradiacion";
 const SERIES_LABEL = "Irradiación acumulada";
@@ -46,6 +47,7 @@ export function IrradiationFigure({ result, outOfCoverage, onRetry }: FigureProp
   const state = chartStateFrom(result, { outOfCoverage, onRetry, adapt: toIrradiationBars });
   return (
     <BarsChart
+      source={PHOTOVOLTAIC_SOURCE}
       title="Irradiación mensual · incidente"
       subtitle="Energía que entró por metro cuadrado en cada mes del rango (Fig. 6)."
       caption={result?.ok ? describeTotal(result.data) : undefined}

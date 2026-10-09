@@ -25,6 +25,16 @@
   margin-bottom: 10px;
 }
 
+/* Título con su fuente al lado, sin el margen inferior de `.cardHead`: debajo
+   viene el subtítulo de la tarjeta y tiene que quedar pegado al título. */
+.titleRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 10px;
+}
+
 .headStat {
   font-family: var(--mono);
   font-variant-numeric: tabular-nums;

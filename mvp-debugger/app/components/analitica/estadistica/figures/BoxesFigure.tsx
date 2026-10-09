@@ -5,6 +5,7 @@ import type { DistributionResponse, MonthlyBox } from "@/app/lib/analitica/contr
 import { chartStateFrom } from "@/app/components/analitica/estadistica/chartState";
 import { formatCount, formatDecimal } from "@/app/components/analitica/estadistica/format";
 import type { FocusedFigureProps } from "@/app/components/analitica/estadistica/figures/props";
+import { PHOTOVOLTAIC_SOURCE } from "@/app/lib/fuentes/registry";
 
 const IQR_DECIMALS = 1;
 
@@ -50,6 +51,7 @@ export function BoxesFigure(props: FocusedFigureProps<DistributionResponse>) {
   const state = chartStateFrom(result, { outOfCoverage, onRetry, adapt: toBoxPlotData });
   return (
     <BoxPlotChart
+      source={PHOTOVOLTAIC_SOURCE}
       title={`Distribución mensual · ${focusLabel}`}
       subtitle="Mediana, cuartiles y bigotes de cada mes del rango (Fig. 6)."
       caption={result?.ok ? describeBoxes(result.data) : undefined}

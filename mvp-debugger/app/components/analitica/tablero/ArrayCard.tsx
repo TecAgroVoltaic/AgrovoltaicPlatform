@@ -7,6 +7,7 @@
 //
 // Ninguna casilla repite el rango del período: ya está en la barra de arriba, y
 // escribirlo tres veces por tarjeta era la mitad del texto de esta pantalla.
+import { SourceBadge } from "@/app/components/fuentes/SourceBadge";
 import { KpiTile } from "@/app/components/analitica/tablero/KpiTile";
 import {
   ARRAY_PEAK_POWER_WP,
@@ -15,6 +16,7 @@ import {
 import { formatMetric, isMeasured, type Metric } from "@/app/lib/analitica";
 import { formatInteger, formatUnit } from "@/app/components/analitica/tablero/format";
 import type { SpecificYield } from "@/app/lib/analitica/contracts/tablero";
+import type { SourceId } from "@/app/lib/fuentes/registry";
 import styles from "@/app/components/analitica/tablero/tablero.module.css";
 
 /** El anualizado es contexto, no la casilla: en cientos de kWh/kWp los decimales
@@ -27,6 +29,7 @@ export type ArrayCardProps = {
   readonly recentEnergy: Metric;
   readonly specificYield: SpecificYield;
   readonly recentTitle: string;
+  readonly source?: SourceId;
 };
 
 export function ArrayCard({
@@ -35,10 +38,14 @@ export function ArrayCard({
   recentEnergy,
   specificYield,
   recentTitle,
+  source,
 }: ArrayCardProps) {
   return (
     <section className={`card ${styles.arrayCard}`} aria-label={`Arreglo ${array.name}`}>
-      <h2 className={styles.cardTitle}>{array.name}</h2>
+      <div className={styles.titleRow}>
+        <h2 className={styles.cardTitle}>{array.name}</h2>
+        {source ? <SourceBadge source={source} /> : null}
+      </div>
       <p className={styles.cardSub}>
         {array.geometry} · {formatInteger(ARRAY_PEAK_POWER_WP)} Wp
       </p>

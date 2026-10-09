@@ -12,6 +12,7 @@ import type { AnalyticsResult } from "@/app/lib/analitica/errors";
 import type { ArrayComparison } from "@/app/lib/analitica/contracts/comparativa";
 import { chartStateFrom, emptyBecause } from "@/app/components/analitica/comparativa/chartState";
 import { toHourlyBars } from "@/app/components/analitica/comparativa/chartData";
+import { PHOTOVOLTAIC_SOURCE } from "@/app/lib/fuentes/registry";
 
 export type HourlyFigureProps = {
   readonly result: AnalyticsResult<ArrayComparison> | null;
@@ -30,6 +31,7 @@ export function HourlyFigure({ result, onRetry }: HourlyFigureProps) {
 
   return (
     <BarsChart
+      source={PHOTOVOLTAIC_SOURCE}
       title="Potencia media por hora del día"
       subtitle="Promedio de cada hora en todo el período, en hora local de Costa Rica."
       caption={result?.ok ? result.data.hourlyReading : undefined}

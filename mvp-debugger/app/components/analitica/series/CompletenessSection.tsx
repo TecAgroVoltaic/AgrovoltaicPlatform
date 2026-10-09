@@ -25,6 +25,7 @@ import {
 } from "@/app/components/analitica/series/completenessChart";
 import styles from "@/app/components/analitica/series/series.module.css";
 import type { DateRange } from "@/app/lib/analitica/dateRange";
+import { PHOTOVOLTAIC_SOURCE } from "@/app/lib/fuentes/registry";
 
 const COMPLETENESS_PATH = "analitica/completitud";
 const TITLE = "Puntos registrados por tramo";
@@ -36,13 +37,14 @@ export function CompletenessSection({ range }: { readonly range: DateRange }) {
   const query = useAnalyticsQuery({ path: COMPLETENESS_PATH, range, schema: completenessSchema });
 
   if (query.status !== "loaded") {
-    return <BarsChart title={TITLE} state={pendingChartState<BarsData>(query)} />;
+    return <BarsChart source={PHOTOVOLTAIC_SOURCE} title={TITLE} state={pendingChartState<BarsData>(query)} />;
   }
 
   const { payload } = query.data;
   if (payload.sources.length === 0) {
     return (
       <BarsChart
+        source={PHOTOVOLTAIC_SOURCE}
         title={TITLE}
         state={emptyChart<BarsData>("NO_ROWS", { message: NO_SOURCES_MESSAGE })}
       />
@@ -79,6 +81,7 @@ function SourceCompleteness({ source, degraded }: SourceProps) {
   return (
     <div className={styles.source}>
       <BarsChart
+        source={PHOTOVOLTAIC_SOURCE}
         title={label}
         {...(degraded ? { subtitle: DEGRADED_NOTE } : {})}
         state={state}

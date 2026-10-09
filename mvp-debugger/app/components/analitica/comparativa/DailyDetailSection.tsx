@@ -14,6 +14,7 @@ import { DiscardedDaysTable } from "@/app/components/analitica/comparativa/Disca
 import { formatDays } from "@/app/components/analitica/comparativa/format";
 import { INPUT_LABEL, SOURCE_DESCRIPTION } from "@/app/components/analitica/comparativa/vocabulary";
 import styles from "@/app/components/analitica/comparativa/comparativa.module.css";
+import { PHOTOVOLTAIC_SOURCE } from "@/app/lib/fuentes/registry";
 
 /** El camino que cubre todos los días válidos: el contador falta meses enteros
  *  y su serie diaria sería un peine de huecos. */
@@ -77,6 +78,7 @@ function DailyDetail({
   return (
     <>
       <TimeSeriesChart
+        source={PHOTOVOLTAIC_SOURCE}
         title="Performance Ratio por día"
         subtitle={describeDailySeries(result)}
         caption="Los días descartados quedan como hueco: su PR existe en el dato pero el criterio ya lo rechazó, y dibujarlo sugeriría que se puede leer."

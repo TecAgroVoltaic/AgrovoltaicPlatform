@@ -10,6 +10,7 @@ import { SystemEnergyCard } from "@/app/components/analitica/tablero/SystemEnerg
 import { formatDays, formatInclusiveRange } from "@/app/components/analitica/tablero/format";
 import { formatRange } from "@/app/lib/analitica/dateRange";
 import type { DashboardSummary } from "@/app/lib/analitica/contracts/tablero";
+import { PHOTOVOLTAIC_SOURCE } from "@/app/lib/fuentes/registry";
 import styles from "@/app/components/analitica/tablero/tablero.module.css";
 
 /** Por qué los dos arreglos no suman el total. Es metodología correcta que nadie
@@ -34,6 +35,7 @@ export function DashboardSections({ summary }: { readonly summary: DashboardSumm
         recentTitle={recentTitle}
         recentNote={describeRecentWindow(summary)}
         periodLabel={formatRange(summary.window)}
+        source={PHOTOVOLTAIC_SOURCE}
       />
 
       <div className={styles.arrays}>
@@ -43,6 +45,7 @@ export function DashboardSections({ summary }: { readonly summary: DashboardSumm
             array={array}
             {...figuresFor(summary, array.id)}
             recentTitle={recentTitle}
+            source={PHOTOVOLTAIC_SOURCE}
           />
         ))}
       </div>
