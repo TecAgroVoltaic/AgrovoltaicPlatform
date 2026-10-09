@@ -16,9 +16,15 @@ export function moverDias(fecha: string, dias: number): string {
 // zona que aplicarle, y así el texto no depende del ICU del navegador.
 const MESES_CORTOS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "set", "oct", "nov", "dic"];
 
+/** El mes de una fecha `YYYY-MM-DD` (o `YYYY-MM`) abreviado: «may». */
+export function shortMonthName(date: string): string {
+  const month = Number(date.slice(0, LARGO_FECHA).split("-")[1]);
+  return MESES_CORTOS[month - 1] ?? "?";
+}
+
 /** Una fecha `YYYY-MM-DD` como «3 may» o, con año, «3 may 2026». */
 export function fechaCorta(fecha: string, conAnio: boolean): string {
-  const [anio, mes, dia] = fecha.slice(0, LARGO_FECHA).split("-").map(Number);
-  const texto = `${dia} ${MESES_CORTOS[mes - 1] ?? "?"}`;
+  const [anio, , dia] = fecha.slice(0, LARGO_FECHA).split("-").map(Number);
+  const texto = `${dia} ${shortMonthName(fecha)}`;
   return conAnio ? `${texto} ${anio}` : texto;
 }

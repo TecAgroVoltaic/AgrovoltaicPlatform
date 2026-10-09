@@ -26,9 +26,10 @@
 // Este archivo es el barril: cada concepto vive en su módulo de `tiempo/`.
 
 export { ZONA_SITIO, ETIQUETA_ZONA } from "./tiempo/zona";
-export { moverDias, fechaCorta } from "./tiempo/calendario";
+export { moverDias, fechaCorta, shortMonthName } from "./tiempo/calendario";
 export {
   daysInMonth, weekdayMondayFirst, monthKey, monthStart, shiftMonths, monthLabel, longDateLabel,
+  calendarYear, yearStart,
 } from "./tiempo/calendarioMensual";
 export { moverReloj } from "./tiempo/reloj";
 export { hoyEnSitio, instanteEnSitio, diaEnSitio, momentoEnSitio } from "./tiempo/instante";
