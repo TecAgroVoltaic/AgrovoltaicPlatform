@@ -5,7 +5,8 @@
 // entrega el estado ya resuelto a la vista. El navegador recibe HTML con los
 // números dentro: ni una petición desde el cliente, ni un salto de carga, ni un
 // solo número calculado acá. La climatología mensual de arriba es la excepción
-// de cliente: lee el rango de la URL y consulta su propio endpoint.
+// de cliente: no mira el rango sino un año entero (`?clima=`), y consulta su
+// propio endpoint.
 import { Suspense } from "react";
 import type { Metadata } from "next";
 

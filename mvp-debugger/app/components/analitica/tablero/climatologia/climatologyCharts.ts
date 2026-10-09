@@ -24,6 +24,7 @@ import {
   NO_MONTHS_MESSAGE,
   PANEL_TITLE,
   displayUnit,
+  monthLabels,
 } from "@/app/components/analitica/tablero/climatologia/labels";
 
 const NO_BOX = { min: 0, q1: 0, median: 0, q3: 0, max: 0, count: 0 } as const;
@@ -40,8 +41,10 @@ export function irradiationState(response: ClimatologyResponse): ChartState<Bars
   const { months, irradiation } = response;
   if (irradiation.reason) return emptyFor(irradiation.reason);
   if (months.length === 0) return noMonths();
+  const labels = months.map(monthLabels);
   return readyChart({
-    categories: months,
+    categories: labels.map((label) => label.full),
+    axisLabels: labels.map((label) => label.axis),
     unit: displayUnit(irradiation.unit),
     series: [{ id: irradiation.variable, label: PANEL_TITLE.irradiation, values: irradiation.values }],
   });
@@ -53,17 +56,18 @@ export function boxesState(months: readonly string[], block: BoxesBlock): ChartS
   const byMonth = new Map(block.boxes.map((box) => [box.month, box]));
   return readyChart({
     unit: displayUnit(block.unit),
-    boxes: months.map((month) => toBox(month, byMonth.get(month))),
+    axisLabels: months.map((month) => monthLabels(month).axis),
+    boxes: months.map((month) => toBox(monthLabels(month).full, byMonth.get(month))),
   });
 }
 
-function toBox(month: string, box: ClimatologyBox | undefined): BoxPlotBox {
-  if (!box || box.count === 0) return { label: month, ...NO_BOX };
+function toBox(label: string, box: ClimatologyBox | undefined): BoxPlotBox {
+  if (!box || box.count === 0) return { label, ...NO_BOX };
   const { min, q1, median, q3, max } = box;
   if (min === null || q1 === null || median === null || q3 === null || max === null) {
-    return { label: month, ...NO_BOX };
+    return { label, ...NO_BOX };
   }
-  return { label: month, count: box.count, min, q1, median, q3, max };
+  return { label, count: box.count, min, q1, median, q3, max };
 }
 
 export type ClimatologyPanels = {

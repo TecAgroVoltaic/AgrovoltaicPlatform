@@ -1,9 +1,27 @@
 // Los textos de la climatología mensual. Viven juntos para que el título de un
 // panel, su motivo de vacío y su unidad no se repitan escritos a mano.
 import type { BoxesBlock, ClimatologyEmptyReason } from "@/app/lib/analitica/contracts/climatologia";
+import { monthLabel, monthStart, shortMonthName } from "@/app/lib/tiempo";
+
+const LOCALE = "es-CR";
+const SUBTITLE_SEPARATOR = " · ";
 
 export const CLIMATOLOGY_PATH = "analitica/climatologia";
-export const CLIMATOLOGY_TITLE = "Climatología mensual";
+const CLIMATOLOGY_TITLE = "Climatología mensual";
+export const YEAR_SELECTOR_LABEL = "Año de la climatología";
+
+/** «Climatología mensual · 2026»; sin año mientras se resuelve cuál mostrar. */
+export function climatologyTitle(year: number | null): string {
+  return year === null ? CLIMATOLOGY_TITLE : `${CLIMATOLOGY_TITLE}${SUBTITLE_SEPARATOR}${year}`;
+}
+
+export type MonthLabels = { readonly axis: string; readonly full: string };
+
+/** Un mes del backend (`YYYY-MM`): «may» para el eje y «mayo 2026» para el
+ *  tooltip. El año va solo en el largo porque el eje ya es de un solo año. */
+export function monthLabels(month: string): MonthLabels {
+  return { axis: shortMonthName(month), full: monthLabel(monthStart(month)) };
+}
 
 export const PANEL_TITLE = {
   irradiation: "Irradiación total por mes",
@@ -37,9 +55,6 @@ const UNIT_LABEL: Readonly<Record<string, string>> = {
 export function displayUnit(unit: string): string {
   return UNIT_LABEL[unit] ?? unit;
 }
-
-const LOCALE = "es-CR";
-const SUBTITLE_SEPARATOR = " · ";
 
 /** «base: medias diarias», solo cuando el backend la declara. */
 export function basisSubtitle(basis: string | null): string | undefined {

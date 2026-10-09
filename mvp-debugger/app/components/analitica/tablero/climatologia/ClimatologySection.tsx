@@ -3,25 +3,25 @@
 // (irradiación, irradiancia, temperatura y humedad). Todo número llega hecho del
 // backend; acá solo se decide el estado de cada panel y su fuente.
 import { BarsChart, BoxPlotChart, MIN_CHART_HEIGHT } from "@/app/components/charts";
-import { formatInclusiveRange } from "@/app/components/analitica/tablero/format";
 import { climatologyPanels } from "@/app/components/analitica/tablero/climatologia/climatologyCharts";
 import {
-  CLIMATOLOGY_TITLE,
   PANEL_TITLE,
   basisSubtitle,
   boxesSubtitle,
+  climatologyTitle,
   type BoxPanelId,
 } from "@/app/components/analitica/tablero/climatologia/labels";
 import { useClimatology } from "@/app/components/analitica/tablero/climatologia/useClimatology";
-import { useDateRange } from "@/app/lib/analitica/useDateRange";
+import { useClimatologyYear } from "@/app/components/analitica/tablero/climatologia/useClimatologyYear";
+import { YearSelector } from "@/app/components/analitica/tablero/climatologia/YearSelector";
 import styles from "@/app/components/analitica/tablero/climatologia/climatology.module.css";
 
 const HEADING_ID = "climatologia-titulo";
 const BOX_PANELS: readonly BoxPanelId[] = ["irradiance", "temperature", "humidity"];
 
 export function ClimatologySection() {
-  const { range } = useDateRange();
-  const query = useClimatology(range);
+  const { year, years, changing, setYear } = useClimatologyYear();
+  const query = useClimatology(year);
   const panels = climatologyPanels(query);
   const data = query.status === "loaded" ? query.data : null;
 
@@ -29,9 +29,14 @@ export function ClimatologySection() {
     <section className={styles.section} aria-labelledby={HEADING_ID}>
       <div className={styles.head}>
         <h2 id={HEADING_ID} className={styles.title}>
-          {CLIMATOLOGY_TITLE}
+          {climatologyTitle(year)}
         </h2>
-        <span className={styles.period}>{formatInclusiveRange(data?.period ?? range)}</span>
+        <YearSelector
+          years={years}
+          selected={year}
+          disabled={changing || query.status === "loading"}
+          onSelect={setYear}
+        />
       </div>
       <div className={`gr-grid ${styles.panels}`}>
         <BarsChart
