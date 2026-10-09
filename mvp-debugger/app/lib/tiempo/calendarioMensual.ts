@@ -34,6 +34,16 @@ export function weekdayMondayFirst(date: string): number {
   return sundayFirst === SUNDAY_UTC_INDEX ? DAYS_PER_WEEK - 1 : sundayFirst - 1;
 }
 
+/** El año de calendario de `date` (`YYYY-MM-DD` o `YYYY-MM`). */
+export function calendarYear(date: string): number {
+  return calendarParts(date).year;
+}
+
+/** El primer día del año, `YYYY-01-01`. */
+export function yearStart(year: number): string {
+  return isoFromParts(year, 1, 1);
+}
+
 /** El mes de `date` como `YYYY-MM`. */
 export function monthKey(date: string): string {
   return date.slice(0, YEAR_MONTH_LENGTH);

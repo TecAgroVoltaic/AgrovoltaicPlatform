@@ -18,6 +18,7 @@ import {
   tooltipBase,
   valueAxis,
 } from "@/app/components/charts/options/base";
+import { withAxisLabels } from "@/app/components/charts/options/axisLabels";
 import { seriesColor, type ChartTheme, type SeriesColorToken } from "@/app/components/charts/theme";
 import type { ChartCanvas } from "@/app/components/charts/options/canvas";
 import type { ChartOption } from "@/app/components/charts/echarts";
@@ -37,6 +38,9 @@ export type BarSeries = {
 
 export type BarsData = {
   readonly categories: readonly string[];
+  /** Texto corto del eje, en el mismo orden que `categories`; el tooltip sigue
+   *  mostrando la categoría entera. */
+  readonly axisLabels?: readonly string[];
   readonly series: readonly BarSeries[];
   readonly unit: string;
   /** Por defecto `"vertical"`. En horizontal las categorías se leen de arriba
@@ -71,7 +75,7 @@ export function buildBarsOption(
   const showLegend = data.series.length > 1;
   const isHorizontal = data.orientation === "horizontal";
   const hasBarLabels = data.series.some((series) => series.valueLabels !== undefined);
-  const categories = categoryAxis(theme, data.categories);
+  const categories = withAxisLabels(categoryAxis(theme, data.categories), data.axisLabels);
   const values = valueAxis(theme, data.unit);
 
   return {

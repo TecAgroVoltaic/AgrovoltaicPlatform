@@ -4,6 +4,7 @@
 // un hueco en el eje y no se omite: el eje tiene que seguir mostrando los meses
 // que faltan, porque la ausencia es el hallazgo más grande de este histórico.
 import { baseOption, categoryAxis, formatValue, tooltipBase, valueAxis } from "@/app/components/charts/options/base";
+import { withAxisLabels } from "@/app/components/charts/options/axisLabels";
 import { seriesColor, type ChartTheme, type SeriesColorToken } from "@/app/components/charts/theme";
 import type { ChartOption } from "@/app/components/charts/echarts";
 
@@ -21,6 +22,8 @@ export type BoxPlotBox = {
 
 export type BoxPlotData = {
   readonly boxes: readonly BoxPlotBox[];
+  /** Texto corto del eje, en el orden de `boxes`; el tooltip usa `label`. */
+  readonly axisLabels?: readonly string[];
   readonly unit: string;
   readonly color?: SeriesColorToken;
 };
@@ -53,7 +56,7 @@ export function buildBoxPlotOption(data: BoxPlotData, theme: ChartTheme): ChartO
       axisPointer: { type: "shadow" },
       formatter: (params) => formatBoxTooltip(params, data),
     },
-    xAxis: categoryAxis(theme, data.boxes.map((box) => box.label)),
+    xAxis: withAxisLabels(categoryAxis(theme, data.boxes.map((box) => box.label)), data.axisLabels),
     yAxis: valueAxis(theme, data.unit),
     series: [
       {
