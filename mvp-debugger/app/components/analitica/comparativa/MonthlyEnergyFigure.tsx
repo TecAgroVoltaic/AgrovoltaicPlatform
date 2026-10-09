@@ -14,6 +14,7 @@ import { toMonthlyEnergyBars } from "@/app/components/analitica/comparativa/char
 import { formatFraction } from "@/app/components/analitica/comparativa/format";
 import { describeDiscardReason } from "@/app/components/analitica/comparativa/vocabulary";
 import styles from "@/app/components/analitica/comparativa/comparativa.module.css";
+import { PHOTOVOLTAIC_SOURCE } from "@/app/lib/fuentes/registry";
 
 const NOT_ENOUGH_SEASONS =
   "no alcanza para hablar de estacionalidad: muy pocos meses llegan al mínimo de cobertura.";
@@ -33,6 +34,7 @@ export function MonthlyEnergyFigure({ result, onRetry }: MonthlyEnergyFigureProp
   return (
     <div className={styles.figure}>
       <BarsChart
+        source={PHOTOVOLTAIC_SOURCE}
         title="Energía por mes y por arreglo"
         subtitle="Meses con cobertura suficiente para compararse entre sí."
         state={state}

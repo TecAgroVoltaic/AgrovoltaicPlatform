@@ -11,9 +11,11 @@
 // dice cuál usan las otras ocho casillas. Eso ya lo explica, así que la línea
 // que decía «hay dos respuestas y las dos son correctas» sobraba.
 import { formatMetric, isMeasured, type Metric } from "@/app/lib/analitica";
+import { SourceBadge } from "@/app/components/fuentes/SourceBadge";
 import { KpiTile } from "@/app/components/analitica/tablero/KpiTile";
 import { formatDays, formatUnit } from "@/app/components/analitica/tablero/format";
 import type { EnergyAccounts } from "@/app/lib/analitica/contracts/tablero";
+import type { SourceId } from "@/app/lib/fuentes/registry";
 import styles from "@/app/components/analitica/tablero/energy.module.css";
 import tableroStyles from "@/app/components/analitica/tablero/tablero.module.css";
 
@@ -24,6 +26,7 @@ export type SystemEnergyCardProps = {
   readonly recentTitle: string;
   readonly recentNote: string;
   readonly periodLabel: string;
+  readonly source?: SourceId;
 };
 
 export function SystemEnergyCard({
@@ -32,11 +35,15 @@ export function SystemEnergyCard({
   recentTitle,
   recentNote,
   periodLabel,
+  source,
 }: SystemEnergyCardProps) {
   return (
     <section className={`card ${tableroStyles.hero}`}>
       <div className={tableroStyles.cardHead}>
-        <h2 className={tableroStyles.cardTitle}>Energía producida</h2>
+        <div className={tableroStyles.titleRow}>
+          <h2 className={tableroStyles.cardTitle}>Energía producida</h2>
+          {source ? <SourceBadge source={source} /> : null}
+        </div>
         <span className={tableroStyles.headStat}>{periodLabel}</span>
       </div>
 

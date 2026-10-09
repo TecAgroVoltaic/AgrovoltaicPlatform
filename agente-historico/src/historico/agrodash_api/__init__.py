@@ -22,7 +22,8 @@ No hay endpoint de lecturas crudas ni de exportacion: la exportacion se arma
 pidiendo buckets finos por sensor y por tramos del rango.
 
 Fachada del paquete: `cliente` (HTTP y sensores), `particion` (tramos y ventanas),
-`buckets` (lecturas de un sensor) y `planas` (filas para la exportacion).
+`buckets` (lecturas de un sensor), `planas` (filas para la exportacion) y
+`regiones` (San Carlos o Cartago segun el nombre de la caja).
 """
 from __future__ import annotations
 
@@ -34,3 +35,6 @@ from historico.agrodash_api.cliente import (  # noqa: F401
 )
 from historico.agrodash_api.particion import _map_ventana, _parse_bucket, tramos, ventanas  # noqa: F401
 from historico.agrodash_api.planas import conteos, filas, filas_sensores  # noqa: F401
+from historico.agrodash_api.regiones import (  # noqa: F401
+    CARTAGO, SAN_CARLOS, SUFIJO_SAN_CARLOS, es_san_carlos, region_de,
+)

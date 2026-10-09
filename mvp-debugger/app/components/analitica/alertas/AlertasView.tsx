@@ -11,6 +11,7 @@ import { AlertsToolbar } from "@/app/components/analitica/alertas/AlertsToolbar"
 import { EvaluationNotice } from "@/app/components/analitica/alertas/EvaluationNotice";
 import styles from "@/app/components/analitica/alertas/overview.module.css";
 import { SummaryCards } from "@/app/components/analitica/alertas/SummaryCards";
+import { SourceBadge } from "@/app/components/fuentes/SourceBadge";
 import { useAlertsList, useAlertsSummary } from "@/app/components/analitica/alertas/useAlertsData";
 import { useAlertsQuery, type HistoryMode } from "@/app/components/analitica/alertas/useAlertsQuery";
 import { useEvaluation } from "@/app/components/analitica/alertas/useEvaluation";
@@ -18,6 +19,7 @@ import { rangeLabel } from "@/app/lib/analitica/rangeLabel";
 import { useDateRange } from "@/app/lib/analitica/useDateRange";
 import { announceAlertsChanged } from "@/app/lib/alertas/changes";
 import { DEFAULT_ALERT_FILTERS, type AlertFilters } from "@/app/lib/alertas/query";
+import { PHOTOVOLTAIC_SOURCE } from "@/app/lib/fuentes/registry";
 
 export function AlertasView() {
   const { range } = useDateRange();
@@ -66,7 +68,10 @@ export function AlertasView() {
         <EvaluationNotice evaluation={evaluation} />
         {neverEvaluated ? null : (
           <>
-            <SummaryCards state={summary.state} />
+            <div className={styles.summary}>
+              <div className={styles.summarySource}><SourceBadge source={PHOTOVOLTAIC_SOURCE} /></div>
+              <SummaryCards state={summary.state} />
+            </div>
             <AlertsToolbar filters={query.filters} summary={summaryData} listId={listId} onChange={onFiltersChange} />
           </>
         )}

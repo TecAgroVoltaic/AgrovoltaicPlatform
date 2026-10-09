@@ -57,3 +57,14 @@ export function IconoAsistente({ size = 16, className }: P) {
     </svg>
   );
 }
+
+/** Fuentes de datos: un cilindro de base de datos. */
+export function IconoFuentes({ size = 16, className }: P) {
+  return (
+    <svg {...iconSvgProps(size)} className={className}>
+      <ellipse cx="12" cy="5.5" rx="7.5" ry="2.5" />
+      <path d="M4.5 5.5v13c0 1.4 3.4 2.5 7.5 2.5s7.5-1.1 7.5-2.5v-13" />
+      <path d="M4.5 12c0 1.4 3.4 2.5 7.5 2.5s7.5-1.1 7.5-2.5" />
+    </svg>
+  );
+}

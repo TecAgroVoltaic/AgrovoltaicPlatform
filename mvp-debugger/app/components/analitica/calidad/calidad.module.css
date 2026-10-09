@@ -29,6 +29,19 @@
   container-type: inline-size;
 }
 
+/* El período y la fuente en una línea: los dos dicen QUÉ se está evaluando. */
+.periodRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 12px;
+}
+
+.periodRow p {
+  margin: 0;
+}
+
 /* Las tarjetas de segundo orden: mismo marco, menos peso tipográfico que los
    dos ejes del veredicto. La jerarquía tiene que verse sin leer. */
 .aside {

@@ -2,7 +2,9 @@
 .gr { display:flex; flex-direction:column; gap:10px; background:var(--panel);
   border:1px solid var(--line); border-radius:12px; padding:18px 20px; }
 .gr-cab { display:flex; flex-direction:column; gap:3px; }
-.gr-titulo { font-size:14.5px; }
+.gr-cab-fila { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between;
+  gap:4px 10px; min-width:0; }
+.gr-titulo { font-size:14.5px; min-width:0; }
 .gr-sub { margin:0; font-size:12.5px; color:var(--muted); max-width:78ch; }
 .gr-lienzo { width:100%; }
 .gr-pie { margin:0; font-size:11.5px; color:var(--muted); font-family:var(--mono);

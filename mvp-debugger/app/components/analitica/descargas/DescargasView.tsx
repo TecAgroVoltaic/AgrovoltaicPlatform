@@ -9,6 +9,8 @@
 // Este archivo solo ensambla: el estado vive en `useExportForm` y
 // `useExportEstimate`, y cada paso es su propio componente.
 import { Estado } from "@/app/components/console/Estado";
+import { SourceBadge } from "@/app/components/fuentes/SourceBadge";
+import { sourceOfExport } from "@/app/lib/fuentes/exportSource";
 import { useDescarga } from "@/app/lib/descargas/useDescarga";
 
 import { ColumnPicker } from "./ColumnPicker";
@@ -50,6 +52,8 @@ export function DescargasView() {
     source: form.source, dataset: form.datasetKey, boxes: form.boxes, hasTime, from, to, format,
   });
 
+  const badgeSource = sourceOfExport({ exportSource: form.source, datasetKey: form.datasetKey, boxes: form.boxes });
+
   let stepNumber = 0;
   const frame = (id: StepId): StepFrame => ({
     number: ++stepNumber, open: form.openStep === id, onToggle: () => form.toggleStep(id),
@@ -88,6 +92,7 @@ export function DescargasView() {
 
           <aside className="dl-side">
             <div className="card dl-sum">
+              <div className="dl-fuente"><SourceBadge source={badgeSource} /></div>
               <div className="dl-file mono" title={fileName}>{fileName}</div>
               <EstimatePanel estimate={estimate} rows={rows} sizeBytes={sizeBytes} exceedsMat={exceedsMat} />
               <DownloadControls download={download} format={format} ready={ready} onDownload={() => download.start(url, fileName)} />

@@ -13,6 +13,7 @@ import {
   IconoTablero,
   IconoAsistente,
   IconoCampana,
+  IconoFuentes,
 } from "@/app/components/Iconos";
 
 export type AnalysisSection = {
@@ -91,6 +92,13 @@ export const ANALYSIS_SECTIONS: readonly AnalysisSection[] = [
     Icon: IconoCampana,
     Badge: AlertsNavBadge,
     ownsHeader: true,
+  },
+  {
+    path: "/fuentes",
+    label: "Fuentes de datos",
+    description:
+      "De dónde sale cada dato: qué contiene cada fuente, su cobertura y qué vistas alimenta. No depende del rango.",
+    Icon: IconoFuentes,
   },
 ];
 

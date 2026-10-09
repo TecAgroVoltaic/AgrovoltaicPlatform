@@ -4,9 +4,12 @@
 // validador que usa el formulario del cascarón, pide el resumen del período y
 // entrega el estado ya resuelto a la vista. El navegador recibe HTML con los
 // números dentro: ni una petición desde el cliente, ni un salto de carga, ni un
-// solo número calculado acá.
+// solo número calculado acá. La climatología mensual de arriba es la excepción
+// de cliente: lee el rango de la URL y consulta su propio endpoint.
+import { Suspense } from "react";
 import type { Metadata } from "next";
 
+import { ClimatologySection } from "@/app/components/analitica/tablero/climatologia/ClimatologySection";
 import { DashboardView } from "@/app/components/analitica/tablero/DashboardView";
 import { loadDashboard } from "@/app/components/analitica/tablero/loadDashboard";
 import { parseRangeParams, readerFromRecord } from "@/app/lib/analitica/urlRange";
@@ -20,5 +23,14 @@ export default async function TableroPage({
 }) {
   const { range } = parseRangeParams(readerFromRecord(searchParams));
   const state = await loadDashboard(range);
-  return <DashboardView state={state} />;
+  return (
+    <DashboardView
+      state={state}
+      climatology={
+        <Suspense fallback={<p className="muted small">Cargando la climatología…</p>}>
+          <ClimatologySection />
+        </Suspense>
+      }
+    />
+  );
 }

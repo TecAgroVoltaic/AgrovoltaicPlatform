@@ -8,12 +8,14 @@
 import { useCallback, type ReactNode } from "react";
 
 import { canvasStyle, stateStyle } from "@/app/components/charts/chartBox";
+import { ChartHeader } from "@/app/components/charts/ChartHeader";
 import { EChart } from "@/app/components/charts/EChart";
 import { useChartTheme } from "@/app/components/charts/useChartTheme";
 import type { ChartCanvas } from "@/app/components/charts/options/canvas";
 import type { ChartOption } from "@/app/components/charts/echarts";
 import type { ChartState } from "@/app/components/charts/state";
 import type { ChartTheme } from "@/app/components/charts/theme";
+import type { SourceId } from "@/app/lib/fuentes/registry";
 
 /** El pie puede depender de los datos (la ecuación de un ajuste, cuántos puntos
  * entraron), así que también acepta una función. */
@@ -34,6 +36,8 @@ export type ChartFrameProps<TData> = {
   /** Una línea bajo el título: qué se está mirando y con qué grano. */
   readonly subtitle?: string;
   readonly caption?: ChartCaption<TData>;
+  /** De qué fuente sale el dato; se pinta junto al título. */
+  readonly source?: SourceId;
   /** Alto FIJO en píxeles. Solo para el gráfico cuyo alto lo manda su contenido
    *  y no su ancho: las 24 filas del mapa de calor, una fila por sensor en el de
    *  crestas. Sin esto el alto sale del ancho (ver `chartBox`). */
@@ -51,6 +55,7 @@ export function ChartFrame<TData>({
   title,
   subtitle,
   caption,
+  source,
   height,
   state,
   buildOption,
@@ -66,10 +71,7 @@ export function ChartFrame<TData>({
     // página entera. Ya obligó a dos vistas a defenderse por su cuenta con
     // `minmax(0, 1fr)`; el sitio donde se arregla para las cinco es este.
     <figure className="gr" style={{ minWidth: 0 }}>
-      <figcaption className="gr-cab">
-        <h3 className="gr-titulo">{title}</h3>
-        {subtitle ? <p className="gr-sub">{subtitle}</p> : null}
-      </figcaption>
+      <ChartHeader title={title} subtitle={subtitle} source={source} />
       <Body title={title} height={height} state={state} theme={theme} buildOption={buildOption} />
       {captionNode ? <p className="gr-pie">{captionNode}</p> : null}
     </figure>

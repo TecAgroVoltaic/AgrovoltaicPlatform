@@ -5,11 +5,14 @@
 // Con `status` distinto de `"ready"` el informe ni se monta: el tipo `ChartState`
 // impide pintar una tabla de calidad sin datos por descuido, que en este
 // producto sería lo más parecido a mentir.
+import { SourceBadge } from "@/app/components/fuentes/SourceBadge";
 import { SectionState } from "@/app/components/analitica/calidad/SectionState";
 import { QualityReport } from "@/app/components/analitica/calidad/QualityReport";
 import { useQualityOverview } from "@/app/components/analitica/calidad/useQualityOverview";
 import { useDateRange } from "@/app/lib/analitica/useDateRange";
 import { formatRange } from "@/app/lib/analitica/dateRange";
+import { PHOTOVOLTAIC_SOURCE } from "@/app/lib/fuentes/registry";
+import styles from "@/app/components/analitica/calidad/calidad.module.css";
 
 const WHAT = "el estado de calidad del período";
 
@@ -19,7 +22,10 @@ export function CalidadView() {
 
   return (
     <>
-      <p className="muted small">Período analizado: {formatRange(range)}.</p>
+      <div className={styles.periodRow}>
+        <p className="muted small">Período analizado: {formatRange(range)}.</p>
+        <SourceBadge source={PHOTOVOLTAIC_SOURCE} />
+      </div>
       <SectionState what={WHAT} state={state} />
       {state.status === "ready" ? (
         // `key` por rango: cambiar el período reinicia filtro y página. Sin

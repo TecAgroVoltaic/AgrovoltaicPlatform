@@ -8,6 +8,7 @@
 import { useMemo, useState } from "react";
 
 import { IconClose, IconDownload, IconExpand, IconTrend } from "@/app/components/asistente/AssistantIcons";
+import { SourceBadge } from "@/app/components/fuentes/SourceBadge";
 import { ChartSpecChart, InvalidChartSpec } from "@/app/components/asistente/ChartSpecRenderer";
 import styles from "@/app/components/asistente/cards.module.css";
 import controls from "@/app/components/asistente/controls.module.css";
@@ -16,6 +17,7 @@ import { exportRequestMessage, type ChartRequest } from "@/app/lib/asistente/mes
 import { chartSizeLabel } from "@/app/lib/asistente/presentation";
 import { seriesHref } from "@/app/lib/asistente/seriesLink";
 import { useModalDialog } from "@/app/lib/asistente/useModalDialog";
+import { PHOTOVOLTAIC_SOURCE } from "@/app/lib/fuentes/registry";
 
 const ICON_SIZE = 13;
 const HEADER_ICON_SIZE = 14;
@@ -51,9 +53,12 @@ function ValidChartCard({ spec, request, onAsk, askDisabled }: ValidChartCardPro
           <p className={styles.cardTitle}>{spec.titulo}</p>
           <p className={styles.cardSub}>{subtitle}</p>
         </div>
-        <button type="button" className={styles.zoom} aria-label="Ampliar gráfico" onClick={() => setZoomed(true)}>
-          <IconExpand size={HEADER_ICON_SIZE} strokeWidth={ICON_STROKE} />
-        </button>
+        <div className={styles.headTools}>
+          <SourceBadge source={PHOTOVOLTAIC_SOURCE} />
+          <button type="button" className={styles.zoom} aria-label="Ampliar gráfico" onClick={() => setZoomed(true)}>
+            <IconExpand size={HEADER_ICON_SIZE} strokeWidth={ICON_STROKE} />
+          </button>
+        </div>
       </div>
       <div className={styles.cardChart}>
         <ChartSpecChart spec={spec} />

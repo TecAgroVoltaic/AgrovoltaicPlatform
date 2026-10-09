@@ -13,5 +13,5 @@ export {
   IconoReconciliar, IconoPrediccion, IconoGrafo, IconoDatos, IconoRendimiento,
   IconoCosto, IconoSalud, IconoDocs, IconoCalidad,
 } from "./Iconos/navegacion";
-export { IconoTablero, IconoSerie, IconoEstadistica, IconoDescarga, IconoAsistente } from "./Iconos/analisis";
+export { IconoTablero, IconoSerie, IconoEstadistica, IconoDescarga, IconoAsistente, IconoFuentes } from "./Iconos/analisis";
 export { IconoPanel, IconoMinimizar } from "./Iconos/acciones";

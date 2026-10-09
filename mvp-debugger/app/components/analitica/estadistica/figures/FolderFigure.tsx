@@ -19,6 +19,7 @@ import type { FolderResponse } from "@/app/lib/analitica/contracts/estadistica";
 import { chartStateFrom, emptyBecause } from "@/app/components/analitica/estadistica/chartState";
 import { formatCount } from "@/app/components/analitica/estadistica/format";
 import type { FocusedFigureProps } from "@/app/components/analitica/estadistica/figures/props";
+import { PHOTOVOLTAIC_SOURCE } from "@/app/lib/fuentes/registry";
 
 const HEATMAP_HEIGHT = 420;
 const HOUR_LABEL_DIGITS = 2;
@@ -84,6 +85,7 @@ export function FolderFigure(props: FocusedFigureProps<FolderResponse>) {
 
   return (
     <CalendarHeatmapChart
+      source={PHOTOVOLTAIC_SOURCE}
       title={`Carpeta día por hora · ${focusLabel}`}
       subtitle="Un día por columna y una hora local por fila: dónde empieza y termina la generación, y qué días se cayó el registro (Fig. 8 bis)."
       caption={result?.ok ? describeCoverage(result.data) : undefined}

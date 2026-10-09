@@ -47,7 +47,10 @@ export function buildBoxPlotOption(data: BoxPlotData, theme: ChartTheme): ChartO
     ...baseOption(theme),
     tooltip: {
       ...tooltipBase(theme),
-      trigger: "item",
+      // Por eje y no por ítem: un mes sin muestras no tiene caja que señalar, y
+      // con `item` su tooltip («n = 0») no aparecería nunca.
+      trigger: "axis",
+      axisPointer: { type: "shadow" },
       formatter: (params) => formatBoxTooltip(params, data),
     },
     xAxis: categoryAxis(theme, data.boxes.map((box) => box.label)),
@@ -74,7 +77,7 @@ function formatBoxTooltip(params: unknown, data: BoxPlotData): string {
   const index = readDataIndex(params);
   const box = index === null ? undefined : data.boxes[index];
   if (!box) return "";
-  if (box.count === 0) return `${box.label}: sin muestras`;
+  if (box.count === 0) return `${box.label} (n = 0): sin muestras`;
   const rows: [string, number][] = [
     ["máximo", box.max],
     ["Q3", box.q3],
@@ -87,6 +90,8 @@ function formatBoxTooltip(params: unknown, data: BoxPlotData): string {
 }
 
 function readDataIndex(params: unknown): number | null {
+  // Con `trigger: "axis"` llega una lista (caja y atípicos del mismo mes).
+  if (Array.isArray(params)) return readDataIndex(params[0]);
   if (typeof params !== "object" || params === null) return null;
   const candidate = "dataIndex" in params ? params.dataIndex : null;
   return typeof candidate === "number" ? candidate : null;
