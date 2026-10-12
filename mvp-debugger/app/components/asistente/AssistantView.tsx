@@ -6,20 +6,29 @@
 // La vista no calcula nada: compone lo que llega del stream con las primitivas
 // de gráfico y el hook de descargas que ya usan las demás vistas. Este archivo
 // solo reparte: cabecera, cajón de hilos, conversación y compositor.
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 
 import { AssistantMessageView } from "@/app/components/asistente/AssistantMessageView";
 import { Composer } from "@/app/components/asistente/Composer";
-import { EmptyState } from "@/app/components/asistente/EmptyState";
+import { EmptyState, type EmptyStateProps } from "@/app/components/asistente/EmptyState";
 import { LiveTurnView } from "@/app/components/asistente/LiveTurnView";
 import { ThreadDrawer } from "@/app/components/asistente/ThreadDrawer";
-import { ThreadHeader } from "@/app/components/asistente/ThreadHeader";
+import { ThreadHeader, type ThreadHeaderProps } from "@/app/components/asistente/ThreadHeader";
 import styles from "@/app/components/asistente/asistente.module.css";
 import { useDateRange } from "@/app/lib/analitica/useDateRange";
 import { buildRangeContext } from "@/app/lib/asistente/context";
 import { useAssistantChat, type AssistantChatDeps } from "@/app/lib/asistente/useAssistantChat";
 
-export function AssistantView({ deps }: { deps?: AssistantChatDeps }) {
+export type AssistantViewProps = {
+  readonly deps?: AssistantChatDeps;
+  /** Reemplaza la cabecera del hilo (el modo simple pone una más liviana). */
+  readonly renderHeader?: (props: ThreadHeaderProps) => ReactNode;
+  /** Reemplaza la pantalla vacía ENTERA, compositor incluido: quien la da pone
+   *  su propio campo y pregunta con `onAsk`. Con conversación vuelve el de siempre. */
+  readonly renderEmpty?: (props: EmptyStateProps) => ReactNode;
+};
+
+export function AssistantView({ deps, renderHeader, renderEmpty }: AssistantViewProps) {
   const { range } = useDateRange();
   const chat = useAssistantChat(deps);
   const [threadsOpen, setThreadsOpen] = useState(false);
@@ -40,16 +49,25 @@ export function AssistantView({ deps }: { deps?: AssistantChatDeps }) {
     endRef.current?.scrollIntoView?.({ block: "end" });
   }, [empty, messages.length, chat.turn.status]);
 
+  const headerProps: ThreadHeaderProps = {
+    thread: chat.thread,
+    busy: chat.busy,
+    threadsOpen,
+    threadsPanelId: drawerId,
+    onOpenThreads: () => setThreadsOpen(true),
+    onNew: chat.newThread,
+  };
+  const emptyProps: EmptyStateProps = {
+    onAsk: ask,
+    recentThreads: chat.threads,
+    onOpenThread: chat.openThread,
+    disabled: chat.busy,
+  };
+  const customEmpty = empty && renderEmpty !== undefined;
+
   return (
     <section className={styles.view} aria-label="Asistente analítico">
-      <ThreadHeader
-        thread={chat.thread}
-        busy={chat.busy}
-        threadsOpen={threadsOpen}
-        threadsPanelId={drawerId}
-        onOpenThreads={() => setThreadsOpen(true)}
-        onNew={chat.newThread}
-      />
+      {renderHeader ? renderHeader(headerProps) : <ThreadHeader {...headerProps} />}
       <ThreadDrawer
         id={drawerId}
         open={threadsOpen}
@@ -68,8 +86,10 @@ export function AssistantView({ deps }: { deps?: AssistantChatDeps }) {
             {chat.storageNotice}
           </p>
         ) : null}
-        {empty ? (
-          <EmptyState onAsk={ask} recentThreads={chat.threads} onOpenThread={chat.openThread} disabled={chat.busy} />
+        {customEmpty ? (
+          renderEmpty(emptyProps)
+        ) : empty ? (
+          <EmptyState {...emptyProps} />
         ) : (
           <div className={styles.log} role="log" aria-live="polite" aria-relevant="additions" aria-label="Conversación">
             {messages.map((message, index) =>
@@ -95,7 +115,7 @@ export function AssistantView({ deps }: { deps?: AssistantChatDeps }) {
         <div ref={endRef} />
       </div>
 
-      <Composer busy={chat.busy} onSend={ask} onCancel={chat.cancel} showIntents={!empty} />
+      {customEmpty ? null : <Composer busy={chat.busy} onSend={ask} onCancel={chat.cancel} showIntents={!empty} />}
     </section>
   );
 }

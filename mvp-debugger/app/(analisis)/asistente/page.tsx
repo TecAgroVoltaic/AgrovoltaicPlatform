@@ -1,6 +1,6 @@
 // Asistente: chat a pantalla completa con el Agente Histórico.
 //
-// La sección pone su propia cabecera (`ownsHeader` en sections.ts): el cascarón
+// La sección pone su propia cabecera (`shell: "bare"` en sections.ts): el cascarón
 // no le agrega la barra de rango ni el pie, y acá no va la cabecera de página.
 // El título visible es el del hilo, en `ThreadHeader`. La conversación es de
 // cliente (localStorage, stream) y va dentro de <Suspense> porque lee el rango

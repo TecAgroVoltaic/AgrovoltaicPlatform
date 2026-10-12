@@ -1,0 +1,44 @@
+/* La bienvenida del modo simple. Llena la columna del chat (que ya trae su
+   ancho de lectura y sus márgenes) y centra el grupo título-campo-sugerencias;
+   la leyenda de fuentes queda al pie. */
+.welcome { flex:1; display:flex; flex-direction:column; align-items:stretch; gap:18px; min-width:0; }
+
+.heading { margin:auto 0 4px; text-align:center; font-size:28px; font-weight:650;
+  letter-spacing:-.02em; color:var(--ink); }
+
+/* El compositor es el del chat; acá se le da la forma de campo principal:
+   esquinas de píldora y envío oscuro. Solo en la bienvenida, para no pisar el
+   compositor de la conversación, que es de la hoja del Asistente. */
+.field form { border-radius:28px; border-color:var(--line); padding-left:20px; }
+.field button[type="submit"] { width:44px; height:44px; flex-basis:44px; border-radius:999px;
+  background:var(--ink); color:var(--panel); }
+/* La fila de atajos del compositor (lo que sigue a su banda) sobra en una
+   pantalla que se lee de un vistazo. */
+.field > div + div { display:none; }
+
+.suggestions { list-style:none; margin:0 0 auto; padding:0; display:flex; flex-wrap:wrap;
+  justify-content:center; gap:8px; }
+.pill { display:inline-flex; align-items:center; gap:8px; min-height:44px; max-width:100%; padding:8px 16px;
+  border:1px solid var(--line); border-radius:999px; background:var(--panel); color:var(--ink2);
+  font:inherit; font-size:13px; line-height:1.35; text-align:left; cursor:pointer; }
+.pill svg { flex:none; color:var(--muted); }
+.pill:hover { color:var(--ink); border-color:var(--line2); }
+.pill:hover svg { color:var(--accent); }
+.pill:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.pill:disabled { opacity:.5; cursor:default; }
+
+.legend { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:6px;
+  margin:0; padding-bottom:8px; }
+.legendTitle { font-size:11px; color:var(--muted); }
+
+/* Teléfono: título y sugerencias arriba, el campo al pie y a todo el ancho. El
+   margen negativo devuelve el relleno de la columna para que la banda del
+   compositor llegue a los bordes y al fondo, sobre la franja segura. */
+@media (max-width:760px) {
+  .welcome { gap:14px; }
+  .heading { font-size:22px; margin-top:auto; }
+  .suggestions { flex-direction:column; align-items:stretch; }
+  .pill { width:100%; }
+  .legend { order:3; padding-bottom:0; }
+  .field { order:4; margin:0 -14px -16px; padding-bottom:env(safe-area-inset-bottom); background:var(--ground); }
+}

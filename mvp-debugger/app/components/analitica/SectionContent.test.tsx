@@ -21,7 +21,7 @@ function renderAt(path: string) {
 }
 
 describe("SectionContent", () => {
-  it.each(["/", "/series", "/descargas"])("en %s pinta la barra de rango, la vista y el pie", (path) => {
+  it.each(["/tablero", "/series", "/descargas"])("en %s pinta la barra de rango, la vista y el pie", (path) => {
     // Given una sección del cascarón sin cabecera propia
     // When se pinta la columna
     renderAt(path);

@@ -1,0 +1,11 @@
+/* El aviso de chat apagado: centrado, corto, con una sola acción oscura. */
+.page { display:flex; flex-direction:column; min-height:100dvh; background:var(--ground); }
+
+.body { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:12px; padding:24px 20px; text-align:center; }
+.heading { margin:0; font-size:22px; font-weight:650; letter-spacing:-.02em; color:var(--ink); }
+.reason { margin:0; max-width:52ch; font-size:14px; color:var(--ink2); }
+
+.primary { min-height:44px; margin-top:8px; padding:0 22px; border:1px solid var(--ink); border-radius:999px;
+  background:var(--ink); color:var(--panel); font:inherit; font-size:14px; font-weight:560; cursor:pointer; }
+.primary:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }

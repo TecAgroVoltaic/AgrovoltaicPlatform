@@ -3,7 +3,7 @@
 //
 // Vive en un proveedor y no dentro de `SidebarDrawer` porque hay DOS puertas al
 // mismo cajón: la hamburguesa de la barra superior y, en las secciones que ponen
-// su propia cabecera (`ownsHeader`), un botón dentro de esa cabecera. La barra y
+// su propia cabecera (`shell: "bare"`), un botón dentro de esa cabecera. La barra y
 // el contenido son hermanos en el cascarón: sin un estado común, la segunda
 // puerta tendría que duplicar la barra lateral o apretar un botón ajeno.
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";

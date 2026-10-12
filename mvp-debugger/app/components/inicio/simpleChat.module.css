@@ -1,0 +1,4 @@
+/* El modo simple lee a 720 px: más angosto que el Asistente del modo avanzado
+   porque acá no hay barra lateral que acote la línea. La variable la leen la
+   columna y el compositor del chat. */
+.simple { --chat-width:720px; min-height:100dvh; background:var(--ground); }

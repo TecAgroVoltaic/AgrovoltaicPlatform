@@ -1,5 +1,5 @@
 "use client";
-// La cabecera propia de Alertas (52 px, `ownsHeader`): título, cuándo corrió el
+// La cabecera propia de Alertas (52 px, `shell: "bare"`): título, cuándo corrió el
 // evaluador, el período de la lista y «Evaluar ahora».
 //
 // «Cuándo corrió» está siempre a la vista: sin eso, una lista vacía se lee como
