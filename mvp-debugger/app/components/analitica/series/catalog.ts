@@ -39,6 +39,12 @@ export function variablesOfFamily(
   return catalog.variables.filter((variable) => variable.family === family);
 }
 
+/** La primera clave pedida que existe en el catálogo, o la de por defecto. */
+export function initialVariableKey(catalog: VariableCatalog, requested: readonly string[]): string {
+  const known = requested.find((key) => catalog.variables.some((variable) => variable.key === key));
+  return known ?? DEFAULT_VARIABLE_KEY;
+}
+
 /** La variable pedida, o la primera que se pueda graficar si esa clave no está.
  *  Nunca devuelve `undefined`: la vista siempre tiene algo que mostrar. */
 export function resolveVariable(catalog: VariableCatalog, key: string): CatalogVariable {

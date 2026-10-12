@@ -6,11 +6,9 @@
 // El catálogo ya vino resuelto del servidor, así que no añade un tercer turno.
 // Cambiar de variable solo vuelve a pedir la serie.
 //
-// La variable elegida vive en estado local y NO en la URL, a diferencia del
-// rango. `useDateRange().setRange` reescribe la query entera, así que un
-// `?variable=` se perdería al mover el rango y la pantalla saltaría sola a otra
-// variable. Cuando el cascarón conserve los parámetros ajenos, esto sube a la URL
-// y la vista se vuelve compartible tal cual se está mirando.
+// La variable ARRANCA en la que pide la URL (`?variables=`, lo que escribe
+// «Abrir en Series» del asistente) y después vive en estado local: elegir otra
+// en el selector no reescribe la URL.
 import { useState } from "react";
 
 import { CompletenessSection } from "@/app/components/analitica/series/CompletenessSection";
@@ -24,10 +22,12 @@ import type { DateRange } from "@/app/lib/analitica/dateRange";
 export type SeriesViewProps = {
   readonly range: DateRange;
   readonly catalogLoad: CatalogLoad;
+  /** La variable con que abre; sin ella, la de por defecto. */
+  readonly initialVariableKey?: string;
 };
 
-export function SeriesView({ range, catalogLoad }: SeriesViewProps) {
-  const [variableKey, setVariableKey] = useState(DEFAULT_VARIABLE_KEY);
+export function SeriesView({ range, catalogLoad, initialVariableKey = DEFAULT_VARIABLE_KEY }: SeriesViewProps) {
+  const [variableKey, setVariableKey] = useState(initialVariableKey);
 
   return (
     <>
