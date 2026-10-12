@@ -14,6 +14,7 @@
 import { z } from "zod";
 
 import { describeFirstIssue } from "@/app/lib/asistente/contracts/issues";
+import { sourceIdSchema } from "@/app/lib/asistente/contracts/parseSpec";
 
 import { barsDataSchema } from "./chartSpec/bars";
 import { boxPlotDataSchema } from "./chartSpec/boxPlot";
@@ -29,6 +30,9 @@ const headerShape = {
   titulo: z.string().min(1),
   subtitulo: z.string().optional(),
   unidad: z.string(),
+  /** De qué fuentes sale lo dibujado (contrato de plataforma §4.5). Sin él, la
+   *  tarjeta asume la fotovoltaica, como antes de existir el campo. */
+  fuentes: z.array(sourceIdSchema).min(1).optional(),
 };
 
 export const chartSpecSchema = z.discriminatedUnion("tipo", [
