@@ -1,0 +1,268 @@
+{
+  "version": 1,
+  "secciones": [
+    {
+      "id": "inicio",
+      "ruta": "/",
+      "etiqueta": "Inicio",
+      "descripcion": "El asistente en modo simple: se pregunta en lenguaje natural por datos, gráficos, archivos o dónde está algo.",
+      "muestra": [
+        "chat del asistente"
+      ],
+      "fuentes": [],
+      "params": []
+    },
+    {
+      "id": "tablero",
+      "ruta": "/tablero",
+      "etiqueta": "Tablero",
+      "descripcion": "Climatología mensual del año (irradiación, temperatura y humedad) y los indicadores del período: energía, rendimiento específico y frescura del dato.",
+      "muestra": [
+        "irradiación mensual",
+        "temperatura mensual",
+        "humedad mensual",
+        "energía del período",
+        "rendimiento específico"
+      ],
+      "fuentes": [
+        "supabase_pv",
+        "agrodash_sc"
+      ],
+      "params": [
+        {
+          "nombre": "desde",
+          "tipo": "fecha",
+          "descripcion": "Inicio del período de los indicadores (YYYY-MM-DD)."
+        },
+        {
+          "nombre": "hasta",
+          "tipo": "fecha",
+          "descripcion": "Fin exclusivo del período (YYYY-MM-DD)."
+        },
+        {
+          "nombre": "clima",
+          "tipo": "anio",
+          "descripcion": "Año de la climatología mensual (YYYY)."
+        }
+      ]
+    },
+    {
+      "id": "series",
+      "ruta": "/series",
+      "etiqueta": "Series",
+      "descripcion": "La evolución de cada variable en el tiempo, con su tendencia, su media móvil y su banda de desviación.",
+      "muestra": [
+        "serie temporal por variable",
+        "tendencia",
+        "media móvil"
+      ],
+      "fuentes": [
+        "supabase_pv"
+      ],
+      "params": [
+        {
+          "nombre": "desde",
+          "tipo": "fecha",
+          "descripcion": "Inicio (YYYY-MM-DD)."
+        },
+        {
+          "nombre": "hasta",
+          "tipo": "fecha",
+          "descripcion": "Fin exclusivo (YYYY-MM-DD)."
+        },
+        {
+          "nombre": "granularidad",
+          "tipo": "texto",
+          "descripcion": "hora | dia | semana | mes."
+        },
+        {
+          "nombre": "variables",
+          "tipo": "lista",
+          "descripcion": "Claves del catálogo analítico separadas por coma."
+        }
+      ]
+    },
+    {
+      "id": "estadistica",
+      "ruta": "/estadistica",
+      "etiqueta": "Estadística",
+      "descripcion": "Distribuciones por mes y por sensor, y la relación entre irradiancia y potencia.",
+      "muestra": [
+        "distribución mensual",
+        "distribución por sensor",
+        "dispersión irradiancia-potencia"
+      ],
+      "fuentes": [
+        "supabase_pv"
+      ],
+      "params": [
+        {
+          "nombre": "desde",
+          "tipo": "fecha",
+          "descripcion": "Inicio (YYYY-MM-DD)."
+        },
+        {
+          "nombre": "hasta",
+          "tipo": "fecha",
+          "descripcion": "Fin exclusivo (YYYY-MM-DD)."
+        }
+      ]
+    },
+    {
+      "id": "calidad",
+      "ruta": "/calidad",
+      "etiqueta": "Calidad",
+      "descripcion": "Completitud, validez física, consistencia temporal y anomalías estadísticas del período.",
+      "muestra": [
+        "calendario de calidad",
+        "pruebas por familia",
+        "hallazgos"
+      ],
+      "fuentes": [
+        "supabase_pv"
+      ],
+      "params": [
+        {
+          "nombre": "desde",
+          "tipo": "fecha",
+          "descripcion": "Inicio (YYYY-MM-DD)."
+        },
+        {
+          "nombre": "hasta",
+          "tipo": "fecha",
+          "descripcion": "Fin exclusivo (YYYY-MM-DD)."
+        }
+      ]
+    },
+    {
+      "id": "comparativa",
+      "ruta": "/comparativa",
+      "etiqueta": "Comparativa",
+      "descripcion": "El arreglo Inclinado (PV1) contra el Vertical (PV2): energía, Performance Ratio diario y estacional, y variantes de cálculo.",
+      "muestra": [
+        "energía por arreglo",
+        "performance ratio por día",
+        "performance ratio estacional",
+        "detalle diario"
+      ],
+      "fuentes": [
+        "supabase_pv"
+      ],
+      "params": [
+        {
+          "nombre": "desde",
+          "tipo": "fecha",
+          "descripcion": "Inicio (YYYY-MM-DD)."
+        },
+        {
+          "nombre": "hasta",
+          "tipo": "fecha",
+          "descripcion": "Fin exclusivo (YYYY-MM-DD)."
+        }
+      ]
+    },
+    {
+      "id": "alertas",
+      "ruta": "/alertas",
+      "etiqueta": "Alertas",
+      "descripcion": "Problemas del equipo y del dato que piden atención de una persona, con su evidencia y su seguimiento.",
+      "muestra": [
+        "alertas abiertas",
+        "historial de una alerta"
+      ],
+      "fuentes": [
+        "supabase_pv",
+        "agrodash_sc"
+      ],
+      "params": [
+        {
+          "nombre": "estado",
+          "tipo": "texto",
+          "descripcion": "Corte de estado: abiertas o cerradas."
+        },
+        {
+          "nombre": "severidad",
+          "tipo": "texto",
+          "descripcion": "Filtro de severidad."
+        },
+        {
+          "nombre": "tipo",
+          "tipo": "texto",
+          "descripcion": "Tipo de alerta."
+        },
+        {
+          "nombre": "alerta",
+          "tipo": "texto",
+          "descripcion": "Id de la alerta abierta en el detalle."
+        }
+      ]
+    },
+    {
+      "id": "descargas",
+      "ruta": "/descargas",
+      "etiqueta": "Descargas",
+      "descripcion": "Un rango de fechas en .csv, .dat o .mat desde Supabase PV o la API de AgroDash, eligiendo dataset, filtros y columnas.",
+      "muestra": [
+        "formulario de exportación",
+        "informe Excel"
+      ],
+      "fuentes": [
+        "supabase_pv",
+        "supabase_ambiental",
+        "agrodash_sc",
+        "agrodash_cartago"
+      ],
+      "params": [
+        {
+          "nombre": "desde",
+          "tipo": "fecha",
+          "descripcion": "Inicio (YYYY-MM-DD)."
+        },
+        {
+          "nombre": "hasta",
+          "tipo": "fecha",
+          "descripcion": "Fin exclusivo (YYYY-MM-DD)."
+        }
+      ]
+    },
+    {
+      "id": "fuentes",
+      "ruta": "/fuentes",
+      "etiqueta": "Fuentes de datos",
+      "descripcion": "De dónde sale cada dato: qué contiene cada fuente, su cobertura y qué vistas alimenta.",
+      "muestra": [
+        "inventario de fuentes",
+        "cobertura por fuente"
+      ],
+      "fuentes": [
+        "supabase_pv",
+        "supabase_ambiental",
+        "agrodash_sc",
+        "agrodash_cartago"
+      ],
+      "params": []
+    },
+    {
+      "id": "asistente",
+      "ruta": "/asistente",
+      "etiqueta": "Asistente",
+      "descripcion": "El asistente dentro del modo avanzado, con el rango del período como contexto.",
+      "muestra": [
+        "chat del asistente"
+      ],
+      "fuentes": [],
+      "params": [
+        {
+          "nombre": "desde",
+          "tipo": "fecha",
+          "descripcion": "Inicio (YYYY-MM-DD)."
+        },
+        {
+          "nombre": "hasta",
+          "tipo": "fecha",
+          "descripcion": "Fin exclusivo (YYYY-MM-DD)."
+        }
+      ]
+    }
+  ]
+}
