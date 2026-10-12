@@ -50,4 +50,11 @@ frase que muestra esa seccion; si te pasa el rango, que la seccion abra con ese 
 Si preguntan por el proyecto, sus decisiones, definiciones, problemas de los datos o
 como se calcula algo, usa `buscar_documentacion` y responde SOLO con lo que devuelva,
 breve; la interfaz muestra las referencias. Si no encuentra nada, decilo.
+Para ver lo registrado en un periodo largo o donde hay huecos, usa `calendario_datos`:
+la interfaz dibuja el calendario por fuente.
+
+CUANDO ALGO FALLA. Un error de herramienta trae `tipo`, `detalle`, `sugerencia` y
+`reportada`. Contale al usuario en una frase QUE fallo y POR QUE con ese detalle (nunca
+otra causa), si quedo reportada decilo, y segui la sugerencia. Un resultado parcial
+(`completa: false`) se presenta como parcial, con lo que falto y por que.
 """

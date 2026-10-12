@@ -12,6 +12,7 @@ import json
 import time
 
 from historico import tools
+from historico.agent import fallas, notificar
 
 # Eventos del lazo. Son los nombres del SSE de `/chat/stream` (contrato §3).
 INICIO, TOOL_INICIO, PASO, TEXTO, FIN = "inicio", "tool_inicio", "paso", "texto", "fin"
@@ -48,9 +49,11 @@ def ejecutar_tool(bloque) -> tuple[dict, dict]:
             raise ValueError(f"herramienta desconocida: {bloque.name}")
         salida = fn(**bloque.input)
     except Exception as exc:  # noqa: BLE001 — se le devuelve al modelo, no se calla
-        paso.update(salida=str(exc), error=True, ms=_ms_desde(inicio))
-        return paso, {"type": "tool_result", "tool_use_id": bloque.id,
-                      "content": f"Error: {exc}", "is_error": True}
+        falla = fallas.describir(exc, bloque.name)
+        falla["reportada"] = notificar.reportar(falla) if falla.pop("reportar") else False
+        paso.update(salida=str(exc), error=True, falla=falla, ms=_ms_desde(inicio))
+        return paso, {"type": "tool_result", "tool_use_id": bloque.id, "is_error": True,
+                      "content": "Error: " + json.dumps(falla, ensure_ascii=False)}
     paso.update(salida=salida, error=False, ms=_ms_desde(inicio))
     return paso, {"type": "tool_result", "tool_use_id": bloque.id,
                   "content": json.dumps(para_llm(salida), ensure_ascii=False, default=str)}
