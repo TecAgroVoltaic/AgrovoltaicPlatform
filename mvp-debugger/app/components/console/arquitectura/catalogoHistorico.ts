@@ -12,9 +12,11 @@
 import type { Ficha } from "./catalogo";
 import { HERRAMIENTAS_ANALISIS } from "./catalogoHistorico/analisis";
 import { HERRAMIENTAS_CALIDAD } from "./catalogoHistorico/calidad";
+import { HERRAMIENTAS_PLATAFORMA } from "./catalogoHistorico/plataforma";
 
 export const HERRAMIENTAS_HISTORICO: Record<string, Ficha> = {
   ...HERRAMIENTAS_ANALISIS,
+  ...HERRAMIENTAS_PLATAFORMA,
   ...HERRAMIENTAS_CALIDAD,
 };
 

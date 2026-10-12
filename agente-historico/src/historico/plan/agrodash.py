@@ -12,16 +12,19 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 
 from historico import agrodash_api
+from historico.analitica.climatologia.agrodash import MARCA_CAJA_DE_PRUEBA
 from historico.catalogo_datos.agrodash import REGION_DE_FUENTE
 from historico.plan.modelo import MAXIMO, MINIMO, SUMA, ColumnaPlan
 from historico.plan.rejilla import inicio_intervalo
 
 
 def sensores(c: ColumnaPlan) -> list[dict]:
-    """Sensores de ese tipo en las cajas del sitio de la columna."""
+    """Sensores de ese tipo en las cajas del sitio de la columna, sin cajas de prueba
+    (la misma regla que la climatologia: no describen el sitio)."""
     region = REGION_DE_FUENTE[c.variable.fuente]
     return [s for s in agrodash_api.sensores({"sensor_tipo": [c.variable.sensor_tipo]})
-            if agrodash_api.region_de(s["caja"]) == region]
+            if agrodash_api.region_de(s["caja"]) == region
+            and MARCA_CAJA_DE_PRUEBA not in str(s["caja"])]
 
 
 def _buckets(s: dict, inicio: datetime, fin: datetime, paso_s: int) -> list[tuple[datetime, dict]]:

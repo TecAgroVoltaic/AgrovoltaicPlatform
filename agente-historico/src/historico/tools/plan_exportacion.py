@@ -4,10 +4,12 @@ No genera nada: valida el plan, estima filas y devuelve en `_descargas` las URLs
 `GET /datos/exportar/plan` (relativas). El navegador baja con el boton; con mas de
 100.000 filas la tarjeta pide confirmacion antes.
 
-`hasta` es INCLUSIVO en esta tool (a diferencia del resto): es el campo del
-PlanExportacion tal cual lo define el contrato, y viaja igual en la URL.
+`hasta` es EXCLUSIVO, como en todas las tools (una sola regla de fechas para el
+modelo); aca se convierte al `hasta` INCLUSIVO del PlanExportacion del contrato.
 """
 from __future__ import annotations
+
+from datetime import date, timedelta
 
 from historico import plan as plan_mod
 
@@ -31,13 +33,13 @@ SCHEMA = {
         "'ancho' = fecha_hora + una columna por variable (exige paso_s > 0); 'largo' = "
         "fecha_hora, fuente, variable, caja, valor, unidad (unica opcion en crudo). Un "
         "archivo 'junto' = un archivo con todas las columnas; 'por fuente' = un archivo "
-        "por fuente. Fechas YYYY-MM-DD en hora local; `hasta` es INCLUSIVO en esta tool."
+        "por fuente. Fechas YYYY-MM-DD en hora local; `hasta` EXCLUSIVO como en las demas."
     ),
     "input_schema": {"type": "object", "properties": {"plan": {
         "type": "object", "description": "PlanExportacion v1: rango, intervalo y archivos.",
         "properties": {
             "desde": {"type": "string", "description": "Primer dia, inclusivo."},
-            "hasta": {"type": "string", "description": "Ultimo dia, INCLUSIVO."},
+            "hasta": {"type": "string", "description": "Dia siguiente al ultimo, EXCLUSIVO."},
             "paso_s": {"type": "integer", "enum": list(plan_mod.PASOS_S),
                        "description": "Intervalo en segundos; 0 = crudo (solo forma 'largo')."},
             "archivos": {"type": "array", "maxItems": plan_mod.MAX_ARCHIVOS, "items": {
@@ -52,7 +54,17 @@ SCHEMA = {
 }
 
 
+def _hasta_inclusivo(plan: dict) -> dict:
+    """El `hasta` exclusivo de la tool, como ultimo dia inclusivo del plan."""
+    try:
+        desde, hasta = date.fromisoformat(plan["desde"]), date.fromisoformat(plan["hasta"])
+    except (KeyError, TypeError, ValueError):
+        return plan  # que lo rechace la validacion del plan con su codigo
+    return {**plan, "hasta": max(desde, hasta - timedelta(days=1)).isoformat()}
+
+
 def _normalizado(plan: dict) -> dict:
+    plan = _hasta_inclusivo(plan)
     return {"version": plan_mod.VERSION, **{k: v for k, v in plan.items() if k != "version"}}
 
 
