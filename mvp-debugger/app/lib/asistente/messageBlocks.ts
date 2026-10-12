@@ -2,56 +2,24 @@
 // lo que dijo el modelo, el gráfico que armó, la descarga que ofreció, y otra
 // vez texto. Así un gráfico aparece junto al párrafo que lo comenta y no
 // amontonado al final.
-import { z } from "zod";
-
+//
+// Qué bloque sale de cada marcador lo decide el registro de `blocks/extractors`.
 import type { AgentStep } from "@/app/lib/asistente/contracts/chatEvents";
+import { extractMarkerBlocks } from "@/app/lib/asistente/blocks/extractors";
+import type { ChartRequest, MessageBlock } from "@/app/lib/asistente/blocks/types";
 
-/** Variables y rango con que se pidió un gráfico: lo que hace falta para pedir
- * después la exportación de esos mismos datos. */
-export type ChartRequest = {
-  readonly variables: readonly string[];
-  readonly from: string | null;
-  readonly toExclusive: string | null;
-  /** El grano tal como viaja (`hora|dia|semana|mes`), si el agente lo fijó. */
-  readonly granularity: string | null;
-};
-
-export type MessageBlock =
-  | { readonly kind: "text"; readonly key: string; readonly markdown: string }
-  | {
-      readonly kind: "chart";
-      readonly key: string;
-      /** Sin validar: el renderer lo valida y, si no cumple, lo dice. */
-      readonly spec: unknown;
-      readonly request: ChartRequest | null;
-    }
-  | { readonly kind: "download"; readonly key: string; readonly spec: unknown };
-
-const CHART_MARKER = "_grafico";
-const DOWNLOAD_MARKER = "_descarga";
-
-const chartInputSchema = z.object({
-  variables: z.array(z.string()).min(1),
-  desde: z.string().optional(),
-  hasta: z.string().optional(),
-  granularidad: z.string().optional(),
-});
+export type { ChartRequest, MessageBlock } from "@/app/lib/asistente/blocks/types";
 
 export function buildBlocks(steps: readonly AgentStep[], finalText: string): MessageBlock[] {
   const blocks: MessageBlock[] = [];
   steps.forEach((step, index) => {
-    const key = `paso-${index}`;
+    const stepKey = `paso-${index}`;
     if (step.tipo === "modelo" && step.texto.trim()) {
-      blocks.push({ kind: "text", key, markdown: step.texto });
+      blocks.push({ kind: "text", key: stepKey, markdown: step.texto });
       return;
     }
     if (step.tipo !== "tool" || step.error || !isRecord(step.salida)) return;
-    if (CHART_MARKER in step.salida) {
-      blocks.push({ kind: "chart", key, spec: step.salida[CHART_MARKER], request: chartRequest(step.input) });
-    }
-    if (DOWNLOAD_MARKER in step.salida) {
-      blocks.push({ kind: "download", key: `${key}-descarga`, spec: step.salida[DOWNLOAD_MARKER] });
-    }
+    blocks.push(...extractMarkerBlocks(step.salida, { input: step.input, stepKey }));
   });
 
   // El texto final normalmente ya vino como último paso del modelo. Si no (una
@@ -62,17 +30,6 @@ export function buildBlocks(steps: readonly AgentStep[], finalText: string): Mes
     blocks.push({ kind: "text", key: "final", markdown: finalText });
   }
   return blocks;
-}
-
-function chartRequest(input: unknown): ChartRequest | null {
-  const parsed = chartInputSchema.safeParse(input);
-  if (!parsed.success) return null;
-  return {
-    variables: parsed.data.variables,
-    from: parsed.data.desde ?? null,
-    toExclusive: parsed.data.hasta ?? null,
-    granularity: parsed.data.granularidad ?? null,
-  };
 }
 
 /**

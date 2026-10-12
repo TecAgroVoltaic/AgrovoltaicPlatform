@@ -82,7 +82,20 @@ export const IconClock = icon(
     <path d="M12 7v5l3 2" />
   </>,
 );
-export const IconSpinner = icon(<circle cx="12" cy="12" r="8" strokeDasharray="32 18" />);
+export const IconArrowRight = icon(<path d="M5 12h14M13 6l6 6-6 6" />);
+export const IconArchive = icon(
+  <>
+    <rect x="3" y="4" width="18" height="5" rx="1.5" />
+    <path d="M5 9v10h14V9M10 13h4" />
+  </>,
+);
+export const IconSheet = icon(
+  <>
+    <rect x="4" y="3" width="16" height="18" rx="2" />
+    <path d="M4 9h16M4 15h16M10 9v12" />
+  </>,
+);
+export const IconSpinner =icon(<circle cx="12" cy="12" r="8" strokeDasharray="32 18" />);
 
 /** El cuadrado de «Detener»: relleno, no trazo, como un botón de stop. */
 export function IconStop({ size = DEFAULT_SIZE }: IconProps) {

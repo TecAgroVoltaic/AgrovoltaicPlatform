@@ -1,0 +1,13 @@
+/* Los mismos tonos que el punto de `SourceBadge`. */
+.dot {
+  display: inline-block;
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+.dot[data-tone="real"] { background: var(--real); }
+.dot[data-tone="ceil"] { background: var(--ceil); }
+.dot[data-tone="pred"] { background: var(--pred); }
