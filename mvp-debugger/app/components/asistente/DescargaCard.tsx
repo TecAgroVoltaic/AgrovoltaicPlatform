@@ -7,13 +7,14 @@ import { useMemo } from "react";
 import { IconDownload } from "@/app/components/asistente/AssistantIcons";
 import styles from "@/app/components/asistente/cards.module.css";
 import controls from "@/app/components/asistente/controls.module.css";
+import { SourceBadge } from "@/app/components/fuentes/SourceBadge";
 import { parseDescargaSpec, type DescargaSpec } from "@/app/lib/asistente/contracts/descargaSpec";
+import { descargaSource } from "@/app/lib/asistente/blocks/descargaSource";
 import { formatBytes, formatCount } from "@/app/lib/descargas/format";
+import { throughHistoricoProxy } from "@/app/lib/descargas/proxy";
 import { useDescarga, type DownloadDeps } from "@/app/lib/descargas/useDescarga";
 import { ETIQUETA_ZONA } from "@/app/lib/tiempo";
 
-/** El proxy del servicio histórico: la `url` del spec es relativa a él. */
-const HISTORICO_PROXY = "/api/historico";
 const ICON_SIZE = 13;
 const ICON_STROKE = 2.2;
 
@@ -51,6 +52,9 @@ function ValidDescargaCard({ spec, deps }: { spec: DescargaSpec; deps?: Download
           <p className={styles.fileName} title={spec.nombre_sugerido}>
             {spec.nombre_sugerido}
           </p>
+          <span className={styles.fileSource}>
+            <SourceBadge source={descargaSource(spec)} />
+          </span>
           {/* `hasta` llega INCLUSIVO, como lo toma `GET /datos/exportar`: se
               muestra tal cual, sin correrlo. */}
           <p className={styles.fileMeta} title={range ?? undefined}>
@@ -84,7 +88,7 @@ function ValidDescargaCard({ spec, deps }: { spec: DescargaSpec; deps?: Download
                 className={`${controls.actionPrimary} ${controls.iconOnMobile}`}
                 type="button"
                 aria-label={state.status === "done" ? "Descargar otra vez" : "Descargar"}
-                onClick={() => void start(`${HISTORICO_PROXY}${spec.url}`, spec.nombre_sugerido)}
+                onClick={() => void start(throughHistoricoProxy(spec.url), spec.nombre_sugerido)}
               >
                 <IconDownload size={ICON_SIZE} strokeWidth={ICON_STROKE} />
                 <span className={controls.collapsible}>

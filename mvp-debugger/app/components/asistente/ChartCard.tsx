@@ -17,7 +17,7 @@ import { exportRequestMessage, type ChartRequest } from "@/app/lib/asistente/mes
 import { chartSizeLabel } from "@/app/lib/asistente/presentation";
 import { seriesHref } from "@/app/lib/asistente/seriesLink";
 import { useModalDialog } from "@/app/lib/asistente/useModalDialog";
-import { PHOTOVOLTAIC_SOURCE } from "@/app/lib/fuentes/registry";
+import { PHOTOVOLTAIC_SOURCE, type SourceId } from "@/app/lib/fuentes/registry";
 
 const ICON_SIZE = 13;
 const HEADER_ICON_SIZE = 14;
@@ -25,6 +25,9 @@ const ICON_STROKE = 2;
 /** El alto del gráfico ampliado: el doble largo del de la tarjeta, y entra en
  *  una pantalla de portátil con la cabecera del diálogo. */
 const ZOOMED_CHART_HEIGHT = 520;
+/** Sin `fuentes` en el spec (gráficos de antes del campo), todo lo que dibuja
+ *  `graficar` es fotovoltaico. */
+const DEFAULT_CHART_SOURCES: readonly SourceId[] = [PHOTOVOLTAIC_SOURCE];
 
 export type ChartCardProps = {
   readonly spec: unknown;
@@ -54,7 +57,9 @@ function ValidChartCard({ spec, request, onAsk, askDisabled }: ValidChartCardPro
           <p className={styles.cardSub}>{subtitle}</p>
         </div>
         <div className={styles.headTools}>
-          <SourceBadge source={PHOTOVOLTAIC_SOURCE} />
+          {(spec.fuentes ?? DEFAULT_CHART_SOURCES).map((source) => (
+            <SourceBadge key={source} source={source} />
+          ))}
           <button type="button" className={styles.zoom} aria-label="Ampliar gráfico" onClick={() => setZoomed(true)}>
             <IconExpand size={HEADER_ICON_SIZE} strokeWidth={ICON_STROKE} />
           </button>
