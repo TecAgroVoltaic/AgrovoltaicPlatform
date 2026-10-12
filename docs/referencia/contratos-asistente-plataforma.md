@@ -188,6 +188,35 @@ lo demás se descarta. Sección desconocida: la tarjeta no se dibuja.
 Se muestran como referencias (chips no navegables): la documentación no se
 sirve en la consola.
 
+### 4.6 `_calendario` (CalendarioSpec v1)
+
+Calendario de actividad tipo GitHub: una fila por fuente, una celda por día.
+
+```jsonc
+{
+  "version": 1,
+  "titulo": "Días con datos",
+  "desde": "2025-01-01",                 // inclusivo
+  "hasta": "2026-10-12",                 // inclusivo
+  "filas": [
+    {
+      "fuente": "supabase_pv",           // SourceId (color del punto y de las celdas)
+      "etiqueta": "Inversor · San Carlos",
+      "dias": [["2025-05-03", 3, 412]],  // [fecha, nivel 1..4, lecturas]; solo días CON datos
+      "n_dias": 412,                     // días con datos en el rango
+      "huecos": [{ "desde": "2025-06-27", "hasta": "2025-09-03", "dias": 69 }]  // ≥ 3 días, los más largos primero, máx. 5
+    }
+  ]
+}
+```
+
+- Nivel = lecturas del día contra el percentil 90 de lecturas diarias de esa fila
+  en el rango: 1 (< 25 %), 2 (< 50 %), 3 (< 90 %), 4 (≥ 90 %). Un día ausente es 0.
+- Semanas en columnas y días de la semana en filas (lunes arriba), etiquetas de
+  mes arriba, leyenda «Menos … Más», `title` por celda con fecha y lecturas.
+- En pantallas angostas el calendario se desplaza en horizontal dentro de la
+  tarjeta y arranca mostrando lo más reciente.
+
 ### 4.5 Fuente en `_grafico`
 
 ChartSpec v1 gana un campo **opcional** `fuentes?: SourceId[]`. Sin él, el
@@ -215,6 +244,7 @@ Fuente de verdad: `mvp-debugger/app/lib/navegacion/secciones.json`
 | `buscar_documentacion(consulta, max=5)` | extractos ≤ 600 caracteres + `_documentos` | preguntas sobre el proyecto |
 | `navegar_consola(objetivo, params?)` | sección elegida + `_navegacion` | «¿dónde veo…?» |
 | `origen_dato(variable)` | fuente, tabla, cadencia, cobertura | «¿de dónde sale…?» |
+| `calendario_datos(desde?, hasta?, fuentes?)` | días con datos y huecos por fuente + `_calendario` | «¿dónde hay huecos?», «qué se registró» |
 
 `exportar_datos` (v1) sigue existiendo para el caso de una tabla cruda.
 
