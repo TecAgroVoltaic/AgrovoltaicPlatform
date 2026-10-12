@@ -19,6 +19,8 @@ INVERSOR_PARADO_CON_SOL = "inversor_parado_con_sol"
 SENSOR_TEMPERATURA_SATURADO = "sensor_temperatura_saturado"
 IRRADIANCIA_IMPOSIBLE = "irradiancia_imposible"
 INCONGRUENCIA_TEMP_IRRADIANCIA = entre_sensores.TIPO
+# No sale de un hallazgo sino del reporte de fallas del asistente (`agent.notificar`).
+FALLA_SISTEMA = "falla_sistema"
 
 
 @dataclass(frozen=True)
@@ -61,6 +63,11 @@ DEFINICIONES: dict[str, Definicion] = {
         "puede estar despegado del módulo. Umbrales pendientes de validación por Hugo.",
         (entre_sensores.TIPO,), ("temp_max", "ghi_max", "minutos_caliente_sin_sol"),
         lambda variable: [variable, _CLAVE_DE_LA_RADIACION]),
+    FALLA_SISTEMA: Definicion(
+        AVISO, "Falla del sistema",
+        "Una fuente o una herramienta del asistente falló al responder. No es un problema "
+        "del dato ni de la planta: la causa exacta y cuántas veces pasó están en la evidencia.",
+        (), ("veces",), lambda _: []),
 }
 
 TIPOS_DE_HALLAZGO: tuple[str, ...] = tuple(sorted(

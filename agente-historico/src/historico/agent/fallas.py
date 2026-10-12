@@ -44,11 +44,20 @@ def _tipo(exc: BaseException) -> str:
     return INTERNO
 
 
+# Que sistema fallo, para agrupar: una caida de AgroDash es UNA causa aunque la
+# vean diez herramientas distintas.
+_ORIGEN = {FUENTE: "agrodash", BASE: "supabase"}
+
+
+def origen(tipo: str, herramienta: str) -> str:
+    return _ORIGEN.get(tipo, herramienta)
+
+
 def describir(exc: BaseException, herramienta: str) -> dict:
-    """`{tipo, herramienta, detalle, sugerencia, reportar}` de una excepcion."""
+    """`{tipo, herramienta, origen, detalle, sugerencia, reportar}` de una excepcion."""
     tipo = _tipo(exc)
     detalle = str(exc).strip() or type(exc).__name__
-    return {"tipo": tipo, "herramienta": herramienta,
+    return {"tipo": tipo, "herramienta": herramienta, "origen": origen(tipo, herramienta),
             "detalle": f"{type(exc).__name__}: {detalle}"[:400],
             "sugerencia": _SUGERENCIA[tipo],
             # Un parametro mal puesto lo corrige el modelo en el turno: no es del sistema.

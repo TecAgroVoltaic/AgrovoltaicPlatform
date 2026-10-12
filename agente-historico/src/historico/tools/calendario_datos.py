@@ -65,7 +65,8 @@ def _reportar(spec: dict) -> bool:
         return False
     detalle = "; ".join(f"{f['etiqueta']}: {len(f['fallas'])} cajas ({f['fallas'][0]['motivo']})"
                         for f in incompletas)
-    return notificar.reportar({"tipo": "fuente_no_disponible", "herramienta": SCHEMA["name"],
+    return notificar.reportar({"tipo": "fuente_no_disponible", "origen": "agrodash",
+                               "herramienta": SCHEMA["name"],
                                "detalle": f"Calendario incompleto. {detalle}"[:400]})
 
 
