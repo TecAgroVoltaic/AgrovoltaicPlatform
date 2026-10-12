@@ -30,5 +30,10 @@ historico = "historico.cli:main"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+# Copia de docs que deja scripts/sincronizar-conocimiento.py (gitignored): viaja en
+# el paquete instalado para buscar_documentacion y navegar_consola.
+[tool.setuptools.package-data]
+"historico.conocimiento" = ["datos/*.json", "datos/**/*.md"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
