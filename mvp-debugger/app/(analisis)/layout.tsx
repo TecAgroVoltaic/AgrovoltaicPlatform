@@ -1,5 +1,5 @@
-// Cascarón del sistema de evaluación de datos: barra lateral con las secciones y
-// selector de rango arriba del contenido.
+// Cascarón del modo avanzado: barra lateral con el conmutador de modo y las
+// secciones, selector de rango arriba del contenido y el botón «Preguntar».
 //
 // El rango vive en el cascarón y no en cada página porque acota TODO lo que se
 // mira: moverlo cambia el tablero, las series y la calidad a la vez. Va envuelto
@@ -16,6 +16,8 @@ import { SectionNav } from "@/app/components/analitica/SectionNav";
 import { SidebarDrawer } from "@/app/components/analitica/SidebarDrawer";
 import { ThemeToggle } from "@/app/components/ThemeToggle";
 import { IconoDocs, IconoGrafo } from "@/app/components/Iconos";
+import { AskFab } from "@/app/components/modo/AskFab";
+import { ModeToggle } from "@/app/components/modo/ModeToggle";
 
 // Render dinámico en toda la sección. El rango vive en la query y el selector lo
 // lee con `useSearchParams`: sin esto, en las páginas prerenderizadas la barra de
@@ -43,6 +45,7 @@ export default function AnalisisLayout({ children }: { children: React.ReactNode
               <div className="sub muted mono">evaluación de datos</div>
             </div>
           </div>
+          <ModeToggle current="avanzado" className="side-mode" />
 
           <Suspense fallback={<div className="nav muted small">Secciones…</div>}>
             <SectionNav />
@@ -68,6 +71,11 @@ export default function AnalisisLayout({ children }: { children: React.ReactNode
           rangeBar={
             <Suspense fallback={<div className="rng muted small">Cargando el rango…</div>}>
               <RangeSelector />
+            </Suspense>
+          }
+          floatingAction={
+            <Suspense fallback={null}>
+              <AskFab />
             </Suspense>
           }
           footer={
