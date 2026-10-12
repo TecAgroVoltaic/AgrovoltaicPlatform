@@ -12,9 +12,8 @@ import type { ReactNode } from "react";
 
 import { DashboardSections } from "@/app/components/analitica/tablero/DashboardSections";
 import { findSection } from "@/app/components/analitica/sections";
+import { TABLERO_PATH } from "@/app/lib/navegacion/paths";
 import type { DashboardState } from "@/app/components/analitica/tablero/loadDashboard";
-
-const TABLERO_PATH = "/";
 
 export type DashboardViewProps = {
   readonly state: DashboardState;

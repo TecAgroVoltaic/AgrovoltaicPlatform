@@ -43,7 +43,7 @@ export function BarraLateral({ agent, view, ancha, enCajon, up, onPlegar, goAgen
           </Fragment>
         ))}
       </nav>
-      <a className="navitem" href="/" data-tip={ancha ? undefined : "Evaluación de datos"}
+      <a className="navitem" href="/tablero" data-tip={ancha ? undefined : "Evaluación de datos"}
          aria-label="Evaluación de datos">
         <IconoTablero size={16} />
         <span className="solo-ancha">Evaluación de datos ↗</span>
