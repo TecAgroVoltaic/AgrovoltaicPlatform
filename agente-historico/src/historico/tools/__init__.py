@@ -35,6 +35,7 @@ from __future__ import annotations
 
 from historico.tools import (
     arquitectura_agente,
+    buscar_documentacion,
     calidad_periodo,
     carpeta_dia_hora,
     catalogo,
@@ -52,6 +53,7 @@ from historico.tools import (
     hallazgos,
     irradiacion_mensual,
     irradiancia,
+    navegar_consola,
     performance,
     preparar_informe,
     pruebas_calidad,
@@ -69,6 +71,8 @@ ANALISIS = [energia, performance, irradiancia, temperatura, tendencia,
             crestas_distribucion, comparativa_arreglos, preparar_informe]
 # La ficha de descarga: no analiza, pero sirve a la misma pregunta ("dame estos datos").
 ANALISIS.append(exportar_datos)
+# La plataforma: donde esta cada cosa y que dice la documentacion del proyecto.
+ANALISIS += [navegar_consola, buscar_documentacion]
 # El agente hablando de si mismo. Va en CALIDAD y no en ANALISIS porque responde
 # "se puede confiar en esto", que es la misma pregunta que el resto de la familia.
 CALIDAD = [calidad_periodo, hallazgos, cielo_periodo, diagnostico_dia,
