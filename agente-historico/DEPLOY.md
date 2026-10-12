@@ -26,6 +26,17 @@ curl -XPOST localhost:8000/tool/performance_ratio -H 'x-api-key: xxx' -H 'conten
 - `ANTHROPIC_*`: NO hace falta acá (el LLM vive en el `aiAgent` de VisioneFlow).
 
 ## 3. Docker
+
+**Antes del build (y antes del rsync al servidor):** copiar la documentación al paquete.
+El contexto de build es `agente-historico/`, así que `docs/` y `secciones.json` de la
+consola no llegan solos; `buscar_documentacion` y `navegar_consola` leen esa copia
+(gitignored, viaja como package-data). Sin ella responden «documentación no disponible».
+```bash
+python3 scripts/sincronizar-conocimiento.py   # desde la raíz del repo; idempotente
+```
+Si el rsync filtra por `.gitignore` (`--filter=':- .gitignore'` o similar), excluir de ese
+filtro `src/historico/conocimiento/datos/`, o la copia no llega al servidor.
+
 ```bash
 docker build -t historico-svc agente-historico/
 docker run -p 8000:8000 -e DATABASE_URL=... -e HISTORICO_API_KEY=... historico-svc
