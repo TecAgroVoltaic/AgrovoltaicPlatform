@@ -21,6 +21,8 @@ export const descargaSpecSchema = z.object({
   desde: z.string().nullable().optional(),
   hasta: z.string().nullable().optional(),
   columnas: z.array(z.string()).optional(),
+  /** Solo las cajas: con ellas se sabe si AgroDash es San Carlos o Cartago. */
+  filtros: z.object({ caja: z.array(z.string()).optional() }).optional(),
   filas_estimadas: z.number().int().nonnegative(),
   cota: z.boolean(),
   nombre_sugerido: z.string().min(1),

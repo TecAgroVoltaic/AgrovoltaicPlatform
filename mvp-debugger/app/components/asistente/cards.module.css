@@ -38,6 +38,7 @@
 .fileText { flex:1 1 180px; min-width:0; display:flex; flex-direction:column; gap:2px; }
 .fileName { margin:0; font-family:var(--mono); font-size:13px; color:var(--ink);
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.fileSource { align-self:flex-start; max-width:100%; display:flex; }
 .fileMeta { margin:0; font-family:var(--mono); font-size:11px; color:var(--muted); overflow-wrap:anywhere; }
 .fileMetaShort { display:none; }
 .fileStatus { margin:0; font-size:11.5px; color:var(--muted); }
