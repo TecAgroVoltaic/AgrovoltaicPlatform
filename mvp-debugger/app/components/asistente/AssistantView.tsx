@@ -112,10 +112,14 @@ export function AssistantView({ deps, renderHeader, renderEmpty }: AssistantView
             ) : null}
           </div>
         )}
-        <div ref={endRef} />
       </div>
 
       {customEmpty ? null : <Composer busy={chat.busy} onSend={ask} onCancel={chat.cancel} showIntents={!empty} />}
+      {/* Al final de la sección y no de la conversación: bajar hasta acá deja el
+          compositor pegajoso en su lugar del flujo, debajo del último párrafo.
+          Dentro de la conversación, `block: "end"` alineaba el último párrafo
+          con el borde de la pantalla y el compositor quedaba encima. */}
+      <div ref={endRef} />
     </section>
   );
 }
