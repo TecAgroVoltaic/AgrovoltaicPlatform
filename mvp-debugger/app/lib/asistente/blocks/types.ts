@@ -28,6 +28,7 @@ type BlockPayloadByKind = {
   readonly variableSelector: RawSpec;
   readonly navigation: RawSpec;
   readonly documents: RawSpec;
+  readonly calendar: RawSpec;
 };
 
 export type MessageBlockKind = keyof BlockPayloadByKind;

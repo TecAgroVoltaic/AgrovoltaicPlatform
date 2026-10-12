@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 
 import { ChartCard } from "@/app/components/asistente/ChartCard";
 import { DescargaCard } from "@/app/components/asistente/DescargaCard";
+import { CalendarCard } from "@/app/components/asistente/blocks/CalendarCard";
 import { DocumentsCard } from "@/app/components/asistente/blocks/DocumentsCard";
 import { DownloadsCard } from "@/app/components/asistente/blocks/DownloadsCard";
 import { NavigationCard } from "@/app/components/asistente/blocks/NavigationCard";
@@ -35,6 +36,7 @@ export const BLOCK_RENDERERS: BlockRendererRegistry = {
   variableSelector: (block, context) => <VariableSelectorCard spec={block.spec} {...context} />,
   navigation: (block) => <NavigationCard spec={block.spec} />,
   documents: (block) => <DocumentsCard spec={block.spec} />,
+  calendar: (block) => <CalendarCard spec={block.spec} />,
 };
 
 export function renderBlock<Kind extends MessageBlockKind>(block: BlockOfKind<Kind>, context: BlockContext): ReactNode {
