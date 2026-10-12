@@ -12,6 +12,7 @@ El LLM no recibe los arreglos: el lazo del chat quita toda clave que empiece con
 """
 from __future__ import annotations
 
+from historico.fuentes.catalogo import SUPABASE_PV
 from historico.tools import _chartspec as cs
 from historico.tools import opciones
 from historico.tools._graficadores import _barras, _cajas, _carpeta, _crestas, _dispersion, _serie
@@ -76,6 +77,8 @@ def run(tipo: str, variables: str | list[str], desde: str | None = None,
     _validar(tipo, claves, granularidad, variable_x)
     v = crear(desde, hasta, granularidad)
     grafico, resumen = _GRAFICADORES[tipo](v, claves, granularidad, variable_x)
+    # Contrato §4.5: todas las claves de esta tool son del catalogo analitico PV.
+    grafico = {**grafico, "fuentes": [SUPABASE_PV]}
     return {
         "resumen": {"tipo": tipo, "titulo": grafico["titulo"],
                     "periodo": {"desde": v.desde.isoformat(), "hasta": v.hasta.isoformat()},
