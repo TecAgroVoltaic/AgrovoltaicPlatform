@@ -39,3 +39,6 @@ dataset/*.db
 # Documento de acceso con credencial viva del rol de lectura del equipo (joshua_ro).
 # Util para el equipo, pero NO se commitea: la rama tiene remoto.
 docs/equipo/acceso-datos-joshua.md
+
+# Copia de docs para la imagen del agente (la deja scripts/sincronizar-conocimiento.py)
+/agente-historico/src/historico/conocimiento/datos/

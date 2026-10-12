@@ -199,11 +199,12 @@ Fuente de verdad: `mvp-debugger/app/lib/navegacion/secciones.json`
 (`{version, secciones: [{id, ruta, etiqueta, descripcion, muestra[], fuentes[], params[{nombre, tipo, descripcion}]}]}`).
 - El frontend deriva de ahí `sections.ts` (agrega íconos y badges) y el armador
   de enlaces.
+- El frontend lo lee tipado y validado desde `app/lib/navegacion/catalog.ts`.
 - El backend lee una copia en `agente-historico/src/historico/conocimiento/datos/`
-  que deja `scripts/sincronizar-conocimiento.py` (junto con `docs/memoria`,
-  `docs/referencia`, `docs/conceptos`). El CI corre `--check` y falla si la copia
-  está vieja. Si falta la copia, las tools responden «documentación no
-  disponible», nunca 500.
+  (gitignored) que deja `scripts/sincronizar-conocimiento.py` junto con
+  `docs/memoria`, `docs/referencia` y `docs/conceptos`. Se corre en local una vez
+  y en el deploy **antes** del rsync (el contexto de build es `agente-historico/`).
+  Si falta la copia, las tools responden «documentación no disponible», nunca 500.
 
 ## 6. Tools nuevas (las registra el líder en la integración)
 
