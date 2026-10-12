@@ -32,6 +32,7 @@ export const MARKER_EXTRACTORS: Readonly<Record<string, MarkerExtractor>> = {
   _selector_variables: rawSpec("variableSelector", "selector"),
   _navegacion: rawSpec("navigation", "navegacion"),
   _documentos: rawSpec("documents", "documentos"),
+  _calendario: rawSpec("calendar", "calendario"),
 };
 
 /** Los bloques que aporta la salida de una tool, en el orden del registro. */
