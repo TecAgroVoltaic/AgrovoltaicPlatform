@@ -204,7 +204,9 @@ Calendario de actividad tipo GitHub: una fila por fuente, una celda por día.
       "etiqueta": "Inversor · San Carlos",
       "dias": [["2025-05-03", 3, 412]],  // [fecha, nivel 1..4, lecturas]; solo días CON datos
       "n_dias": 412,                     // días con datos en el rango
-      "huecos": [{ "desde": "2025-06-27", "hasta": "2025-09-03", "dias": 69 }]  // ≥ 3 días, los más largos primero, máx. 5
+      "huecos": [{ "desde": "2025-06-27", "hasta": "2025-09-03", "dias": 69 }],  // ≥ 3 días, los más largos primero, máx. 5
+      "completa": true,                  // false si alguna caja de AgroDash no respondió
+      "fallas": []                       // [{ "caja", "motivo" }]; con fallas, `huecos` va vacío
     }
   ]
 }
@@ -221,6 +223,15 @@ Calendario de actividad tipo GitHub: una fila por fuente, una celda por día.
 
 ChartSpec v1 gana un campo **opcional** `fuentes?: SourceId[]`. Sin él, el
 frontend sigue mostrando `supabase_pv` (comportamiento actual).
+
+## 4.7 Fallas
+
+Todo error de una tool llega al modelo como `Error: {tipo, herramienta, detalle,
+sugerencia, reportada}` (`agent/fallas.py`). `tipo` ∈ `parametro_invalido`,
+`fuente_no_disponible`, `base_no_disponible`, `tiempo_agotado`, `error_interno`.
+Salvo `parametro_invalido`, se reporta por `agent/notificar.py`, el único punto de
+salida hacia el sistema de notificaciones. Un resultado parcial se marca
+(`completa: false`) con su motivo; nunca se presenta como completo.
 
 ## 5. Catálogo de secciones
 

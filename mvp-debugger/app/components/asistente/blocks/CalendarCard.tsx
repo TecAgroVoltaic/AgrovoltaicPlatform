@@ -4,6 +4,7 @@
 import { useMemo } from "react";
 
 import { IconCalendar } from "@/app/components/asistente/AssistantIcons";
+import { CalendarFailures } from "@/app/components/asistente/blocks/CalendarFailures";
 import { CalendarGaps } from "@/app/components/asistente/blocks/CalendarGaps";
 import { InvalidBlock } from "@/app/components/asistente/blocks/InvalidBlock";
 import shared from "@/app/components/asistente/blocks/blockCard.module.css";
@@ -34,7 +35,8 @@ export function CalendarCard({ spec }: { readonly spec: unknown }) {
       ) : (
         <>
           <ActivityCalendar rows={rows} from={desde} to={hasta} />
-          <CalendarGaps rows={filas} />
+          <CalendarFailures rows={filas} />
+          <CalendarGaps rows={filas.filter((row) => row.completa)} />
         </>
       )}
     </section>

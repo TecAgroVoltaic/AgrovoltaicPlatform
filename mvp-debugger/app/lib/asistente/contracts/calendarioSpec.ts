@@ -22,12 +22,17 @@ const gapSchema = z.object({
   dias: z.number().int().positive(),
 });
 
+/** Una caja que no respondió y por qué: la fila queda incompleta, no vacía. */
+const failureSchema = z.object({ caja: z.string(), motivo: z.string() });
+
 const rowSchema = z.object({
   fuente: sourceIdSchema,
   etiqueta: z.string().min(1),
   dias: z.array(daySchema),
   n_dias: nonNegativeInteger,
   huecos: z.array(gapSchema).default([]),
+  completa: z.boolean().default(true),
+  fallas: z.array(failureSchema).default([]),
 });
 
 export const calendarioSpecSchema = z
