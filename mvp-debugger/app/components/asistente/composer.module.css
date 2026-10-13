@@ -8,9 +8,13 @@
    En el teléfono la caja se aprieta y, en pantallas bajas, los chips se van:
    su atajo sigue en el estado vacío. */
 
-.composer { position:sticky; bottom:0; z-index:10; padding:10px 20px 12px;
-  background:linear-gradient(color-mix(in srgb, var(--ground) 0%, transparent), var(--ground) 30%); }
-.inner { max-width:800px; margin:0 auto; display:flex; flex-direction:column; gap:8px; min-width:0; }
+/* Fondo opaco en toda la banda: con el degradado transparente arriba, la fila de
+   chips quedaba pintada encima del texto que pasaba por debajo. El fundido vive
+   ahora en `::before`, POR ENCIMA de la banda y sin capturar toques. */
+.composer { position:sticky; bottom:0; z-index:10; padding:10px 20px 12px; background:var(--ground); }
+.composer::before { content:""; position:absolute; left:0; right:0; bottom:100%; height:16px; pointer-events:none;
+  background:linear-gradient(color-mix(in srgb, var(--ground) 0%, transparent), var(--ground)); }
+.inner { max-width:var(--chat-width, 800px); margin:0 auto; display:flex; flex-direction:column; gap:8px; min-width:0; }
 
 .intents { display:flex; gap:6px; flex-wrap:wrap; min-width:0; }
 .intent { composes:pill from "./controls.module.css"; }
@@ -30,14 +34,15 @@
 .send:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
 .stop { composes:send; background:var(--panel2); color:var(--ink); border:1px solid var(--line2); }
 
-.hints { max-width:800px; margin:0 auto; padding:0 20px 14px; display:flex; justify-content:space-between;
+.hints { max-width:var(--chat-width, 800px); margin:0 auto; padding:0 20px 14px; display:flex; justify-content:space-between;
   align-items:center; gap:4px 16px; flex-wrap:wrap; font-size:11.5px; color:var(--muted); }
 .disclaimer { font-family:var(--mono); font-size:11px; }
 .kbd { font-family:var(--mono); font-size:10.5px; color:var(--muted); border:1px solid var(--line2);
   border-radius:4px; padding:1px 5px; }
 
 @media (max-width:760px) {
-  .composer { padding:6px 12px 10px; background:var(--ground); border-top:1px solid var(--line); }
+  .composer { padding:6px 12px 10px; border-top:1px solid var(--line); }
+  .composer::before { display:none; }
   .inner { gap:6px; }
   /* Una fila que se desplaza de lado, como el artboard: envueltos en dos
      renglones se comerían 34 px más de una banda que está siempre a la vista. */

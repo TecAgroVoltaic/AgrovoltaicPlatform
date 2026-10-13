@@ -1,6 +1,6 @@
 "use client";
 // La segunda puerta al cajón de secciones, para las secciones con cabecera propia
-// (`ownsHeader`): ellas no reciben la barra superior del cascarón, así que el
+// (`shell: "bare"`): ellas no reciben la barra superior del cascarón, así que el
 // botón del menú lo ponen en su cabecera. El aspecto lo decide esa cabecera.
 import { useRef } from "react";
 

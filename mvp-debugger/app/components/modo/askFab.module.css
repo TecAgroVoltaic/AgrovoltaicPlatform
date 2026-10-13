@@ -1,0 +1,22 @@
+/* «Preguntar»: píldora oscura abajo a la derecha. En el teléfono queda solo el
+   ícono, en un círculo de 48 px que cabe en el margen inferior de 64 px de la columna. Respeta
+   la franja segura del borde inferior (la barra de gestos del teléfono). */
+.fab { position:fixed; z-index:30; right:max(20px, env(safe-area-inset-right));
+  bottom:max(20px, env(safe-area-inset-bottom)); display:inline-flex; align-items:center; gap:8px;
+  min-height:44px; padding:0 18px 0 14px; border-radius:999px; background:var(--ink); color:var(--panel);
+  font-size:13.5px; font-weight:560; text-decoration:none; border:1px solid var(--ink);
+  box-shadow:0 6px 18px color-mix(in srgb, var(--ink) 22%, transparent); }
+.fab:hover { background:color-mix(in srgb, var(--ink) 88%, var(--panel)); }
+.fab:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+
+/* La reserva solo hace falta donde el cascarón no deja pie (`content-bare`). */
+.reserve { height:76px; }
+:global(.content:not(.content-bare)) > .reserve { display:none; }
+
+@media (max-width:760px) {
+  .fab { width:48px; height:48px; padding:0; justify-content:center;
+    right:max(14px, env(safe-area-inset-right)); bottom:max(14px, env(safe-area-inset-bottom)); }
+  .label { display:none; }
+}
+
+@media print { .fab, .reserve { display:none; } }

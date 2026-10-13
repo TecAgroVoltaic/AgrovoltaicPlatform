@@ -5,13 +5,17 @@
 // qué período se mira y no hay un segundo estado de rango que pueda discrepar.
 // Dos: resuelve acá el catálogo de variables, que es metadato y no depende del
 // rango. Si lo pidiera el navegador, la serie tendría que esperarlo para saber
-// si esa variable existe en este rango, y eso sería una cascada.
+// si esa variable existe en este rango, y eso sería una cascada. Con el catálogo
+// en mano valida también `?variables=`: una clave que no existe abre la de
+// por defecto en vez de una serie vacía.
 import type { Metadata } from "next";
 
 import { SeriesView } from "@/app/components/analitica/series/SeriesView";
 import { findSection } from "@/app/components/analitica/sections";
+import { DEFAULT_VARIABLE_KEY, initialVariableKey } from "@/app/components/analitica/series/catalog";
 import { loadVariableCatalog } from "@/app/components/analitica/series/loadCatalog";
 import { parseRangeParams, readerFromRecord } from "@/app/lib/analitica/urlRange";
+import { VARIABLES_PARAM, requestedVariableKeys } from "@/app/lib/analitica/urlVariables";
 
 export const metadata: Metadata = { title: "Series · AgroVoltaic" };
 
@@ -22,8 +26,12 @@ export default async function SeriesPage({
 }: {
   searchParams: Record<string, string | string[] | undefined>;
 }) {
-  const { range } = parseRangeParams(readerFromRecord(searchParams));
+  const params = readerFromRecord(searchParams);
+  const { range } = parseRangeParams(params);
   const catalogLoad = await loadVariableCatalog();
+  const requested = requestedVariableKeys(params.get(VARIABLES_PARAM));
+  const startKey =
+    catalogLoad.status === "ready" ? initialVariableKey(catalogLoad.catalog, requested) : DEFAULT_VARIABLE_KEY;
   const section = findSection(SECTION_PATH);
 
   return (
@@ -32,7 +40,8 @@ export default async function SeriesPage({
         <h1>{section?.label ?? "Series"}</h1>
         <p>{section?.description}</p>
       </header>
-      <SeriesView range={range} catalogLoad={catalogLoad} />
+      {/* La clave remonta la vista si otro enlace pide otra variable estando ya en Series. */}
+      <SeriesView key={startKey} range={range} catalogLoad={catalogLoad} initialVariableKey={startKey} />
     </div>
   );
 }

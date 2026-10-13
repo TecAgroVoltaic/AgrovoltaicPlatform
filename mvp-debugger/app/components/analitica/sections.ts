@@ -1,22 +1,36 @@
-// Las secciones del sistema de evaluación de datos, en un solo sitio: de acá
-// salen la barra lateral y las cabeceras de cada página. Una lista repartida
-// entre la navegación y las páginas se desincroniza sola.
+// Las secciones del modo avanzado, en un solo sitio: de acá salen la barra
+// lateral y las cabeceras de cada página.
+//
+// Ruta, etiqueta y descripción vienen del catálogo (`secciones.json`), que es lo
+// que también lee el agente: una descripción escrita dos veces se desincroniza
+// sola. Este archivo solo agrega lo que es de la interfaz (ícono, indicador y
+// tipo de cascarón) y el ORDEN de la barra lateral. `inicio` no está: es el chat
+// del modo simple, que no vive en este cascarón.
 import type { ComponentType } from "react";
 
 import { AlertsNavBadge } from "@/app/components/analitica/alertas/AlertsNavBadge";
 import {
+  IconoAsistente,
   IconoCalidad,
+  IconoCampana,
   IconoDescarga,
   IconoEstadistica,
+  IconoFuentes,
   IconoReconciliar,
   IconoSerie,
   IconoTablero,
-  IconoAsistente,
-  IconoCampana,
-  IconoFuentes,
 } from "@/app/components/Iconos";
+import { findSectionEntry } from "@/app/lib/navegacion/catalog";
+
+/** `full`: el cascarón pone la barra de rango, la barra superior del cajón y el
+ *  pie. `bare`: la sección dibuja su propia cabecera a ancho completo y pone ella
+ *  el botón del menú con `SectionMenuButton` (el Asistente, donde el rango viaja
+ *  como contexto del hilo, y Alertas, que lleva período y «Evaluar ahora» en
+ *  esa misma fila). */
+export type SectionShell = "full" | "bare";
 
 export type AnalysisSection = {
+  readonly id: string;
   /** Ruta exacta. Es también la clave: no hay dos secciones con la misma. */
   readonly path: string;
   readonly label: string;
@@ -25,83 +39,38 @@ export type AnalysisSection = {
   readonly Icon: ComponentType<{ size?: number }>;
   /** Indicador opcional junto a la etiqueta del menú (p. ej. un contador). */
   readonly Badge?: ComponentType;
-  /** La sección dibuja su propia cabecera a ancho completo: el cascarón no le
-   *  pone la barra de rango, ni el pie, ni la barra superior del cajón (el botón
-   *  del menú lo pone ella con `SectionMenuButton`). El Asistente, donde el chat
-   *  es el protagonista y el rango viaja como contexto del hilo, y Alertas, que
-   *  lleva el período, cuándo se evaluó y «Evaluar ahora» en esa misma fila. */
-  readonly ownsHeader?: true;
+  readonly shell: SectionShell;
 };
 
-export const ANALYSIS_SECTIONS: readonly AnalysisSection[] = [
-  {
-    path: "/",
-    label: "Tablero",
-    description:
-      "Los indicadores del período: energía producida, rendimiento específico y frescura del dato.",
-    Icon: IconoTablero,
-  },
-  {
-    path: "/series",
-    label: "Series",
-    description:
-      "La evolución de cada variable en el tiempo, con su tendencia, su media móvil y su banda de desviación.",
-    Icon: IconoSerie,
-  },
-  {
-    path: "/estadistica",
-    label: "Estadística",
-    description:
-      "Distribuciones por mes y por sensor, y la relación entre irradiancia y potencia.",
-    Icon: IconoEstadistica,
-  },
-  {
-    path: "/calidad",
-    label: "Calidad",
-    description:
-      "Completitud, validez física, consistencia temporal y anomalías estadísticas del período.",
-    Icon: IconoCalidad,
-  },
-  {
-    path: "/comparativa",
-    label: "Comparativa",
-    description:
-      "El arreglo Inclinado (PV1) contra el Vertical (PV2): energía, rendimiento y estacionalidad.",
-    Icon: IconoReconciliar,
-  },
-  {
-    path: "/descargas",
-    label: "Descargas",
-    description:
-      "Un rango de fechas en .csv, .dat o .mat, desde Supabase PV o la API de AgroDash: se elige el dataset, los filtros, las columnas y el formato.",
-    Icon: IconoDescarga,
-  },
-  {
-    path: "/asistente",
-    label: "Asistente",
-    description:
-      "Preguntas en lenguaje natural sobre los datos: responde con los mismos algoritmos de las vistas, grafica y prepara descargas.",
-    Icon: IconoAsistente,
-    ownsHeader: true,
-  },
-  {
-    path: "/alertas",
-    label: "Alertas",
-    description:
-      "Lo que pide atención de una persona: problemas del equipo y del dato que se repiten, con su evidencia y su seguimiento.",
-    Icon: IconoCampana,
-    Badge: AlertsNavBadge,
-    ownsHeader: true,
-  },
-  {
-    path: "/fuentes",
-    label: "Fuentes de datos",
-    description:
-      "De dónde sale cada dato: qué contiene cada fuente, su cobertura y qué vistas alimenta. No depende del rango.",
-    Icon: IconoFuentes,
-  },
+type SectionDecoration = Pick<AnalysisSection, "id" | "Icon" | "Badge" | "shell">;
+
+const SIDEBAR: readonly SectionDecoration[] = [
+  { id: "tablero", Icon: IconoTablero, shell: "full" },
+  { id: "series", Icon: IconoSerie, shell: "full" },
+  { id: "estadistica", Icon: IconoEstadistica, shell: "full" },
+  { id: "calidad", Icon: IconoCalidad, shell: "full" },
+  { id: "comparativa", Icon: IconoReconciliar, shell: "full" },
+  { id: "descargas", Icon: IconoDescarga, shell: "full" },
+  { id: "asistente", Icon: IconoAsistente, shell: "bare" },
+  { id: "alertas", Icon: IconoCampana, Badge: AlertsNavBadge, shell: "bare" },
+  { id: "fuentes", Icon: IconoFuentes, shell: "full" },
 ];
+
+/** @throws Error al cargar el módulo si una sección decorada no está en el
+ *  catálogo: falla el build, no la barra lateral en la mano de alguien. */
+function decorate(decoration: SectionDecoration): AnalysisSection {
+  const entry = findSectionEntry(decoration.id);
+  if (!entry) throw new Error(`La sección «${decoration.id}» no está en secciones.json`);
+  return { ...decoration, path: entry.ruta, label: entry.etiqueta, description: entry.descripcion };
+}
+
+export const ANALYSIS_SECTIONS: readonly AnalysisSection[] = SIDEBAR.map(decorate);
 
 export function findSection(path: string): AnalysisSection | undefined {
   return ANALYSIS_SECTIONS.find((section) => section.path === path);
+}
+
+/** Sin sección conocida (p. ej. una ruta nueva) el cascarón va completo. */
+export function isBareShell(path: string): boolean {
+  return findSection(path)?.shell === "bare";
 }

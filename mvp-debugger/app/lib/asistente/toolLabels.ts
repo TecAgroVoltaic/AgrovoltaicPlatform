@@ -27,6 +27,12 @@ const TOOL_PROGRESS_LABEL: Readonly<Record<string, string>> = {
   rangos_con_datos: "Buscando fechas con datos",
   catalogo_variables: "Consultando el catálogo de variables",
   arquitectura_agente: "Revisando su propia arquitectura",
+  catalogo_datos: "Buscando qué datos hay",
+  origen_dato: "Buscando de dónde sale el dato",
+  plan_exportacion: "Armando los archivos",
+  navegar_consola: "Buscando dónde está en la plataforma",
+  buscar_documentacion: "Buscando en la documentación",
+  preparar_informe: "Preparando el informe",
   web_search: "Buscando en la web",
 };
 

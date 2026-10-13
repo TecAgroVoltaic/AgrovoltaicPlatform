@@ -81,6 +81,7 @@ export const KNOWN_ALERT_TYPES: readonly string[] = [
   "sensor_temperatura_saturado",
   "irradiancia_imposible",
   "incongruencia_temp_irradiancia",
+  "falla_sistema",
 ];
 
 /** Lectura del cable: de la palabra del backend al identificador. Se arma

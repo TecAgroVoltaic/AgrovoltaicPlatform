@@ -1,4 +1,4 @@
-/* La cabecera propia de una sección con `ownsHeader` (Asistente, Alertas): UNA
+/* La cabecera propia de una sección con `shell: "bare"` (Asistente, Alertas): UNA
    fila de 52 px pegada arriba (7 % de una pantalla de 740 px de alto, dentro del
    15 % que admite una banda pegajosa). Reemplaza a la barra de rango, a la
    cabecera de página y, en pantallas angostas, a la barra superior del cajón de

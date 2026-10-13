@@ -22,8 +22,8 @@ from fastapi import Depends, FastAPI
 from historico import datos, db, errores, exportar, informe, limites, tools, uso  # noqa: F401
 from historico.alertas import api as alertas_api
 from historico.rutas import (
-    agente, analitica, calidad, datos as rutas_datos, exportacion, fuentes, hallazgos,
-    informe as rutas_informe, rendimiento, salud, variables,
+    agente, analitica, calidad, catalogo as rutas_catalogo, datos as rutas_datos, exportacion,
+    exportacion_plan, fuentes, hallazgos, informe as rutas_informe, rendimiento, salud, variables,
 )
 from historico.rutas.agente import (  # noqa: F401
     ChatBody, ChatMsg, Pregunta, chat, chat_stream, consumo, preguntar,
@@ -74,7 +74,8 @@ app = FastAPI(
 errores.registrar(app)
 
 for _modulo in (salud, agente, rutas_datos, exportacion, calidad, hallazgos,
-                variables, analitica, rendimiento, rutas_informe, fuentes):
+                variables, analitica, rendimiento, rutas_informe, fuentes,
+                rutas_catalogo, exportacion_plan):
     app.include_router(_modulo.router)
 
 app.include_router(alertas_api.router, dependencies=[Depends(_verificar_api_key)])

@@ -1,0 +1,12 @@
+/* El conmutador de modo: una píldora con dos segmentos; el activo va oscuro. */
+.toggle { display:inline-flex; flex:none; gap:2px; padding:3px; border:1px solid var(--line);
+  border-radius:999px; background:var(--panel); }
+
+.option { min-height:30px; padding:0 12px; border:0; border-radius:999px; background:transparent;
+  color:var(--ink2); font:inherit; font-size:12.5px; font-weight:540; cursor:pointer; }
+.option:hover { color:var(--ink); }
+.option[aria-pressed="true"] { background:var(--ink); color:var(--panel); cursor:default; }
+.option:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+/* En pantallas táctiles cada segmento llega a los 44 px de un dedo. */
+@media (pointer:coarse) { .option { min-height:44px; padding:0 14px; } }

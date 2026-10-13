@@ -1,0 +1,32 @@
+/* El lenguaje común de los bloques nuevos del asistente: tarjeta de radio 16
+   con borde fino, píldoras, acción primaria oscura. Solo tokens de tokens.css. */
+
+.card { margin:0; min-width:0; display:flex; flex-direction:column; gap:10px; padding:12px 14px;
+  border:1px solid var(--line); border-radius:16px; background:var(--raise); color:var(--ink); }
+.head { display:flex; align-items:center; gap:8px; min-width:0; color:var(--ink2); }
+.title { margin:0; min-width:0; font-size:13.5px; font-weight:600; color:var(--ink);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.meta { margin:0; min-width:0; font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.headMeta { composes:meta; margin-left:auto; flex:none; }
+.actions { display:flex; flex-wrap:wrap; align-items:center; gap:8px; min-width:0; }
+.status { margin:0; font-size:12px; color:var(--muted); }
+.status:empty { display:none; }
+.alert { margin:0; font-size:12px; color:var(--crit); }
+
+/* Píldora: 36px a la vista y 44px al dedo (el ::after suma 4px por lado; con
+   8px de separación los objetivos vecinos se tocan sin pisarse). */
+.pill { position:relative; display:inline-flex; align-items:center; justify-content:center; gap:6px; flex:none;
+  min-height:36px; max-width:100%; padding:0 14px; border-radius:999px; border:1px solid var(--line);
+  background:var(--raise); color:var(--ink2); font:inherit; font-size:12.5px; cursor:pointer;
+  text-decoration:none; white-space:nowrap; }
+.pill::after { content:""; position:absolute; inset:-4px; }
+.pill:hover:not(:disabled) { border-color:var(--line2); color:var(--ink); }
+.pill:disabled { opacity:.45; cursor:default; }
+.pill:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+.primary { composes:pill; background:var(--ink); border-color:var(--ink); color:var(--panel); font-weight:600; }
+.primary:hover:not(:disabled) { color:var(--panel); border-color:var(--ink); opacity:.9; }
+
+.iconButton { composes:pill; width:36px; padding:0; }
+
+.srOnly { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }

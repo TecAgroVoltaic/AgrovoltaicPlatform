@@ -37,6 +37,10 @@ export { CalendarHeatmapChart } from "@/app/components/charts/CalendarHeatmapCha
 export type { CalendarHeatmapChartProps } from "@/app/components/charts/CalendarHeatmapChart";
 export type { CalendarHeatmapData, HeatmapCell } from "@/app/components/charts/options/calendarHeatmap";
 
+export { ActivityCalendar } from "@/app/components/charts/activityCalendar/ActivityCalendar";
+export type { ActivityCalendarProps } from "@/app/components/charts/activityCalendar/ActivityCalendar";
+export type { ActivityDay, ActivityLevel, ActivityRow } from "@/app/components/charts/activityCalendar/types";
+
 export { ScatterFitChart } from "@/app/components/charts/ScatterFitChart";
 export type { ScatterFitChartProps } from "@/app/components/charts/ScatterFitChart";
 export { describeFit } from "@/app/components/charts/options/scatterFit";

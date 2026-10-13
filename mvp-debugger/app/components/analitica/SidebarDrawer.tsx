@@ -43,7 +43,7 @@ export function SidebarDrawer({ children }: { children: ReactNode }) {
     <>
       {/* Una sección con cabecera propia trae su botón de menú: dos bandas
           pegadas arriba se comerían el doble de pantalla en un teléfono. */}
-      {section?.ownsHeader ? null : (
+      {section?.shell === "bare" ? null : (
         <div className="shell-topbar">
           <button
             ref={burgerRef}

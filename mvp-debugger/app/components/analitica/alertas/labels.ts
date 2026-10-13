@@ -75,6 +75,7 @@ export const TYPE_LABEL: Readonly<Record<string, string>> = {
   sensor_temperatura_saturado: "Sensor de temperatura saturado",
   irradiancia_imposible: "Irradiancia imposible",
   incongruencia_temp_irradiancia: "Temperatura vs. irradiancia",
+  falla_sistema: "Falla del sistema",
 };
 
 export function typeLabel(type: string): string {
