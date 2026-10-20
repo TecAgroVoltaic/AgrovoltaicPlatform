@@ -474,6 +474,13 @@ Agente Histórico) + módulo `exportar.py` del histórico (no es tool del LLM) c
   `numpy`/`scipy`): `docker compose -f docker-compose.analizador.yml up -d --build`. AgroDash no
   necesita configuración (API pública; override opcional `AGRODASH_API_URL`).
 
+## 2026-10-20 — deploy del asistente chat-first
+
+`master` en `cc2e99b`, mismo procedimiento con token de abajo; deploy `agrovoltaic-consola-4olero299-…`
+READY. Primero se desplegó el backend, porque la consola nueva lo necesita. Detalle, verificación y
+cómo volver atrás en [[asistente-plataforma]]. En local, `dev.sh` levanta la consola en **:3001**
+(`WEB_PORT` para cambiarlo), porque el :3000 lo usa otro proyecto.
+
 ## 2026-10-05 — deploy de `master` en Vercel, con token (cómo se hace hoy)
 
 - **Vercel NO despliega solo.** Verificado por la API: el proyecto `agrovoltaic-consola` no tiene

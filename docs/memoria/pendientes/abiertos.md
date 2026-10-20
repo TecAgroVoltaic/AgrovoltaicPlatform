@@ -11,6 +11,12 @@ tags: [pendientes, deuda, decisiones]
 Distinto de [bloqueantes](bloqueantes.md), que son cosas que dependen de **terceros**. Esto
 depende de nosotros: está ofrecido, medido o identificado, y falta decidir o hacer.
 
+## Del asistente chat-first (2026-10-20)
+
+Ocho arreglos que salieron de las pruebas reales de interfaz, la ola estética en todas las vistas
+con rediseño de mobile, y **avisarle al equipo de AgroDash que su disco está lleno** →
+[[asistente-plataforma]].
+
 ## ⚠️ Lo primero de toda la lista (2026-09-01): la corrección al equipo
 
 **El documento que le enviamos al equipo el 2026-08-28 tiene tres afirmaciones falsas**, y sobre una

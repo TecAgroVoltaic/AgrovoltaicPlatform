@@ -6,6 +6,10 @@ categoria: proyecto
 
 # Consultas cruzadas entre fuentes + agente de descargas — diseño
 
+> **2026-10-20:** la parte del **agente que entrega descargas** cruzando fuentes quedó hecha de otra
+> forma (archivos a medida remuestreados a un intervalo común, sin DuckDB) → [[asistente-plataforma]].
+> Los joins y las consultas SQL personalizadas de este diseño **no** se implementaron.
+
 **Estado:** propuesta del 2026-09-11, **antes de implementar**. Pedido de Isaac: *"algo que permita
 hacer joins entre fuentes, Cartago y San Carlos, que con un agente ahí mismo se pueda descargar la
 data (él la brinde con algún tool) y que se permitan consultas personalizadas"*.
