@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Levanta el MVP completo en local: los 2 servicios Python (Historico :8010,
-# Predictivo :8000) + el Next dev (:3000). Ctrl-C cierra todo.
+# Predictivo :8000) + el Next dev (:3001, o WEB_PORT). Ctrl-C cierra todo.
 #
 # La ANTHROPIC_API_KEY se toma de agente-predictivo/.env (no se imprime). Los
-# servicios leen las DBs en SOLO LECTURA. Uso:  ./dev.sh
+# servicios leen las DBs en SOLO LECTURA. Uso:  ./dev.sh  (o WEB_PORT=3002 ./dev.sh)
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -11,6 +11,8 @@ REPO="$(cd "$HERE/.." && pwd)"
 VENV="$REPO/agente-predictivo/.venv/bin/python"
 VENV_HIST="$REPO/agente-historico/.venv/bin/python"
 LOGS="$HERE/.logs"; mkdir -p "$LOGS"
+# El 3000 lo suelen ocupar otros proyectos de la maquina.
+WEB_PORT="${WEB_PORT:-3001}"
 
 for v in "$VENV" "$VENV_HIST"; do
   [ -x "$v" ] || { echo "No encuentro el venv en $v — creálo primero." >&2; exit 1; }
@@ -27,12 +29,12 @@ cleanup() { echo; echo "cerrando servicios…"; for p in "${pids[@]:-}"; do kill
 trap cleanup EXIT INT TERM
 
 echo "→ Agente Histórico en http://127.0.0.1:8010"
-( cd "$REPO/agente-historico" && "$VENV_HIST" -m uvicorn historico.api:app \
+( cd "$REPO/agente-historico" && exec "$VENV_HIST" -m uvicorn historico.api:app \
     --host 127.0.0.1 --port 8010 ) > "$LOGS/historico.log" 2>&1 &
 pids+=($!)
 
 echo "→ Agente Predictivo en http://127.0.0.1:8000"
-( cd "$REPO/agente-predictivo" && "$VENV" -m uvicorn predictivo.api:app \
+( cd "$REPO/agente-predictivo" && exec "$VENV" -m uvicorn predictivo.api:app \
     --host 127.0.0.1 --port 8000 ) > "$LOGS/predictivo.log" 2>&1 &
 pids+=($!)
 
@@ -45,5 +47,5 @@ done
 
 cd "$HERE"
 [ -d node_modules ] || { echo "→ npm install"; npm install; }
-echo "→ Next en http://localhost:3000"
-npm run dev
+echo "→ Next en http://localhost:$WEB_PORT"
+npx next dev -p "$WEB_PORT"
