@@ -55,6 +55,7 @@ def ruta_de_descarga(desde: str, hasta: str, foco: str | None = None) -> str:
 
 def run(desde: str, hasta: str, foco: str | None = None) -> dict:
     meta, comp = informe.preparar(desde, hasta)
+    descarga = {"ruta": ruta_de_descarga(meta["desde"], meta["hasta"], foco), "formato": "xlsx"}
     return {
         "periodo": {"desde": meta["desde"], "hasta": meta["hasta"],
                     "hasta_inclusivo": True},
@@ -62,8 +63,10 @@ def run(desde: str, hasta: str, foco: str | None = None) -> dict:
         "hechos": [{"id": h.id, "indicador": h.indicador, "valor": texto(h)}
                    for h in comp["hechos"]],
         "advertencias": comp["advertencias"],
-        "descarga": {"ruta": ruta_de_descarga(meta["desde"], meta["hasta"], foco),
-                     "formato": "xlsx"},
+        "descarga": descarga,
+        # Copia para Visione Flow: solo las claves `_` viajan a la consola sin pasar
+        # por el modelo; `descarga` la sigue leyendo el LLM.
+        "_informe": descarga,
         "nota": ("El Excel se arma al descargarlo. Deci que esta listo para bajar y "
                  "resumi dos o tres hechos; no pegues la tabla entera."),
     }
