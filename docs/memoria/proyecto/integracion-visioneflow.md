@@ -6,6 +6,9 @@ categoria: proyecto
 
 # Planteamiento: montar el Agente Predictivo en VisioneFlow
 
+> **2026-10-20:** este patrón (backend Python + `httpRequestTool` genérico + `aiAgent`) quedó
+> funcionando en producción, pero con el **Agente Histórico**, no el Predictivo → [[agente-visione-flow]].
+
 Cómo llevar el [[agente-predictivo]] (hoy paquete Python autónomo) a **VisioneFlow**
 (`/Users/izack/Visione/Apps/VisioneFlow`), la plataforma de flujos del usuario, de forma
 **escalable** y **genérica**. Definido el 2026-07-02 tras explorar la arquitectura real de esa app.

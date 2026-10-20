@@ -83,6 +83,12 @@ Durante las pruebas el servidor de AgroDash devolvió **500 "No space left on de
 AgroDash, no nuestro: **hay que avisarle a su equipo**. Mientras dure, Cartago puede faltar en el
 calendario y en los archivos (sale como falla con contexto, no como hueco).
 
+## También en Visione Flow
+
+Una versión acotada de este agente (23 herramientas livianas, sin bloques visuales) corre en
+Visione Flow de producción como caso de uso de práctica → [[agente-visione-flow]]. La consola
+sigue usando este agente.
+
 ## Deploy del 2026-10-20
 
 - **Backend** (VisioneMetrics, solo el Agente Histórico; el Predictivo no tenía cambios): sincronizar
