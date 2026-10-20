@@ -101,10 +101,7 @@ valor). Arreglos, todos mergeados y desplegados el 2026-10-20:
 ## Pendiente
 
 - Revocar la API key de `~/.flow-prod-key`.
-- **Consola consumiendo este agente** (no decidido): el streaming de Flow solo avisa el *nombre* de
-  la herramienta llamada, no su resultado (`web-channel-stream.callbacks.ts`), así que la consola
-  perdería gráficos, selector, tarjetas y calendario. Haría falta que el runtime reenvíe campos
-  elegidos del resultado, que `/tool` reporte fallas a Alertas, y un adaptador en la consola con
-  interruptor "motor: plataforma / Flow".
+- **Consola consumiendo un agente de Flow:** plan aprobado el 2026-10-20 (opción A, 32 herramientas),
+  sin implementar → [[plan-consola-flow]]. Será un agente nuevo; este no se toca.
 
 Ver [[asistente-plataforma]], [[integracion-visioneflow]], [[agente-historico]], [[servidor-propio]].
