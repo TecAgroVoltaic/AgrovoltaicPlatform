@@ -12,8 +12,9 @@ const threadSchema = z.object({
   id: z.string().min(1),
   title: z.string(),
   /** El contexto con que se abrió el hilo (el rango de la vista en ese momento).
-   * Se conserva: la conversación sigue hablando de ese período aunque después
-   * se mueva el rango. */
+   * Las preguntas NO lo reusan: cada una manda el de la vista actual, porque un
+   * hilo abierto en otra vista citaba un rango que ya no estaba en pantalla.
+   * Queda solo para reintentar después de recargar la página. */
   context: z.string(),
   updatedAt: z.number(),
   messages: z.array(storedMessageSchema),
