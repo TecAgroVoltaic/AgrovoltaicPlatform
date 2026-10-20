@@ -8,9 +8,27 @@ tags: [visione-flow, asistente, consola, plan, agent-runtime]
 
 # Plan: la consola consume el agente de Visione Flow
 
-**Estado al 2026-10-20: plan aprobado por Isaac, sin implementar.** Decisiones suyas: **opción A**
+**Estado al 2026-10-20: plan aprobado; fases 1, 2 y 4 implementadas en ramas locales.** Decisiones suyas: **opción A**
 de memoria (la consola manda el historial) y **las 32 herramientas** (también las pesadas).
 Cada deploy a producción se le pide antes. Contexto: [[agente-visione-flow]], [[asistente-plataforma]].
+
+## Avance (2026-10-20): fases 1, 2 y 4 hechas en ramas locales, sin push ni deploy
+
+- **Fase 1:** Agent-Runtime `feat/tool-result-payload` (worktree `../Agent-Runtime-tool-payload`,
+  4 commits). El payload viaja en `ToolExecutionResult.clientPayload` (no en `data`). Env:
+  `WEB_TOOL_PAYLOAD_MAX_BYTES` (2 MB), `WEB_CHANNEL_RATE_LIMIT_PER_MINUTE` (0 = apagado).
+  `input/ok/ms/error` salen en **todos** los agentes: pendiente decidir si se vuelven opt-in.
+  En error **no** viaja `payload`: la falla va dentro del string `error`.
+- **Fase 2:** `feat/tool-fallas-flow` (`99eb8be`). Error de `/tool` = `{detail, codigo?, error,
+  falla, _falla}`; límite propio 120/min (`RATE_LIMIT_TOOL_POR_MIN`, 429), no el del chat; `x-origen`
+  como `canal` aparte (no entra en la clave de la alerta, para no duplicar alertas por causa).
+- **Fase 4:** `feat/asistente-motor-flow` (`a1919a2`, `05335fe`). Ruta `/api/asistente/chat`, env
+  `ASISTENTE_MOTOR`, `FLOW_WEBHOOK_URL`, `FLOW_WEBHOOK_KEY`, cookie `av_motor`; `sessionId =
+  consola-<hilo>`. Verificada con mock y con el pipeline real del cliente.
+- **Para la fase 3:** sin caché en tools con `clientKeys` (un acierto llega sin payload);
+  `preparar_informe` usa `descarga` sin `_` (o el backend suma una clave `_`, o no se ve la tarjeta);
+  `usage` de Flow solo trae tokens totales (sin costo en la traza); `clientKeys` falta en el editor de
+  Visione-Flow (la API ya lo acepta).
 
 ## Lo que encontró el relevamiento (y cambia el diseño)
 
