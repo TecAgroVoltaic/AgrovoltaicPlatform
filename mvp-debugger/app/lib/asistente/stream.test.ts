@@ -32,7 +32,7 @@ describe("streamChat", () => {
     const fetchImpl = respondWith(streamedResponse(chartTurnEvents()));
     // When se consume el stream
     const events = await run(fetchImpl);
-    // Then pidió por POST a /api/historico/chat/stream con el cuerpo del contrato
+    // Then pidió por POST a la ruta del chat con el cuerpo del contrato
     const [url, init] = fetchImpl.mock.calls[0];
     expect(url).toBe(CHAT_STREAM_URL);
     expect(init?.method).toBe("POST");
