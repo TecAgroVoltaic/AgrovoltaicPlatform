@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import re
 import secrets
 
 from fastapi import Header, HTTPException, status
@@ -70,6 +71,34 @@ def _frenar_consumo(x_api_key: str | None = Header(default=None)) -> None:
             status.HTTP_429_TOO_MANY_REQUESTS,
             detail=(f"presupuesto diario agotado: US$ {gastado:.4f} de US$ {tope:.2f}. "
                     f"Las vistas deterministas siguen funcionando."),
+        )
+
+
+# Canal de una llamada a /tool (header `x-origen`, p. ej. `flow`). Sin header es una
+# llamada directa a la API. Se normaliza porque termina en el log, en el reporte de
+# fallas y como clave del registro de uso: un valor libre no puede inflar ese dict.
+CANAL_POR_DEFECTO = "api"
+_CANAL_VALIDO = re.compile(r"^[a-z0-9_-]{1,32}$")
+
+
+def _canal(x_origen: str | None = Header(default=None)) -> str:
+    valor = (x_origen or "").strip().lower()
+    return valor if _CANAL_VALIDO.match(valor) else CANAL_POR_DEFECTO
+
+
+def _frenar_tool(x_api_key: str | None = Header(default=None),
+                 x_origen: str | None = Header(default=None)) -> None:
+    """El freno de ritmo de `_frenar_consumo`, con balde propio, para `/tool`.
+
+    Sin el freno de presupuesto: una tool no gasta tokens (el LLM que la pide corre en
+    Visione Flow y gasta alli), y el tope diario deja vivo a proposito lo determinista.
+    """
+    if not limites.LIMITADOR_TOOL.permitir(f"{_identidad(x_api_key)}:{_canal(x_origen)}"):
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=(f"limite de {limites.LIMITE_TOOL_POR_MIN} llamadas a herramientas por "
+                    f"minuto. Reintenta en unos segundos."),
+            headers={"Retry-After": str(limites.LIMITADOR_TOOL.espera_seg())},
         )
 
 
