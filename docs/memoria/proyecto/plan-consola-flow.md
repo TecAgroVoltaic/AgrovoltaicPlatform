@@ -8,30 +8,25 @@ tags: [visione-flow, asistente, consola, plan, agent-runtime]
 
 # Plan: la consola consume el agente de Visione Flow
 
-**Estado al 2026-10-20: plan aprobado; fases 1, 2 y 4 en PRs abiertos (#62, #27, #28).** Decisiones suyas: **opción A**
+**Estado al 2026-10-21: fases 1 a 4 en producción; falta la fase 5 (pruebas reales y cambio de motor).** Decisiones suyas: **opción A**
 de memoria (la consola manda el historial) y **las 32 herramientas** (también las pesadas).
 Cada deploy a producción se le pide antes. Contexto: [[agente-visione-flow]], [[asistente-plataforma]].
 
-## Avance (2026-10-20): fases 1, 2 y 4 en PRs abiertos, sin merge ni deploy
+## Avance (2026-10-21): fases 1-4 en producción; fase 5 (pruebas) pendiente
 
-PRs: Agent-Runtime #62 (fase 1), AgroVoltaic #27 (fase 2) y #28 (fase 4). Orden de deploy: #62 y #27 → fase 3 → #28.
-
-
-- **Fase 1:** Agent-Runtime `feat/tool-result-payload` (worktree `../Agent-Runtime-tool-payload`,
-  4 commits). El payload viaja en `ToolExecutionResult.clientPayload` (no en `data`). Env:
-  `WEB_TOOL_PAYLOAD_MAX_BYTES` (2 MB), `WEB_CHANNEL_RATE_LIMIT_PER_MINUTE` (0 = apagado).
-  `input/ok/ms/error/payload` salen solo en herramientas con `clientKeys` (el resto, igual que antes).
-  En error **no** viaja `payload`: la falla va dentro del string `error`.
-- **Fase 2:** `feat/tool-fallas-flow` (`99eb8be`). Error de `/tool` = `{detail, codigo?, error,
-  falla, _falla}`; límite propio 120/min (`RATE_LIMIT_TOOL_POR_MIN`, 429), no el del chat; `x-origen`
-  como `canal` aparte (no entra en la clave de la alerta, para no duplicar alertas por causa).
-- **Fase 4:** `feat/asistente-motor-flow` (`a1919a2`, `05335fe`). Ruta `/api/asistente/chat`, env
-  `ASISTENTE_MOTOR`, `FLOW_WEBHOOK_URL`, `FLOW_WEBHOOK_KEY`, cookie `av_motor`; `sessionId =
-  consola-<hilo>`. Verificada con mock y con el pipeline real del cliente.
-- **Para la fase 3:** sin caché en tools con `clientKeys` (un acierto llega sin payload);
-  `preparar_informe` usa `descarga` sin `_` (o el backend suma una clave `_`, o no se ve la tarjeta);
-  `usage` de Flow solo trae tokens totales (sin costo en la traza); `clientKeys` falta en el editor de
-  Visione-Flow (la API ya lo acepta).
+- **Runtime:** Agent-Runtime #62 (+ #63, test que dependía de la fecha y saltó el Deploy) desplegado
+  en `https://api.flow.visione-edge.com`. Detalles de herramienta en los eventos solo con `clientKeys`.
+- **Backend:** #27 desplegado en VisioneMetrics. `/tool` con `falla`/`_falla`, límite 120/min
+  (`RATE_LIMIT_TOOL_POR_MIN`), canal por `x-origen`, `preparar_informe` con copia `_informe`.
+- **Agente Flow "Consola":** `cmvi3asrc0004l81nd717qy3w`, desplegado. 32 tools con `clientKeys: "_"`,
+  `x-origen: flow`, sin caché; prompt `CHAT_SYSTEM` + nota de Flow; webhook streaming con `x-api-key`
+  (clave puesta por Isaac en Flow y en Vercel `FLOW_WEBHOOK_KEY`). Prueba `cmvi41iwa0001l81njo3u9ft5`:
+  `rangos_con_datos` + `graficar`, 9 s, USD 0,15; el `_grafico` no llegó al modelo.
+- **Consola:** #28 desplegado (`agrovoltaic-consola-aqgw3phko-…`, `ddf3a31`). `FLOW_WEBHOOK_URL` en
+  Vercel; `ASISTENTE_MOTOR` sin definir = `plataforma`. Flow solo con la cookie `av_motor=flow`.
+- **Abierto:** sin prompt caching en Flow (`cachedPromptTokens` 0, ~24k tokens por llamada al modelo);
+  `maxExecutionTime` 120 s fijo en el canal web; `usage` sin tokens in/out; `clientKeys` sin documentar
+  en el editor de Visione-Flow; `FLOW_WEBHOOK_KEY` quedó `encrypted`, no `sensitive`.
 
 ## Lo que encontró el relevamiento (y cambia el diseño)
 
