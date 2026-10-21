@@ -35,6 +35,9 @@ _VACIO = {
     # solo contarlo: un acumulado desde el principio de los tiempos no sirve de
     # freno, porque nunca baja.
     "por_dia": {},
+    # Llamadas directas a `POST /tool/<nombre>` por canal (`x-origen`: `flow`, `api`).
+    # No gastan tokens aca, pero sin esto no se distingue lo que pide Visione Flow.
+    "tools_por_canal": {},
 }
 
 # Cuantos dias de detalle diario se conservan. El acumulado total no se toca; lo
@@ -91,6 +94,19 @@ def registrar(traza: dict) -> dict:
                     del d["por_dia"][viejo]
         _escribir(d)
         return d
+
+
+def registrar_tool(canal: str, error: bool) -> None:
+    """Suma una llamada a `/tool` del canal (y si fallo). Persiste como `registrar`."""
+    with _LOCK:
+        d = _leer()
+        # Copia: `_leer` puede devolver el dict de `_VACIO`, que no se toca.
+        por_canal = {k: dict(v) for k, v in (d.get("tools_por_canal") or {}).items()}
+        c = por_canal.setdefault(canal, {"n_llamadas": 0, "n_errores": 0})
+        c["n_llamadas"] += 1
+        c["n_errores"] += 1 if error else 0
+        d["tools_por_canal"] = por_canal
+        _escribir(d)
 
 
 def _hoy() -> str:

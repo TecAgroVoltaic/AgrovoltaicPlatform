@@ -30,8 +30,10 @@ def clave(falla: dict) -> str:
 
 
 def _evidencia(previa: dict, falla: dict, hoy: date) -> dict:
+    # `canal` (`flow`, `api`) solo llega de `POST /tool`; el lazo del chat no lo pone.
+    canal = {"canal": falla["canal"]} if falla.get("canal") else {}
     detalles = [{"dia": hoy.isoformat(), "herramienta": falla["herramienta"],
-                 "detalle": falla["detalle"]}, *previa.get("detalles", [])][:MAX_DETALLES]
+                 "detalle": falla["detalle"], **canal}, *previa.get("detalles", [])][:MAX_DETALLES]
     return {"veces": int(previa.get("veces", 0)) + 1, "detalles": detalles,
             "fechas": sorted({*previa.get("fechas", []), hoy.isoformat()})}
 

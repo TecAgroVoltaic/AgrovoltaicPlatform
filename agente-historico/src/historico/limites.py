@@ -31,6 +31,10 @@ from historico import uso as uso_mod
 
 # Consultas que gastan tokens del LLM, por identidad y por minuto.
 LIMITE_LLM_POR_MIN = int(os.environ.get("RATE_LIMIT_LLM_POR_MIN", "12"))
+# Llamadas directas a `POST /tool/<nombre>`, por identidad y canal y por minuto.
+# Mas alto que el del LLM: un solo turno de un agente de Visione Flow encadena
+# varias tools (hasta 16 pasos), y con el ritmo del chat se cortaria a la mitad.
+LIMITE_TOOL_POR_MIN = int(os.environ.get("RATE_LIMIT_TOOL_POR_MIN", "120"))
 # Tope de gasto del dia en USD. 0 = sin tope.
 PRESUPUESTO_DIARIO_USD = float(os.environ.get("PRESUPUESTO_DIARIO_USD", "5"))
 
@@ -92,6 +96,7 @@ class LimitadorRitmo:
 
 
 LIMITADOR_LLM = LimitadorRitmo(por_minuto=LIMITE_LLM_POR_MIN)
+LIMITADOR_TOOL = LimitadorRitmo(por_minuto=LIMITE_TOOL_POR_MIN)
 
 
 def presupuesto_agotado(tope_usd: float | None = None) -> tuple[bool, float, float]:
