@@ -3,7 +3,8 @@
 // llegando y las acciones (enviar, cancelar, reintentar, cambiar de hilo).
 //
 // Las dependencias con efectos (almacenamiento, red, reloj, ids) se inyectan:
-// así la vista se prueba con un stream simulado y un almacenamiento en memoria.// Los hilos y su persistencia viven en `useThreadStore`; acá queda el turno y
+// así la vista se prueba con un stream simulado y un almacenamiento en memoria.
+// Los hilos y su persistencia viven en `useThreadStore`; acá queda el turno y
 // las acciones sobre el mismo almacén.
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -37,7 +38,8 @@ export type AssistantChat = {
   readonly busy: boolean;
   /** Aviso sobre el historial guardado (ilegible, sin espacio, bloqueado). */
   readonly storageNotice: string | null;
-  /** `context` solo se usa si la pregunta abre un hilo nuevo. */
+  /** `context` es lo que se está mirando AHORA: viaja con cada pregunta, también
+   *  en un hilo viejo, para que «este período» sea el de la pantalla. */
   readonly send: (text: string, context: string) => void;
   readonly cancel: () => void;
   readonly retry: () => void;
@@ -60,18 +62,20 @@ export function useAssistantChat({
   const { store, storeRef, commit, storageNotice } = useThreadStore(storage);
   const [turn, setTurn] = useState<TurnState>(IDLE_TURN);
   const abortRef = useRef<AbortController | null>(null);
+  // El contexto de la última pregunta: «Reintentar» no recibe uno propio.
+  const lastContextRef = useRef<string | null>(null);
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
   const runTurn = useCallback(
-    async (threadId: string) => {
+    async (threadId: string, context: string) => {
       const thread = storeRef.current.threads.find((candidate) => candidate.id === threadId);
       if (!thread || abortRef.current) return;
       const controller = new AbortController();
       abortRef.current = controller;
       let state = beginTurn();
       setTurn(state);
-      const request = { messages: toWireHistory(thread.messages), context: thread.context };
+      const request = { messages: toWireHistory(thread.messages), context, threadId };
       for await (const event of streamChat(request, controller.signal, { httpFetch })) {
         state = turnReducer(state, event);
         setTurn(state);
@@ -95,7 +99,8 @@ export function useAssistantChat({
           ? appendMessage(latest, threadId, userMessage(question), now())
           : startThread(latest, { id: threadId, question, context, now: now() }),
       );
-      void runTurn(threadId);
+      lastContextRef.current = context;
+      void runTurn(threadId, context);
     },
     [commit, newId, now, runTurn, storeRef],
   );
@@ -106,7 +111,7 @@ export function useAssistantChat({
     const withoutFailure = dropFailedAnswer(storeRef.current, current.id);
     if (!withoutFailure) return;
     commit(() => withoutFailure);
-    void runTurn(current.id);
+    void runTurn(current.id, lastContextRef.current ?? current.context);
   }, [commit, runTurn, storeRef]);
 
   const cancel = useCallback(() => abortRef.current?.abort(), []);

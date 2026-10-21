@@ -120,6 +120,7 @@ son de una vista que se renderiza una vez y no cambia.
 
 ```
 Browser ─► /api/historico/*  (route handler, inyecta x-api-key)  ─► :8010  analizador.api  ─► Supabase PV (RO)
+        ├► /api/asistente/chat (motor por ASISTENTE_MOTOR)         ─► :8010 /chat/stream  |  Visione Flow /web/stream
         ├► /api/predictivo/*  (route handler, inyecta x-api-key)  ─► :8000  predictivo.api  ─► store parquet / Supabase (RO)
         └► /api/historico/*  (route handler, solo GET)           ─► :8020  comparador.api  ─► Supabase PV (RO)
 ```
@@ -195,6 +196,9 @@ cd ../mvp-debugger && npm install && npm run dev
 | `HISTORICO_URL` | `http://127.0.0.1:8020` | servicio del comparador |
 | `HISTORICO_API_KEY` | (vacío) | si el servicio exige `x-api-key` |
 | `PREDICTIVO_API_KEY` | (vacío) | idem |
+| `ASISTENTE_MOTOR` | `plataforma` | motor del chat del asistente: `plataforma` (backend propio, `/chat/stream`) o `flow` (agente de Visione Flow). La cookie `av_motor` lo pisa por sesión, para probar |
+| `FLOW_WEBHOOK_URL` | (vacío) | URL completa del `/api/webhooks/<agentId>/web/stream` del agente en Flow; solo con motor `flow` |
+| `FLOW_WEBHOOK_KEY` | (vacío) | clave `x-api-key` del webhook; obligatoria con motor `flow` (sin ella la ruta responde 500) |
 
 En local los servicios corren sin key (dejá las keys vacías). Para apuntar a los
 servicios ya desplegados en la EC2, cambiá las URLs y pegá las keys.

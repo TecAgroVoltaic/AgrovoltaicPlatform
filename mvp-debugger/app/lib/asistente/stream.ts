@@ -1,6 +1,8 @@
 "use client";
-// Cliente de `POST /chat/stream` (contrato §3): manda el historial y entrega los
-// eventos YA validados y traducidos, uno por uno, como generador asíncrono.
+// Cliente del chat del asistente (contrato §3 de `/chat/stream`): manda el
+// historial y entrega los eventos YA validados y traducidos, uno por uno, como
+// generador asíncrono. Habla con `/api/asistente/chat`, que elige el motor
+// (backend propio o Visione Flow) del lado servidor: acá no se nota cuál.
 //
 // Nunca lanza. Todo desenlace es un evento terminal (`done`, `failure` o
 // `cancelled`) y después de él el generador termina: quien consume no necesita
@@ -20,7 +22,7 @@ import { readSseFrames } from "@/app/lib/asistente/sse";
 
 export type { ChatFailure, ChatFailureCode, ChatStreamEvent, WireMessage } from "@/app/lib/asistente/streamEvents";
 
-export const CHAT_STREAM_URL = "/api/historico/chat/stream";
+export const CHAT_STREAM_URL = "/api/asistente/chat";
 
 /** Sin un solo evento en este tiempo, el stream se da por colgado. Holgado a
  * propósito: una tool sobre AgroDash puede tardar decenas de segundos sin que
@@ -31,6 +33,8 @@ export type ChatStreamRequest = {
   readonly messages: readonly WireMessage[];
   /** Qué está mirando la persona (rango de la vista). Viaja como `contexto`. */
   readonly context?: string;
+  /** El hilo: el motor Flow lo usa como sesión estable. Viaja como `hilo`. */
+  readonly threadId?: string;
 };
 
 export type ChatStreamDeps = {
@@ -64,7 +68,7 @@ export async function* streamChat(
     const response = await httpFetch(CHAT_STREAM_URL, {
       method: "POST",
       headers: { "content-type": "application/json", accept: "text/event-stream" },
-      body: JSON.stringify({ mensajes: request.messages, contexto: request.context }),
+      body: JSON.stringify({ mensajes: request.messages, contexto: request.context, hilo: request.threadId }),
       cache: "no-store",
       signal: connection.signal,
     });
